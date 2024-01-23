@@ -414,65 +414,21 @@ fn document_to_conversation(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-
-
-
         let conversation_parser = get_conversation_parser(chunk).await.unwrap();
-
-
-        //let conversation_parser_content = ConversationParserContent {
-        //    prefix: r##"<div class="comment">
-        //          <span class="commtext c00">"##.to_string(),
-        //    suffix: r##"</span>
-        //      <div class='reply'>"##.to_string(),
-        //};
-
-        //let conversation_parser_id = ConversationParserId {
-        //    prefix: r##"<tr class='athing comtr' id='"##.to_string(),
-        //    suffix: r##"'><td><table border='0'>"##.to_string(),
-        //    relative: String::from("before"),
-        //};
-
-        //let conversation_parser_parent_id = ConversationParserParentId {
-        //    prefix: r##" | <a href="#"##.to_string(),
-        //    suffix: r##"" class="clicky" aria-hidden="true">parent</a> |"##.to_string(),
-        //    relative: String::from("before"),
-        //};
-
-        //let conversation_parser = ConversationParser {
-        //    parent_id: conversation_parser_parent_id,
-        //    id: conversation_parser_id,
-        //    content: conversation_parser_content,
-        //};
-
         log::debug!("{:?}", conversation_parser);
 
 
-
-
-
-
-
-
-
-        let start = &conversation_parser.content.prefix;
-        log::debug!("{}", start);
-        let end = &conversation_parser.content.suffix;
-        log::debug!("{}", end);
-
-
-
-
-
-
+        let content_prefix = &conversation_parser.content.prefix;
+        log::debug!("{}", content_prefix);
+        let content_suffix = &conversation_parser.content.suffix;
+        log::debug!("{}", content_suffix);
 
         let mut conversation_posts = Vec::new();
         let mut current = document.clone();
         let mut start_offset = 0;
 
         loop {
-
-
+            // Fix Rust utf boundary issue when slicing with offset
             let fixed_index = current.char_indices()
                 .map(|(i, _)| i)
                 .take_while(|&i| i <= start_offset)
@@ -481,12 +437,12 @@ fn document_to_conversation(document: String) {
 
             let current_slice = &current[fixed_index..];
 
-            if let Some(start_index) = current_slice.find(start) {
+            if let Some(start_index) = current_slice.find(content_prefix) {
 
-                if let Some(end_index) = current[start_offset + start_index..].find(end) {
+                if let Some(end_index) = current[start_offset + start_index..].find(content_suffix) {
 
                     let mut content = &current[start_offset + start_index..start_offset + start_index + end_index];
-                    content = &content[start.len()..content.len()];
+                    content = &content[content_prefix.len()..content.len()];
 
 
 
@@ -640,17 +596,7 @@ fn document_to_conversation(document: String) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-                    start_offset = start_offset + start_index + end_index + end.len();
+                    start_offset = start_offset + start_index + end_index + content_suffix.len();
 
                 } else {
                     break;
