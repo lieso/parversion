@@ -56,6 +56,8 @@ struct Conversation {
 
 
 async fn llm_parse(content: String) -> Result<serde_json::Value, io::Error> {
+    log::debug!("{}", content);
+
     if let Ok(openai_api_key) = env::var("OPENAI_API_KEY") {
         let request_json = json!({
             "model":  "gpt-4-1106-preview",
@@ -357,11 +359,13 @@ async fn get_conversation_parser_content(document: &str) -> Result<ConversationP
 }
 
 fn load_stdin() -> io::Result<String> {
+    log::trace!("In load_stdin");
+
     if atty::is(Stream::Stdin) {
         return Err(io::Error::new(io::ErrorKind::Other, "stdin not redirected"));
     }
     let mut buffer = String::new();
-    io::stdin().read_line(&mut buffer)?;
+    io::stdin().read_to_string(&mut buffer)?;
     return Ok(buffer);
 }
 
@@ -402,10 +406,10 @@ fn search_and_extract<'a>(
 fn document_to_conversation(document: String) {
     log::trace!("In document_to_conversation");
 
-    let chunks = chunk_string(&document, 10000);
+    let chunks = chunk_string(&document, 20000);
     log::debug!("number of chunks: {}", chunks.len());
 
-    let chunk = &chunks[1];
+    let chunk = &chunks[0];
 
     let rt = Runtime::new().unwrap();
 
