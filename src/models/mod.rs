@@ -1,40 +1,40 @@
 use serde::{Serialize};
 
 #[derive(Debug)]
-pub struct ConversationParserParentId {
+pub struct ChatParserParentId {
     pub prefix: String,
     pub suffix: String,
     pub relative: String,
 }
 
 #[derive(Debug)]
-pub struct ConversationParserId {
+pub struct ChatParserId {
     pub prefix: String,
     pub suffix: String,
     pub relative: String,
 }
 
 #[derive(Debug)]
-pub struct ConversationParserContent {
+pub struct ChatParserContent {
     pub prefix: String,
     pub suffix: String,
 }
 
 #[derive(Debug)]
-pub struct ConversationParser {
-    pub parent_id: ConversationParserParentId,
-    pub id: ConversationParserId,
-    pub content: ConversationParserContent,
+pub struct ChatParser {
+    pub parent_id: ChatParserParentId,
+    pub id: ChatParserId,
+    pub content: ChatParserContent,
 }
 
 #[derive(Serialize)]
-pub struct ConversationPost {
+pub struct ChatPost {
     pub parent_id: String,
     pub id: String,
     pub content: String,
 }
 
 #[derive(Serialize)]
-pub struct Conversation {
-    pub posts: Vec<ConversationPost>,
+pub struct Chat {
+    pub posts: Vec<ChatPost>,
 }

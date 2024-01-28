@@ -60,8 +60,8 @@ fn search_and_extract<'a>(
     None
 }
 
-fn document_to_conversation(document: String) {
-    log::trace!("In document_to_conversation");
+fn document_to_chat(document: String) {
+    log::trace!("In document_to_chat");
 
     let chunks = chunk_string(&document, 20000);
     log::debug!("number of chunks: {}", chunks.len());
@@ -71,16 +71,16 @@ fn document_to_conversation(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let conversation_parser = parsers::get_conversation_parser(chunk).await.unwrap();
-        log::debug!("{:?}", conversation_parser);
+        let chat_parser = parsers::get_chat_parser(chunk).await.unwrap();
+        log::debug!("{:?}", chat_parser);
 
 
-        let content_prefix = &conversation_parser.content.prefix;
+        let content_prefix = &chat_parser.content.prefix;
         log::debug!("{}", content_prefix);
-        let content_suffix = &conversation_parser.content.suffix;
+        let content_suffix = &chat_parser.content.suffix;
         log::debug!("{}", content_suffix);
 
-        let mut conversation_posts = Vec::new();
+        let mut chat_posts = Vec::new();
         let current = document.clone();
         let mut start_offset = 0;
 
@@ -108,62 +108,62 @@ fn document_to_conversation(document: String) {
 
                     let id_start_index = start_offset + start_index;
 
-                    if conversation_parser.id.relative == "before" {
+                    if chat_parser.id.relative == "before" {
 
-                        if let Some(id) = search_and_extract(&document, id_start_index, false, &conversation_parser.id.suffix, &conversation_parser.id.prefix) {
-
-
+                        if let Some(id) = search_and_extract(&document, id_start_index, false, &chat_parser.id.suffix, &chat_parser.id.prefix) {
 
 
 
-                            if conversation_parser.parent_id.relative == "before" {
-
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &conversation_parser.parent_id.suffix, &conversation_parser.parent_id.prefix) {
 
 
+                            if chat_parser.parent_id.relative == "before" {
 
-                                    let conversation_post = models::ConversationPost {
+                                if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &chat_parser.parent_id.suffix, &chat_parser.parent_id.prefix) {
+
+
+
+                                    let chat_post = models::ChatPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
 
 
 
                                 } else {
-                                    let conversation_post = models::ConversationPost {
+                                    let chat_post = models::ChatPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
                                 }
 
                             } else {
 
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &conversation_parser.parent_id.prefix, &conversation_parser.parent_id.suffix) {
+                                if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &chat_parser.parent_id.prefix, &chat_parser.parent_id.suffix) {
 
-                                    let conversation_post = models::ConversationPost {
+                                    let chat_post = models::ChatPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
 
 
 
                                 } else {
-                                    let conversation_post = models::ConversationPost {
+                                    let chat_post = models::ChatPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
                                 }
 
                             }
@@ -180,60 +180,60 @@ fn document_to_conversation(document: String) {
                         }
                     } else {
 
-                        if let Some(id) = search_and_extract(&document, id_start_index, true, &conversation_parser.id.prefix, &conversation_parser.id.suffix) {
+                        if let Some(id) = search_and_extract(&document, id_start_index, true, &chat_parser.id.prefix, &chat_parser.id.suffix) {
 
 
 
 
 
-                            if conversation_parser.parent_id.relative == "before" {
+                            if chat_parser.parent_id.relative == "before" {
 
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &conversation_parser.parent_id.suffix, &conversation_parser.parent_id.prefix) {
+                                if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &chat_parser.parent_id.suffix, &chat_parser.parent_id.prefix) {
 
 
 
-                                    let conversation_post = models::ConversationPost {
+                                    let chat_post = models::ChatPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
 
 
 
                                 } else {
-                                    let conversation_post = models::ConversationPost {
+                                    let chat_post = models::ChatPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
                                 }
 
                             } else {
 
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &conversation_parser.parent_id.prefix, &conversation_parser.parent_id.suffix) {
+                                if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &chat_parser.parent_id.prefix, &chat_parser.parent_id.suffix) {
 
-                                    let conversation_post = models::ConversationPost {
+                                    let chat_post = models::ChatPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
 
 
 
                                 } else {
-                                    let conversation_post = models::ConversationPost {
+                                    let chat_post = models::ChatPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
                                     };
 
-                                    conversation_posts.push(conversation_post);
+                                    chat_posts.push(chat_post);
                                 }
 
                             }
@@ -263,14 +263,14 @@ fn document_to_conversation(document: String) {
             }
         }
 
-        log::debug!("posts: {}", conversation_posts.len());
+        log::debug!("posts: {}", chat_posts.len());
 
 
         //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
         //  * * * * * * * * * * * * * *
 
-        let final_output = serde_json::to_string(&conversation_posts).expect("Failed to serialize to JSON");
+        let final_output = serde_json::to_string(&chat_posts).expect("Failed to serialize to JSON");
         println!("{}", final_output);
 
         //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -334,7 +334,7 @@ fn main() {
         log::debug!("data_type: {}", data_type);
 
         match data_type {
-            "conversation" => document_to_conversation(document),
+            "chat" => document_to_chat(document),
             _ => log::error!("Unexpected data type: {}", data_type),
         }
         return;
