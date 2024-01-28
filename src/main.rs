@@ -16,6 +16,7 @@ use std::io::{Error, ErrorKind};
 use serde::{Serialize};
 
 mod prompts;
+mod utilities;
 
 #[derive(Debug)]
 struct ConversationParserParentId {
@@ -56,78 +57,6 @@ struct Conversation {
     posts: Vec<ConversationPost>,
 }
 
-
-async fn llm_parse(content: String) -> Result<serde_json::Value, io::Error> {
-    log::debug!("{}", content);
-
-    if let Ok(openai_api_key) = env::var("OPENAI_API_KEY") {
-        let request_json = json!({
-            "model":  "gpt-4-1106-preview",
-            "temperature":  0.7,
-            "messages":  [
-                {
-                    "role": "user",
-                    "content": content
-                }
-            ]
-        });
-        
-        let url = "https://api.openai.com/v1/chat/completions";
-        let authorization = format!("Bearer {}", openai_api_key);
-
-        let client = reqwest::Client::new();
-        let response = client
-            .post(url)
-            .json(&request_json)
-            .header(header::CONTENT_TYPE, "application/json")
-            .header(header::AUTHORIZATION, authorization)
-            .send()
-            .await;
-
-
-        match response {
-            Ok(success_response) => {
-                let json_response = success_response.json::<serde_json::Value>().await;
-                match json_response {
-                    Ok(json_data) => {
-                        log::debug!("{:?}", json_data);
-                        Ok(json_data)
-                    }
-                    Err(err) => {
-                        return Err(Error::new(ErrorKind::InvalidData, "error"));
-                    }
-                }
-
-
-            },
-            Err(err) => {
-                return Err(Error::new(ErrorKind::InvalidData, "error"));
-            }
-        }
-
-
-    } else {
-        log::error!("OPENAI_API_KEY could not be found in environment!");
-        process::exit(1);
-    }
-}
-
-fn remove_codeblock_delimiters(s: &str) -> &str {
-     if s.starts_with("```") && s.ends_with("```") {
-         s.trim_start_matches("```").trim_end_matches("```")
-     } else {
-         s
-     }
-}
-
-fn remove_text_until_brace(s: &str) -> &str {
-    if let Some(index) = s.find('{') {
-        &s[index..]
-    } else {
-        s
-    }
-}
-
 async fn get_conversation_parser(document: &str) -> Result<ConversationParser, io::Error> {
     log::trace!("In get_conversation_parser");
 
@@ -150,40 +79,10 @@ async fn get_conversation_parser_parent_id(document: &str) -> Result<Conversatio
 
     let content = format!("{} {}", prompts::chat::parent_id::PROMPT, document);
 
-    let maybeOpenAiResponse = llm_parse(content).await;
+    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
 
     match maybeOpenAiResponse {
-        Ok(openAiResponse) => {
-            let Some(choices) = openAiResponse["choices"].as_array() else {
-                log::error!("Could not get choices array from OpenAI response");
-                return Err(Error::new(ErrorKind::InvalidData, "error"));
-            };
-
-            let choice = &choices[0];
-            log::debug!("{:?}", &choice);
-
-            let message = &choice["message"];
-            log::debug!("message: {:?}", message);
-
-            let response_content = &message["content"].as_str().unwrap();
-            log::debug!("-----response_content: {}", response_content);
-
-
-
-            // remove code-block formatting
-            let without_backticks = remove_codeblock_delimiters(response_content);
-            log::debug!("without_backticks: {}", without_backticks);
-            let without_label = remove_text_until_brace(without_backticks);
-            log::debug!("without_label: {}", without_label);
-
-
-
-            let prefix_suffix_relative: serde_json::Value = serde_json::from_str(&without_label).expect("Failed to parse json string");
-            log::debug!("{:?}", prefix_suffix_relative);
-
-
-
-
+        Ok(prefix_suffix_relative) => {
             let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
             log::debug!("prefix: {}", prefix);
 
@@ -193,7 +92,6 @@ async fn get_conversation_parser_parent_id(document: &str) -> Result<Conversatio
             let relative = &prefix_suffix_relative["relative"].as_str().unwrap();
             log::debug!("relative: {}", relative);
 
-
             let conversation_parser_parent_id = ConversationParserParentId {
                 prefix: prefix.to_string(),
                 suffix: suffix.to_string(),
@@ -201,15 +99,12 @@ async fn get_conversation_parser_parent_id(document: &str) -> Result<Conversatio
             };
 
             return Ok(conversation_parser_parent_id)
-
         }
         Err(e) => {
             log::debug!("Did not receive response from open ai");
             return Err(Error::new(ErrorKind::InvalidData, "error"));
         }
     }
-
-
 }
 
 async fn get_conversation_parser_id(document: &str) -> Result<ConversationParserId, io::Error> {
@@ -217,39 +112,10 @@ async fn get_conversation_parser_id(document: &str) -> Result<ConversationParser
     
     let content = format!("{} {}", prompts::chat::id::PROMPT, document);
 
-    let maybeOpenAiResponse = llm_parse(content).await;
+    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
 
     match maybeOpenAiResponse {
-        Ok(openAiResponse) => {
-            let Some(choices) = openAiResponse["choices"].as_array() else {
-                log::error!("Could not get choices array from OpenAI response");
-                return Err(Error::new(ErrorKind::InvalidData, "error"));
-            };
-
-            let choice = &choices[0];
-            log::debug!("{:?}", &choice);
-
-            let message = &choice["message"];
-            log::debug!("message: {:?}", message);
-
-            let response_content = &message["content"].as_str().unwrap();
-            log::debug!("-----response_content: {}", response_content);
-
-
-
-            // remove code-block formatting
-            let without_backticks = remove_codeblock_delimiters(response_content);
-            log::debug!("without_backticks: {}", without_backticks);
-            let without_label = remove_text_until_brace(without_backticks);
-            log::debug!("without_label: {}", without_label);
-
-
-
-            let prefix_suffix_relative: serde_json::Value = serde_json::from_str(&without_label).expect("Failed to parse json string");
-            log::debug!("{:?}", prefix_suffix_relative);
-
-
-
+        Ok(prefix_suffix_relative) => {
 
             let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
             log::debug!("prefix: {}", prefix);
@@ -283,46 +149,16 @@ async fn get_conversation_parser_content(document: &str) -> Result<ConversationP
 
     let content = format!("{} {}", prompts::chat::content::PROMPT, document);
 
-    let maybeOpenAiResponse = llm_parse(content).await;
+    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
 
     match maybeOpenAiResponse {
-        Ok(openAiResponse) => {
-            let Some(choices) = openAiResponse["choices"].as_array() else {
-                log::error!("Could not get choices array from OpenAI response");
-                return Err(Error::new(ErrorKind::InvalidData, "error"));
-            };
-
-            let choice = &choices[0];
-            log::debug!("{:?}", &choice);
-
-            let message = &choice["message"];
-            log::debug!("message: {:?}", message);
-
-            let response_content = &message["content"].as_str().unwrap();
-            log::debug!("-----response_content: {}", response_content);
-
-
-
-            // remove code-block formatting
-            let without_backticks = remove_codeblock_delimiters(response_content);
-            log::debug!("without_backticks: {}", without_backticks);
-            let without_label = remove_text_until_brace(without_backticks);
-            log::debug!("without_label: {}", without_label);
-
-
-
-            let prefix_suffix: serde_json::Value = serde_json::from_str(&without_label).expect("Failed to parse json string");
-            log::debug!("{:?}", prefix_suffix);
-
-
-
+        Ok(prefix_suffix) => {
 
             let prefix = &prefix_suffix["prefix"].as_str().unwrap();
             log::debug!("prefix: {}", prefix);
 
             let suffix = &prefix_suffix["suffix"].as_str().unwrap();
             log::debug!("suffix: {}", suffix);
-
 
 
             let conversation_parser_content = ConversationParserContent {
