@@ -15,6 +15,8 @@ use log::LevelFilter;
 use std::io::{Error, ErrorKind};
 use serde::{Serialize};
 
+mod prompts;
+
 #[derive(Debug)]
 struct ConversationParserParentId {
     prefix: String,
@@ -146,13 +148,7 @@ async fn get_conversation_parser(document: &str) -> Result<ConversationParser, i
 async fn get_conversation_parser_parent_id(document: &str) -> Result<ConversationParserParentId, io::Error> {
     log::trace!("In get_conversation_parser_parent_id");
 
-    let prompt = r##"
-Hi ChatGPT. Please examine the subsequent text and do your best to identify posts/comments like that people leave on websites such as discussion forums. If present, try to then see if these posts have a parent id like when a person replies to another post. If these parent references are present, extract the common text that directly precedes and follows a post's parent identifier (id) associated with the post content, as the prefix and suffix, respectively. Additionally, determine whether the parent id comes 'before' or 'after' the post content and label this value 'relative'. If you do not see any posts in the text, respond only with the digit '0'. Otherwise print your response based on the following json:
-   {"prefix":"prefix string","suffix":"suffix string","relative": "before or after"}
-When populating the prefix or suffix string, ensure newline escape characters are double-escaped. Do not include triple-backticks or anything signifying a code block.
-Please do not include any introduction or final summary in your response. Thank you.
-"##;
-    let content = format!("{} {}", prompt, document);
+    let content = format!("{} {}", prompts::chat::parent_id::PROMPT, document);
 
     let maybeOpenAiResponse = llm_parse(content).await;
 
@@ -219,16 +215,7 @@ Please do not include any introduction or final summary in your response. Thank 
 async fn get_conversation_parser_id(document: &str) -> Result<ConversationParserId, io::Error> {
     log::trace!("In get_conversation_parser_id");
     
-    let prompt = r##"
-    Hi ChatGPT. Please examine the subsequent text and do your best to identify posts/comments like that people leave on websites such as discussion forums. If present, extract
-    the common text that directly precedes and follows the identifier (id) associated with the post content, as the prefix and suffix, respectively. Additionally, determine whet
-    her the identifier comes 'before' or 'after' the post content and label this value 'relative'. If you do not see any posts in the text, respond only with the digit '0'. Othe
-    rwise print your response based on the following json:
-    {"prefix":"prefix string","suffix":"suffix string","relative": "before or after"}
-    When populating the prefix or suffix string, ensure newline escape characters are double-escaped. Do not include triple-backticks or anything signifying a code block. Please
-     do not include any introduction or final summary in your response. Thank you.
-    "##;
-    let content = format!("{} {}", prompt, document);
+    let content = format!("{} {}", prompts::chat::id::PROMPT, document);
 
     let maybeOpenAiResponse = llm_parse(content).await;
 
@@ -294,12 +281,7 @@ async fn get_conversation_parser_id(document: &str) -> Result<ConversationParser
 async fn get_conversation_parser_content(document: &str) -> Result<ConversationParserContent, io::Error> {
     log::trace!("In get_conversation_parser_content");
 
-    let prompt = r##"
-    Hi ChatGPT. Please examine the subsequent text and do your best to identify posts/comments like that people leave on websites such as discussion forums. If present, extract the common text that directly precedes the post content (prefix), and also the common text that immediately follows the post content (suffix). If you do not see any posts in the text, respond only with the digit '0'. Otherwise print your response based on the following json:
-    {"prefix":"prefix string","suffix":"suffix string"}
-    When populating the prefix or suffix string, ensure newline escape characters are double-escaped. Do not include triple-backticks or anything signifying a code block. Please do not include any introduction or final summary in your response. Thank you.
-    "##;
-    let content = format!("{} {}", prompt, document);
+    let content = format!("{} {}", prompts::chat::content::PROMPT, document);
 
     let maybeOpenAiResponse = llm_parse(content).await;
 
@@ -409,7 +391,7 @@ fn document_to_conversation(document: String) {
     let chunks = chunk_string(&document, 20000);
     log::debug!("number of chunks: {}", chunks.len());
 
-    let chunk = &chunks[0];
+    let chunk = &chunks[3];
 
     let rt = Runtime::new().unwrap();
 
@@ -624,6 +606,8 @@ fn document_to_conversation(document: String) {
 }
 
 fn main() {
+    log::trace!("In main");
+
     simple_logging::log_to_file("debug.log", LevelFilter::Trace);
 
     let mut document = String::new();
@@ -678,7 +662,6 @@ fn main() {
             "conversation" => document_to_conversation(document),
             _ => log::error!("Unexpected data type: {}", data_type),
         }
-
         return;
     } else {
         log::info!("Data type not provided, aborting...");
