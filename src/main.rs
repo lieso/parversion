@@ -14,6 +14,7 @@ mod prompts;
 mod utilities;
 mod parsers;
 mod models;
+mod transformers;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -27,37 +28,13 @@ fn load_stdin() -> io::Result<String> {
 }
 
 fn chunk_string(s: &str, chunk_size: usize) -> Vec<String> {
+    log::trace!("In chunk_string");
+
     s.chars()
         .collect::<Vec<char>>()
         .chunks(chunk_size)
         .map(|chunk| chunk.iter().collect())
         .collect()
-}
-
-fn search_and_extract<'a>(
-    document: &'a str,
-    index: usize,
-    search_forward: bool,
-    target_substring: &str,
-    delimiter_substring: &str
-) -> Option<&'a str> {
-    if search_forward {
-        if let Some(start_pos) = document[index..].find(target_substring) {
-            let start_pos = start_pos + index + target_substring.len();
-            if let Some(end_pos) = document[start_pos..].find(delimiter_substring) {
-                let end_pos = start_pos + end_pos;
-                return Some(&document[start_pos..end_pos]);
-            }
-        }
-    } else {
-        if let Some(end_pos) = document[..index].rfind(target_substring) {
-            if let Some(start_pos) = document[..end_pos].rfind(delimiter_substring) {
-                return Some(&document[(start_pos + delimiter_substring.len())..end_pos]);
-            }
-        }
-    }
-
-    None
 }
 
 fn document_to_chat(document: String) {
@@ -66,218 +43,19 @@ fn document_to_chat(document: String) {
     let chunks = chunk_string(&document, 20000);
     log::debug!("number of chunks: {}", chunks.len());
 
-    let chunk = &chunks[3];
+    let sample = &chunks[3];
 
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let chat_parser = parsers::get_chat_parser(chunk).await.unwrap();
+        let chat_parser = parsers::get_chat_parser(sample).await.unwrap();
         log::debug!("{:?}", chat_parser);
 
+        let chat: models::Chat = transformers::transform_document_to_chat(document, chat_parser);
 
-        let content_prefix = &chat_parser.content.prefix;
-        log::debug!("{}", content_prefix);
-        let content_suffix = &chat_parser.content.suffix;
-        log::debug!("{}", content_suffix);
-
-        let mut chat_posts = Vec::new();
-        let current = document.clone();
-        let mut start_offset = 0;
-
-        loop {
-            // Fix Rust utf boundary issue when slicing with offset
-            let fixed_index = current.char_indices()
-                .map(|(i, _)| i)
-                .take_while(|&i| i <= start_offset)
-                .last()
-                .unwrap_or(0);
-
-            let current_slice = &current[fixed_index..];
-
-            if let Some(start_index) = current_slice.find(content_prefix) {
-
-                if let Some(end_index) = current[start_offset + start_index..].find(content_suffix) {
-
-                    let mut content = &current[start_offset + start_index..start_offset + start_index + end_index];
-                    content = &content[content_prefix.len()..content.len()];
-
-
-
-
-
-
-                    let id_start_index = start_offset + start_index;
-
-                    if chat_parser.id.relative == "before" {
-
-                        if let Some(id) = search_and_extract(&document, id_start_index, false, &chat_parser.id.suffix, &chat_parser.id.prefix) {
-
-
-
-
-
-                            if chat_parser.parent_id.relative == "before" {
-
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &chat_parser.parent_id.suffix, &chat_parser.parent_id.prefix) {
-
-
-
-                                    let chat_post = models::ChatPost {
-                                        parent_id: parent_id.to_string(),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-
-
-
-                                } else {
-                                    let chat_post = models::ChatPost {
-                                        parent_id: String::from(""),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-                                }
-
-                            } else {
-
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &chat_parser.parent_id.prefix, &chat_parser.parent_id.suffix) {
-
-                                    let chat_post = models::ChatPost {
-                                        parent_id: parent_id.to_string(),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-
-
-
-                                } else {
-                                    let chat_post = models::ChatPost {
-                                        parent_id: String::from(""),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-                                }
-
-                            }
-
-
-
-
-
-
-
-
-                        } else {
-                            log::error!("Could not find content id");
-                        }
-                    } else {
-
-                        if let Some(id) = search_and_extract(&document, id_start_index, true, &chat_parser.id.prefix, &chat_parser.id.suffix) {
-
-
-
-
-
-                            if chat_parser.parent_id.relative == "before" {
-
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &chat_parser.parent_id.suffix, &chat_parser.parent_id.prefix) {
-
-
-
-                                    let chat_post = models::ChatPost {
-                                        parent_id: parent_id.to_string(),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-
-
-
-                                } else {
-                                    let chat_post = models::ChatPost {
-                                        parent_id: String::from(""),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-                                }
-
-                            } else {
-
-                                if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &chat_parser.parent_id.prefix, &chat_parser.parent_id.suffix) {
-
-                                    let chat_post = models::ChatPost {
-                                        parent_id: parent_id.to_string(),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-
-
-
-                                } else {
-                                    let chat_post = models::ChatPost {
-                                        parent_id: String::from(""),
-                                        id: id.to_string(),
-                                        content: content.to_string(),
-                                    };
-
-                                    chat_posts.push(chat_post);
-                                }
-
-                            }
-
-
-
-
-
-
-
-
-                        } else {
-                            log::error!("Could not find content id");
-                        }
-                    }
-
-
-
-
-                    start_offset = start_offset + start_index + end_index + content_suffix.len();
-
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
-        log::debug!("posts: {}", chat_posts.len());
-
-
-        //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-        //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-        //  * * * * * * * * * * * * * *
-
-        let final_output = serde_json::to_string(&chat_posts).expect("Failed to serialize to JSON");
-        println!("{}", final_output);
-
-        //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-        //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-        //  * * * * * * * * * * * * * *
+        let output = serde_json::to_string(&chat).expect("Failed to serialize to JSON");
+        println!("{}", output);
     });
-
 }
 
 fn main() {
