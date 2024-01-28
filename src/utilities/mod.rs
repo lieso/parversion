@@ -2,8 +2,7 @@ use std::env;
 use std::io::{Error, ErrorKind};
 use reqwest::header;
 use serde_json::json;
-use std::io::{Read};
-use std::io::{self, BufRead};
+use std::io::{self};
 
 pub async fn get_llm_response(content: String) -> Result<serde_json::Value, io::Error> {
     log::debug!("{}", content);
@@ -61,14 +60,14 @@ pub async fn get_llm_response(content: String) -> Result<serde_json::Value, io::
 
                         Ok(json)
                     }
-                    Err(err) => {
+                    Err(_err) => {
                         return Err(Error::new(ErrorKind::InvalidData, "error"));
                     }
                 }
 
 
             },
-            Err(err) => {
+            Err(_err) => {
                 return Err(Error::new(ErrorKind::InvalidData, "error"));
             }
         }

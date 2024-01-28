@@ -1,6 +1,5 @@
 use std::io::{Error, ErrorKind};
-use std::io::{Read};
-use std::io::{self, BufRead};
+use std::io::{self};
 
 use crate::models;
 use crate::utilities;
@@ -8,7 +7,6 @@ use crate::prompts;
 
 pub async fn get_conversation_parser(document: &str) -> Result<models::ConversationParser, io::Error> {
     log::trace!("In get_conversation_parser");
-
 
     let conversation_parser_parent_id = get_conversation_parser_parent_id(document).await.unwrap();
     let conversation_parser_id = get_conversation_parser_id(document).await.unwrap();
@@ -28,9 +26,9 @@ async fn get_conversation_parser_parent_id(document: &str) -> Result<models::Con
 
     let content = format!("{} {}", prompts::chat::parent_id::PROMPT, document);
 
-    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
+    let maybe_open_ai_response = utilities::get_llm_response(content).await;
 
-    match maybeOpenAiResponse {
+    match maybe_open_ai_response {
         Ok(prefix_suffix_relative) => {
             let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
             log::debug!("prefix: {}", prefix);
@@ -49,7 +47,7 @@ async fn get_conversation_parser_parent_id(document: &str) -> Result<models::Con
 
             return Ok(conversation_parser_parent_id)
         }
-        Err(e) => {
+        Err(_e) => {
             log::debug!("Did not receive response from open ai");
             return Err(Error::new(ErrorKind::InvalidData, "error"));
         }
@@ -61,9 +59,9 @@ async fn get_conversation_parser_id(document: &str) -> Result<models::Conversati
     
     let content = format!("{} {}", prompts::chat::id::PROMPT, document);
 
-    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
+    let maybe_open_ai_response = utilities::get_llm_response(content).await;
 
-    match maybeOpenAiResponse {
+    match maybe_open_ai_response {
         Ok(prefix_suffix_relative) => {
 
             let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
@@ -85,7 +83,7 @@ async fn get_conversation_parser_id(document: &str) -> Result<models::Conversati
             return Ok(conversation_parser_id)
 
         }
-        Err(e) => {
+        Err(_e) => {
             log::debug!("Did not receive response from open ai");
             return Err(Error::new(ErrorKind::InvalidData, "error"));
         }
@@ -98,9 +96,9 @@ async fn get_conversation_parser_content(document: &str) -> Result<models::Conve
 
     let content = format!("{} {}", prompts::chat::content::PROMPT, document);
 
-    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
+    let maybe_open_ai_response = utilities::get_llm_response(content).await;
 
-    match maybeOpenAiResponse {
+    match maybe_open_ai_response {
         Ok(prefix_suffix) => {
 
             let prefix = &prefix_suffix["prefix"].as_str().unwrap();
@@ -118,7 +116,7 @@ async fn get_conversation_parser_content(document: &str) -> Result<models::Conve
             return Ok(conversation_parser_content)
 
         }
-        Err(e) => {
+        Err(_e) => {
             log::debug!("Did not receive response from open ai");
             return Err(Error::new(ErrorKind::InvalidData, "error"));
         }

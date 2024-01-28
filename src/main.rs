@@ -2,17 +2,13 @@ extern crate simple_logging;
 extern crate log;
 
 use tokio::runtime::Runtime;
-use std::env;
 use std::fs::File;
 use std::process;
 use std::io::{Read};
-use std::io::{self, BufRead};
-use reqwest::header;
-use serde_json::json;
+use std::io::{self};
 use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
-use std::io::{Error, ErrorKind};
 
 mod prompts;
 mod utilities;
@@ -85,7 +81,7 @@ fn document_to_conversation(document: String) {
         log::debug!("{}", content_suffix);
 
         let mut conversation_posts = Vec::new();
-        let mut current = document.clone();
+        let current = document.clone();
         let mut start_offset = 0;
 
         loop {
@@ -287,7 +283,7 @@ fn document_to_conversation(document: String) {
 fn main() {
     log::trace!("In main");
 
-    simple_logging::log_to_file("debug.log", LevelFilter::Trace);
+    let _ = simple_logging::log_to_file("debug.log", LevelFilter::Trace);
 
     let mut document = String::new();
 
@@ -295,7 +291,7 @@ fn main() {
         Ok(stdin) => {
             document = stdin;
         }
-        Err(e) => {
+        Err(_e) => {
             log::debug!("Did not receive input from stdin");
         }
     }
