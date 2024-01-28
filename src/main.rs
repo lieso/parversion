@@ -13,168 +13,11 @@ use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
 use std::io::{Error, ErrorKind};
-use serde::{Serialize};
 
 mod prompts;
 mod utilities;
-
-#[derive(Debug)]
-struct ConversationParserParentId {
-    prefix: String,
-    suffix: String,
-    relative: String,
-}
-
-#[derive(Debug)]
-struct ConversationParserId {
-    prefix: String,
-    suffix: String,
-    relative: String,
-}
-
-#[derive(Debug)]
-struct ConversationParserContent {
-    prefix: String,
-    suffix: String,
-}
-
-#[derive(Debug)]
-struct ConversationParser {
-    parent_id: ConversationParserParentId,
-    id: ConversationParserId,
-    content: ConversationParserContent,
-}
-
-#[derive(Serialize)]
-struct ConversationPost {
-    parent_id: String,
-    id: String,
-    content: String,
-}
-
-#[derive(Serialize)]
-struct Conversation {
-    posts: Vec<ConversationPost>,
-}
-
-async fn get_conversation_parser(document: &str) -> Result<ConversationParser, io::Error> {
-    log::trace!("In get_conversation_parser");
-
-
-    let conversation_parser_parent_id = get_conversation_parser_parent_id(document).await.unwrap();
-    let conversation_parser_id = get_conversation_parser_id(document).await.unwrap();
-    let conversation_parser_content = get_conversation_parser_content(document).await.unwrap();
-
-    let conversation_parser = ConversationParser {
-        parent_id: conversation_parser_parent_id,
-        id: conversation_parser_id,
-        content: conversation_parser_content,
-    };
-
-    return Ok(conversation_parser)
-}
-
-async fn get_conversation_parser_parent_id(document: &str) -> Result<ConversationParserParentId, io::Error> {
-    log::trace!("In get_conversation_parser_parent_id");
-
-    let content = format!("{} {}", prompts::chat::parent_id::PROMPT, document);
-
-    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
-
-    match maybeOpenAiResponse {
-        Ok(prefix_suffix_relative) => {
-            let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
-            log::debug!("prefix: {}", prefix);
-
-            let suffix = &prefix_suffix_relative["suffix"].as_str().unwrap();
-            log::debug!("suffix: {}", suffix);
-
-            let relative = &prefix_suffix_relative["relative"].as_str().unwrap();
-            log::debug!("relative: {}", relative);
-
-            let conversation_parser_parent_id = ConversationParserParentId {
-                prefix: prefix.to_string(),
-                suffix: suffix.to_string(),
-                relative: relative.to_string(),
-            };
-
-            return Ok(conversation_parser_parent_id)
-        }
-        Err(e) => {
-            log::debug!("Did not receive response from open ai");
-            return Err(Error::new(ErrorKind::InvalidData, "error"));
-        }
-    }
-}
-
-async fn get_conversation_parser_id(document: &str) -> Result<ConversationParserId, io::Error> {
-    log::trace!("In get_conversation_parser_id");
-    
-    let content = format!("{} {}", prompts::chat::id::PROMPT, document);
-
-    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
-
-    match maybeOpenAiResponse {
-        Ok(prefix_suffix_relative) => {
-
-            let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
-            log::debug!("prefix: {}", prefix);
-
-            let suffix = &prefix_suffix_relative["suffix"].as_str().unwrap();
-            log::debug!("suffix: {}", suffix);
-
-            let relative = &prefix_suffix_relative["relative"].as_str().unwrap();
-            log::debug!("relative: {}", relative);
-
-
-            let conversation_parser_id = ConversationParserId {
-                prefix: prefix.to_string(),
-                suffix: suffix.to_string(),
-                relative: relative.to_string(),
-            };
-
-            return Ok(conversation_parser_id)
-
-        }
-        Err(e) => {
-            log::debug!("Did not receive response from open ai");
-            return Err(Error::new(ErrorKind::InvalidData, "error"));
-        }
-    }
-
-}
-
-async fn get_conversation_parser_content(document: &str) -> Result<ConversationParserContent, io::Error> {
-    log::trace!("In get_conversation_parser_content");
-
-    let content = format!("{} {}", prompts::chat::content::PROMPT, document);
-
-    let maybeOpenAiResponse = utilities::get_llm_response(content).await;
-
-    match maybeOpenAiResponse {
-        Ok(prefix_suffix) => {
-
-            let prefix = &prefix_suffix["prefix"].as_str().unwrap();
-            log::debug!("prefix: {}", prefix);
-
-            let suffix = &prefix_suffix["suffix"].as_str().unwrap();
-            log::debug!("suffix: {}", suffix);
-
-
-            let conversation_parser_content = ConversationParserContent {
-                prefix: prefix.to_string(),
-                suffix: suffix.to_string()
-            };
-
-            return Ok(conversation_parser_content)
-
-        }
-        Err(e) => {
-            log::debug!("Did not receive response from open ai");
-            return Err(Error::new(ErrorKind::InvalidData, "error"));
-        }
-    }
-}
+mod parsers;
+mod models;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -232,7 +75,7 @@ fn document_to_conversation(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let conversation_parser = get_conversation_parser(chunk).await.unwrap();
+        let conversation_parser = parsers::get_conversation_parser(chunk).await.unwrap();
         log::debug!("{:?}", conversation_parser);
 
 
@@ -283,7 +126,7 @@ fn document_to_conversation(document: String) {
 
 
 
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
@@ -294,7 +137,7 @@ fn document_to_conversation(document: String) {
 
 
                                 } else {
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
@@ -307,7 +150,7 @@ fn document_to_conversation(document: String) {
 
                                 if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &conversation_parser.parent_id.prefix, &conversation_parser.parent_id.suffix) {
 
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
@@ -318,7 +161,7 @@ fn document_to_conversation(document: String) {
 
 
                                 } else {
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
@@ -353,7 +196,7 @@ fn document_to_conversation(document: String) {
 
 
 
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
@@ -364,7 +207,7 @@ fn document_to_conversation(document: String) {
 
 
                                 } else {
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
@@ -377,7 +220,7 @@ fn document_to_conversation(document: String) {
 
                                 if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &conversation_parser.parent_id.prefix, &conversation_parser.parent_id.suffix) {
 
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: parent_id.to_string(),
                                         id: id.to_string(),
                                         content: content.to_string(),
@@ -388,7 +231,7 @@ fn document_to_conversation(document: String) {
 
 
                                 } else {
-                                    let conversation_post = ConversationPost {
+                                    let conversation_post = models::ConversationPost {
                                         parent_id: String::from(""),
                                         id: id.to_string(),
                                         content: content.to_string(),
