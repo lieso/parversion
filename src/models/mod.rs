@@ -27,6 +27,7 @@ pub struct ChatParser {
     pub content: ChatParserContent,
 }
 
+#[derive(Debug)]
 #[derive(Serialize)]
 pub struct ChatPost {
     pub parent_id: String,
@@ -34,6 +35,7 @@ pub struct ChatPost {
     pub content: String,
 }
 
+#[derive(Debug)]
 #[derive(Serialize)]
 pub struct Chat {
     pub posts: Vec<ChatPost>,

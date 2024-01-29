@@ -43,15 +43,16 @@ fn document_to_chat(document: String) {
     let chunks = chunk_string(&document, 20000);
     log::debug!("number of chunks: {}", chunks.len());
 
-    let sample = &chunks[3];
+    let sample = &chunks[0];
 
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let chat_parser = parsers::get_chat_parser(sample).await.unwrap();
-        log::debug!("{:?}", chat_parser);
+        let parser = parsers::get_chat_parser(sample).await.unwrap();
+        log::debug!("parser: {:?}", parser);
 
-        let chat: models::Chat = transformers::transform_document_to_chat(document, chat_parser);
+        let chat: models::Chat = transformers::transform_document_to_chat(document, parser);
+        log::debug!("chat: {:?}", chat);
 
         let output = serde_json::to_string(&chat).expect("Failed to serialize to JSON");
         println!("{}", output);
@@ -98,7 +99,6 @@ fn main() {
             eprintln!("Failed to read file: {}", err);
             process::exit(1);
         });
-
     } else {
         log::debug!("File not provided");
     }

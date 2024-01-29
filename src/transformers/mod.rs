@@ -1,3 +1,5 @@
+use std::io::{Error, ErrorKind};
+use std::io;
 
 use crate::models;
 
@@ -23,173 +25,174 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
 
         let current_slice = &current[fixed_index..];
 
-        if let Some(start_index) = current_slice.find(content_prefix) {
 
-            if let Some(end_index) = current[start_offset + start_index..].find(content_suffix) {
+        let mut start_index: usize;
+        let mut end_index: usize;
+        let mut content: String;
 
-                let mut content = &current[start_offset + start_index..start_offset + start_index + end_index];
-                content = &content[content_prefix.len()..content.len()];
-
-
-
-
-
-
-                let id_start_index = start_offset + start_index;
-
-                if parser.id.relative == "before" {
-
-                    if let Some(id) = search_and_extract(&document, id_start_index, false, &parser.id.suffix, &parser.id.prefix) {
-
-
+        match find_next_content(current_slice, content_prefix, content_suffix) {
+            Some(result) => {
+                log::info!("Found content in document");
+                content = result.0;
+                start_index = result.1;
+                end_index = result.2;
+            },
+            None => {
+                log::info!("No more content found in document");
+                break;
+            },
+        } 
 
 
+        let id_start_index = start_offset + start_index;
 
-                        if parser.parent_id.relative == "before" {
+        if parser.id.relative == "before" {
 
-                            if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &parser.parent_id.suffix, &parser.parent_id.prefix) {
-
-
-
-                                let chat_post = models::ChatPost {
-                                    parent_id: parent_id.to_string(),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-
-
-
-                            } else {
-                                let chat_post = models::ChatPost {
-                                    parent_id: String::from(""),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-                            }
-
-                        } else {
-
-                            if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &parser.parent_id.prefix, &parser.parent_id.suffix) {
-
-                                let chat_post = models::ChatPost {
-                                    parent_id: parent_id.to_string(),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-
-
-
-                            } else {
-                                let chat_post = models::ChatPost {
-                                    parent_id: String::from(""),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-                            }
-
-                        }
+            if let Some(id) = search_and_extract(&document, id_start_index, false, &parser.id.suffix, &parser.id.prefix) {
 
 
 
 
 
+                if parser.parent_id.relative == "before" {
+
+                    if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &parser.parent_id.suffix, &parser.parent_id.prefix) {
+
+
+
+                        let chat_post = models::ChatPost {
+                            parent_id: parent_id.to_string(),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
+
+                        chat_posts.push(chat_post);
 
 
 
                     } else {
-                        log::error!("Could not find content id");
+                        let chat_post = models::ChatPost {
+                            parent_id: String::from(""),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
+
+                        chat_posts.push(chat_post);
                     }
+
                 } else {
 
-                    if let Some(id) = search_and_extract(&document, id_start_index, true, &parser.id.prefix, &parser.id.suffix) {
+                    if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &parser.parent_id.prefix, &parser.parent_id.suffix) {
 
+                        let chat_post = models::ChatPost {
+                            parent_id: parent_id.to_string(),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
 
-
-
-
-                        if parser.parent_id.relative == "before" {
-
-                            if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &parser.parent_id.suffix, &parser.parent_id.prefix) {
-
-
-
-                                let chat_post = models::ChatPost {
-                                    parent_id: parent_id.to_string(),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-
-
-
-                            } else {
-                                let chat_post = models::ChatPost {
-                                    parent_id: String::from(""),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-                            }
-
-                        } else {
-
-                            if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &parser.parent_id.prefix, &parser.parent_id.suffix) {
-
-                                let chat_post = models::ChatPost {
-                                    parent_id: parent_id.to_string(),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-
-
-
-                            } else {
-                                let chat_post = models::ChatPost {
-                                    parent_id: String::from(""),
-                                    id: id.to_string(),
-                                    content: content.to_string(),
-                                };
-
-                                chat_posts.push(chat_post);
-                            }
-
-                        }
-
-
-
-
-
+                        chat_posts.push(chat_post);
 
 
 
                     } else {
-                        log::error!("Could not find content id");
+                        let chat_post = models::ChatPost {
+                            parent_id: String::from(""),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
+
+                        chat_posts.push(chat_post);
                     }
+
                 }
 
 
 
 
-                start_offset = start_offset + start_index + end_index + content_suffix.len();
+
+
+
 
             } else {
-                break;
+                log::error!("Could not find content id");
             }
         } else {
-            break;
+
+            if let Some(id) = search_and_extract(&document, id_start_index, true, &parser.id.prefix, &parser.id.suffix) {
+
+
+
+
+
+                if parser.parent_id.relative == "before" {
+
+                    if let Some(parent_id) = search_and_extract(&document, id_start_index, false, &parser.parent_id.suffix, &parser.parent_id.prefix) {
+
+
+
+                        let chat_post = models::ChatPost {
+                            parent_id: parent_id.to_string(),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
+
+                        chat_posts.push(chat_post);
+
+
+
+                    } else {
+                        let chat_post = models::ChatPost {
+                            parent_id: String::from(""),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
+
+                        chat_posts.push(chat_post);
+                    }
+
+                } else {
+
+                    if let Some(parent_id) = search_and_extract(&document, id_start_index, true, &parser.parent_id.prefix, &parser.parent_id.suffix) {
+
+                        let chat_post = models::ChatPost {
+                            parent_id: parent_id.to_string(),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
+
+                        chat_posts.push(chat_post);
+
+
+
+                    } else {
+                        let chat_post = models::ChatPost {
+                            parent_id: String::from(""),
+                            id: id.to_string(),
+                            content: content.to_string(),
+                        };
+
+                        chat_posts.push(chat_post);
+                    }
+
+                }
+
+
+
+
+
+
+
+
+            } else {
+                log::error!("Could not find content id");
+            }
         }
+
+
+
+
+        start_offset = start_offset + start_index + end_index + content_suffix.len();
+
     }
 
     let chat = models::Chat {
@@ -223,4 +226,25 @@ fn search_and_extract<'a>(
     }
 
     None
+}
+
+fn find_next_content(document: &str, prefix: &String, suffix: &String) -> Option<(String, usize, usize)> {
+    log::trace!("In find_next_content"):
+
+    if let Some(start_index) = document.find(prefix) {
+        log::debug!("Found content start index");
+
+        if let Some(end_index) = document[start_index..].find(suffix) {
+            log::debug!("Found content end index");
+
+            let mut content = &document[start_index..start_index + end_index];
+            content = &content[prefix.len()..content.len()];
+
+            return Some((content.to_string(), start_index, end_index));
+        } else {
+            return None;
+        }
+    } else {
+        return None;
+    }
 }
