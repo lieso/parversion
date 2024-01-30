@@ -41,7 +41,7 @@ fn chunk_string(s: &str, chunk_size: usize) -> Vec<String> {
 fn save_parser_to_file(parser: &models::ChatParser) {
     log::trace!("In save_parser_to_file");
 
-    let serialized = serde_json::to_string(parser).expect("Serialization failed");
+    let serialized = serde_json::to_string_pretty(parser).expect("Serialization failed");
 
     let mut file = OpenOptions::new()
         .create(true)
