@@ -1,6 +1,3 @@
-use std::io::{Error, ErrorKind};
-use std::io;
-
 use crate::models;
 
 pub fn transform_document_to_chat(document: String, parser: models:: ChatParser) -> models::Chat {

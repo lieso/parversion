@@ -2,13 +2,14 @@ extern crate simple_logging;
 extern crate log;
 
 use tokio::runtime::Runtime;
-use std::fs::File;
+use std::fs::{OpenOptions, File};
 use std::process;
 use std::io::{Read};
 use std::io::{self};
 use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
+use std::io::Write;
 
 mod prompts;
 mod utilities;
@@ -37,6 +38,21 @@ fn chunk_string(s: &str, chunk_size: usize) -> Vec<String> {
         .collect()
 }
 
+fn save_parser_to_file(parser: &models::ChatParser) {
+    log::trace!("In save_parser_to_file");
+
+    let serialized = serde_json::to_string(parser).expect("Serialization failed");
+
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("parsers.json")
+        .expect("Failed to open file");
+
+    file.write_all(serialized.as_bytes()).expect("Failed to write to file");
+    file.write_all("\n".as_bytes()).expect("Failed to write to file");
+}
+
 fn document_to_chat(document: String) {
     log::trace!("In document_to_chat");
 
@@ -50,6 +66,8 @@ fn document_to_chat(document: String) {
     rt.block_on(async {
         let parser = parsers::get_chat_parser(sample).await.unwrap();
         log::debug!("parser: {:?}", parser);
+
+        save_parser_to_file(&parser);
 
         let chat: models::Chat = transformers::transform_document_to_chat(document, parser);
         log::debug!("chat: {:?}", chat);

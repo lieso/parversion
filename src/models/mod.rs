@@ -1,6 +1,7 @@
 use serde::{Serialize};
 
 #[derive(Debug)]
+#[derive(Serialize)]
 pub struct ChatParserParentId {
     pub prefix: String,
     pub suffix: String,
@@ -8,6 +9,7 @@ pub struct ChatParserParentId {
 }
 
 #[derive(Debug)]
+#[derive(Serialize)]
 pub struct ChatParserId {
     pub prefix: String,
     pub suffix: String,
@@ -15,12 +17,14 @@ pub struct ChatParserId {
 }
 
 #[derive(Debug)]
+#[derive(Serialize)]
 pub struct ChatParserContent {
     pub prefix: String,
     pub suffix: String,
 }
 
 #[derive(Debug)]
+#[derive(Serialize)]
 pub struct ChatParser {
     pub parent_id: ChatParserParentId,
     pub id: ChatParserId,
