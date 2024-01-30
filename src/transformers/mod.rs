@@ -15,6 +15,8 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
     let current = document.clone();
     let mut start_offset = 0;
 
+    let mut previous_content_index: usize = 0;
+
     loop {
         // Fix Rust utf boundary issue when slicing with offset
         let fixed_index = current.char_indices()
@@ -53,7 +55,6 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
         let id: String;
         let id_search_begin_index = start_offset + start_index;
 
-
         match find_next_id(&document, id_search_begin_index, &parser.id.relative, &parser.id.prefix, &parser.id.suffix) {
             Some(result) => {
                 log::info!("Found content id in document");
@@ -70,8 +71,34 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
         // =====================================================================================
 
         let parent_id: String;
+        let id_search_max_index: usize;
 
-        match find_next_parent_id(&document, id_search_begin_index, &parser.parent_id.relative, &parser.parent_id.prefix, &parser.parent_id.suffix) {
+        if &parser.parent_id.relative == "before" {
+            id_search_max_index = previous_content_index;
+        } else {
+
+
+            let next_fixed_index = current.char_indices()
+                .map(|(i, _)| i)
+                .take_while(|&i| i <= start_offset + start_index + end_index + content_suffix.len())
+                .last()
+                .unwrap_or(0);
+            let next_slice = &current[next_fixed_index..];
+
+            match find_next_content(next_slice, content_prefix, content_suffix) {
+                Some(result) => {
+                    // TODO: not sure about this
+                    id_search_max_index = result.1 + start_index;
+                },
+                None => {
+                    id_search_max_index = current_slice.len();
+                },
+            }
+
+
+        }
+
+        match find_next_parent_id(&document, id_search_begin_index, id_search_max_index, &parser.parent_id.relative, &parser.parent_id.prefix, &parser.parent_id.suffix) {
             Some(result) => {
                 log::info!("Content has a parent");
                 parent_id = result;
@@ -94,6 +121,9 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
 
         start_offset = start_offset + start_index + end_index + content_suffix.len();
 
+
+
+        previous_content_index = start_index;
     }
 
     let chat = models::Chat {
@@ -196,17 +226,17 @@ fn find_next_id(document: &str, begin_index: usize, relative: &String, prefix: &
     }
 }
 
-fn find_next_parent_id(document: &str, begin_index: usize, relative: &String, prefix: &String, suffix: &String) -> Option<String> {
+fn find_next_parent_id(document: &str, begin_index: usize, max_index: usize, relative: &String, prefix: &String, suffix: &String) -> Option<String> {
     log::trace!("In find_next_parent_id");
 
     if relative == "before" {
-        if let Some(id) = search_and_extract(&document, begin_index, false, suffix, prefix, None) {
+        if let Some(id) = search_and_extract(&document, begin_index, false, suffix, prefix, Some(max_index)) {
             return Some(id.to_string());
         } else {
             return None;
         }
     } else {
-        if let Some(id) = search_and_extract(&document, begin_index, true, prefix, suffix, None) {
+        if let Some(id) = search_and_extract(&document, begin_index, true, prefix, suffix, Some(max_index)) {
             return Some(id.to_string());
         } else {
             return None;
