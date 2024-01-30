@@ -25,6 +25,9 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
 
         let current_slice = &current[fixed_index..];
 
+        // =====================================================================================
+        // Content extraction
+        // =====================================================================================
 
         let start_index: usize;
         let end_index: usize;
@@ -43,6 +46,9 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
             },
         } 
 
+        // =====================================================================================
+        // ID extraction
+        // =====================================================================================
 
         let id: String;
         let id_search_begin_index = start_offset + start_index;
@@ -59,72 +65,32 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
             },
         }
 
+        // =====================================================================================
+        // Parent ID extraction
+        // =====================================================================================
 
+        let parent_id: String;
 
-
-
-        if parser.parent_id.relative == "before" {
-
-            if let Some(parent_id) = search_and_extract(&document, id_search_begin_index, false, &parser.parent_id.suffix, &parser.parent_id.prefix) {
-
-
-
-                let chat_post = models::ChatPost {
-                    parent_id: parent_id.to_string(),
-                    id: id.to_string(),
-                    content: content.to_string(),
-                };
-
-                chat_posts.push(chat_post);
-
-
-
-            } else {
-                let chat_post = models::ChatPost {
-                    parent_id: String::from(""),
-                    id: id.to_string(),
-                    content: content.to_string(),
-                };
-
-                chat_posts.push(chat_post);
-            }
-
-        } else {
-
-            if let Some(parent_id) = search_and_extract(&document, id_search_begin_index, true, &parser.parent_id.prefix, &parser.parent_id.suffix) {
-
-                let chat_post = models::ChatPost {
-                    parent_id: parent_id.to_string(),
-                    id: id.to_string(),
-                    content: content.to_string(),
-                };
-
-                chat_posts.push(chat_post);
-
-
-
-            } else {
-                let chat_post = models::ChatPost {
-                    parent_id: String::from(""),
-                    id: id.to_string(),
-                    content: content.to_string(),
-                };
-
-                chat_posts.push(chat_post);
-            }
-
+        match find_next_parent_id(&document, id_search_begin_index, &parser.parent_id.relative, &parser.parent_id.prefix, &parser.parent_id.suffix) {
+            Some(result) => {
+                log::info!("Content has a parent");
+                parent_id = result;
+            },
+            None => {
+                log::info!("Content does not have parent");
+                parent_id = "".to_string();
+            },
         }
 
 
 
+        let chat_post = models::ChatPost {
+            parent_id: parent_id,
+            id: id,
+            content: content,
+        };
 
-
-
-
-
-
-
-
+        chat_posts.push(chat_post);
 
         start_offset = start_offset + start_index + end_index + content_suffix.len();
 
@@ -142,10 +108,24 @@ fn search_and_extract<'a>(
     index: usize,
     search_forward: bool,
     target_substring: &str,
-    delimiter_substring: &str
+    delimiter_substring: &str,
+    max_index_option: Option<usize>
 ) -> Option<&'a str> {
     if search_forward {
         if let Some(start_pos) = document[index..].find(target_substring) {
+
+            match max_index_option {
+                Some(max_index) => {
+                    if start_pos > max_index {
+                        log::debug!("start_pos is greater than max index");
+                        return None;
+                    }
+                },
+                None => {
+                    // no-op
+                }
+            }
+
             let start_pos = start_pos + index + target_substring.len();
             if let Some(end_pos) = document[start_pos..].find(delimiter_substring) {
                 let end_pos = start_pos + end_pos;
@@ -154,6 +134,20 @@ fn search_and_extract<'a>(
         }
     } else {
         if let Some(end_pos) = document[..index].rfind(target_substring) {
+
+            match max_index_option {
+                Some(max_index) => {
+                    if end_pos < max_index {
+                        log::debug!("end_pos is less than max index");
+                        return None;
+                    }
+                },
+                None => {
+                    // no-op
+                }
+            }
+
+
             if let Some(start_pos) = document[..end_pos].rfind(delimiter_substring) {
                 return Some(&document[(start_pos + delimiter_substring.len())..end_pos]);
             }
@@ -188,13 +182,31 @@ fn find_next_id(document: &str, begin_index: usize, relative: &String, prefix: &
     log::trace!("In find_next_id");
 
     if relative == "before" {
-        if let Some(id) = search_and_extract(&document, begin_index, false, suffix, prefix) {
+        if let Some(id) = search_and_extract(&document, begin_index, false, suffix, prefix, None) {
             return Some(id.to_string());
         } else {
             return None;
         }
     } else {
-        if let Some(id) = search_and_extract(&document, begin_index, true, prefix, suffix) {
+        if let Some(id) = search_and_extract(&document, begin_index, true, prefix, suffix, None) {
+            return Some(id.to_string());
+        } else {
+            return None;
+        }
+    }
+}
+
+fn find_next_parent_id(document: &str, begin_index: usize, relative: &String, prefix: &String, suffix: &String) -> Option<String> {
+    log::trace!("In find_next_parent_id");
+
+    if relative == "before" {
+        if let Some(id) = search_and_extract(&document, begin_index, false, suffix, prefix, None) {
+            return Some(id.to_string());
+        } else {
+            return None;
+        }
+    } else {
+        if let Some(id) = search_and_extract(&document, begin_index, true, prefix, suffix, None) {
             return Some(id.to_string());
         } else {
             return None;
