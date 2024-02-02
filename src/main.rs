@@ -25,7 +25,10 @@ mod models {
     pub mod chat;
     pub mod list;
 }
-mod transformers;
+mod transformers {
+    pub mod chat;
+    pub mod list;
+}
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -79,7 +82,7 @@ fn document_to_chat(document: String) {
 
         save_parser_to_file(&parser);
 
-        let chat: models::chat::Chat = transformers::transform_document_to_chat(document, parser);
+        let chat: models::chat::Chat = transformers::chat::transform_document_to_chat(document, parser);
         log::debug!("chat: {:?}", chat);
 
         let output = serde_json::to_string(&chat).expect("Failed to serialize to JSON");
@@ -104,6 +107,14 @@ fn document_to_list(document: String) {
         for parser in parsers.iter() {
             save_parser_to_file(&parser);
         }
+
+        let first_parser = &parsers[0];
+
+        let list: models::list::List = transformers::list::transform_document_to_list(document, first_parser);
+        log::debug!("list: {:?}", list);
+
+        let output = serde_json::to_string(&list).expect("Failed to serialize to JSON");
+        println!("{}", output);
     });
 }
 
