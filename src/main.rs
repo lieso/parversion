@@ -98,10 +98,12 @@ fn document_to_list(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let parser = parsers::list::get_list_parser(sample).await.unwrap();
-        log::debug!("parser: {:?}", parser);
+        let parsers = parsers::list::get_list_parser(sample).await.unwrap();
+        log::debug!("parsers: {:?}", parsers);
 
-        save_parser_to_file(&parser);
+        for parser in parsers.iter() {
+            save_parser_to_file(&parser);
+        }
     });
 }
 

@@ -5,13 +5,12 @@ use crate::models;
 use crate::utilities;
 use crate::prompts;
 
-pub async fn get_list_parser(document: &str) -> Result<models::list::ListParser, io::Error> {
+pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListParser>, io::Error> {
     log::trace!("In get_list_parser");
 
-    let mut list_parser = models::list::ListParser::new();
+    let mut parsers = Vec::new();
 
     let patterns = get_patterns(document).await.unwrap();
-    println!("{:?}", patterns);
 
     let Some(groups) = patterns.as_array() else {
         log::error!("patterns is not array");
@@ -19,6 +18,7 @@ pub async fn get_list_parser(document: &str) -> Result<models::list::ListParser,
     };
 
     for group in groups.iter() {
+        let mut list_parser = models::list::ListParser::new();
 
         let Some(json_object) = group.as_object() else {
             log::error!("Group is not object");
@@ -31,11 +31,11 @@ pub async fn get_list_parser(document: &str) -> Result<models::list::ListParser,
 
             list_parser.insert(key.to_string(), value.to_string());
         }
+
+        parsers.push(list_parser);
     }
 
-    println!("{:?}", list_parser);
-
-    return Ok(list_parser)
+    return Ok(parsers)
 }
 
 async fn get_patterns(document: &str) -> Result<serde_json::Value, io::Error> {
