@@ -11,7 +11,10 @@ use clap::{Arg, App};
 use log::LevelFilter;
 use std::io::Write;
 
-mod prompts;
+mod prompts {
+    pub mod chat;
+    pub mod list;
+}
 mod utilities;
 mod parsers {
     pub mod chat;
