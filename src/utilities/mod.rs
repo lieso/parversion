@@ -83,7 +83,7 @@ fn cleanup_llm_response(response: &str) -> &str {
     // remove code-block formatting
     let without_backticks = remove_codeblock_delimiters(response);
     log::debug!("without_backticks: {}", without_backticks);
-    let without_label = remove_text_until_brace(without_backticks);
+    let without_label = remove_label_text(without_backticks);
     log::debug!("without_label: {}", without_label);
 
     return without_label;
@@ -97,11 +97,10 @@ fn remove_codeblock_delimiters(s: &str) -> &str {
      }
 }
 
-fn remove_text_until_brace(s: &str) -> &str {
-    if let Some(index) = s.find('{') {
-        &s[index..]
-    } else {
-        s
+fn remove_label_text(s: &str) -> &str {
+    if s.starts_with("json") {
+        return &s[4..];
     }
-}
 
+    s
+}

@@ -8,12 +8,32 @@ use crate::prompts;
 pub async fn get_list_parser(document: &str) -> Result<models::list::ListParser, io::Error> {
     log::trace!("In get_list_parser");
 
+    let mut list_parser = models::list::ListParser::new();
+
     let patterns = get_patterns(document).await.unwrap();
     println!("{:?}", patterns);
 
-    let list_parser = models::list::ListParser {
-        test: "test".to_string(),
+    let Some(groups) = patterns.as_array() else {
+        log::error!("patterns is not array");
+        return Err(Error::new(ErrorKind::InvalidData, "error"));
     };
+
+    for group in groups.iter() {
+
+        let Some(json_object) = group.as_object() else {
+            log::error!("Group is not object");
+            return Err(Error::new(ErrorKind::InvalidData, "error"));
+        };
+
+        for (key, value) in json_object {
+            log::debug!("Key: {}", key);
+            log::debug!("Value: {}", value);
+
+            list_parser.insert(key.to_string(), value.to_string());
+        }
+    }
+
+    println!("{:?}", list_parser);
 
     return Ok(list_parser)
 }

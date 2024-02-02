@@ -1,6 +1,7 @@
 extern crate simple_logging;
 extern crate log;
 
+use serde::Serialize;
 use tokio::runtime::Runtime;
 use std::fs::{OpenOptions, File};
 use std::process;
@@ -47,7 +48,7 @@ fn chunk_string(s: &str, chunk_size: usize) -> Vec<String> {
         .collect()
 }
 
-fn save_parser_to_file(parser: &models::chat::ChatParser) {
+fn save_parser_to_file<T>(parser: &T) where T: Serialize {
     log::trace!("In save_parser_to_file");
 
     let serialized = serde_json::to_string_pretty(parser).expect("Serialization failed");
@@ -100,6 +101,7 @@ fn document_to_list(document: String) {
         let parser = parsers::list::get_list_parser(sample).await.unwrap();
         log::debug!("parser: {:?}", parser);
 
+        save_parser_to_file(&parser);
     });
 }
 
