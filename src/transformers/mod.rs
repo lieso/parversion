@@ -1,6 +1,6 @@
 use crate::models;
 
-pub fn transform_document_to_chat(document: String, parser: models:: ChatParser) -> models::Chat {
+pub fn transform_document_to_chat(document: String, parser: models::chat::ChatParser) -> models::chat::Chat {
     log::trace!("In transform_document_to_chat");
     
     let content_prefix = &parser.content.prefix;
@@ -108,7 +108,7 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
 
 
 
-        let chat_post = models::ChatPost {
+        let chat_post = models::chat::ChatPost {
             parent_id: parent_id,
             id: id,
             content: content,
@@ -123,7 +123,7 @@ pub fn transform_document_to_chat(document: String, parser: models:: ChatParser)
         previous_content_index = start_index;
     }
 
-    let chat = models::Chat {
+    let chat = models::chat::Chat {
         posts: chat_posts,
     };
 

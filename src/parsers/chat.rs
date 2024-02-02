@@ -5,14 +5,14 @@ use crate::models;
 use crate::utilities;
 use crate::prompts;
 
-pub async fn get_chat_parser(document: &str) -> Result<models::ChatParser, io::Error> {
+pub async fn get_chat_parser(document: &str) -> Result<models::chat::ChatParser, io::Error> {
     log::trace!("In get_chat_parser");
 
     let chat_parser_parent_id = get_chat_parser_parent_id(document).await.unwrap();
     let chat_parser_id = get_chat_parser_id(document).await.unwrap();
     let chat_parser_content = get_chat_parser_content(document).await.unwrap();
 
-    let chat_parser = models::ChatParser {
+    let chat_parser = models::chat::ChatParser {
         parent_id: chat_parser_parent_id,
         id: chat_parser_id,
         content: chat_parser_content,
@@ -21,7 +21,7 @@ pub async fn get_chat_parser(document: &str) -> Result<models::ChatParser, io::E
     return Ok(chat_parser)
 }
 
-async fn get_chat_parser_parent_id(document: &str) -> Result<models::ChatParserParentId, io::Error> {
+async fn get_chat_parser_parent_id(document: &str) -> Result<models::chat::ChatParserParentId, io::Error> {
     log::trace!("In get_chat_parser_parent_id");
 
     let content = format!("{} {}", prompts::chat::parent_id::PROMPT, document);
@@ -39,7 +39,7 @@ async fn get_chat_parser_parent_id(document: &str) -> Result<models::ChatParserP
             let relative = &prefix_suffix_relative["relative"].as_str().unwrap();
             log::debug!("relative: {}", relative);
 
-            let chat_parser_parent_id = models::ChatParserParentId {
+            let chat_parser_parent_id = models::chat::ChatParserParentId {
                 prefix: prefix.to_string(),
                 suffix: suffix.to_string(),
                 relative: relative.to_string(),
@@ -54,7 +54,7 @@ async fn get_chat_parser_parent_id(document: &str) -> Result<models::ChatParserP
     }
 }
 
-async fn get_chat_parser_id(document: &str) -> Result<models::ChatParserId, io::Error> {
+async fn get_chat_parser_id(document: &str) -> Result<models::chat::ChatParserId, io::Error> {
     log::trace!("In get_chat_parser_id");
     
     let content = format!("{} {}", prompts::chat::id::PROMPT, document);
@@ -74,7 +74,7 @@ async fn get_chat_parser_id(document: &str) -> Result<models::ChatParserId, io::
             log::debug!("relative: {}", relative);
 
 
-            let chat_parser_id = models::ChatParserId {
+            let chat_parser_id = models::chat::ChatParserId {
                 prefix: prefix.to_string(),
                 suffix: suffix.to_string(),
                 relative: relative.to_string(),
@@ -91,7 +91,7 @@ async fn get_chat_parser_id(document: &str) -> Result<models::ChatParserId, io::
 
 }
 
-async fn get_chat_parser_content(document: &str) -> Result<models::ChatParserContent, io::Error> {
+async fn get_chat_parser_content(document: &str) -> Result<models::chat::ChatParserContent, io::Error> {
     log::trace!("In get_chat_parser_content");
 
     let content = format!("{} {}", prompts::chat::content::PROMPT, document);
@@ -108,7 +108,7 @@ async fn get_chat_parser_content(document: &str) -> Result<models::ChatParserCon
             log::debug!("suffix: {}", suffix);
 
 
-            let chat_parser_content = models::ChatParserContent {
+            let chat_parser_content = models::chat::ChatParserContent {
                 prefix: prefix.to_string(),
                 suffix: suffix.to_string()
             };

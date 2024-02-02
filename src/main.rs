@@ -13,8 +13,14 @@ use std::io::Write;
 
 mod prompts;
 mod utilities;
-mod parsers;
-mod models;
+mod parsers {
+    pub mod chat;
+    pub mod list;
+}
+mod models {
+    pub mod chat;
+    pub mod list;
+}
 mod transformers;
 
 fn load_stdin() -> io::Result<String> {
@@ -38,7 +44,7 @@ fn chunk_string(s: &str, chunk_size: usize) -> Vec<String> {
         .collect()
 }
 
-fn save_parser_to_file(parser: &models::ChatParser) {
+fn save_parser_to_file(parser: &models::chat::ChatParser) {
     log::trace!("In save_parser_to_file");
 
     let serialized = serde_json::to_string_pretty(parser).expect("Serialization failed");
@@ -64,16 +70,33 @@ fn document_to_chat(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let parser = parsers::get_chat_parser(sample).await.unwrap();
+        let parser = parsers::chat::get_chat_parser(sample).await.unwrap();
         log::debug!("parser: {:?}", parser);
 
         save_parser_to_file(&parser);
 
-        let chat: models::Chat = transformers::transform_document_to_chat(document, parser);
+        let chat: models::chat::Chat = transformers::transform_document_to_chat(document, parser);
         log::debug!("chat: {:?}", chat);
 
         let output = serde_json::to_string(&chat).expect("Failed to serialize to JSON");
         println!("{}", output);
+    });
+}
+
+fn document_to_list(document: String) {
+    log::trace!("In document_to_list");
+
+    let chunks = chunk_string(&document, 20000);
+    log::debug!("number of chunks: {}", chunks.len());
+
+    let sample = &chunks[0];
+
+    let rt = Runtime::new().unwrap();
+
+    rt.block_on(async {
+        let parser = parsers::list::get_list_parser(sample).await.unwrap();
+        log::debug!("parser: {:?}", parser);
+
     });
 }
 
@@ -131,6 +154,7 @@ fn main() {
 
         match data_type {
             "chat" => document_to_chat(document),
+            "list" => document_to_list(document),
             _ => log::error!("Unexpected data type: {}", data_type),
         }
         return;
