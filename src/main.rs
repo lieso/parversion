@@ -101,6 +101,9 @@ fn document_to_list(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
+
+
+
         let parsers = parsers::list::get_list_parser(sample).await.unwrap();
         log::debug!("parsers: {:?}", parsers);
 
@@ -109,6 +112,23 @@ fn document_to_list(document: String) {
         }
 
         let first_parser = &parsers[0];
+
+
+
+
+        //let mut first_parser = models::list::ListParser::new();
+
+        //first_parser.insert("id".to_string(), "id='(\\d+)'".to_string());
+        //first_parser.insert("url".to_string(), "href=\"(https?://[\\w.-]+(/[\\w.-]+)*/?)\"".to_string());
+        //first_parser.insert("title".to_string(), "<a href=\"[^\"]+\">([^<]+)</a>".to_string());
+        //first_parser.insert("timestamp".to_string(), "title=\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})\"".to_string());
+        //first_parser.insert("points".to_string(), ">(\\d+) points<".to_string());
+        //first_parser.insert("username".to_string(), "class=\"hnuser\">(\\w+)</a>".to_string());
+        ////first_parser.insert("comments".to_string(), ">\\d+&nbsp;comments<|>discuss<".to_string());
+
+
+
+
 
         let list: models::list::List = transformers::list::transform_document_to_list(document, first_parser);
         log::debug!("list: {:?}", list);
