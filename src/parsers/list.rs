@@ -29,7 +29,14 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
             log::debug!("Key: {}", key);
             log::debug!("Value: {}", value);
 
-            list_parser.insert(key.to_string(), value.to_string());
+            match remove_first_and_last(value.to_string()) {
+                Some(fixed_value) => {
+                    list_parser.insert(key.to_string(), fixed_value);
+                }
+                None => {
+                    println!("string less than two characters");
+                }
+            }
         }
 
         parsers.push(list_parser);
@@ -37,6 +44,15 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
 
     return Ok(parsers)
 }
+
+fn remove_first_and_last(s: String) -> Option<String> {
+     let chars: Vec<char> = s.chars().collect();
+     if chars.len() <= 2 {
+         None
+     } else {
+         Some(chars[1..chars.len() - 1].iter().collect())
+     }
+ }
 
 async fn get_patterns(document: &str) -> Result<serde_json::Value, io::Error> {
     log::trace!("In get_patterns");

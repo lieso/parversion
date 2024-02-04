@@ -116,15 +116,18 @@ fn document_to_list(document: String) {
 
 
 
+
         //let mut first_parser = models::list::ListParser::new();
 
         //first_parser.insert("id".to_string(), "id='(\\d+)'".to_string());
-        //first_parser.insert("url".to_string(), "href=\"(https?://[\\w.-]+(/[\\w.-]+)*/?)\"".to_string());
-        //first_parser.insert("title".to_string(), "<a href=\"[^\"]+\">([^<]+)</a>".to_string());
-        //first_parser.insert("timestamp".to_string(), "title=\"(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})\"".to_string());
-        //first_parser.insert("points".to_string(), ">(\\d+) points<".to_string());
-        //first_parser.insert("username".to_string(), "class=\"hnuser\">(\\w+)</a>".to_string());
-        ////first_parser.insert("comments".to_string(), ">\\d+&nbsp;comments<|>discuss<".to_string());
+        //first_parser.insert("url".to_string(), "<a href=\\\"(https?://[\\w.-]+(/[\\w.-]*)?)\\\">".to_string());
+        //first_parser.insert("title".to_string(), "<span class=\\\"titleline\\\"><a href=\\\"[^\\\"]+\\\">([^<]+)</a>".to_string());
+        //first_parser.insert("points".to_string(), "<span class=\\\"score\\\" id=\\\"score_\\d+\\\">(\\d+) points</span>".to_string());
+        //first_parser.insert("user".to_string(), "<a href=\\\"user\\?id=([\\w-]+)\\\" class=\\\"hnuser\\\">".to_string());
+        //first_parser.insert("comments".to_string(), "<a href=\\\"item\\?id=\\d+\\\">(\\d+&nbsp;comments|discuss)</a>".to_string());
+        //first_parser.insert("rank".to_string(), "<span class=\\\"rank\\\">(\\d+)\\.</span>".to_string());
+        //first_parser.insert("age".to_string(), "<span class=\\\"age\\\" title=\\\"[^\\\"]+\\\"><a href=\\\"item\\?id=\\d+\\\">(\\w+ \\w+ ago)</a></span>".to_string());
+        //first_parser.insert("site".to_string(), "<span class=\\\"sitestr\\\">([\\w.-]+)</span>".to_string());
 
 
 
