@@ -101,9 +101,6 @@ fn document_to_list(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-
-
-
         let parsers = parsers::list::get_list_parser(sample).await.unwrap();
         log::debug!("parsers: {:?}", parsers);
 
@@ -112,26 +109,6 @@ fn document_to_list(document: String) {
         }
 
         let first_parser = &parsers[0];
-
-
-
-
-
-        //let mut first_parser = models::list::ListParser::new();
-
-        //first_parser.insert("id".to_string(), "id='(\\d+)'".to_string());
-        //first_parser.insert("url".to_string(), "<a href=\\\"(https?://[\\w.-]+(/[\\w.-]*)?)\\\">".to_string());
-        //first_parser.insert("title".to_string(), "<span class=\\\"titleline\\\"><a href=\\\"[^\\\"]+\\\">([^<]+)</a>".to_string());
-        //first_parser.insert("points".to_string(), "<span class=\\\"score\\\" id=\\\"score_\\d+\\\">(\\d+) points</span>".to_string());
-        //first_parser.insert("user".to_string(), "<a href=\\\"user\\?id=([\\w-]+)\\\" class=\\\"hnuser\\\">".to_string());
-        //first_parser.insert("comments".to_string(), "<a href=\\\"item\\?id=\\d+\\\">(\\d+&nbsp;comments|discuss)</a>".to_string());
-        //first_parser.insert("rank".to_string(), "<span class=\\\"rank\\\">(\\d+)\\.</span>".to_string());
-        //first_parser.insert("age".to_string(), "<span class=\\\"age\\\" title=\\\"[^\\\"]+\\\"><a href=\\\"item\\?id=\\d+\\\">(\\w+ \\w+ ago)</a></span>".to_string());
-        //first_parser.insert("site".to_string(), "<span class=\\\"sitestr\\\">([\\w.-]+)</span>".to_string());
-
-
-
-
 
         let list: models::list::List = transformers::list::transform_document_to_list(document, first_parser);
         log::debug!("list: {:?}", list);

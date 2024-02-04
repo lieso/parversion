@@ -20,9 +20,18 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
     for (key, pattern) in parser.patterns.iter() {
         log::debug!("key: {}, pattern: {}", key, pattern);
 
+
+
+        // TODO: investigate why this is necessary
+        let fixed_pattern = &pattern.replace("\\\\", "\\");
+        log::debug!("fixed_pattern: {}", fixed_pattern);
+
+
+
+
         let mut keyValues: Vec<(String, usize)> = Vec::new();
 
-        if let Ok(regex) = Regex::new(&pattern) {
+        if let Ok(regex) = Regex::new(fixed_pattern) {
 
             let matches: Vec<(&str, usize, usize)> = regex
                 .captures_iter(&document)
