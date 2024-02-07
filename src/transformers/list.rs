@@ -65,11 +65,6 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
 
 
 
-    for values in all_values.iter() {
-        println!("--------------------------------------------");
-        println!("{:?}", values);
-        println!("--------------------------------------------");
-    }
 
 
     let mut list_items = Vec::new();
@@ -115,9 +110,6 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
 
         }
 
-
-        println!("*****************************************************************************************************");
-        println!("{:?}", list_item);
 
         list_items.push(list_item);
     }

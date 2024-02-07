@@ -34,7 +34,7 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
                     list_parser.insert(key.to_string(), fixed_value);
                 }
                 None => {
-                    println!("string less than two characters");
+                    log::debug!("string less than two characters");
                 }
             }
         }
