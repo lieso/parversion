@@ -30,6 +30,12 @@ mod transformers {
     pub mod list;
 }
 
+#[derive(Debug, Serialize)]
+struct Output<T, U> {
+    parsers: Vec<T>,
+    data: Vec<U>,
+}
+
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
 
@@ -104,17 +110,20 @@ fn document_to_list(document: String) {
         let parsers = parsers::list::get_list_parser(sample).await.unwrap();
         log::debug!("parsers: {:?}", parsers);
 
+        let mut output = Output {
+            parsers: parsers.clone(),
+            data: Vec::new(),
+        };
+
         for parser in parsers.iter() {
-            save_parser_to_file(&parser);
+            let list: models::list::List = transformers::list::transform_document_to_list(document.clone(), &parser);
+            log::debug!("list: {:?}", list);
+
+            output.data.push(list);
         }
 
-        let first_parser = &parsers[0];
-
-        let list: models::list::List = transformers::list::transform_document_to_list(document, first_parser);
-        log::debug!("list: {:?}", list);
-
-        let output = serde_json::to_string(&list).expect("Failed to serialize to JSON");
-        println!("{}", output);
+        let serialized = serde_json::to_string(&output).expect("Failed to serialize to JSON");
+        println!("{}", serialized);
     });
 }
 

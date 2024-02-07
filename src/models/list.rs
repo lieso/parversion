@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct ListParser {
     pub patterns: HashMap<String, String>,
 }
