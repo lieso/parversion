@@ -96,7 +96,7 @@ fn document_to_chat(document: String) {
     });
 }
 
-fn document_to_list(document: String) {
+fn document_to_list(document: String, maybe_parsers: Option<serde_json::Value>) {
     log::trace!("In document_to_list");
 
     let chunks = chunk_string(&document, 20000);
@@ -107,7 +107,42 @@ fn document_to_list(document: String) {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let parsers = parsers::list::get_list_parser(sample).await.unwrap();
+        let mut parsers: Vec<models::list::ListParser> = Vec::new();
+
+        if let Some(parser_input) = maybe_parsers {
+            let Some(parser_input_array) = parser_input.as_array() else {
+                panic!("Parsers input is not array");
+            };
+
+            for parser_input_array_item in parser_input_array.iter() {
+                let Some(patterns) = parser_input_array_item["patterns"].as_object() else {
+                    panic!("Parsers input array item is not object");
+                };
+
+                let mut parser = models::list::ListParser::new();
+
+                for (key, value) in patterns.iter() {
+                    log::debug!("key: {}, value: {}", key, value);
+
+                    match remove_first_and_last(value.to_string()) {
+                        Some(fixed_value) => {
+                            let fixed_value2 = fixed_value.to_string().replace("\\\\\\", "");
+                            log::debug!("fixed_value2: {}", fixed_value2);
+
+                            parser.insert(key.to_string(), fixed_value2.to_string());
+                        }
+                        None => {
+                            log::debug!("string less than two characters");
+                        }
+                    }
+
+                }
+
+                parsers.push(parser);
+            }
+        } else {
+            parsers = parsers::list::get_list_parser(sample).await.unwrap();
+        }
         log::debug!("parsers: {:?}", parsers);
 
         let mut output = Output {
@@ -127,6 +162,37 @@ fn document_to_list(document: String) {
     });
 }
 
+fn get_parsers_input(maybe_filename: Option<&str>) -> Option<serde_json::Value> {
+    log::trace!("In get_parsers_input");
+
+    match maybe_filename {
+        Some(filename) => {
+            log::debug!("filename: {}", filename);
+
+            let mut parsers = String::new();
+
+            let mut file = File::open(filename).unwrap_or_else(|err| {
+                log::error!("Failed to open file: {}", err);
+                process::exit(1);
+            });
+
+            file.read_to_string(&mut parsers).unwrap_or_else(|err| {
+                log::error!("Failed to read file: {}", err);
+                process::exit(1);
+            });
+
+            let json: serde_json::Value = serde_json::from_str(&parsers).expect("Failed to parse json string");
+            log::debug!("json: {:?}", json);
+
+            Some(json)
+        }
+        None => {
+            log::info!("Parsers not provided in input");
+            None
+        }
+    }
+}
+
 fn main() {
     log::trace!("In main");
 
@@ -144,6 +210,11 @@ fn main() {
     }
 
     let matches = App::new("document-to-json")
+        .arg(Arg::with_name("parsers")
+             .short('p')
+             .long("parsers")
+             .value_name("PARSERS")
+             .required(false))
         .arg(Arg::with_name("type")
              .short('t')
              .long("type")
@@ -158,6 +229,7 @@ fn main() {
 
     if let Some(file_name) = matches.value_of("file") {
         log::debug!("file_name: {}", file_name);
+
         let mut file = File::open(file_name).unwrap_or_else(|err| {
             eprintln!("Failed to open file: {}", err);
             process::exit(1);
@@ -168,20 +240,24 @@ fn main() {
             process::exit(1);
         });
     } else {
-        log::debug!("File not provided");
+        log::info!("File not provided");
     }
 
     if document.trim().is_empty() {
-        log::debug!("Document not provided, aborting...");
+        log::info!("Document not provided, aborting...");
         return;
     }
+
+
+    let maybe_parsers_json = get_parsers_input(matches.value_of("parsers"));
+
 
     if let Some(data_type) = matches.value_of("type") {
         log::debug!("data_type: {}", data_type);
 
         match data_type {
             "chat" => document_to_chat(document),
-            "list" => document_to_list(document),
+            "list" => document_to_list(document, maybe_parsers_json),
             _ => log::error!("Unexpected data type: {}", data_type),
         }
         return;
@@ -190,3 +266,12 @@ fn main() {
         return;
     }
 }
+
+fn remove_first_and_last(s: String) -> Option<String> {
+     let chars: Vec<char> = s.chars().collect();
+     if chars.len() <= 2 {
+         None
+     } else {
+         Some(chars[1..chars.len() - 1].iter().collect())
+     }
+ }
