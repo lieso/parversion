@@ -10,9 +10,9 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
 
     let mut parsers = Vec::new();
 
-    let patterns = get_patterns(document).await.unwrap();
+    let llm_response = get_patterns(document).await.unwrap();
 
-    let Some(groups) = patterns.as_array() else {
+    let Some(groups) = llm_response.as_array() else {
         log::error!("patterns is not array");
         return Err(Error::new(ErrorKind::InvalidData, "error"));
     };
@@ -25,7 +25,12 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
             return Err(Error::new(ErrorKind::InvalidData, "error"));
         };
 
-        for (key, value) in json_object {
+        let Some(patterns_object) = group["patterns"].as_object() else {
+            log::error!("Patterns is not object");
+            return Err(Error::new(ErrorKind::InvalidData, "error"));
+        };
+
+        for (key, value) in patterns_object {
             log::debug!("Key: {}", key);
             log::debug!("Value: {}", value);
 
