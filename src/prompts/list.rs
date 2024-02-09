@@ -11,4 +11,11 @@ Hi ChatGPT. Your job is to interpret textual documents and to glean from it patt
 }
 If you see multiple lists of items, print a json array for each distinct list where the various keys correspond to regular expression patterns. If the text does not contain any list items, print only the text 'false' and nothing else. Please do not include any introduction or final summary in your response. Thank you.
 "##;
+    pub static CHAT_REF_PROMPT: &str = r##"
+Hi ChatGPT. Your job is to process and interpret text. Please examine the subsequent text and do your best to see if it contains a link to a document that is expected to contain a discussion forum, comments, or any kind of chat content. If you do identify a link to such content, please provide a regular expression that would capture the link to this content. Print your response based on the following json:
+{
+    "chat": "url pattern goes here"
+}
+Please do not include any introduction of final summary in your response. Thank you.
+"##;
 }
