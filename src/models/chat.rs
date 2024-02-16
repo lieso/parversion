@@ -2,6 +2,7 @@ use serde::{Serialize};
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct ChatParserParentId {
     pub prefix: String,
     pub suffix: String,
@@ -10,6 +11,7 @@ pub struct ChatParserParentId {
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct ChatParserId {
     pub prefix: String,
     pub suffix: String,
@@ -18,6 +20,7 @@ pub struct ChatParserId {
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct ChatParserContent {
     pub prefix: String,
     pub suffix: String,
@@ -25,6 +28,7 @@ pub struct ChatParserContent {
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct ChatParser {
     pub parent_id: ChatParserParentId,
     pub id: ChatParserId,
@@ -33,6 +37,7 @@ pub struct ChatParser {
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct ChatPost {
     pub parent_id: String,
     pub id: String,
@@ -41,6 +46,7 @@ pub struct ChatPost {
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct Chat {
     pub posts: Vec<ChatPost>,
 }

@@ -5,7 +5,7 @@ use crate::models;
 use crate::utilities;
 use crate::prompts;
 
-pub async fn get_chat_parser(document: &str) -> Result<models::chat::ChatParser, io::Error> {
+pub async fn get_chat_parser(document: &str) -> Result<Vec<models::chat::ChatParser>, io::Error> {
     log::trace!("In get_chat_parser");
 
     let chat_parser_parent_id = get_chat_parser_parent_id(document).await.unwrap();
@@ -18,7 +18,10 @@ pub async fn get_chat_parser(document: &str) -> Result<models::chat::ChatParser,
         content: chat_parser_content,
     };
 
-    return Ok(chat_parser)
+    let mut result = Vec::new();
+    result.push(chat_parser);
+
+    return Ok(result)
 }
 
 async fn get_chat_parser_parent_id(document: &str) -> Result<models::chat::ChatParserParentId, io::Error> {

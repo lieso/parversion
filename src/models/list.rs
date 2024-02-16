@@ -26,6 +26,7 @@ impl ListParser {
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct ListItem {
     pub data: HashMap<String, String>,
 }
@@ -48,6 +49,7 @@ impl ListItem {
 
 #[derive(Debug)]
 #[derive(Serialize)]
+#[derive(Clone)]
 pub struct List {
     pub items: Vec<ListItem>,
 }
