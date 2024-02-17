@@ -1,31 +1,24 @@
 extern crate simple_logging;
 extern crate log;
 
-use serde::{Serialize, Value};
+use serde::{Serialize};
 use tokio::runtime::Runtime;
-use std::fs::{OpenOptions, File};
+use std::fs::{File};
 use std::process;
 use std::io::{Read};
-use std::io::{self};
 
-mod models {
-    pub mod chat;
-    pub mod list;
-}
-mod parsers {
-    pub mod chat;
-    pub mod list;
-}
-mod transformers {
-    pub mod chat;
-    pub mod list;
-}
+pub mod parsers;
+pub mod models;
+pub mod transformers;
+pub mod prompts;
+pub mod utilities;
 
 #[derive(Clone)]
 enum Errors {
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,
+    IncorrectParser,
 }
 
 #[derive(Debug)]
@@ -44,7 +37,8 @@ enum Parser {
     List(models::list::ListParser),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
+#[derive(Serialize)]
 struct Output {
     parsers: Vec<Parser>,
     data: Vec<Document>,
@@ -67,7 +61,7 @@ pub fn string_to_json(document: String, document_type: &str) -> Result<Output, E
     };
 
     for parser in parsers.iter() {
-        let result = parse_document(document, document_type, &parser)?;
+        let result = parse_document(document, document_type, parser.clone())?;
         output.data.push(result);
     }
     
@@ -94,18 +88,26 @@ pub fn file_to_json(file_name: String, document_type: &str) -> Result<Output, Er
     return string_to_json(document, document_type);
 }
 
-pub fn parse_document(document: String, document_type: &str, parser: Value) -> Result<Document, Errors> {
+pub fn parse_document(document: String, document_type: &str, parser: Parser) -> Result<Document, Errors> {
     log::trace!("In parse_text");
     log::debug!("document_type: {}", document_type);
 
     match document_type {
         "chat" => {
-            let chat = transformers::chat::transform_document_to_chat(document.clone(), &parser);
-            Ok(Document::Chat(chat))
+            if let Parser::Chat(chat_parser) = parser {
+                let chat = transformers::chat::transform_document_to_chat(document.clone(), &chat_parser);
+                Ok(Document::Chat(chat))
+            } else {
+                Err(Errors::IncorrectParser)
+            }
         }
         "list" => {
-            let list = transformers::list::transform_document_to_list(document.clone(), &parser);
-            Ok(Document::List(list))
+            if let Parser::List(list_parser) = parser {
+                let list = transformers::list::transform_document_to_list(document.clone(), &list_parser);
+                Ok(Document::List(list))
+            } else {
+                Err(Errors::IncorrectParser)
+            }
         }
         _ => {
             Err(Errors::UnexpectedDocumentType)

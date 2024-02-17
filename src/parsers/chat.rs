@@ -29,7 +29,7 @@ async fn get_chat_parser_parent_id(document: &str) -> Result<models::chat::ChatP
 
     let content = format!("{} {}", prompts::chat::parent_id::PROMPT, document);
 
-    let maybe_open_ai_response = utilities::get_llm_response(content).await;
+    let maybe_open_ai_response = utilities::llm::get_llm_response(content).await;
 
     match maybe_open_ai_response {
         Ok(prefix_suffix_relative) => {
@@ -62,7 +62,7 @@ async fn get_chat_parser_id(document: &str) -> Result<models::chat::ChatParserId
     
     let content = format!("{} {}", prompts::chat::id::PROMPT, document);
 
-    let maybe_open_ai_response = utilities::get_llm_response(content).await;
+    let maybe_open_ai_response = utilities::llm::get_llm_response(content).await;
 
     match maybe_open_ai_response {
         Ok(prefix_suffix_relative) => {
@@ -99,7 +99,7 @@ async fn get_chat_parser_content(document: &str) -> Result<models::chat::ChatPar
 
     let content = format!("{} {}", prompts::chat::content::PROMPT, document);
 
-    let maybe_open_ai_response = utilities::get_llm_response(content).await;
+    let maybe_open_ai_response = utilities::llm::get_llm_response(content).await;
 
     match maybe_open_ai_response {
         Ok(prefix_suffix) => {

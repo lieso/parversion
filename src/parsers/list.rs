@@ -1,8 +1,8 @@
 use std::io::{Error, ErrorKind};
 use std::io::{self};
 
-use crate::models;
 use crate::utilities;
+use crate::models;
 use crate::prompts;
 
 pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListParser>, io::Error> {
@@ -96,7 +96,7 @@ async fn get_patterns(document: &str) -> Result<serde_json::Value, io::Error> {
 
     let prompt = format!("{} {}", prompts::list::patterns::PROMPT, document);
 
-    let maybe_llm_response = utilities::get_llm_response(prompt).await;
+    let maybe_llm_response = utilities::llm::get_llm_response(prompt).await;
 
     match maybe_llm_response {
         Ok(patterns) => {
@@ -114,7 +114,7 @@ async fn get_chat_ref(document: &str) -> Result<serde_json::Value, io::Error> {
 
     let prompt = format!("{} {}", prompts::list::patterns::CHAT_REF_PROMPT, document);
 
-    let maybe_llm_response = utilities::get_llm_response(prompt).await;
+    let maybe_llm_response = utilities::llm::get_llm_response(prompt).await;
 
     match maybe_llm_response {
         Ok(patterns) => {

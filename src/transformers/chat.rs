@@ -1,6 +1,6 @@
 use crate::models;
 
-pub fn transform_document_to_chat(document: String, parser: models::chat::ChatParser) -> models::chat::Chat {
+pub fn transform_document_to_chat(document: String, parser: &models::chat::ChatParser) -> models::chat::Chat {
     log::trace!("In transform_document_to_chat");
     
     let content_prefix = &parser.content.prefix;
