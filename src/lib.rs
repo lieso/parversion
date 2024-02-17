@@ -14,7 +14,7 @@ pub mod prompts;
 pub mod utilities;
 
 #[derive(Clone)]
-enum Errors {
+pub enum Errors {
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,
@@ -24,7 +24,7 @@ enum Errors {
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(Serialize)]
-enum Document {
+pub enum Document {
     Chat(models::chat::Chat),
     List(models::list::List),
 }
@@ -32,14 +32,14 @@ enum Document {
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(Serialize)]
-enum Parser {
+pub enum Parser {
     Chat(models::chat::ChatParser),
     List(models::list::ListParser),
 }
 
 #[derive(Debug)]
 #[derive(Serialize)]
-struct Output {
+pub struct Output {
     parsers: Vec<Parser>,
     data: Vec<Document>,
 }
@@ -53,7 +53,7 @@ pub fn string_to_json(document: String, document_type: &str) -> Result<Output, E
         return Err(Errors::DocumentNotProvided);
     }
 
-    let parsers = get_parsers(document, document_type)?;
+    let parsers = get_parsers(document.clone(), document_type)?;
 
     let mut output = Output {
         parsers: parsers.clone(),
@@ -61,14 +61,14 @@ pub fn string_to_json(document: String, document_type: &str) -> Result<Output, E
     };
 
     for parser in parsers.iter() {
-        let result = parse_document(document, document_type, parser.clone())?;
+        let result = parse_document(document.clone(), document_type, parser.clone())?;
         output.data.push(result);
     }
     
     return Ok(output);
 }
 
-pub fn file_to_json(file_name: String, document_type: &str) -> Result<Output, Errors> {
+pub fn file_to_json(file_name: &str, document_type: &str) -> Result<Output, Errors> {
     log::trace!("In file_to_json");
     log::debug!("file_name: {}", file_name);
     log::debug!("document_type: {}", document_type);

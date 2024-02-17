@@ -82,7 +82,7 @@ fn main() {
 
 
     if let Some(document_type) = matches.value_of("type") {
-        log::debug!("data_type: {}", data_type);
+        log::debug!("document_type: {}", document_type);
 
 
         let result = match matches.value_of("file") {
@@ -96,10 +96,12 @@ fn main() {
             }
         };
 
-
-        let serialized = serde_json::to_string(&result).expect("Failed to serialize to JSON");
-        println!("{}", serialized);
-
+        if let Ok(result) = result {
+            let serialized = serde_json::to_string(&result).expect("Failed to serialize to JSON");
+            println!("{}", serialized);
+        } else {
+            println!("error");
+        }
 
     } else {
         log::info!("Data type not provided, aborting...");
