@@ -53,19 +53,23 @@ pub fn string_to_json(document: String, document_type: &str) -> Result<Output, E
         return Err(Errors::DocumentNotProvided);
     }
 
-    let parsers = get_parsers(document.clone(), document_type)?;
+    let rt = Runtime::new().unwrap();
 
-    let mut output = Output {
-        parsers: parsers.clone(),
-        data: Vec::new(),
-    };
+    rt.block_on(async {
+        let parsers = get_parsers(document.clone(), document_type).await?;
 
-    for parser in parsers.iter() {
-        let result = parse_document(document.clone(), document_type, parser.clone())?;
-        output.data.push(result);
-    }
-    
-    return Ok(output);
+        let mut output = Output {
+            parsers: parsers.clone(),
+            data: Vec::new(),
+        };
+
+        for parser in parsers.iter() {
+            let result = parse_document(document.clone(), document_type, parser.clone())?;
+            output.data.push(result);
+        }
+        
+        return Ok(output);
+    })
 }
 
 pub fn file_to_json(file_name: &str, document_type: &str) -> Result<Output, Errors> {
@@ -115,7 +119,7 @@ pub fn parse_document(document: String, document_type: &str, parser: Parser) -> 
     }
 }
 
-pub fn get_parsers(document: String, document_type: &str) -> Result<Vec<Parser>, Errors> {
+pub async fn get_parsers(document: String, document_type: &str) -> Result<Vec<Parser>, Errors> {
     log::trace!("In get_parsers");
     log::debug!("document_type: {}", document_type);
 
@@ -124,49 +128,46 @@ pub fn get_parsers(document: String, document_type: &str) -> Result<Vec<Parser>,
 
     let sample = &chunks[0];
 
-    let rt = Runtime::new().unwrap();
+    match document_type {
+        "chat" => {
+            let chat_parsers = parsers::chat::get_chat_parser(sample).await;
+            if let Ok(ok_chat_parsers) = chat_parsers {
+                log::info!("Obtained chat parsers without errors");
 
-    rt.block_on(async {
-        match document_type {
-            "chat" => {
-                let chat_parsers = parsers::chat::get_chat_parser(sample).await;
-                if let Ok(ok_chat_parsers) = chat_parsers {
+                let parsers: Vec<Parser> = ok_chat_parsers
+                    .iter()
+                    .map(|parser| {
+                        Parser::Chat(parser.clone())
+                    })
+                    .collect();
 
-                    let parsers: Vec<Parser> = ok_chat_parsers
-                        .iter()
-                        .map(|parser| {
-                            Parser::Chat(parser.clone())
-                        })
-                        .collect();
-
-                    Ok(parsers)
-                } else {
-                    Err(Errors::UnexpectedError)
-                }
-            }
-            "list" => {
-                let list_parsers = parsers::list::get_list_parser(sample).await;
-                if let Ok(ok_list_parsers) = list_parsers {
-
-                    let parsers: Vec<Parser> = ok_list_parsers
-                        .iter()
-                        .map(|parser| {
-                            Parser::List(parser.clone())
-                        })
-                        .collect();
-
-                    Ok(parsers)
-                } else {
-                    Err(Errors::UnexpectedError)
-                }
-            }
-            _ => {
-                Err(Errors::UnexpectedDocumentType)
+                Ok(parsers)
+            } else {
+                Err(Errors::UnexpectedError)
             }
         }
-    });
+        "list" => {
+            let list_parsers = parsers::list::get_list_parser(sample).await;
 
-    return Err(Errors::UnexpectedError);
+            if let Ok(ok_list_parsers) = list_parsers {
+                log::info!("Obtained list parsers without errors");
+
+                let parsers: Vec<Parser> = ok_list_parsers
+                    .iter()
+                    .map(|parser| {
+                        Parser::List(parser.clone())
+                    })
+                    .collect();
+
+                Ok(parsers)
+            } else {
+                Err(Errors::UnexpectedError)
+            }
+        }
+        _ => {
+            Err(Errors::UnexpectedDocumentType)
+        }
+    }
 }
 
 fn chunk_string(s: &str, chunk_size: usize) -> Vec<String> {
