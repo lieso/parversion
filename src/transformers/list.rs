@@ -29,7 +29,7 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
 
 
 
-        let mut keyValues: Vec<(String, usize)> = Vec::new();
+        let mut key_values: Vec<(String, usize)> = Vec::new();
 
         if let Ok(regex) = Regex::new(fixed_pattern) {
 
@@ -41,12 +41,12 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
                 .collect();
 
             for (value, _start, end) in matches {
-                keyValues.push((value.to_string(), end));
+                key_values.push((value.to_string(), end));
             }
 
             let values = Values {
                 key: key.to_string(),
-                values: keyValues,
+                values: key_values,
             };
 
             all_values.push(values);

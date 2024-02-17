@@ -1,34 +1,17 @@
 extern crate simple_logging;
 extern crate log;
 
-use serde::Serialize;
-use tokio::runtime::Runtime;
-use std::fs::{OpenOptions, File};
-use std::process;
 use std::io::{Read};
 use std::io::{self};
 use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
-use std::io::Write;
 
-mod prompts {
-    pub mod chat;
-    pub mod list;
-}
-mod utilities;
-mod parsers {
-    pub mod chat;
-    pub mod list;
-}
-mod models {
-    pub mod chat;
-    pub mod list;
-}
-mod transformers {
-    pub mod chat;
-    pub mod list;
-}
+pub mod parsers;
+pub mod models;
+pub mod transformers;
+pub mod prompts;
+pub mod utilities;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");

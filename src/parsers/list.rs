@@ -29,7 +29,7 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
 
 
 
-        let example_original_list_item = serde_json::to_string(&json_object["example"]).unwrap();
+        //let example_original_list_item = serde_json::to_string(&json_object["example"]).unwrap();
 
         let chat_ref_llm_response = get_chat_ref(document).await.unwrap();
         log::debug!("{:?}", chat_ref_llm_response);
