@@ -42,8 +42,8 @@ pub enum Parser {
 #[derive(Debug)]
 #[derive(Serialize)]
 pub struct Output {
-    parsers: Vec<Parser>,
-    data: Vec<Document>,
+    pub parsers: Vec<Parser>,
+    pub data: Vec<Document>,
 }
 
 pub fn string_to_json(document: String, document_type: &str) -> Result<Output, Errors> {
