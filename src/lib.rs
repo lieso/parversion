@@ -13,7 +13,9 @@ pub mod transformers;
 pub mod prompts;
 pub mod utilities;
 
+#[derive(Debug)]
 #[derive(Clone)]
+#[derive(Serialize)]
 pub enum Errors {
     DocumentNotProvided,
     UnexpectedDocumentType,
