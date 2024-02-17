@@ -1,5 +1,6 @@
 use std::io::{Error, ErrorKind};
 use std::io::{self};
+use serde_json;
 
 use crate::utilities;
 use crate::models;
@@ -12,10 +13,13 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
 
     let llm_response = get_patterns(document).await.unwrap();
 
-    let Some(groups) = llm_response.as_array() else {
-        log::error!("patterns is not array");
-        return Err(Error::new(ErrorKind::InvalidData, "error"));
-    };
+    let groups = match llm_response {
+         serde_json::Value::Array(arr) => arr,
+         _ => {
+             log::error!("patterns is not an array");
+             vec![llm_response] // Wrap in a new Vec as single element
+         }
+     };
 
     for group in groups.iter() {
         let mut list_parser = models::list::ListParser::new();
