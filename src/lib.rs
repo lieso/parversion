@@ -1,7 +1,7 @@
 extern crate simple_logging;
 extern crate log;
 
-use serde::{Serialize};
+use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 use std::fs::{File};
 use std::process;
@@ -13,9 +13,7 @@ pub mod transformers;
 pub mod prompts;
 pub mod utilities;
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
     DocumentNotProvided,
     UnexpectedDocumentType,
@@ -23,33 +21,26 @@ pub enum Errors {
     IncorrectParser,
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Document {
     Chat(models::chat::Chat),
     List(models::list::List),
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(tag = "type")]
 pub enum Parser {
     Chat(models::chat::ChatParser),
     List(models::list::ListParser),
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ParserType {
     Chat,
     List,
 }
 
-#[derive(Debug)]
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Output {
     pub parsers: Vec<Parser>,
     pub data: Vec<Document>,

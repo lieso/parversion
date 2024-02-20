@@ -1,9 +1,7 @@
-use serde::{Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug)]
-#[derive(Serialize)]
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ListParser {
     pub patterns: HashMap<String, String>,
 }
@@ -24,9 +22,7 @@ impl ListParser {
     }
 }
 
-#[derive(Debug)]
-#[derive(Serialize)]
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ListItem {
     pub data: HashMap<String, String>,
 }
@@ -47,9 +43,7 @@ impl ListItem {
     }
 }
 
-#[derive(Debug)]
-#[derive(Serialize)]
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct List {
     pub items: Vec<ListItem>,
 }
