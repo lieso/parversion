@@ -60,18 +60,24 @@ pub fn string_to_json(document: String, document_type: &str) -> Result<Output, E
     rt.block_on(async {
         let parsers = get_parsers(document.clone(), document_type).await?;
 
-        let mut output = Output {
-            parsers: parsers.clone(),
-            data: Vec::new(),
-        };
-
-        for parser in parsers.iter() {
-            let result = parse_document(document.clone(), document_type, parser.clone())?;
-            output.data.push(result);
-        }
-        
-        return Ok(output);
+        return get_output(document.clone(), document_type, parsers);
     })
+}
+
+pub fn get_output(document: String, document_type: &str, parsers: Vec<Parser>) -> Result<Output, Errors> {
+    log::trace!("In get_output");
+    
+    let mut output = Output {
+        parsers: parsers.clone(),
+        data: Vec::new(),
+    };
+
+    for parser in parsers.iter() {
+        let result = parse_document(document.clone(), document_type, parser.clone())?;
+        output.data.push(result);
+    }
+
+    Ok(output)
 }
 
 pub fn file_to_json(file_name: &str, document_type: &str) -> Result<Output, Errors> {
