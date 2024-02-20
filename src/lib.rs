@@ -60,11 +60,11 @@ pub fn string_to_json(document: String, document_type: &str) -> Result<Output, E
     rt.block_on(async {
         let parsers = get_parsers(document.clone(), document_type).await?;
 
-        return get_output(document.clone(), document_type, parsers);
+        return get_output(document.clone(), document_type, &parsers);
     })
 }
 
-pub fn get_output(document: String, document_type: &str, parsers: Vec<Parser>) -> Result<Output, Errors> {
+pub fn get_output(document: String, document_type: &str, parsers: &Vec<Parser>) -> Result<Output, Errors> {
     log::trace!("In get_output");
     
     let mut output = Output {
