@@ -34,9 +34,18 @@ pub enum Document {
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(Serialize)]
+#[serde(tag = "type")]
 pub enum Parser {
     Chat(models::chat::ChatParser),
     List(models::list::ListParser),
+}
+
+#[derive(Debug)]
+#[derive(Clone)]
+#[derive(Serialize)]
+pub enum ParserType {
+    Chat,
+    List,
 }
 
 #[derive(Debug)]
