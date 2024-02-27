@@ -18,4 +18,11 @@ Hi ChatGPT. Your job is to process and interpret text. Please examine the subseq
 }
 Please do not include any introduction of final summary in your response. Thank you.
 "##;
+    pub static LIST_GROUP_PROMPT: &str = r##"
+Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents. Please examine the subsequent text and do your best to identify a pattern signifying lists of items of some kind. Similar blocks of text that differ slightly in detail but with an overall similar structure. When delineating where a list item begins and ends, try to interpret the content itself and see if it makes sense to group text under one list item within a larger context. If you do see lists of items, provide a regular expression that would capture each list item in the text. Do not provide an optimized regular expression, include as much redundant text that precedes or follows each list item. Print your response based on the following json:
+{
+    "pattern": "regex pattern goes here"
+}
+If the text does not contain any lists, print only the text 'false' and nothing else. Please do not include any introduction or final summary in your response. Thank you.
+"##;
 }
