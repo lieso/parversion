@@ -3,44 +3,22 @@ use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ListParser {
-    pub patterns: HashMap<String, String>,
+    pub list_pattern: String,
+    pub list_item_patterns: HashMap<String, String>,
 }
 
 impl ListParser {
     pub fn new() -> Self {
         Self {
-            patterns: HashMap::new(),
+            list_pattern: String::new(),
+            list_item_patterns: HashMap::new(),
         }
-    }
-
-    pub fn insert(&mut self, key: String, value: String) {
-        self.patterns.insert(key, value);
-    }
-
-    pub fn get(&self, key: &str) -> Option<&String> {
-        self.patterns.get(key)
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ListItem {
     pub data: HashMap<String, String>,
-}
-
-impl ListItem {
-    pub fn new() -> Self {
-        Self {
-            data: HashMap::new(),
-        }
-    }
-
-    pub fn insert(&mut self, key: String, value: String) {
-        self.data.insert(key, value);
-    }
-
-    pub fn get(&self, key: &str) -> Option<&String> {
-        self.data.get(key)
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
