@@ -17,38 +17,40 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
 
 
 
-    //let llm_response = get_patterns(document).await?;
-    //println!("{:?}", llm_response);
-    //let json = llm_response.as_object().unwrap();
+    let llm_response = get_patterns(document).await?;
+    let json = llm_response.as_object().unwrap();
 
-    //let pattern = &json["pattern"];
-    //log::debug!("pattern: {}", pattern);
-    //let pattern = serde_json::to_string(pattern).unwrap();
-    //log::debug!("pattern: {}", pattern);
-
-    let pattern = r##""<tr class='athing' id='\\d+'>([\\s\\S]*?)<tr class=\"spacer\" style=\"height:5px\"></tr>""##.to_string();
+    let pattern = &json["pattern"];
     log::debug!("pattern: {}", pattern);
-
+    let pattern = serde_json::to_string(pattern).unwrap();
     let pattern = remove_first_and_last(pattern.clone()).unwrap_or(pattern);
-    log::debug!("pattern: {}", pattern);
     let pattern = &pattern.replace("\\\\", "\\");
-    log::debug!("pattern: {}", pattern);
 
 
     if let Ok(regex) = Regex::new(&pattern) {
         log::debug!("Regex is ok");
 
-        for cap in regex.find_iter(&document) {
-            log::debug!("{}", cap.as_str());
-        }
-
-        let matches: Vec<(&str, usize, usize)> = regex
+        let matches: Vec<&str> = regex
             .captures_iter(document)
             .filter_map(|cap| {
-                cap.get(1).map(|mat| (mat.as_str(), mat.start(), mat.end()))
+                cap.get(1).map(|mat| mat.as_str())
             })
             .collect();
+        log::debug!("{:?}", matches);
 
+        if let Some(first_match) = matches.first() {
+
+            log::debug!("*****************************************************************************************************");
+            log::debug!("first_match: {:?}", first_match);
+
+            let llm_response = get_item_patterns(first_match).await?;
+            log::debug!("llm_response: {:?}", llm_response);
+
+
+        } else {
+            log::error!("Regex did not result in any matches");
+            return Err(Errors::LlmInvalidRegex);
+        }
     } else {
         log::error!("Regex is not valid");
         return Err(Errors::LlmInvalidRegex);
@@ -57,6 +59,25 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
 
 
     return Ok(parsers)
+}
+
+async fn get_item_patterns(document: &str) -> Result<serde_json::Value, Errors> {
+    log::trace!("In get_item_patterns");
+
+    let prompt = format!("{} {}", prompts::list::patterns::LIST_ITEM_PROMPT, document);
+
+    let maybe_llm_response = utilities::llm::get_llm_response(prompt).await;
+
+    match maybe_llm_response {
+        Ok(patterns) => {
+            log::debug!("Successfully obtained response from llm");
+            Ok(patterns)
+        }
+        Err(error) => {
+            log::error!("{}", error);
+            Err(Errors::LlmRequestError)
+        }
+    }
 }
 
 async fn get_patterns(document: &str) -> Result<serde_json::Value, Errors> {

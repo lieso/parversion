@@ -25,4 +25,17 @@ Hi ChatGPT. Your job is to interpret textual documents and to glean from it patt
 }
 If the text does not contain any lists, print only the text 'false' and nothing else. Please do not include any introduction or final summary in your response. Thank you.
 "##;
+    pub static LIST_ITEM_PROMPT: &str = r##"
+Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents. Please examine the subsequent text and do your best to identify which parts of it pertain to information a person might want to know as opposed to code, formatting or out of context text. Examples of things to search for might include: titles, descriptions, timestamps, authors/users, links to websites or comments. Try to infer the broader context the text implies and search for salient information relevant to this context. For example, if the text seems to be a weather forecast, try to find minimum and maximum temperatures in the text. Having established the context and having identified the salient content, please provide regular expressions that would capture each distinct field in the text. Do not provide an optimized regular expression, include as much redundant text that precedes or follows each list item. Set the key name to be the name of the field and its value should be the regular expression. Print your response based on the following json:
+[
+    {
+        "fieldName": "regex pattern goes here"
+    },
+    {
+        "otherField": "regex pattern goes here"
+    },
+    etc..
+]
+Please do not include any introduction or final summary in your response. Thank you.
+"##;
 }
