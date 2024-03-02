@@ -1,5 +1,5 @@
 use serde_json;
-use regex::Regex;
+use fancy_regex::Regex;
 
 use crate::utilities;
 use crate::models;
@@ -34,7 +34,7 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
         let matches: Vec<&str> = regex
             .captures_iter(document)
             .filter_map(|cap| {
-                cap.get(1).map(|mat| mat.as_str())
+                cap.expect("Could not capture").get(1).map(|mat| mat.as_str())
             })
             .collect();
         log::debug!("{:?}", matches);

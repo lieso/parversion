@@ -1,7 +1,5 @@
-extern crate regex;
-
 use std::collections::HashMap;
-use regex::Regex;
+use fancy_regex::Regex;
 use crate::models;
 
 pub fn transform_document_to_list(document: String, parser: &models::list::ListParser) -> models::list::List {
@@ -12,7 +10,7 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
     let matches: Vec<&str> = regex
         .captures_iter(&document)
         .filter_map(|cap| {
-            cap.get(1).map(|mat| mat.as_str())
+            cap.expect("Could not capture").get(1).map(|mat| mat.as_str())
         })
         .collect();
 
@@ -31,11 +29,13 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
             log::debug!("value: {}", value);
             log::debug!("mat: {}", mat);
 
-            if let Some(captures) = regex.captures(mat) {
-                let first_match = captures.get(0).unwrap().as_str();
-                log::debug!("first_match: {}", first_match);
+            if let Ok(captures) = regex.captures(mat) {
+                if let Some(captures) = captures {
+                    let first_match = captures.get(0).unwrap().as_str();
+                    log::debug!("first_match: {}", first_match);
 
-                list_item.data.insert(key.to_string(), first_match.to_string());
+                    list_item.data.insert(key.to_string(), first_match.to_string());
+                }
             }
         }
 
