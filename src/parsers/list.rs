@@ -39,8 +39,11 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
             .collect();
         log::debug!("{:?}", matches);
 
-        if let Some(first_match) = matches.first() {
-            let llm_response = get_item_patterns(first_match).await?;
+
+        if let Some(_first_match) = matches.first() {
+            let sample_matches = matches.iter().take(3).cloned().collect();
+
+            let llm_response = get_item_patterns(sample_matches).await?;
             log::debug!("llm_response: {:?}", llm_response);
 
             let json = llm_response.as_object().unwrap();
@@ -69,10 +72,14 @@ pub async fn get_list_parser(document: &str) -> Result<Vec<models::list::ListPar
     return Ok(parsers)
 }
 
-async fn get_item_patterns(document: &str) -> Result<serde_json::Value, Errors> {
+async fn get_item_patterns(samples: Vec<&str>) -> Result<serde_json::Value, Errors> {
     log::trace!("In get_item_patterns");
 
-    let prompt = format!("{} {}", prompts::list::patterns::LIST_ITEM_PROMPT, document);
+    let mut prompt = format!("{}", prompts::list::patterns::LIST_ITEM_PROMPT);
+
+    for (index, &item) in samples.iter().enumerate() {
+        prompt = format!("{}\nExample {}\n{}", prompt, index + 1, item);
+    }
 
     let maybe_llm_response = utilities::llm::get_llm_response(prompt).await;
 

@@ -24,14 +24,21 @@ pub fn transform_document_to_list(document: String, parser: &models::list::ListP
         for (key, value) in parser.list_item_patterns.iter() {
             let regex = Regex::new(value).expect("List item pattern is not valid");
 
-            log::debug!("*****************************************************************************************************");
-            log::debug!("key: {}", key);
-            log::debug!("value: {}", value);
-            log::debug!("mat: {}", mat);
-
             if let Ok(captures) = regex.captures(mat) {
                 if let Some(captures) = captures {
-                    let first_match = captures.get(0).unwrap().as_str();
+
+                    for (i, capture) in captures.iter().enumerate() {
+                        match capture {
+                            Some(m) => {
+                                log::debug!("{}: {}", i, m.as_str());
+                            }
+                            None => {
+                                log::debug!("{}: No match", i);
+                            }
+                        }
+                    }
+
+                    let first_match = captures.get(1).unwrap().as_str();
                     log::debug!("first_match: {}", first_match);
 
                     list_item.data.insert(key.to_string(), first_match.to_string());
