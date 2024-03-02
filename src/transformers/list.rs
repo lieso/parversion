@@ -1,163 +1,52 @@
 extern crate regex;
 
-use crate::models;
+use std::collections::HashMap;
 use regex::Regex;
-
-#[derive(Debug)]
-struct Values {
-    key: String,
-    values: Vec<(String, usize)>,
-}
+use crate::models;
 
 pub fn transform_document_to_list(document: String, parser: &models::list::ListParser) -> models::list::List {
     log::trace!("In transform_document_to_list");
 
+    let regex = Regex::new(&parser.list_pattern).expect("List pattern is not valid");
 
-    let mut all_values: Vec<Values> = Vec::new();
-
-
-
-    for (key, pattern) in parser.patterns.iter() {
-        log::debug!("key: {}, pattern: {}", key, pattern);
-
-
-
-        // TODO: investigate why this is necessary
-        let fixed_pattern = &pattern.replace("\\\\", "\\");
-        log::debug!("fixed_pattern: {}", fixed_pattern);
+    let matches: Vec<&str> = regex
+        .captures_iter(&document)
+        .filter_map(|cap| {
+            cap.get(1).map(|mat| mat.as_str())
+        })
+        .collect();
 
 
+    let list_items = matches.iter().map(|mat| {
 
+        let mut list_item = models::list::ListItem {
+            data: HashMap::new()
+        };
 
-        let mut key_values: Vec<(String, usize)> = Vec::new();
+        for (key, value) in parser.list_item_patterns.iter() {
+            let regex = Regex::new(value).expect("List item pattern is not valid");
 
-        if let Ok(regex) = Regex::new(fixed_pattern) {
+            log::debug!("*****************************************************************************************************");
+            log::debug!("key: {}", key);
+            log::debug!("value: {}", value);
+            log::debug!("mat: {}", mat);
 
-            let matches: Vec<(&str, usize, usize)> = regex
-                .captures_iter(&document)
-                .filter_map(|cap| {
-                    cap.get(1).map(|mat| (mat.as_str(), mat.start(), mat.end()))
-                })
-                .collect();
+            if let Some(captures) = regex.captures(mat) {
+                let first_match = captures.get(0).unwrap().as_str();
+                log::debug!("first_match: {}", first_match);
 
-            for (value, _start, end) in matches {
-                key_values.push((value.to_string(), end));
+                list_item.data.insert(key.to_string(), first_match.to_string());
             }
-
-            let values = Values {
-                key: key.to_string(),
-                values: key_values,
-            };
-
-            all_values.push(values);
-
-        } else {
-            log::error!("Regex pattern is invalid");
-        }
-    }
-
-
-
-
-
-    all_values.sort_by_key(|v| v.values.len());
-
-
-
-
-
-
-    let mut list_items = Vec::new();
-
-
-
-
-
-
-
-
-
-
-
-    let first_data_set = &all_values[0];
-
-
-    for i in 0..first_data_set.values.len() {
-
-        let mut list_item = models::list::ListItem::new();
-
-
-        let mut previous_index: usize = 0;
-
-        for j in 0..all_values.len() {
-
-
-            let current = &all_values[j];
-            let key = &current.key;
-            let values = &current.values[i];
-
-            if j == 0 {
-                previous_index = values.1;
-
-                list_item.insert(key.clone(), values.0.clone());
-            } else {
-                let (nearest_index, nearest_value) = get_nearest_neighbour(current.values.clone(), previous_index);
-
-                list_item.insert(key.clone(), nearest_value.clone());
-
-                //previous_index = nearest_index.clone();
-            }
-
         }
 
-
-        list_items.push(list_item);
-    }
-
-
-
-
-
-
-
-
-
+        return list_item;
+    })
+    .collect();
 
 
     let list = models::list::List {
         items: list_items,
     };
 
-
     return list;
 }
-
-fn get_nearest_neighbour(values: Vec<(String, usize)>, previous_index: usize) -> (usize, String) {
-    log::trace!("In get_nearest_neighbour");
-
-    let mut optimal: usize = usize::MAX;
-    let mut optimal_index: usize = 0;
-
-    for (index, (_text, doc_index)) in values.iter().enumerate() {
-        let distance = abs_diff(*doc_index, previous_index);
-
-        if distance < optimal {
-            optimal = distance;
-            optimal_index = index;
-        }
-    }
-
-    if optimal_index < values.len() {
-        return (optimal_index, values[optimal_index].0.clone());
-    } else {
-        return (optimal_index, String::new());
-    }
-}
-
-fn abs_diff(a: usize, b: usize) -> usize {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
- }
