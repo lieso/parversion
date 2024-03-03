@@ -34,6 +34,7 @@ pub enum Document {
 pub enum Parser {
     Chat(models::chat::ChatParser),
     List(models::list::ListParser),
+    CuratedListing(models::curated_listing::CuratedListingParser),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -62,21 +63,23 @@ pub fn string_to_json(document: String) -> Result<Output, Errors> {
 
 
         if let Ok(document_types) = categorisers::get_document_types(document.clone()).await {
-
             log::debug!("document_types: {:?}", document_types);
+
+
+            let first_document_type = document_types.first().expect("Unable to categorise document");
+                
+
+            let parsers = get_parsers(document.clone(), &first_document_type).await?;
+
+
+            panic!("test");
+
+
+            return get_output(document.clone(), "list", &parsers);
 
         } else {
             return Err(Errors::UnableToCategoriseDocument);
         }
-
-
-        panic!("test");
-
-
-
-        let parsers = get_parsers(document.clone(), "list").await?;
-
-        return get_output(document.clone(), "list", &parsers);
     })
 }
 
@@ -142,9 +145,9 @@ pub fn parse_document(document: String, document_type: &str, parser: Parser) -> 
     }
 }
 
-pub async fn get_parsers(document: String, document_type: &str) -> Result<Vec<Parser>, Errors> {
+pub async fn get_parsers(document: String, document_type: &models::document_type::DocumentType) -> Result<Vec<Parser>, Errors> {
     log::trace!("In get_parsers");
-    log::debug!("document_type: {}", document_type);
+    log::debug!("document_type: {:?}", document_type);
 
     let chunks = utilities::text::chunk_string(&document, 20000);
     log::debug!("number of chunks: {}", chunks.len());
@@ -152,33 +155,16 @@ pub async fn get_parsers(document: String, document_type: &str) -> Result<Vec<Pa
     let sample = &chunks[0];
 
     match document_type {
-        "chat" => {
-            let chat_parsers = parsers::chat::get_chat_parser(sample).await;
-            if let Ok(ok_chat_parsers) = chat_parsers {
-                log::info!("Obtained chat parsers without errors");
+        models::document_type::DocumentType::CuratedListing => {
+            let curated_listing_parsers = parsers::curated_listing::get_parsers(sample).await;
 
-                let parsers: Vec<Parser> = ok_chat_parsers
+            if let Ok(curated_listing_parsers) = curated_listing_parsers {
+                log::info!("Obtained curated listing parsers without errors");
+
+                let parsers: Vec<Parser> = curated_listing_parsers
                     .iter()
                     .map(|parser| {
-                        Parser::Chat(parser.clone())
-                    })
-                    .collect();
-
-                Ok(parsers)
-            } else {
-                Err(Errors::UnexpectedError)
-            }
-        }
-        "list" => {
-            let list_parsers = parsers::list::get_list_parser(sample).await;
-
-            if let Ok(ok_list_parsers) = list_parsers {
-                log::info!("Obtained list parsers without errors");
-
-                let parsers: Vec<Parser> = ok_list_parsers
-                    .iter()
-                    .map(|parser| {
-                        Parser::List(parser.clone())
+                        Parser::CuratedListing(parser.clone())
                     })
                     .collect();
 
