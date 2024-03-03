@@ -46,11 +46,6 @@ fn main() {
              .long("parsers")
              .value_name("PARSERS")
              .required(false))
-        .arg(Arg::with_name("type")
-             .short('t')
-             .long("type")
-             .value_name("TYPE")
-             .required(true))
         .arg(Arg::with_name("file")
              .short('f')
              .long("file")
@@ -59,35 +54,22 @@ fn main() {
         .get_matches();
 
 
-
-    //let maybe_parsers_json = get_parsers_input(matches.value_of("parsers"));
-
-
-
-    if let Some(document_type) = matches.value_of("type") {
-        log::debug!("document_type: {}", document_type);
-
-
-        let result = match matches.value_of("file") {
-            Some(file_name) => {
-                log::debug!("file_name: {}", file_name);
-                parversion::file_to_json(file_name, document_type)
-            }
-            None => {
-                log::info!("File not provided");
-                parversion::string_to_json(document, document_type)
-            }
-        };
-
-        if let Ok(result) = result {
-            let serialized = serde_json::to_string(&result).expect("Failed to serialize to JSON");
-            println!("{}", serialized);
-        } else {
-            println!("error");
+    let result = match matches.value_of("file") {
+        Some(file_name) => {
+            log::debug!("file_name: {}", file_name);
+            parversion::file_to_json(file_name)
         }
+        None => {
+            log::info!("File not provided");
+            parversion::string_to_json(document)
+        }
+    };
 
+    if let Ok(result) = result {
+        let serialized = serde_json::to_string(&result).expect("Failed to serialize to JSON");
+        println!("{}", serialized);
     } else {
-        log::info!("Data type not provided, aborting...");
+        println!("error");
     }
 }
 

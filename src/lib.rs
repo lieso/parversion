@@ -12,6 +12,7 @@ pub mod models;
 pub mod transformers;
 pub mod prompts;
 pub mod utilities;
+pub mod categorisers;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
@@ -19,6 +20,7 @@ pub enum Errors {
     UnexpectedDocumentType,
     UnexpectedError,
     IncorrectParser,
+    UnableToCategoriseDocument,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -46,9 +48,8 @@ pub struct Output {
     pub data: Vec<Document>,
 }
 
-pub fn string_to_json(document: String, document_type: &str) -> Result<Output, Errors> {
+pub fn string_to_json(document: String) -> Result<Output, Errors> {
     log::trace!("In string_to_json");
-    log::debug!("document_type: {}", document_type);
 
     if document.trim().is_empty() {
         log::info!("Document not provided, aborting...");
@@ -58,9 +59,24 @@ pub fn string_to_json(document: String, document_type: &str) -> Result<Output, E
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-        let parsers = get_parsers(document.clone(), document_type).await?;
 
-        return get_output(document.clone(), document_type, &parsers);
+
+        if let Ok(document_types) = categorisers::get_document_types(document.clone()).await {
+
+            log::debug!("document_types: {:?}", document_types);
+
+        } else {
+            return Err(Errors::UnableToCategoriseDocument);
+        }
+
+
+        panic!("test");
+
+
+
+        let parsers = get_parsers(document.clone(), "list").await?;
+
+        return get_output(document.clone(), "list", &parsers);
     })
 }
 
@@ -80,10 +96,9 @@ pub fn get_output(document: String, document_type: &str, parsers: &Vec<Parser>) 
     Ok(output)
 }
 
-pub fn file_to_json(file_name: &str, document_type: &str) -> Result<Output, Errors> {
+pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {
     log::trace!("In file_to_json");
     log::debug!("file_name: {}", file_name);
-    log::debug!("document_type: {}", document_type);
 
     let mut document = String::new();
 
@@ -97,7 +112,7 @@ pub fn file_to_json(file_name: &str, document_type: &str) -> Result<Output, Erro
         process::exit(1);
     });
 
-    return string_to_json(document, document_type);
+    return string_to_json(document);
 }
 
 pub fn parse_document(document: String, document_type: &str, parser: Parser) -> Result<Document, Errors> {
@@ -131,7 +146,7 @@ pub async fn get_parsers(document: String, document_type: &str) -> Result<Vec<Pa
     log::trace!("In get_parsers");
     log::debug!("document_type: {}", document_type);
 
-    let chunks = chunk_string(&document, 20000);
+    let chunks = utilities::text::chunk_string(&document, 20000);
     log::debug!("number of chunks: {}", chunks.len());
 
     let sample = &chunks[0];
@@ -178,12 +193,3 @@ pub async fn get_parsers(document: String, document_type: &str) -> Result<Vec<Pa
     }
 }
 
-fn chunk_string(s: &str, chunk_size: usize) -> Vec<String> {
-    log::trace!("In chunk_string");
-
-    s.chars()
-        .collect::<Vec<char>>()
-        .chunks(chunk_size)
-        .map(|chunk| chunk.iter().collect())
-        .collect()
-}
