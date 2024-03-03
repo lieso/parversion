@@ -36,9 +36,26 @@ pub async fn get_document_types(document: String) -> Result<Vec<models::document
                         if *is_present {
                             if key == "article" {
                                 document_types.push(models::document_type::DocumentType::Article);
-                            } else if key == "curated_list" {
+                            } else if key == "long_form" {
+                                document_types.push(models::document_type::DocumentType::LongForm);
+                            } else if key == "chat" {
+                                document_types.push(models::document_type::DocumentType::Chat);
+                            } else if key == "weather" {
+                                document_types.push(models::document_type::DocumentType::Weather);
+                            } else if key == "business_details" {
+                                document_types.push(models::document_type::DocumentType::BusinessDetails);
+                            } else if key == "curated_listing" {
                                 document_types.push(models::document_type::DocumentType::CuratedListing);
+                            } else if key == "event_listing" {
+                                document_types.push(models::document_type::DocumentType::EventListing);
+                            } else if key == "job_listing" {
+                                document_types.push(models::document_type::DocumentType::JobListing);
+                            } else if key == "real_estate_listing" {
+                                document_types.push(models::document_type::DocumentType::RealEstateListing);
+                            } else if key == "search_engine_listing" {
+                                document_types.push(models::document_type::DocumentType::SearchEngineListing);
                             }
+
                         }
                     }
                 }

@@ -11,4 +11,5 @@ pub enum DocumentType {
     EventListing,
     JobListing,
     RealEstateListing,
+    SearchEngineListing,
 }
