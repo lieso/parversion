@@ -1,5 +1,6 @@
 use serde_json;
 use fancy_regex::Regex;
+use std::collections::HashMap;
 
 use crate::utilities;
 use crate::models;
@@ -13,8 +14,122 @@ pub enum Errors {
 pub async fn get_parsers(document: &str) -> Result<Vec<models::curated_listing::CuratedListingParser>, Errors> {
     log::trace!("In get_parsers");
 
-    let mut parsers = Vec::new();
+    let list_pattern = get_list_group_pattern(document).await?;
 
+    let mut curated_listing_parser = models::curated_listing::CuratedListingParser::new();
+    curated_listing_parser.list_pattern = list_pattern.clone();
+
+    if let Ok(regex) = Regex::new(&list_pattern) {
+        log::info!("Regex is ok");
+
+        let matches: Vec<&str> = regex
+            .captures_iter(document)
+            .filter_map(|cap| {
+                cap.expect("Could not capture").get(1).map(|mat| mat.as_str())
+            })
+            .collect();
+        log::debug!("{:?}", matches);
+
+        if let Some(_first_match) = matches.first() {
+            let sample_matches = matches
+                .iter()
+                .take(3)
+                .cloned()
+                .collect();
+
+            let list_item_patterns = get_list_item_patterns(sample_matches).await?;
+            curated_listing_parser.list_item_patterns = list_item_patterns;
+        } else {
+            log::error!("Regex did not result in any matches");
+            return Err(Errors::LlmInvalidRegex);
+        }
+    } else {
+        log::error!("Regex is not valid");
+        return Err(Errors::LlmInvalidRegex);
+    }
+
+    let mut parsers = Vec::new();
+    parsers.push(curated_listing_parser);
 
     Ok(parsers)
 }
+
+async fn get_list_item_patterns(samples: Vec<&str>) -> Result<HashMap<String, String>, Errors> {
+    log::trace!("In get_list_item_patterns");
+
+    let mut prompt = format!("{}", prompts::curated_listing::CURATED_LISTING_ITEM_PROMPT);
+
+    for (index, &item) in samples.iter().enumerate() {
+        prompt = format!("{}\nExample {}\n{}", prompt, index + 1, item);
+    }
+
+    let llm_response = utilities::llm::get_llm_response(prompt).await;
+
+    match llm_response {
+        Ok(response) => {
+            log::info!("Success response from llm");
+            log::debug!("response: {:?}", response);
+
+            let mut patterns = HashMap::new();
+
+            let json = response
+                .as_object()
+                .unwrap();
+            for (key, pattern) in json {
+                log::debug!("key: {}, pattern: {}", key, pattern);
+
+                let pattern = pattern.to_string();
+                let pattern = remove_first_and_last(pattern.clone())
+                    .unwrap_or(pattern);
+                let pattern = &pattern.replace("\\\\", "\\");
+
+                patterns.insert(key.to_string(), pattern.to_string());
+            }
+
+            Ok(patterns)
+        }
+        Err(error) => {
+            log::error!("{}", error);
+            Err(Errors::LlmRequestError)
+        }
+    }
+}
+
+async fn get_list_group_pattern(document: &str) -> Result<String, Errors> {
+    log::trace!("In get_list_group_pattern");
+
+    let prompt = format!("{} {}", prompts::curated_listing::CURATED_LISTING_GROUP_PROMPT, document);
+    let llm_response = utilities::llm::get_llm_response(prompt).await;
+
+    match llm_response {
+        Ok(response) => {
+            log::info!("Success response from llm");
+            log::debug!("response: {:?}", response);
+
+            let json = response
+                .as_object()
+                .unwrap();
+            let pattern = &json["pattern"];
+            let pattern = serde_json::to_string(pattern).unwrap();
+            let pattern = remove_first_and_last(pattern.clone())
+                .unwrap_or(pattern);
+            let pattern = &pattern.replace("\\\\", "\\");
+            let pattern = pattern.to_string();
+
+            Ok(pattern)
+        }
+        Err(error) => {
+            log::error!("{}", error);
+            Err(Errors::LlmRequestError)
+        }
+    }
+}
+
+fn remove_first_and_last(s: String) -> Option<String> {
+     let chars: Vec<char> = s.chars().collect();
+     if chars.len() <= 2 {
+         None
+     } else {
+         Some(chars[1..chars.len() - 1].iter().collect())
+     }
+ }
