@@ -66,6 +66,8 @@ fn main() {
     };
 
     if let Ok(result) = result {
+        log::debug!("result: {:?}", result);
+
         let serialized = serde_json::to_string(&result).expect("Failed to serialize to JSON");
         println!("{}", serialized);
     } else {

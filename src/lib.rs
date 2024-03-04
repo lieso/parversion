@@ -19,7 +19,6 @@ pub enum Errors {
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,
-    IncorrectParser,
     UnableToCategoriseDocument,
 }
 
@@ -27,6 +26,7 @@ pub enum Errors {
 pub enum Document {
     Chat(models::chat::Chat),
     List(models::list::List),
+    CuratedListing(models::curated_listing::CuratedListing),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -60,30 +60,20 @@ pub fn string_to_json(document: String) -> Result<Output, Errors> {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-
-
         if let Ok(document_types) = categorisers::get_document_types(document.clone()).await {
             log::debug!("document_types: {:?}", document_types);
 
-
             let first_document_type = document_types.first().expect("Unable to categorise document");
-                
-
             let parsers = get_parsers(document.clone(), &first_document_type).await?;
 
-
-            panic!("test");
-
-
-            return get_output(document.clone(), "list", &parsers);
-
+            return get_output(document.clone(), &parsers);
         } else {
             return Err(Errors::UnableToCategoriseDocument);
         }
     })
 }
 
-pub fn get_output(document: String, document_type: &str, parsers: &Vec<Parser>) -> Result<Output, Errors> {
+pub fn get_output(document: String, parsers: &Vec<Parser>) -> Result<Output, Errors> {
     log::trace!("In get_output");
     
     let mut output = Output {
@@ -92,7 +82,10 @@ pub fn get_output(document: String, document_type: &str, parsers: &Vec<Parser>) 
     };
 
     for parser in parsers.iter() {
-        let result = parse_document(document.clone(), document_type, parser.clone())?;
+        let result = parse_document(&document, &parser)?;
+
+        log::info!("Completed parsing document");
+
         output.data.push(result);
     }
 
@@ -118,26 +111,13 @@ pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {
     return string_to_json(document);
 }
 
-pub fn parse_document(document: String, document_type: &str, parser: Parser) -> Result<Document, Errors> {
+pub fn parse_document(document: &str, parser: &Parser) -> Result<Document, Errors> {
     log::trace!("In parse_text");
-    log::debug!("document_type: {}", document_type);
 
-    match document_type {
-        "chat" => {
-            if let Parser::Chat(chat_parser) = parser {
-                let chat = transformers::chat::transform_document_to_chat(document.clone(), &chat_parser);
-                Ok(Document::Chat(chat))
-            } else {
-                Err(Errors::IncorrectParser)
-            }
-        }
-        "list" => {
-            if let Parser::List(list_parser) = parser {
-                let list = transformers::list::transform_document_to_list(document.clone(), &list_parser);
-                Ok(Document::List(list))
-            } else {
-                Err(Errors::IncorrectParser)
-            }
+    match parser {
+        Parser::CuratedListing(curated_listing_parser) => {
+            let curated_list = transformers::curated_listing::transform(document.to_string(), curated_listing_parser);
+            Ok(Document::CuratedListing(curated_list))
         }
         _ => {
             Err(Errors::UnexpectedDocumentType)
