@@ -1,127 +1,61 @@
-use std::io::{Error, ErrorKind};
-use std::io::{self};
+use serde_json;
+use fancy_regex::Regex;
+use std::collections::HashMap;
 
-use crate::models;
 use crate::utilities;
+use crate::models;
 use crate::prompts;
 
-pub async fn get_chat_parser(document: &str) -> Result<Vec<models::chat::ChatParser>, io::Error> {
-    log::trace!("In get_chat_parser");
-
-    let chat_parser_parent_id = get_chat_parser_parent_id(document).await.unwrap();
-    let chat_parser_id = get_chat_parser_id(document).await.unwrap();
-    let chat_parser_content = get_chat_parser_content(document).await.unwrap();
-
-    let chat_parser = models::chat::ChatParser {
-        parent_id: chat_parser_parent_id,
-        id: chat_parser_id,
-        content: chat_parser_content,
-    };
-
-    let mut result = Vec::new();
-    result.push(chat_parser);
-
-    return Ok(result)
+pub enum Errors {
+    LlmRequestError,
+    LlmInvalidRegex,
+    Unimplemented
 }
 
-async fn get_chat_parser_parent_id(document: &str) -> Result<models::chat::ChatParserParentId, io::Error> {
-    log::trace!("In get_chat_parser_parent_id");
+pub async fn get_parsers(document: &str) -> Result<Vec<models::chat::ChatParser>, Errors> {
+    log::trace!("In get_parsers");
 
-    let content = format!("{} {}", prompts::chat::parent_id::PROMPT, document);
+    let chat_pattern = get_chat_pattern(document).await?;
+    println!("chat_pattern: {:?}", chat_pattern);
 
-    let maybe_open_ai_response = utilities::llm::get_llm_response(content).await;
-
-    match maybe_open_ai_response {
-        Ok(prefix_suffix_relative) => {
-            let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
-            log::debug!("prefix: {}", prefix);
-
-            let suffix = &prefix_suffix_relative["suffix"].as_str().unwrap();
-            log::debug!("suffix: {}", suffix);
-
-            let relative = &prefix_suffix_relative["relative"].as_str().unwrap();
-            log::debug!("relative: {}", relative);
-
-            let chat_parser_parent_id = models::chat::ChatParserParentId {
-                prefix: prefix.to_string(),
-                suffix: suffix.to_string(),
-                relative: relative.to_string(),
-            };
-
-            return Ok(chat_parser_parent_id)
-        }
-        Err(_e) => {
-            log::debug!("Did not receive response from open ai");
-            return Err(Error::new(ErrorKind::InvalidData, "error"));
-        }
-    }
+    Err(Errors::Unimplemented)
 }
-
-async fn get_chat_parser_id(document: &str) -> Result<models::chat::ChatParserId, io::Error> {
-    log::trace!("In get_chat_parser_id");
     
-    let content = format!("{} {}", prompts::chat::id::PROMPT, document);
+async fn get_chat_pattern(document: &str) -> Result<String, Errors> {
+    log::trace!("In get_chat_pattern");
 
-    let maybe_open_ai_response = utilities::llm::get_llm_response(content).await;
+    let prompt = format!("{} {}", prompts::chat::CHAT_GROUP_PROMPT, document);
+    let llm_response = utilities::llm::get_llm_response(prompt).await;
 
-    match maybe_open_ai_response {
-        Ok(prefix_suffix_relative) => {
+    match llm_response {
+        Ok(response) => {
+            log::info!("Success response from llm");
+            log::debug!("response: {:?}", response);
 
-            let prefix = &prefix_suffix_relative["prefix"].as_str().unwrap();
-            log::debug!("prefix: {}", prefix);
+            let json = response
+                .as_object()
+                .unwrap();
+            let pattern = &json["pattern"];
+            let pattern = serde_json::to_string(pattern).unwrap();
+            let pattern = remove_first_and_last(pattern.clone())
+                .unwrap_or(pattern);
+            let pattern = &pattern.replace("\\\\", "\\");
+            let pattern = pattern.to_string();
 
-            let suffix = &prefix_suffix_relative["suffix"].as_str().unwrap();
-            log::debug!("suffix: {}", suffix);
-
-            let relative = &prefix_suffix_relative["relative"].as_str().unwrap();
-            log::debug!("relative: {}", relative);
-
-
-            let chat_parser_id = models::chat::ChatParserId {
-                prefix: prefix.to_string(),
-                suffix: suffix.to_string(),
-                relative: relative.to_string(),
-            };
-
-            return Ok(chat_parser_id)
-
+            Ok(pattern)
         }
-        Err(_e) => {
-            log::debug!("Did not receive response from open ai");
-            return Err(Error::new(ErrorKind::InvalidData, "error"));
-        }
-    }
-
-}
-
-async fn get_chat_parser_content(document: &str) -> Result<models::chat::ChatParserContent, io::Error> {
-    log::trace!("In get_chat_parser_content");
-
-    let content = format!("{} {}", prompts::chat::content::PROMPT, document);
-
-    let maybe_open_ai_response = utilities::llm::get_llm_response(content).await;
-
-    match maybe_open_ai_response {
-        Ok(prefix_suffix) => {
-
-            let prefix = &prefix_suffix["prefix"].as_str().unwrap();
-            log::debug!("prefix: {}", prefix);
-
-            let suffix = &prefix_suffix["suffix"].as_str().unwrap();
-            log::debug!("suffix: {}", suffix);
-
-
-            let chat_parser_content = models::chat::ChatParserContent {
-                prefix: prefix.to_string(),
-                suffix: suffix.to_string()
-            };
-
-            return Ok(chat_parser_content)
-
-        }
-        Err(_e) => {
-            log::debug!("Did not receive response from open ai");
-            return Err(Error::new(ErrorKind::InvalidData, "error"));
+        Err(error) => {
+            log::error!("{}", error);
+            Err(Errors::LlmRequestError)
         }
     }
 }
+
+fn remove_first_and_last(s: String) -> Option<String> {
+     let chars: Vec<char> = s.chars().collect();
+     if chars.len() <= 2 {
+         None
+     } else {
+         Some(chars[1..chars.len() - 1].iter().collect())
+     }
+ }

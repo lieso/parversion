@@ -66,6 +66,8 @@ pub fn string_to_json(document: String) -> Result<Output, Errors> {
             let first_document_type = document_types.first().expect("Unable to categorise document");
             let parsers = get_parsers(document.clone(), &first_document_type).await?;
 
+            panic!("testing");
+
             return get_output(document.clone(), &parsers);
         } else {
             return Err(Errors::UnableToCategoriseDocument);
@@ -135,6 +137,24 @@ pub async fn get_parsers(document: String, document_type: &models::document_type
     let sample = &chunks[0];
 
     match document_type {
+        models::document_type::DocumentType::Chat => {
+            let chat_parsers = parsers::chat::get_parsers(sample).await;
+
+            if let Ok(chat_parsers) = chat_parsers {
+                log::info!("Obtained chat parsers without errors");
+
+                let parsers: Vec<Parser> = chat_parsers
+                    .iter()
+                    .map(|parser| {
+                        Parser::Chat(parser.clone())
+                    })
+                    .collect();
+
+                Ok(parsers)
+            } else {
+                Err(Errors::UnexpectedError)
+            }
+        }
         models::document_type::DocumentType::CuratedListing => {
             let curated_listing_parsers = parsers::curated_listing::get_parsers(sample).await;
 

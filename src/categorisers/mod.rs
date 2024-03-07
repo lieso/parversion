@@ -59,19 +59,7 @@ pub async fn get_document_types(document: String) -> Result<Vec<models::document
                         }
                     }
                 }
-
-
-                if let Value::Object(sub_obj) = value {
-                 if let Some(Value::Bool(b)) = sub_obj.get("subkey") {
-                     println!("Key: {}, Subkey: {}", key, b);
-                 } else {
-                     println!("Key: {} does not have a boolean 'subkey'", key);
-                 }
-             }
-
             }
-
-
         }
         Err(error) => {
             log::error!("{}", error);
