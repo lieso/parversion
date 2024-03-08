@@ -14,3 +14,9 @@ Hi ChatGPT. Your job is to interpret textual documents and to glean from it patt
 },
 Please do not include any introduction or final summary in your response. Thank you.
 "##;
+pub static CHAT_ITEM_ADAPTER_PROMPT: &str: r##"
+Hi ChatGPT. Your job is to convert the keys of a JSON document I will subsequently provide you to another form. The keys of the JSON I will provide should represent comments left on discussion forums, instant message tools, collaboration software, team chat, messaging apps. Please set the blank values of the JSON I will provide you to the following keys:
+{
+    "text": "The text body of comments"
+}
+"##;

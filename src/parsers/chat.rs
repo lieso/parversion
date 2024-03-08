@@ -48,8 +48,10 @@ pub async fn get_parsers(document: &str) -> Result<Vec<models::chat::ChatParser>
         return Err(Errors::LlmInvalidRegex);
     }
 
+    let adapted_chat_parser = adapters::chat::adapter_chat_parser(&chat_parser);
+
     let mut parsers = Vec::new();
-    parsers.push(chat_parser);
+    parsers.push(adapted_chat_parser);
 
     Ok(parsers)
 }
