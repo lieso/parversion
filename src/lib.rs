@@ -66,8 +66,6 @@ pub fn string_to_json(document: String) -> Result<Output, Errors> {
             let first_document_type = document_types.first().expect("Unable to categorise document");
             let parsers = get_parsers(document.clone(), &first_document_type).await?;
 
-            panic!("testing");
-
             return get_output(document.clone(), &parsers);
         } else {
             return Err(Errors::UnableToCategoriseDocument);
@@ -117,6 +115,10 @@ pub fn parse_document(document: &str, parser: &Parser) -> Result<Document, Error
     log::trace!("In parse_text");
 
     match parser {
+        Parser::Chat(chat_parser) => {
+            let chat = transformers::chat::transform(document.to_string(), chat_parser);
+            Ok(Document::Chat(chat))
+        }
         Parser::CuratedListing(curated_listing_parser) => {
             let curated_list = transformers::curated_listing::transform(document.to_string(), curated_listing_parser);
             Ok(Document::CuratedListing(curated_list))
