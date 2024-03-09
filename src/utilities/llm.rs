@@ -9,7 +9,7 @@ pub async fn get_llm_response(content: String) -> Result<serde_json::Value, io::
 
     if let Ok(openai_api_key) = env::var("OPENAI_API_KEY") {
         let request_json = json!({
-            "model":  "gpt-4-1106-preview",
+            "model":  "gpt-4-0125-preview",
             "temperature":  0,
             "messages":  [
                 {

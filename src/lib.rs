@@ -13,6 +13,7 @@ pub mod transformers;
 pub mod prompts;
 pub mod utilities;
 pub mod categorisers;
+pub mod adapters;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {

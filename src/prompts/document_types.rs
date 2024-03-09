@@ -3,7 +3,7 @@ Hi ChatGPT. You job is to categorize documents based on their probable type. Rev
 { 
   "article": {
     "is_present": false,
-    "criteria": "A piece of writing that is typically long, encompasses content similar to blog posts, wikipedia entries, news reports, or manuals, and is structured in a way that includes an introduction, a body with one or more sections. An article should have a formal tone, be detailed on its topic. An article is not a listing of items."
+    "criteria": "A piece of writing that is typically long, encompasses content similar to blog posts, wikipedia entries, news reports, or manuals, and is structured in a way that includes an introduction, a body with one or more sections. An article should have a formal tone, be detailed on its topic. An article is not a listing of items. An article is not a set of article comments or discussion in relation to some article."
   },
   "long_form": {
     "is_present": false,
