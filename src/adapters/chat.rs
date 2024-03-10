@@ -12,6 +12,9 @@ pub enum Errors {
 pub async fn adapt_chat_parser(chat_parser: &models::chat::ChatParser) -> Result<models::chat::ChatParser, Errors> {
     log::trace!("In adapt_chat_parser");
 
+    let mut adapted_chat_parser = models::chat::ChatParser::new();
+    adapted_chat_parser.chat_pattern = chat_parser.chat_pattern.clone();
+
     let mut empty_map = HashMap::new();
 
     for key in chat_parser.chat_item_patterns.keys() {
@@ -21,14 +24,23 @@ pub async fn adapt_chat_parser(chat_parser: &models::chat::ChatParser) -> Result
     let json_string = serde_json::to_string(&empty_map).unwrap();
     log::debug!("json_string: {:?}", json_string);
 
-
     let mapping = get_mapping(&json_string).await?;
     log::debug!("mapping: {:?}", mapping);
 
-    panic!("testing");
+    for key in mapping.keys() {
+        log::debug!("key: {}", key);
 
+        let value = chat_parser.chat_item_patterns.get(key).unwrap();
+        log::debug!("value: {}", value);
 
-    return Ok(chat_parser.clone());
+        let new_key = mapping.get(key).unwrap().to_string();
+        let new_key = utilities::text::trim_quotes(new_key.clone()).unwrap_or(new_key);
+        log::debug!("new_key: {}", new_key);
+
+        adapted_chat_parser.chat_item_patterns.insert(new_key.to_string(), value.to_string());
+    }
+
+    Ok(adapted_chat_parser.clone())
 }
 
 async fn get_mapping(json: &str) -> Result<serde_json::Map<String, serde_json::Value>, Errors> {

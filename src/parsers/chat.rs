@@ -51,14 +51,16 @@ pub async fn get_parsers(document: &str) -> Result<Vec<models::chat::ChatParser>
     }
 
     if let Ok(adapted_chat_parser) = adapters::chat::adapt_chat_parser(&chat_parser).await {
+        log::debug!("adapted_chat_parser: {:?}", adapted_chat_parser);
+
         let mut parsers = Vec::new();
         parsers.push(adapted_chat_parser);
 
         Ok(parsers)
     } else {
+        log::error!("Unable to convert chat parser to standard form");
         return Err(Errors::AdapterError);
     }
-
 }
 
 async fn get_chat_item_patterns(samples: Vec<&str>) -> Result<HashMap<String, String>, Errors> {
@@ -86,7 +88,7 @@ async fn get_chat_item_patterns(samples: Vec<&str>) -> Result<HashMap<String, St
                 log::debug!("key: {}, pattern: {}", key, pattern);
 
                 let pattern = pattern.to_string();
-                let pattern = remove_first_and_last(pattern.clone())
+                let pattern = utilities::text::trim_quotes(pattern.clone())
                     .unwrap_or(pattern);
                 let pattern = &pattern.replace("\\\\", "\\");
 
@@ -118,7 +120,7 @@ async fn get_chat_pattern(document: &str) -> Result<String, Errors> {
                 .unwrap();
             let pattern = &json["pattern"];
             let pattern = serde_json::to_string(pattern).unwrap();
-            let pattern = remove_first_and_last(pattern.clone())
+            let pattern = utilities::text::trim_quotes(pattern.clone())
                 .unwrap_or(pattern);
             let pattern = &pattern.replace("\\\\", "\\");
             let pattern = pattern.to_string();
@@ -132,11 +134,3 @@ async fn get_chat_pattern(document: &str) -> Result<String, Errors> {
     }
 }
 
-fn remove_first_and_last(s: String) -> Option<String> {
-     let chars: Vec<char> = s.chars().collect();
-     if chars.len() <= 2 {
-         None
-     } else {
-         Some(chars[1..chars.len() - 1].iter().collect())
-     }
- }
