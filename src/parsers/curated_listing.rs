@@ -5,10 +5,12 @@ use std::collections::HashMap;
 use crate::utilities;
 use crate::models;
 use crate::prompts;
+use crate::adapters;
 
 pub enum Errors {
     LlmRequestError,
     LlmInvalidRegex,
+    AdapterError,
 }
 
 pub async fn get_parsers(document: &str) -> Result<Vec<models::curated_listing::CuratedListingParser>, Errors> {
@@ -48,10 +50,17 @@ pub async fn get_parsers(document: &str) -> Result<Vec<models::curated_listing::
         return Err(Errors::LlmInvalidRegex);
     }
 
-    let mut parsers = Vec::new();
-    parsers.push(curated_listing_parser);
+    if let Ok(adapted_curated_listing_parser) = adapters::curated_listing::adapt_curated_listing_parser(&curated_listing_parser).await {
+        log::debug!("adapted_curated_listing_parser: {:?}", adapted_curated_listing_parser);
 
-    Ok(parsers)
+        let mut parsers = Vec::new();
+        parsers.push(adapted_curated_listing_parser);
+
+        Ok(parsers)
+    } else {
+        log::error!("Unable to convert curated listing parser to standard form");
+        return Err(Errors::AdapterError);
+    }
 }
 
 async fn get_list_item_patterns(samples: Vec<&str>) -> Result<HashMap<String, String>, Errors> {
