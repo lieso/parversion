@@ -6,6 +6,7 @@ use tokio::runtime::Runtime;
 use std::fs::{File};
 use std::process;
 use std::io::{Read};
+use pandoculation;
 
 pub mod parsers;
 pub mod models;
@@ -27,7 +28,7 @@ pub enum Errors {
 pub enum Document {
     Chat(models::chat::Chat),
     List(models::list::List),
-    CuratedListing(models::curated_listing::CuratedListing),
+    CuratedListing(pandoculation::CuratedListing),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use fancy_regex::Regex;
+use pandoculation;
 use crate::models;
 
-pub fn transform(document: String, parser: &models::curated_listing::CuratedListingParser) -> models::curated_listing::CuratedListing {
+pub fn transform(document: String, parser: &models::curated_listing::CuratedListingParser) -> pandoculation::CuratedListing {
     log::trace!("In transform");
 
     let regex = Regex::new(&parser.list_pattern).expect("List pattern is not valid");
@@ -18,7 +19,7 @@ pub fn transform(document: String, parser: &models::curated_listing::CuratedList
     log::info!("Got {} regex matches for list group", matches.len());
 
     let list_items = matches.iter().map(|mat| {
-        let mut list_item = models::curated_listing::CuratedListingItem {
+        let mut list_item = pandoculation::CuratedListingItem {
             data: HashMap::new()
         };
 
@@ -43,7 +44,7 @@ pub fn transform(document: String, parser: &models::curated_listing::CuratedList
     })
     .collect();
 
-    let curated_listing = models::curated_listing::CuratedListing {
+    let curated_listing = pandoculation::CuratedListing {
         items: list_items,
     };
 

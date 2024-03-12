@@ -15,13 +15,3 @@ impl CuratedListingParser {
         }
     }
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CuratedListingItem {
-    pub data: HashMap<String, String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CuratedListing {
-    pub items: Vec<CuratedListingItem>,
-}
