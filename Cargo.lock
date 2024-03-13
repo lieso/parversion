@@ -612,7 +612,7 @@ checksum = "e2355d85b9a3786f481747ced0e0ff2ba35213a1f9bd406ed906554d7af805a1"
 [[package]]
 name = "pandoculation"
 version = "0.1.0"
-source = "git+https://github.com/davidRoussov/pandoculation.git#c7c1b49d3571bdebd943372d31653da82a9298c6"
+source = "git+https://github.com/davidRoussov/pandoculation.git#c275b2c451d80709c713356b45f46b300ff906b7"
 dependencies = [
  "schemafy",
  "schemafy_lib",

@@ -19,8 +19,16 @@ pub fn transform(document: String, parser: &models::curated_listing::CuratedList
     log::info!("Got {} regex matches for list group", matches.len());
 
     let list_items = matches.iter().map(|mat| {
-        let mut list_item = pandoculation::CuratedListingItem {
-            data: HashMap::new()
+
+        let mut data = pandoculation::CuratedListingItemData {
+            title: String::new(),
+            url: String::new(),
+            author: None,
+            id: None,
+            points: None,
+            timestamp: None,
+            chat_url: None,
+            additional: HashMap::new(),
         };
 
         for (key, value) in parser.list_item_patterns.iter() {
@@ -31,14 +39,29 @@ pub fn transform(document: String, parser: &models::curated_listing::CuratedList
             if let Ok(Some(captures)) = regex.captures(mat) {
                 log::debug!("Successfully matched pattern");
 
-                let first_match = captures.get(1).unwrap().as_str();
+                let first_match = captures.get(1).unwrap().as_str().to_string();
                 log::debug!("first_match: {}", first_match);
 
-                list_item.data.insert(key.to_string(), first_match.to_string());
+                match key.as_str() {
+                    "title" => data.title = first_match,
+                    "url" => data.url = first_match,
+                    "author" => data.author = Some(first_match),
+                    "id" => data.id = Some(first_match),
+                    "points" => data.points = Some(first_match),
+                    "timestamp" => data.timestamp = Some(first_match),
+                    "chat_url" => data.chat_url = Some(first_match),
+                    _ => {
+                        data.additional.insert(key.to_string(), first_match);
+                    }
+                }
             } else {
                 log::debug!("Failed to match pattern");
             }
         }
+
+        let list_item = pandoculation::CuratedListingItem {
+            data: data,
+        };
 
         return list_item;
     })
