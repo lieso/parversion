@@ -39,19 +39,22 @@ pub fn transform(document: String, parser: &models::curated_listing::CuratedList
             if let Ok(Some(captures)) = regex.captures(mat) {
                 log::debug!("Successfully matched pattern");
 
-                let first_match = captures.get(1).unwrap().as_str().to_string();
-                log::debug!("first_match: {}", first_match);
+                let entire_match = captures.get(0).unwrap().as_str().to_string();
+                log::debug!("entire_match: {}", entire_match);
+
+                let first_group = captures.get(1).unwrap().as_str().to_string();
+                log::debug!("first_group: {}", first_group);
 
                 match key.as_str() {
-                    "title" => data.title = first_match,
-                    "url" => data.url = first_match,
-                    "author" => data.author = Some(first_match),
-                    "id" => data.id = Some(first_match),
-                    "points" => data.points = Some(first_match),
-                    "timestamp" => data.timestamp = Some(first_match),
-                    "chat_url" => data.chat_url = Some(first_match),
+                    "title" => data.title = first_group,
+                    "url" => data.url = first_group,
+                    "author" => data.author = Some(first_group),
+                    "id" => data.id = Some(first_group),
+                    "points" => data.points = Some(first_group),
+                    "timestamp" => data.timestamp = Some(first_group),
+                    "chat_url" => data.chat_url = Some(first_group),
                     _ => {
-                        data.additional.insert(key.to_string(), first_match);
+                        data.additional.insert(key.to_string(), first_group);
                     }
                 }
             } else {
