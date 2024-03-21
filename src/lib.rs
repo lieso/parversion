@@ -26,8 +26,8 @@ pub enum Errors {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Document {
-    Chat(models::chat::Chat),
     List(models::list::List),
+    Chat(pandoculation::Chat),
     CuratedListing(pandoculation::CuratedListing),
 }
 

@@ -20,8 +20,8 @@ Hi ChatGPT. Your job is to map the keys of a JSON document I will provide you to
     "text": "The user-generated text body of comments",
     "author": "The user account that submitted the post/comment",
     "id": "The identifier of the item itself",
-    "parentId": "The parent comment identifier of a comment when messages exist in threads",
-    "childId": "The child comment identifier of a comment when messages exist in threads",
+    "parent_id": "The parent comment identifier of a comment when messages exist in threads",
+    "child_id": "The child comment identifier of a comment when messages exist in threads",
     "timestamp": "The timestamp of a comments, perhaps relative or absolute"
 }
 For example, if a key I provide is called "user", set its value to "author" as per the above guide. Use the values of this JSON object for more information about how to match the keys of the JSON document I will provide you. Ensure that the set of values you map keys to contains no duplicate values. For example if multiple keys seem to map to "parentId", only select one key to map to "parentId" and leave the others to map to their original values. If multiple keys seem to match above guide, use the most probably match and set the other keys to their original name. If the JSON document I provide contains keys that do not correspond to the above template, set the value to the original key name.

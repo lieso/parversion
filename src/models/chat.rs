@@ -15,13 +15,3 @@ impl ChatParser {
         }
     }
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ChatItem {
-    pub data: HashMap<String, String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Chat {
-    pub items: Vec<ChatItem>,
-}

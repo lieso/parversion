@@ -1,5 +1,5 @@
 pub static CURATED_LISTING_GROUP_PROMPT: &str = r##"
-Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents. Please examine the subsequent text and do your best to identify a pattern signifying curated lists of items like a news aggregator consisting of user generated submissions. Similar blocks of text that differ slightly in detail but with an overall similar structure. If you do see lists of items, provide a regular expression that would capture each list item in the text. Do not provide an optimized regular expression, include as much redundant text that precedes or follows each list item. Print your response based on the following json:
+Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents. Please examine the subsequent text and do your best to identify a pattern signifying curated lists of items like a news aggregator consisting of user generated submissions. Similar blocks of text that differ slightly in detail but with an overall similar structure. If you do see lists of items, provide a regular expression that would capture each list item in the text. Do not provide an optimized regular expression, include as much redundant text that precedes or follows each list item. Print your response as JSON in the following format where key "pattern" maps to the regular expression:
 {
     "pattern": "regex pattern goes here"
 }
@@ -23,7 +23,7 @@ JSON guide:
     "id": "The identifier of the item",
     "points": "Number representing votes a submission has received",
     "timestamp": "The timestamp, perhaps relative or absolute",
-    "chatLink": "A link to user discussion of content",
+    "chat_url": "A link to user discussion of content",
     "url": "The main url that the user submitted"
 }
 For example, if a key I provide is called "user", set its value to "author" as per the above guide, since these things are roughly equivalent. The values of this JSON guide provide  more information about how to match the keys of the JSON document. Ensure that the set of values you map keys to contains no duplicate values. For example if multiple keys seem to map to "url", only select one key to map to "url" and leave the others to map to their original values. If multiple keys seem to match above guide, use the most probably match and set the other keys to their original name. If the JSON document I provide contains keys that do not correspond to the above template, set the value to the original key name.
