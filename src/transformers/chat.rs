@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use fancy_regex::Regex;
 use crate::models;
 use pandoculation;
+use html_escape;
 
 pub fn transform(document: String, parser: &models::chat::ChatParser) -> pandoculation::Chat {
     log::trace!("In transform");
@@ -40,15 +41,21 @@ pub fn transform(document: String, parser: &models::chat::ChatParser) -> pandocu
                 let first_match = captures.get(1).unwrap().as_str().to_string();
                 log::debug!("first_match: {}", first_match);
 
+
+                // TODO: does this belong here?
+                let value = html_escape::decode_html_entities(&first_match).into_owned();
+
+
+
                 match key.as_str() {
-                    "text" => data.text = first_match,
-                    "author" => data.author = first_match,
-                    "id" => data.id = first_match,
-                    "parent_id" => data.parent_id = Some(first_match),
-                    "child_id" => data.child_id = Some(first_match),
-                    "timestamp" => data.timestamp = Some(first_match),
+                    "text" => data.text = value,
+                    "author" => data.author = value,
+                    "id" => data.id = value,
+                    "parent_id" => data.parent_id = Some(value),
+                    "child_id" => data.child_id = Some(value),
+                    "timestamp" => data.timestamp = Some(value),
                     _ => {
-                        data.additional.insert(key.to_string(), first_match);
+                        data.additional.insert(key.to_string(), value);
                     }
                 }
             } else {
