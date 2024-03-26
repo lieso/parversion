@@ -25,7 +25,6 @@ pub fn transform(document: String, parser: &models::chat::ChatParser) -> pandocu
             author: String::new(),
             id: String::new(),
             parent_id: None,
-            child_id: None,
             timestamp: None,
             additional: HashMap::new(),
         };
@@ -52,7 +51,6 @@ pub fn transform(document: String, parser: &models::chat::ChatParser) -> pandocu
                     "author" => data.author = value,
                     "id" => data.id = value,
                     "parent_id" => data.parent_id = Some(value),
-                    "child_id" => data.child_id = Some(value),
                     "timestamp" => data.timestamp = Some(value),
                     _ => {
                         data.additional.insert(key.to_string(), value);
