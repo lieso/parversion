@@ -7,7 +7,7 @@ Hi ChatGPT. You job is to categorize documents based on their probable type. Rev
   },
   "chat": {
     "is_present": false,
-    "criteria": "Must contain mmall/medium sized user-generated text blocks representing content like: discussion forum posts, article comments, messenger chat"
+    "criteria": "Must contain transcript-style or message-exchange format text, with clear indication of multiple participants interacting directly with each other in a conversational manner, such as instant messaging threads, text message logs, or comment threads where users are directly responding to each other's remarks"
   },
   "weather": {
     "is_present": false,

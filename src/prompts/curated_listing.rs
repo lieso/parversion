@@ -1,10 +1,18 @@
 pub static CURATED_LISTING_GROUP_PROMPT: &str = r##"
-Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents. Please examine the subsequent text and do your best to identify a pattern signifying curated lists of items like a news aggregator consisting of user generated submissions. Similar blocks of text that differ slightly in detail but with an overall similar structure. If you do see lists of items, provide a regular expression that would capture each list item in the text. Do not provide an optimized regular expression, include as much redundant text that precedes or follows each list item. Print your response as JSON in the following format where key "pattern" maps to the regular expression:
+Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents.
+
+Please examine the subsequent text and do your best to identify a pattern signifying curated lists of items like a news aggregator consisting of user generated submissions. Similar blocks of text that differ slightly in detail but with an overall similar structure.
+
+If you do see lists of items, provide a regular expression that would capture each list item in the text. Do not provide an optimized regular expression, include as much redundant text that precedes or follows each list item. Print your response as JSON in the following format where key "pattern" maps to the regular expression:
+
+JSON response format:
 {
     "pattern": "regex pattern goes here"
 }
-If the text does not contain any lists, print only the text 'false' and nothing else. Please do not include any introduction or final summary in your response. Thank you.
+
+Please do not include any introduction or final summary in your response. Thank you.
 "##;
+
 pub static CURATED_LISTING_ITEM_PROMPT: &str = r##"
 Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents. Please examine the subsequent list of texts and do your best to identify which parts of it pertain to information a person might want to know as opposed to code, formatting or out of context text. Examples of things to search for might include: titles, descriptions, timestamps, authors/users, points or ranking, link to a comments/discussion page, etc. I will provide multiple examples of the text to assist you in identifying when content is static or dynamic. Please provide regular expressions that would capture each distinct field in the text. Include as many different fields as you possibly can. Each regular expression should contain at most one capturing group. If a regular expression happens to overlap across fields, copy the regular expression and change which field gets captured as a matching group. For example, if a regular expression contains both a title and a url, create two fields 'title' and 'url' with the first capturing group corresponding to each one. Ensure all urls (absolute or relative) have a corresponding regular expression, with the word url included as part of the key name. Set the key name to be the name of the field and its value should be the regular expression. Print your response based on the following json:
 {
