@@ -7,6 +7,7 @@ use crate::utilities;
 pub enum Errors {
     LlmRequestError,
     LlmInvalidRegex,
+    UnableToCategoriseDocument
 }
 
 pub async fn get_document_types(document: String) -> Result<Vec<models::document_type::DocumentType>, Errors> {
@@ -67,5 +68,9 @@ pub async fn get_document_types(document: String) -> Result<Vec<models::document
         }
     } 
 
-    Ok(document_types)
+    if document_types.is_empty() {
+        Err(Errors::UnableToCategoriseDocument)
+    } else {
+        Ok(document_types)
+    }
 }
