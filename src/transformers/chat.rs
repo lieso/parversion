@@ -31,29 +31,32 @@ pub fn transform(document: String, parser: &models::chat::ChatParser) -> pandocu
 
         for (key, value) in parser.chat_item_patterns.iter() {
             log::debug!("key: {}, value: {}", key, value);
-
             let regex = Regex::new(value).expect("List item pattern is not valid");
 
             if let Ok(Some(captures)) = regex.captures(mat) {
                 log::debug!("Successfully matched pattern");
 
-                let first_match = captures.get(1).unwrap().as_str().to_string();
-                log::debug!("first_match: {}", first_match);
+                match captures.get(1) {
+                    Some(m) => {
+                        let first_match = m.as_str().to_string();
+                        log::debug!("first_match: {}", first_match);
 
+                        // TODO: does this belong here?
+                        let value = html_escape::decode_html_entities(&first_match).into_owned();
 
-                // TODO: does this belong here?
-                let value = html_escape::decode_html_entities(&first_match).into_owned();
-
-
-
-                match key.as_str() {
-                    "text" => data.text = value,
-                    "author" => data.author = value,
-                    "id" => data.id = value,
-                    "parent_id" => data.parent_id = Some(value),
-                    "timestamp" => data.timestamp = Some(value),
-                    _ => {
-                        data.additional.insert(key.to_string(), value);
+                        match key.as_str() {
+                            "text" => data.text = value,
+                            "author" => data.author = value,
+                            "id" => data.id = value,
+                            "parent_id" => data.parent_id = Some(value),
+                            "timestamp" => data.timestamp = Some(value),
+                            _ => {
+                                data.additional.insert(key.to_string(), value);
+                            }
+                        }
+                    },
+                    None => {
+                        log::warn!("Expected capture group not found in regex match");
                     }
                 }
             } else {
