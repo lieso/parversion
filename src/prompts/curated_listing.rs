@@ -1,16 +1,16 @@
 pub static CURATED_LISTING_GROUP_PROMPT: &str = r##"
 Hi ChatGPT. Your job is to interpret textual documents and to glean from it patterns that represent the salient information contained within these documents.
 
-Please examine the subsequent text and do your best to identify a pattern signifying curated lists of items like a news aggregator consisting of user generated submissions. Similar blocks of text that differ slightly in detail but with an overall similar structure.
+Please examine the subsequent text and do your best to identify a pattern signifying curated lists of items like a news aggregator consisting of user generated submissions. Look for blocks of text that have a similar structure, even if the details vary. 
 
-If you do see lists of items, provide a regular expression that would capture each list item in the text. Do not provide an optimized regular expression, include as much redundant text that precedes or follows each list item. Print your response as JSON in the following format where key "pattern" maps to the regular expression:
+Should you identify any such lists in the text, I want you to provide a regular expression that matches the entirety of each list item in the text without using capturing groups. Use as much of the redundant text that precedes or follows each list item as needed to ensure consistency across the matches. Please return the regular expression in JSON format, with the key "pattern" associated with the regex value. The regex should match the full extent of each list item without capturing parts of it.
 
-JSON response format:
+Here is how the response should be formatted:
 {
     "pattern": "regex pattern goes here"
 }
 
-Please do not include any introduction or final summary in your response. Thank you.
+Make sure to exclude any introductory text or conclusion in your response. Thank you.
 "##;
 
 pub static CURATED_LISTING_ITEM_PROMPT: &str = r##"

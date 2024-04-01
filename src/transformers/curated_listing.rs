@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use fancy_regex::Regex;
+use fancy_regex::{Regex, Captures};
 use pandoculation;
 use crate::models;
 
@@ -8,13 +8,13 @@ pub fn transform(document: String, parser: &models::curated_listing::CuratedList
 
     let regex = Regex::new(&parser.list_pattern).expect("List pattern is not valid");
 
-    let matches: Vec<&str> = regex
+    let captures: Vec<Captures> = regex
         .captures_iter(&document)
-        .filter_map(|cap| {
-            cap.expect("Could not capture")
-                .get(1)
-                .map(|mat| mat.as_str())
-        })
+        .filter_map(Result::ok)
+        .collect();
+    let matches: Vec<&str> = captures
+        .iter()
+        .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
         .collect();
     log::info!("Got {} regex matches for list group", matches.len());
 

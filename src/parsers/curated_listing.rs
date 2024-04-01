@@ -103,9 +103,12 @@ async fn get_list_item_patterns(samples: Vec<&str>) -> Result<HashMap<String, St
                 log::debug!("key: {}, pattern: {}", key, pattern);
 
                 let pattern = pattern.to_string();
+                log::debug!("pattern: {}", pattern);
                 let pattern = remove_first_and_last(pattern.clone())
                     .unwrap_or(pattern);
+                log::debug!("pattern: {}", pattern);
                 let pattern = &pattern.replace("\\\\", "\\");
+                log::debug!("pattern: {}", pattern);
 
                 patterns.insert(key.to_string(), pattern.to_string());
             }
