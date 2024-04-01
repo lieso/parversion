@@ -10,17 +10,12 @@ pub enum Errors {
     UnableToCategoriseDocument
 }
 
-pub async fn get_document_types(document: String) -> Result<Vec<models::document_type::DocumentType>, Errors> {
+pub async fn get_document_types(document: &str) -> Result<Vec<models::document_type::DocumentType>, Errors> {
     log::trace!("In get_document_type");
 
     let mut document_types: Vec<models::document_type::DocumentType> = Vec::new();
 
-    let chunks = utilities::text::chunk_string(&document, 20000);
-    log::debug!("number of chunks: {}", chunks.len());
-
-    let sample = &chunks[0];
-
-    let prompt = format!("{} {}", prompts::document_types::DOCUMENT_TYPES_PROMPT, sample);
+    let prompt = format!("{} {}", prompts::document_types::DOCUMENT_TYPES_PROMPT, document);
     let llm_response = utilities::llm::get_llm_response(prompt).await;
     match llm_response {
         Ok(value) => {

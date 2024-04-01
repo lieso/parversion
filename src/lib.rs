@@ -22,6 +22,8 @@ pub enum Errors {
     UnexpectedDocumentType,
     UnexpectedError,
     UnableToCategoriseDocument,
+    SalientContentNotFound,
+    LlmRequestError
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -62,16 +64,14 @@ pub fn string_to_json(document: String) -> Result<Output, Errors> {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
-
-        let DOCUMENT_SAMPLE_SIZE = 20000;
+        const DOCUMENT_SAMPLE_SIZE: usize = 20000;
 
         let chunks = utilities::text::chunk_string(&document, DOCUMENT_SAMPLE_SIZE);
         log::debug!("number of chunks: {}", chunks.len());
 
-        let sample = &chunks[0];
+        let sample = get_salient_sample(chunks).await?;
 
-
-        if let Ok(document_types) = categorisers::get_document_types(document.clone()).await {
+        if let Ok(document_types) = categorisers::get_document_types(&sample).await {
             log::debug!("document_types: {:?}", document_types);
 
             let first_document_type = document_types.first().expect("Unable to categorise document");
@@ -147,7 +147,6 @@ pub async fn get_parsers(
     log::trace!("In get_parsers");
     log::debug!("document_type: {:?}", document_type);
 
-
     match document_type {
         models::document_type::DocumentType::Chat => {
             let chat_parsers = parsers::chat::get_parsers(document).await;
@@ -191,3 +190,60 @@ pub async fn get_parsers(
     }
 }
 
+pub async fn get_salient_sample(chunks: Vec<String>) -> Result<String, Errors> {
+    log::trace!("In get_salient_sample");
+
+    for (chunk_index, chunk) in chunks.iter().enumerate() {
+        log::debug!("chunk_index: {}", chunk_index);
+
+        let prompt = format!("{} {}", prompts::salient_index::SALIENT_INDEX, &chunk);
+        let llm_response = utilities::llm::get_llm_response(prompt).await;
+
+        match llm_response {
+            Ok(response) => {
+                log::info!("Success response from llm");
+                log::debug!("response: {:?}", response);
+
+                let json = response
+                    .as_object()
+                    .unwrap();
+
+                let status = &json["status"];
+                log::debug!("status: {}", status);
+
+                if status.to_string().to_lowercase() == "\"success\"" {
+                    log::debug!("Salient index found");
+
+                    let content_index = &json["content_index"];
+                    log::debug!("content_index: {}", content_index);
+
+                    let content_index: usize = content_index.as_u64().expect("Expected a usize") as usize;
+
+                    let current_chunk_salient_content = &chunk[content_index..];
+                    log::debug!("current_chunk_salient_content: {}", current_chunk_salient_content);
+
+                    match chunks.get(chunk_index + 1) {
+                        Some(next_chunk) => {
+                            let sample = current_chunk_salient_content.to_owned() + next_chunk;
+                            return Ok(sample);
+                        },
+                        None => {
+                            return Ok(current_chunk_salient_content.to_string());
+                        }
+                    }
+                } else {
+                    log::debug!("Salient index not found");
+
+                    let message = &json["message"];
+                    log::debug!("message: {}", message);
+                }
+            }
+            Err(error) => {
+                log::error!("{}", error);
+                return Err(Errors::LlmRequestError);
+            }
+        }
+    }
+
+    Err(Errors::SalientContentNotFound)
+}
