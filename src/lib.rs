@@ -62,11 +62,20 @@ pub fn string_to_json(document: String) -> Result<Output, Errors> {
     let rt = Runtime::new().unwrap();
 
     rt.block_on(async {
+
+        let DOCUMENT_SAMPLE_SIZE = 20000;
+
+        let chunks = utilities::text::chunk_string(&document, DOCUMENT_SAMPLE_SIZE);
+        log::debug!("number of chunks: {}", chunks.len());
+
+        let sample = &chunks[0];
+
+
         if let Ok(document_types) = categorisers::get_document_types(document.clone()).await {
             log::debug!("document_types: {:?}", document_types);
 
             let first_document_type = document_types.first().expect("Unable to categorise document");
-            let parsers = get_parsers(document.clone(), &first_document_type).await?;
+            let parsers = get_parsers(&sample, &first_document_type).await?;
 
             return get_output(document.clone(), &parsers);
         } else {
@@ -131,18 +140,17 @@ pub fn parse_document(document: &str, parser: &Parser) -> Result<Document, Error
     }
 }
 
-pub async fn get_parsers(document: String, document_type: &models::document_type::DocumentType) -> Result<Vec<Parser>, Errors> {
+pub async fn get_parsers(
+    document: &str,
+    document_type: &models::document_type::DocumentType,
+) -> Result<Vec<Parser>, Errors> {
     log::trace!("In get_parsers");
     log::debug!("document_type: {:?}", document_type);
 
-    let chunks = utilities::text::chunk_string(&document, 20000);
-    log::debug!("number of chunks: {}", chunks.len());
-
-    let sample = &chunks[0];
 
     match document_type {
         models::document_type::DocumentType::Chat => {
-            let chat_parsers = parsers::chat::get_parsers(sample).await;
+            let chat_parsers = parsers::chat::get_parsers(document).await;
 
             if let Ok(chat_parsers) = chat_parsers {
                 log::info!("Obtained chat parsers without errors");
@@ -160,7 +168,7 @@ pub async fn get_parsers(document: String, document_type: &models::document_type
             }
         }
         models::document_type::DocumentType::CuratedListing => {
-            let curated_listing_parsers = parsers::curated_listing::get_parsers(sample).await;
+            let curated_listing_parsers = parsers::curated_listing::get_parsers(document).await;
 
             if let Ok(curated_listing_parsers) = curated_listing_parsers {
                 log::info!("Obtained curated listing parsers without errors");
