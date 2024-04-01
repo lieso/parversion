@@ -1,5 +1,5 @@
 use serde_json;
-use fancy_regex::Regex;
+use fancy_regex::{Regex, Captures};
 use std::collections::HashMap;
 
 use crate::utilities;
@@ -17,6 +17,7 @@ pub async fn get_parsers(document: &str) -> Result<Vec<models::curated_listing::
     log::trace!("In get_parsers");
 
     let list_pattern = get_list_group_pattern(document).await?;
+    log::debug!("list_pattern: {}", list_pattern);
 
     let mut curated_listing_parser = models::curated_listing::CuratedListingParser::new();
     curated_listing_parser.list_pattern = list_pattern.clone();
@@ -24,13 +25,27 @@ pub async fn get_parsers(document: &str) -> Result<Vec<models::curated_listing::
     if let Ok(regex) = Regex::new(&list_pattern) {
         log::info!("Regex is ok");
 
-        let matches: Vec<&str> = regex
+        let captures: Vec<Captures> = regex
             .captures_iter(document)
-            .filter_map(|cap| {
-                cap.expect("Could not capture").get(1).map(|mat| mat.as_str())
-            })
+            .filter_map(Result::ok)
             .collect();
-        log::debug!("{:?}", matches);
+
+        for (i, cap) in captures.iter().enumerate() {
+            let mut all_groups = Vec::new();
+
+            for group_index in 0..cap.len() {
+                if let Some(group_match) = cap.get(group_index) {
+                    all_groups.push(group_match.as_str());
+                }
+            }
+
+            log::debug!("Match {}: {:?}", i, all_groups);
+        }
+
+        let matches: Vec<&str> = captures
+            .iter()
+            .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
+            .collect();
 
         if let Some(_first_match) = matches.first() {
             let sample_matches = matches
