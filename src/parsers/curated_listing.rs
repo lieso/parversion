@@ -13,10 +13,10 @@ pub enum Errors {
     AdapterError,
 }
 
-pub async fn get_parsers(document: &str) -> Result<Vec<models::curated_listing::CuratedListingParser>, Errors> {
+pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::curated_listing::CuratedListingParser>, Errors> {
     log::trace!("In get_parsers");
 
-    let list_pattern = get_list_group_pattern(document).await?;
+    let list_pattern = get_list_group_pattern(sample).await?;
     log::debug!("list_pattern: {}", list_pattern);
 
     let mut curated_listing_parser = models::curated_listing::CuratedListingParser::new();
@@ -55,7 +55,44 @@ pub async fn get_parsers(document: &str) -> Result<Vec<models::curated_listing::
                 .collect();
 
             let list_item_patterns = get_list_item_patterns(sample_matches).await?;
-            curated_listing_parser.list_item_patterns = list_item_patterns;
+            curated_listing_parser.list_item_patterns = list_item_patterns.clone();
+
+
+
+
+
+
+            let regexes: Result<Vec<_>, _> = list_item_patterns
+                .values()
+                .map(|v| Regex::new(v))
+                .collect();
+
+            let regexes = regexes.expect("Some list item patterns are not valid regexes");
+
+            let bad_matches: Vec<_> = matches
+                .iter()
+                .flat_map(|mat| {
+                    regexes.iter().filter_map(move |regex| {
+                        if let Ok(Some(captures)) = regex.captures(mat) {
+                            None
+                        } else {
+                            log::debug!("Failed to match pattern; identified bad match");
+                            Some(*mat)
+                        }
+                    })
+                })
+                .collect();
+
+            log::debug!("bad_matches: {:?}", bad_matches);
+            log::debug!("Found {} bad matches", bad_matches.len());
+
+            let second_round_patterns = get_list_item_patterns(bad_matches).await?;
+            log::debug!("second_round_patterns: {:?}", second_round_patterns);
+
+
+
+
+
         } else {
             log::error!("Regex did not result in any matches");
             return Err(Errors::LlmInvalidRegex);

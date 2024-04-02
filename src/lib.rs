@@ -75,7 +75,7 @@ pub fn string_to_json(document: String) -> Result<Output, Errors> {
             log::debug!("document_types: {:?}", document_types);
 
             let first_document_type = document_types.first().expect("Unable to categorise document");
-            let parsers = get_parsers(&sample, &first_document_type).await?;
+            let parsers = get_parsers(&document, &sample, &first_document_type).await?;
 
             return get_output(document.clone(), &parsers);
         } else {
@@ -142,6 +142,7 @@ pub fn parse_document(document: &str, parser: &Parser) -> Result<Document, Error
 
 pub async fn get_parsers(
     document: &str,
+    sample: &str,
     document_type: &models::document_type::DocumentType,
 ) -> Result<Vec<Parser>, Errors> {
     log::trace!("In get_parsers");
@@ -149,6 +150,7 @@ pub async fn get_parsers(
 
     match document_type {
         models::document_type::DocumentType::Chat => {
+            panic!("replace with sample");
             let chat_parsers = parsers::chat::get_parsers(document).await;
 
             if let Ok(chat_parsers) = chat_parsers {
@@ -167,7 +169,7 @@ pub async fn get_parsers(
             }
         }
         models::document_type::DocumentType::CuratedListing => {
-            let curated_listing_parsers = parsers::curated_listing::get_parsers(document).await;
+            let curated_listing_parsers = parsers::curated_listing::get_parsers(document, sample).await;
 
             if let Ok(curated_listing_parsers) = curated_listing_parsers {
                 log::info!("Obtained curated listing parsers without errors");
