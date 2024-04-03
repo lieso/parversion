@@ -4,7 +4,7 @@ use std::collections::HashMap;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CuratedListingParser {
     pub list_pattern: String,
-    pub list_item_patterns: HashMap<String, String>,
+    pub list_item_patterns: HashMap<String, Vec<String>>,
 }
 
 impl CuratedListingParser {

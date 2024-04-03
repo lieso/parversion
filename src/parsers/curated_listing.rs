@@ -55,7 +55,6 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
                 .collect();
 
             let list_item_patterns = get_list_item_patterns(sample_matches).await?;
-            curated_listing_parser.list_item_patterns = list_item_patterns.clone();
 
 
 
@@ -89,6 +88,20 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
             let second_round_patterns = get_list_item_patterns(bad_matches).await?;
             log::debug!("second_round_patterns: {:?}", second_round_patterns);
 
+            let mut merged_patterns: HashMap<String, Vec<String>> = HashMap::new();
+
+            for (key, value) in list_item_patterns {
+                merged_patterns.entry(key).or_insert_with(Vec::new).push(value);
+            }
+
+            for (key, value) in second_round_patterns {
+                merged_patterns.entry(key).or_insert_with(Vec::new).push(value);
+            }
+
+            log::debug!("merged_patterns: {:?}", merged_patterns);
+
+
+            curated_listing_parser.list_item_patterns = merged_patterns;
 
 
 

@@ -31,13 +31,12 @@ pub async fn adapt_curated_listing_parser(curated_listing_parser: &models::curat
         log::debug!("key: {}", key);
 
         let value = curated_listing_parser.list_item_patterns.get(key).unwrap();
-        log::debug!("value: {}", value);
 
         let new_key = mapping.get(key).unwrap().to_string();
         let new_key = utilities::text::trim_quotes(new_key.clone()).unwrap_or(new_key);
         log::debug!("new_key: {}", new_key);
 
-        adapted_curated_listing_parser.list_item_patterns.insert(new_key.to_string(), value.to_string());
+        adapted_curated_listing_parser.list_item_patterns.insert(new_key.to_string(), value.clone());
     }
 
     Ok(adapted_curated_listing_parser.clone())
