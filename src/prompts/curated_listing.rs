@@ -5,6 +5,8 @@ Please examine the subsequent text and do your best to identify a pattern signif
 
 Should you identify any such lists in the text, I want you to provide a regular expression that matches the entirety of each list item in the text without using capturing groups. Use as much of the redundant text that precedes or follows each list item as needed to ensure consistency across the matches. Please return the regular expression in JSON format, with the key "pattern" associated with the regex value. The regex should match the full extent of each list item without capturing parts of it.
 
+Try to limit the use of wildcards and non-greedy quantifiers to reduce chance of catastrophic backtracking when using the regular expression.
+
 Here is how the response should be formatted:
 {
     "pattern": "regex pattern goes here"
