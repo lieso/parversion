@@ -14,10 +14,10 @@ pub enum Errors {
     Unimplemented
 }
 
-pub async fn get_parsers(document: &str) -> Result<Vec<models::chat::ChatParser>, Errors> {
+pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::chat::ChatParser>, Errors> {
     log::trace!("In get_parsers");
 
-    let chat_pattern = get_chat_pattern(document).await?;
+    let chat_pattern = get_chat_pattern(sample).await?;
     
     let mut chat_parser = models::chat::ChatParser::new();
     chat_parser.chat_pattern = chat_pattern.clone();

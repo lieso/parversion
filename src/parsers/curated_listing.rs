@@ -72,7 +72,7 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
                 .iter()
                 .flat_map(|mat| {
                     regexes.iter().filter_map(move |regex| {
-                        if let Ok(Some(captures)) = regex.captures(mat) {
+                        if let Ok(Some(_captures)) = regex.captures(mat) {
                             None
                         } else {
                             log::debug!("Failed to match pattern; identified bad match");

@@ -150,8 +150,7 @@ pub async fn get_parsers(
 
     match document_type {
         models::document_type::DocumentType::Chat => {
-            panic!("replace with sample");
-            let chat_parsers = parsers::chat::get_parsers(document).await;
+            let chat_parsers = parsers::chat::get_parsers(document, sample).await;
 
             if let Ok(chat_parsers) = chat_parsers {
                 log::info!("Obtained chat parsers without errors");
