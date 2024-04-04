@@ -15,16 +15,21 @@ Hi ChatGPT. Your job is to interpret textual documents and to glean from it patt
 Please do not include any introduction or final summary in your response. Thank you.
 "##;
 pub static CHAT_ITEM_ADAPTER_PROMPT: &str = r##"
-Hi ChatGPT. Your job is to map the keys of a JSON document I will provide you to the keys of a JSON template. The keys of the JSON I will provide should represent comments left on discussion forums, instant message tools, collaboration software, team chat, messaging apps. Please set the blank values of the JSON I will provide you to the keys of the following JSON object, based on them equivalently referring to the same thing but with a different name:
-{
-    "text": "The user-generated text body of comments",
-    "author": "The user account that submitted the post/comment",
-    "id": "The identifier of the item itself",
-    "parent_id": "The parent comment identifier of a comment when messages exist in threads",
-    "timestamp": "The timestamp of a comments, perhaps relative or absolute"
-}
-For example, if a key I provide is called "user", set its value to "author" as per the above guide. Use the values of this JSON object for more information about how to match the keys of the JSON document I will provide you. Ensure that the set of values you map keys to contains no duplicate values. For example if multiple keys seem to map to "parentId", only select one key to map to "parentId" and leave the others to map to their original values. If multiple keys seem to match above guide, use the most probably match and set the other keys to their original name. If the JSON document I provide contains keys that do not correspond to the above template, set the value to the original key name.
-Please do not include any introduction or final summary in your response. Thank you.
+Hi ChatGPT. Your task is to map the keys of a JSON document I provide to the corresponding keys of a JSON schema based on their semantic meaning. You should follow these guidelines:
 
-JSON document:
+ 1 Each key from the input JSON document should be mapped to a unique key in the schema below. No duplicates are allowed in the final mapping.
+ 2 If more than one key from the input document matches a schema key, choose the best fit based on its meaning and usage context and retain the original name for the other keys.
+ 3 If an input document key doesn't correspond to any schema key, map it to its original name.
+
+Here is the schema for mapping:
+
+ • "text" for the body of comments or messages.
+ • "author" for who created the comment or message.
+ • "id" for unique identifiers of the comments or messages.
+ • "parent_id" for identifiers linking to the immediate parent of the comment in a thread.
+ • "timestamp" for when the comment or message was made.
+
+Please map the provided JSON document keys to the given schema without including any additional commentary or summary. Thank you.
+
+The provided JSON document is:
 "##;

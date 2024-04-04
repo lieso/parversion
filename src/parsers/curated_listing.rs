@@ -16,7 +16,7 @@ pub enum Errors {
 pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::curated_listing::CuratedListingParser>, Errors> {
     log::trace!("In get_parsers");
 
-    let list_pattern = get_list_group_pattern(sample).await?;
+    let list_pattern = get_list_item_patterns_multiple_rounds(sample).await?;
     log::debug!("list_pattern: {}", list_pattern);
 
     let mut curated_listing_parser = models::curated_listing::CuratedListingParser::new();
@@ -86,7 +86,12 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
             log::debug!("Found {} bad matches", bad_matches.len());
 
             let second_round_patterns = if !bad_matches.is_empty() {
-                get_list_item_patterns(bad_matches).await?
+                let sample_bad_matches = bad_matches
+                    .iter()
+                    .take(3)
+                    .cloned()
+                    .collect();
+                get_list_item_patterns(sample_bad_matches).await?
             } else {
                 HashMap::new()
             };
@@ -130,6 +135,34 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
         log::error!("Unable to convert curated listing parser to standard form");
         return Err(Errors::AdapterError);
     }
+}
+
+async fn get_list_item_patterns_multiple_rounds(sample: &str) -> Result<String, Errors> {
+    for i in 0..3 {
+        log::info!("Performing attempt {} at generating list group pattern...", i + 1);
+
+        let list_pattern = get_list_group_pattern(sample).await?;
+        log::debug!("list_pattern: {}", list_pattern);
+        
+        if let Ok(regex) = Regex::new(&list_pattern) {
+            let captures: Vec<Captures> = regex
+                .captures_iter(sample)
+                .filter_map(Result::ok)
+                .collect();
+            let matches: Vec<&str> = captures
+                .iter()
+                .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
+                .collect();
+
+            if let Some(_first_match) = matches.first() {
+                return Ok(list_pattern);
+            } else {
+                log::error!("Regex did not result in any matches");
+            }
+        }
+    }
+
+    return Err(Errors::LlmInvalidRegex);
 }
 
 async fn get_list_item_patterns(samples: Vec<&str>) -> Result<HashMap<String, String>, Errors> {
