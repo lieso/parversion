@@ -85,7 +85,11 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
             log::debug!("bad_matches: {:?}", bad_matches);
             log::debug!("Found {} bad matches", bad_matches.len());
 
-            let second_round_patterns = get_list_item_patterns(bad_matches).await?;
+            let second_round_patterns = if !bad_matches.is_empty() {
+                get_list_item_patterns(bad_matches).await?
+            } else {
+                HashMap::new()
+            };
             log::debug!("second_round_patterns: {:?}", second_round_patterns);
 
             let mut merged_patterns: HashMap<String, Vec<String>> = HashMap::new();
