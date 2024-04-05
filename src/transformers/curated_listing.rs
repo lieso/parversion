@@ -6,19 +6,46 @@ use crate::models;
 pub fn transform(document: String, parser: &models::curated_listing::CuratedListingParser) -> pandoculation::CuratedListing {
     log::trace!("In transform");
 
-    let regex = Regex::new(&parser.list_pattern).expect("List pattern is not valid");
+    let mut all_matches = Vec::new();
 
-    let captures: Vec<Captures> = regex
-        .captures_iter(&document)
-        .filter_map(Result::ok)
-        .collect();
-    let matches: Vec<&str> = captures
-        .iter()
-        .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
-        .collect();
-    log::info!("Got {} regex matches for list group", matches.len());
+    for list_pattern in parser.list_patterns.iter() {
+        match Regex::new(&list_pattern) {
+            Ok(regex) => {
+                log::info!("Regex is ok");
 
-    let list_items = matches.iter().map(|mat| {
+                let captures: Vec<Captures> = regex
+                    .captures_iter(&document)
+                    .filter_map(Result::ok)
+                    .collect();
+
+                for (i, cap) in captures.iter().enumerate() {
+                    let mut all_groups = Vec::new();
+
+                    for group_index in 0..cap.len() {
+                        if let Some(group_match) = cap.get(group_index) {
+                            all_groups.push(group_match.as_str());
+                        }
+                    }
+
+                    log::debug!("Match {}: {:?}", i, all_groups);
+                }
+
+                let matches: Vec<&str> = captures
+                    .iter()
+                    .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
+                    .collect();
+
+                all_matches.extend(matches);
+            }
+            Err(_) => {
+                log::error!("Regex `{}` is not valid", list_pattern);
+            }
+        }
+    }
+
+    log::info!("Got {} regex matches for list group", all_matches.len());
+
+    let list_items = all_matches.iter().map(|mat| {
 
         let mut data = pandoculation::CuratedListingItemData {
             title: String::new(),

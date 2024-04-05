@@ -13,7 +13,7 @@ pub async fn adapt_curated_listing_parser(curated_listing_parser: &models::curat
     log::trace!("In adapt_curated_listing_parser");
 
     let mut adapted_curated_listing_parser = models::curated_listing::CuratedListingParser::new();
-    adapted_curated_listing_parser.list_pattern = curated_listing_parser.list_pattern.clone();
+    adapted_curated_listing_parser.list_patterns = curated_listing_parser.list_patterns.clone();
 
     let mut empty_map = HashMap::new();
 
