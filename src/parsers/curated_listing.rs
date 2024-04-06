@@ -261,10 +261,14 @@ async fn get_list_group_patterns(document: &str) -> Result<Vec<String>, Errors> 
                 log::debug!("pattern: {}", pattern);
 
                 let pattern = serde_json::to_string(pattern).unwrap();
+                log::debug!("pattern: {}", pattern);
                 let pattern = utilities::text::trim_quotes(pattern.clone())
                     .unwrap_or(pattern);
+                log::debug!("pattern: {}", pattern);
                 let pattern = &pattern.replace("\\\\", "\\");
+                log::debug!("pattern: {}", pattern);
                 let pattern = pattern.to_string();
+                log::debug!("pattern: {}", pattern);
 
                 patterns.push(pattern);
             }

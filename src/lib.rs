@@ -7,6 +7,7 @@ use std::fs::{File};
 use std::process;
 use std::io::{Read};
 use pandoculation;
+use html_escape;
 
 pub mod parsers;
 pub mod models;
@@ -53,15 +54,17 @@ pub struct Output {
     pub data: Vec<Document>,
 }
 
-pub fn string_to_json(document: String) -> Result<Output, Errors> {
+pub fn string_to_json(raw_document: String) -> Result<Output, Errors> {
     log::trace!("In string_to_json");
 
-    if document.trim().is_empty() {
+    if raw_document.trim().is_empty() {
         log::info!("Document not provided, aborting...");
         return Err(Errors::DocumentNotProvided);
     }
 
     let rt = Runtime::new().unwrap();
+
+    let document: String = preprocess_document(raw_document);
 
     rt.block_on(async {
         const DOCUMENT_SAMPLE_SIZE: usize = 20000;
@@ -248,3 +251,10 @@ pub async fn get_salient_sample(chunks: Vec<String>) -> Result<String, Errors> {
 
     Err(Errors::SalientContentNotFound)
 }
+
+pub fn preprocess_document(document: String) -> String {
+    log::trace!("In preprocess_document");
+
+    html_escape::decode_html_entities(&document).into_owned()
+}
+
