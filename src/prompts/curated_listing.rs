@@ -24,19 +24,23 @@ Hi ChatGPT. Your job is to interpret textual documents and to glean from it patt
 Ensure there are at least two fields present for the main title and the url. Please do not include any introduction or final summary in your response. Thank you.
 "##;
 pub static CURATED_LISTING_ITEM_ADAPTER_PROMPT: &str = r##"
-Hi ChatGPT. Your job is to map the keys of a JSON document I will provide you to a new set of keys. The keys of the JSON I will ultimately provide should represent an item from a curated lists of items like a news aggregator consisting of user generated submissions. Please try to match the keys of the JSON I will ultimately provide to one of the keys of this JSON guide, and set the blank value corresponding to each key to a key of the JSON guide. Match keys based on them probably referring to the same thing but with a different name.
-JSON guide:
-{
-    "title": "The main title of the user submission",
-    "author": "The user account that submitted the content",
-    "id": "The identifier of the item",
-    "points": "Number representing votes a submission has received",
-    "timestamp": "The timestamp, perhaps relative or absolute",
-    "chat_url": "A link to user discussion of content",
-    "url": "The main url that the user submitted"
-}
-For example, if a key I provide is called "user", set its value to "author" as per the above guide, since these things are roughly equivalent. The values of this JSON guide provide  more information about how to match the keys of the JSON document. Ensure that the set of values you map keys to contains no duplicate values. For example if multiple keys seem to map to "url", only select one key to map to "url" and leave the others to map to their original values. If multiple keys seem to match above guide, use the most probably match and set the other keys to their original name. If the JSON document I provide contains keys that do not correspond to the above template, set the value to the original key name.
-Please do not include any introduction or final summary in your response. Thank you.
+Hi ChatGPT. Your task is to map the keys of a JSON document I provide to the corresponding keys of a JSON schema based on their semantic meaning. For context, the JSON document should be representing a curated list item as seen on a news aggregator website. You should follow these guidelines:
 
-JSON document:
+ 1 Each key from the input JSON document should be mapped to a unique key in the schema below. No duplicates are allowed in the final mapping.
+ 2 If more than one key from the input document matches a schema key, choose the best fit based on its meaning and usage context and retain the original name for the other keys.
+ 3 If an input document key doesn't correspond to any schema key, map it to its original name.
+
+Here is the schema for mapping:
+
+ • "title" for the main title of the user submission.
+ • "author" for the user account that submitted the content.
+ • "id" for the identifier of the item.
+ • "points" for the number representing votes a submission has received.
+ • "timestamp" for the timestamp, perhaps relative or absolute.
+ • "chat_url" for the link to user discussion of content.
+ • "url" for the main url that the user submitted.
+
+Please map the provided JSON document keys to the given schema without including any additional commentary or summary. Thank you.
+
+The provided JSON document is:
 "##;

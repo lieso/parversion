@@ -1,4 +1,4 @@
-use serde_json;
+use serde_json::{Value, Map};
 use std::collections::HashMap;
 
 use crate::models;
@@ -29,14 +29,33 @@ pub async fn adapt_curated_listing_parser(curated_listing_parser: &models::curat
 
     for key in mapping.keys() {
         log::debug!("key: {}", key);
+        
+        let old_key = mapping.get(key).unwrap().to_string();
+        log::debug!("old_key: {}", old_key);
+        let old_key = utilities::text::trim_quotes(old_key.clone()).unwrap_or(old_key);
+        log::debug!("old_key: {}", old_key);
 
-        let value = curated_listing_parser.list_item_patterns.get(key).unwrap();
+        let value = curated_listing_parser.list_item_patterns.get(&old_key).unwrap();
 
-        let new_key = mapping.get(key).unwrap().to_string();
-        let new_key = utilities::text::trim_quotes(new_key.clone()).unwrap_or(new_key);
-        log::debug!("new_key: {}", new_key);
+        adapted_curated_listing_parser.list_item_patterns.insert(key.to_string(), value.clone());
+    }
 
-        adapted_curated_listing_parser.list_item_patterns.insert(new_key.to_string(), value.clone());
+    for key in curated_listing_parser.list_item_patterns.keys() {
+        let mut already_mapped = true;
+
+        for (_, value) in &mapping {
+            if let Value::String(str_value) = value {
+                if str_value == key {
+                    already_mapped = true;
+                    break;
+                }
+            }
+        }
+
+        if !already_mapped {
+            let value = curated_listing_parser.list_item_patterns.get(key).unwrap();
+            adapted_curated_listing_parser.list_item_patterns.insert(key.to_string(), value.to_vec());
+        }
     }
 
     Ok(adapted_curated_listing_parser.clone())

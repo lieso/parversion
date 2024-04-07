@@ -68,12 +68,6 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
         }
     }
 
-    log::debug!("*****************************************************************************************************");
-
-    log::debug!("all_match: {:?}", all_matches);
-
-
-
 
 
 
