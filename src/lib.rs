@@ -8,6 +8,7 @@ use std::process;
 use std::io::{Read};
 use pandoculation;
 use html_escape;
+use minify_html;
 
 pub mod parsers;
 pub mod models;
@@ -65,6 +66,7 @@ pub fn string_to_json(raw_document: String) -> Result<Output, Errors> {
     let rt = Runtime::new().unwrap();
 
     let document: String = preprocess_document(raw_document);
+    log::debug!("Processed document: {}", document);
 
     rt.block_on(async {
         const DOCUMENT_SAMPLE_SIZE: usize = 20000;
@@ -255,6 +257,18 @@ pub async fn get_salient_sample(chunks: Vec<String>) -> Result<String, Errors> {
 pub fn preprocess_document(document: String) -> String {
     log::trace!("In preprocess_document");
 
-    html_escape::decode_html_entities(&document).into_owned()
+    let mut minify_config = minify_html::Cfg::new();
+    minify_config.ensure_spec_compliant_unquoted_attribute_values = true;
+    minify_config.keep_comments = true;
+    minify_config.keep_html_and_head_opening_tags = true;
+    minify_config.keep_closing_tags = true;
+    minify_config.keep_spaces_between_attributes = true;
+    minify_config.keep_input_type_text_attr = true;
+    minify_config.minify_css =  false;
+    minify_config.minify_js = false;
+
+    let minified = minify_html::minify(document.as_bytes(), &minify_config);
+
+    html_escape::decode_html_entities(&String::from_utf8(minified).unwrap()).into_owned()
 }
 
