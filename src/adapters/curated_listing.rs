@@ -35,9 +35,11 @@ pub async fn adapt_curated_listing_parser(curated_listing_parser: &models::curat
         let old_key = utilities::text::trim_quotes(old_key.clone()).unwrap_or(old_key);
         log::debug!("old_key: {}", old_key);
 
-        let value = curated_listing_parser.list_item_patterns.get(&old_key).unwrap();
+        if !old_key.is_empty() {
+            let value = curated_listing_parser.list_item_patterns.get(&old_key).unwrap();
 
-        adapted_curated_listing_parser.list_item_patterns.insert(key.to_string(), value.clone());
+            adapted_curated_listing_parser.list_item_patterns.insert(key.to_string(), value.clone());
+        }
     }
 
     for key in curated_listing_parser.list_item_patterns.keys() {
