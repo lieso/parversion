@@ -13,6 +13,8 @@ pub enum Errors {
     AdapterError,
 }
 
+const SELF_IMPROVE_ATTEMPTS: u8 = 2;
+
 pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::curated_listing::CuratedListingParser>, Errors> {
     log::trace!("In get_parsers");
 
@@ -20,52 +22,59 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
     log::debug!("list_patterns: {:?}", list_patterns);
 
     let mut curated_listing_parser = models::curated_listing::CuratedListingParser::new();
-    curated_listing_parser.list_patterns = list_patterns.clone();
-
 
 
 
     let mut all_matches = Vec::new();
 
     for list_pattern in list_patterns.iter() {
-        match Regex::new(&list_pattern) {
-            Ok(regex) => {
-                log::info!("Regex is ok");
 
-                let captures: Vec<Captures> = regex
-                    .captures_iter(document)
-                    .filter_map(Result::ok)
-                    .collect();
+        let mut self_improve_attempt = 0;
+        let mut current_list_pattern = list_pattern.clone();
 
-                for (i, cap) in captures.iter().enumerate() {
-                    let mut all_groups = Vec::new();
+        while self_improve_attempt < SELF_IMPROVE_ATTEMPTS {
+            log::debug!("self_improve_attempt no: {}", self_improve_attempt);
+            log::debug!("current_list_pattern: {}", current_list_pattern);
 
-                    for group_index in 0..cap.len() {
-                        if let Some(group_match) = cap.get(group_index) {
-                            all_groups.push(group_match.as_str());
-                        }
+            match Regex::new(&current_list_pattern) {
+                Ok(regex) => {
+                    log::info!("Regex is ok");
+
+                    let captures: Vec<Captures> = regex
+                        .captures_iter(document)
+                        .filter_map(Result::ok)
+                        .collect();
+
+                    let matches: Vec<&str> = captures
+                        .iter()
+                        .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
+                        .collect();
+
+                    if matches.is_empty() {
+                        log::error!("Regular expression did not result in any matches!");
+
+                        current_list_pattern = self_improve_list_pattern(&sample, &current_list_pattern).await?;
+                        self_improve_attempt += 1;
+                    } else {
+                        log::info!("Regular expression resulted in matches");
+                        curated_listing_parser.list_patterns.push(current_list_pattern);
+                        all_matches.extend(matches);
+                        break;
                     }
-
-                    log::debug!("Match {}: {:?}", i, all_groups);
                 }
-
-                let matches: Vec<&str> = captures
-                    .iter()
-                    .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
-                    .collect();
-
-                if matches.is_empty() {
-                    log::error!("Regular expression did not result in any matches!");
+                Err(_) => {
+                    log::error!("Regex `{}` is not valid", current_list_pattern);
                     return Err(Errors::LlmInvalidRegex);
                 }
+            }
 
-                all_matches.extend(matches);
-            }
-            Err(_) => {
-                log::error!("Regex `{}` is not valid", list_pattern);
-                return Err(Errors::LlmInvalidRegex);
-            }
         }
+    }
+
+
+    if curated_listing_parser.list_patterns.is_empty() {
+        log::error!("LLM was unable to generate matching regular expressions");
+        return Err(Errors::LlmInvalidRegex);
     }
 
 
@@ -162,33 +171,36 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cur
     }
 }
 
-//async fn get_list_item_patterns_multiple_rounds(sample: &str) -> Result<String, Errors> {
-//    for i in 0..3 {
-//        log::info!("Performing attempt {} at generating list group pattern...", i + 1);
-//
-//        let list_patterns = get_list_group_patterns(sample).await?;
-//        log::debug!("list_patterns: {:?}", list_patterns);
-//        
-//        if let Ok(regex) = Regex::new(&list_pattern) {
-//            let captures: Vec<Captures> = regex
-//                .captures_iter(sample)
-//                .filter_map(Result::ok)
-//                .collect();
-//            let matches: Vec<&str> = captures
-//                .iter()
-//                .filter_map(|cap| cap.get(0).map(|mat| mat.as_str()))
-//                .collect();
-//
-//            if let Some(_first_match) = matches.first() {
-//                return Ok(list_patterns);
-//            } else {
-//                log::error!("Regex did not result in any matches");
-//            }
-//        }
-//    }
-//
-//    return Err(Errors::LlmInvalidRegex);
-//}
+async fn self_improve_list_pattern(sample: &str, bad_pattern: &str) -> Result<String, Errors> {
+    log::trace!("In self_improve_list_pattern");
+
+    let prompt = prompts::curated_listing::self_improve_list_group_pattern(bad_pattern, sample);
+
+    let llm_response = utilities::llm::get_llm_response(prompt).await;
+
+    match llm_response {
+        Ok(response) => {
+            log::info!("Success response from llm");
+            log::debug!("response: {:?}", response);
+
+            let improved_pattern = serde_json::to_string(&response).unwrap();
+            log::debug!("improved_pattern: {}", improved_pattern);
+            let improved_pattern = utilities::text::trim_quotes(improved_pattern.clone())
+                .unwrap_or(improved_pattern);
+            log::debug!("improved_pattern: {}", improved_pattern);
+            let improved_pattern = &improved_pattern.replace("\\\\", "\\");
+            log::debug!("improved_pattern: {}", improved_pattern);
+            let improved_pattern = improved_pattern.to_string();
+            log::debug!("improved_pattern: {}", improved_pattern);
+
+            Ok(improved_pattern)
+        }
+        Err(error) => {
+            log::error!("{}", error);
+            Err(Errors::LlmRequestError)
+        }
+    }
+}
 
 async fn get_list_item_patterns(samples: Vec<&str>) -> Result<HashMap<String, String>, Errors> {
     log::trace!("In get_list_item_patterns");

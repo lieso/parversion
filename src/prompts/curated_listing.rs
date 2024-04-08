@@ -44,3 +44,18 @@ Please map the provided JSON document keys to the given schema without including
 
 The provided JSON document is:
 "##;
+
+pub fn self_improve_list_group_pattern(bad_pattern: &str, document: &str) -> String {
+    format!(r##"
+Hi ChatGPT. Please examine the following regular expression:
+
+{}
+
+It doesn't seem to result in the correct number of matches against the document I will subsequently provide you below. Please do your best to improve the regular expression to ensure it matches the document. Print only the improved regular expression in your response without including any additional commentary or summary. Thank you.
+
+The document is:
+
+{}
+
+"##, bad_pattern, document)
+}
