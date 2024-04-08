@@ -224,6 +224,11 @@ pub async fn get_salient_sample(chunks: Vec<String>) -> Result<String, Errors> {
                     log::debug!("content_index: {}", content_index);
 
                     let content_index: usize = content_index.as_u64().expect("Expected a usize") as usize;
+                    // content_index is approximate, so we subtract some amount to ensure
+                    // actual content is present in document sample
+                    let content_index: usize = content_index.saturating_sub(
+                        chunk.len() / 2
+                    );
 
                     let current_chunk_salient_content = &chunk[content_index..];
                     log::debug!("current_chunk_salient_content: {}", current_chunk_salient_content);
