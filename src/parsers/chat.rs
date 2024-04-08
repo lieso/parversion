@@ -31,7 +31,7 @@ pub async fn get_parsers(document: &str, sample: &str) -> Result<Vec<models::cha
                 cap.expect("Could not capture").get(0).map(|mat| mat.as_str())
             })
             .collect();
-        log::debug!("{:?}", matches);
+        log::debug!("Got {} matches", matches.len());
 
         if let Some(_first_match) = matches.first() {
             let sample_matches = matches
