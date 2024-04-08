@@ -55,12 +55,11 @@ pub async fn get_llm_response(content: String) -> Result<serde_json::Value, io::
                         let llm_response = cleanup_llm_response(llm_response);
                         log::debug!("fixed llm_response: {}", llm_response);
 
-                        // TODO: LLM sometimes does not return json, just the pattern
-
-                        let json: serde_json::Value = serde_json::from_str(&llm_response).expect("Failed to parse json string");
-                        log::debug!("{:?}", json);
-
-                        Ok(json)
+                        if let Ok(json) = serde_json::from_str(&llm_response) {
+                            Ok(json)
+                        } else {
+                            Ok(serde_json::Value::String(llm_response.to_string()))
+                        }
                     }
                     Err(_err) => {
                         return Err(Error::new(ErrorKind::InvalidData, "error"));

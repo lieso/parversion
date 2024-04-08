@@ -188,6 +188,19 @@ async fn self_improve_list_pattern(sample: &str, bad_pattern: &str) -> Result<St
             let improved_pattern = utilities::text::trim_quotes(improved_pattern.clone())
                 .unwrap_or(improved_pattern);
             log::debug!("improved_pattern: {}", improved_pattern);
+
+
+
+
+
+            let improved_pattern = improved_pattern.trim();
+
+
+
+
+
+
+            log::debug!("improved_pattern: {}", improved_pattern);
             let improved_pattern = &improved_pattern.replace("\\\\", "\\");
             log::debug!("improved_pattern: {}", improved_pattern);
             let improved_pattern = improved_pattern.to_string();

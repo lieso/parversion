@@ -8,7 +8,7 @@ use std::process;
 use std::io::{Read};
 use pandoculation;
 use html_escape;
-use minify_html;
+use html_minifier::HTMLMinifier;
 
 pub mod parsers;
 pub mod models;
@@ -227,7 +227,7 @@ pub async fn get_salient_sample(chunks: Vec<String>) -> Result<String, Errors> {
                     // content_index is approximate, so we subtract some amount to ensure
                     // actual content is present in document sample
                     let content_index: usize = content_index.saturating_sub(
-                        chunk.len() / 2
+                        100
                     );
 
                     let current_chunk_salient_content = &chunk[content_index..];
@@ -262,18 +262,10 @@ pub async fn get_salient_sample(chunks: Vec<String>) -> Result<String, Errors> {
 pub fn preprocess_document(document: String) -> String {
     log::trace!("In preprocess_document");
 
-    let mut minify_config = minify_html::Cfg::new();
-    minify_config.ensure_spec_compliant_unquoted_attribute_values = true;
-    minify_config.keep_comments = true;
-    minify_config.keep_html_and_head_opening_tags = true;
-    minify_config.keep_closing_tags = true;
-    minify_config.keep_spaces_between_attributes = true;
-    minify_config.keep_input_type_text_attr = true;
-    minify_config.minify_css =  false;
-    minify_config.minify_js = false;
+    let mut html_minifier = HTMLMinifier::new();
 
-    let minified = minify_html::minify(document.as_bytes(), &minify_config);
+    html_minifier.digest(document).unwrap();
 
-    html_escape::decode_html_entities(&String::from_utf8(minified).unwrap()).into_owned()
+    html_escape::decode_html_entities(&String::from_utf8(html_minifier.get_html().to_vec()).unwrap()).into_owned()
 }
 
