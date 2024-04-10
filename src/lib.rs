@@ -64,7 +64,10 @@ pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
     }
 
     let _ = Runtime::new().unwrap().block_on(async {
+
         if utilities::xml::is_valid_xml(&raw_document) {
+            log::info!("Document is valid XML");
+
             let json = xml_to_json(raw_document).await?;
             return Ok(json);
         }
@@ -75,8 +78,13 @@ pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
     Err(Errors::UnexpectedError)
 }
 
-pub async fn xml_to_json(raw_document: String) -> Result<i8, Errors> {
+pub async fn xml_to_json(xml: String) -> Result<i8, Errors> {
     log::trace!("In xml_to_json");
+
+    let xml = utilities::xml::preprocess_xml(&xml);
+
+    log::debug!("{:?}", xml);
+
 
     Ok(1)
 }
@@ -294,4 +302,3 @@ pub fn preprocess_document(document: String) -> String {
 
     html_escape::decode_html_entities(&String::from_utf8(html_minifier.get_html().to_vec()).unwrap()).into_owned()
 }
-

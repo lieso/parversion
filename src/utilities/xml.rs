@@ -1,19 +1,33 @@
 extern crate xml;
+extern crate xmltree;
 
-use xml::reader::{EventReader, XmlEvent};
-use xml::ParserConfig;
+use xmltree::Element;
 
-pub fn is_valid_xml(xml_content: &str) -> bool {
-    let config = ParserConfig::new().trim_whitespace(true);
-    let parser = EventReader::new_with_config(xml_content.as_bytes(), config);
+const BLACKLISTED_ATTTRIBUTES: [&str; 6] = [
+    "style", "bgColor", "border", "cellpadding", "cellspacing", "width"
+];
 
-    for e in parser {
-        match e {
-            Ok(XmlEvent::EndDocument) => return true,
-            Err(_) => return false,
-            _ => continue,
+pub fn is_valid_xml(xml_string: &str) -> bool {
+    match Element::parse(xml_string.as_bytes()) {
+        Ok(_) => true,
+        Err(_) => false,
+    }
+}
+
+pub fn preprocess_xml(xml_string: &str) -> String {
+    let mut root = Element::parse(xml_string.as_bytes()).expect("Unable to parse XML");
+
+    fn remove_attributes(element: &mut Element) {
+        element.attributes.retain(|attr, _| !BLACKLISTED_ATTTRIBUTES.contains(&attr.as_str()));
+
+        for child in &mut element.children {
+            if let xmltree::XMLNode::Element(ref mut el) = child {
+                remove_attributes(el);
+            }
         }
     }
 
-    false
+    remove_attributes(&mut root);
+
+    return root.get_text().unwrap().into_owned();
 }

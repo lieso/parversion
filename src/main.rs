@@ -62,7 +62,8 @@ fn main() {
         }
         None => {
             log::info!("File not provided");
-            parversion::string_to_json_old(document)
+            let result = parversion::string_to_json(document);
+            panic!("dev");
         }
     };
 
