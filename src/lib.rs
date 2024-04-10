@@ -67,23 +67,21 @@ pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
 
     let _ = Runtime::new().unwrap().block_on(async {
 
+        if utilities::html::is_valid_html(&document) {
+            log::info!("Document is valid HTML");
+
+            let xhtml = utilities::html::html_to_xhtml(&document).expect("Could not convert HTML to XTML");
+            let json = xml_to_json(xhtml).await?;
+
+            return Ok(json);
+        }
+
         if utilities::xml::is_valid_xml(&document) {
             log::info!("Document is valid XML");
 
             let json = xml_to_json(document).await?;
 
             return Ok(json);
-        }
-
-        if utilities::html::is_valid_html(&document) {
-            log::info!("Document is valid HTML");
-
-            let xhtml = utilities::html::html_to_xhtml(&document);
-            let json = xml_to_json(xhtml).await?;
-
-            return Ok(json);
-        } else {
-            log::debug!("Not xhtml");
         }
 
         Err(Errors::UnexpectedDocumentType)
@@ -156,7 +154,7 @@ pub fn get_output(document: String, parsers: &Vec<Parser>) -> Result<Output, Err
     Ok(output)
 }
 
-pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {
+pub fn file_to_json(file_name: &str) -> Result<i8, Errors> {
     log::trace!("In file_to_json");
     log::debug!("file_name: {}", file_name);
 
@@ -172,7 +170,7 @@ pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {
         process::exit(1);
     });
 
-    return string_to_json_old(document);
+    return string_to_json(document);
 }
 
 pub fn parse_document(document: &str, parser: &Parser) -> Result<Document, Errors> {

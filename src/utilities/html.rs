@@ -4,7 +4,7 @@ extern crate markup5ever_rcdom;
 use html5ever::driver::ParseOpts;
 use markup5ever_rcdom as rcdom;
 use html5ever::{parse_document, serialize};
-use markup5ever_rcdom::{Handle, RcDom, SerializableHandle};
+use markup5ever_rcdom::{SerializableHandle};
 use html5ever::tendril::TendrilSink;
 use std::io;
 use std::default::Default;

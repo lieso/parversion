@@ -54,15 +54,16 @@ fn main() {
              .help("Provide file as document for processing"))
         .get_matches();
 
-    let result = match matches.value_of("file") {
+    let result: io::Result<&str> = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::file_to_json(file_name)
+            let result = parversion::file_to_json(file_name);
+            Ok("{}")
         }
         None => {
             log::info!("File not provided");
             let result = parversion::string_to_json(document);
-            panic!("dev");
+            Ok("{}")
         }
     };
 
