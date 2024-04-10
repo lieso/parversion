@@ -55,7 +55,33 @@ pub struct Output {
     pub data: Vec<Document>,
 }
 
-pub fn string_to_json(raw_document: String) -> Result<Output, Errors> {
+pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
+    log::trace!("In string_to_json");
+
+    if raw_document.trim().is_empty() {
+        log::info!("Document not provided, aborting...");
+        return Err(Errors::DocumentNotProvided);
+    }
+
+    let _ = Runtime::new().unwrap().block_on(async {
+        if utilities::xml::is_valid_xml(&raw_document) {
+            let json = xml_to_json(raw_document).await?;
+            return Ok(json);
+        }
+
+        Err(Errors::UnexpectedDocumentType)
+    });
+
+    Err(Errors::UnexpectedError)
+}
+
+pub async fn xml_to_json(raw_document: String) -> Result<i8, Errors> {
+    log::trace!("In xml_to_json");
+
+    Ok(1)
+}
+
+pub fn string_to_json_old(raw_document: String) -> Result<Output, Errors> {
     log::trace!("In string_to_json");
 
     if raw_document.trim().is_empty() {
@@ -124,7 +150,7 @@ pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {
         process::exit(1);
     });
 
-    return string_to_json(document);
+    return string_to_json_old(document);
 }
 
 pub fn parse_document(document: &str, parser: &Parser) -> Result<Document, Errors> {
