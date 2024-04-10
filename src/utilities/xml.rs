@@ -2,6 +2,8 @@ extern crate xml;
 extern crate xmltree;
 
 use xmltree::Element;
+use std::io::Cursor;
+use std::str::from_utf8;
 
 const BLACKLISTED_ATTTRIBUTES: [&str; 6] = [
     "style", "bgColor", "border", "cellpadding", "cellspacing", "width"
@@ -29,5 +31,11 @@ pub fn preprocess_xml(xml_string: &str) -> String {
 
     remove_attributes(&mut root);
 
-    return root.get_text().unwrap().into_owned();
+    let mut buffer = Cursor::new(Vec::new());
+    root.write(&mut buffer).expect("Could not write root");
+
+    let buf = buffer.into_inner();
+    let as_string = from_utf8(&buf).expect("Found invalid UTF-8");
+
+    return as_string.to_string();
 }

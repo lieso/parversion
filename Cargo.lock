@@ -37,6 +37,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ammonia"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ab99eae5ee58501ab236beb6f20f6ca39be615267b014899c89b2f0bc18a459"
+dependencies = [
+ "html5ever",
+ "maplit",
+ "once_cell",
+ "tendril",
+ "url",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -633,6 +646,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
+name = "maplit"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
+
+[[package]]
 name = "markup5ever"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -833,6 +852,7 @@ dependencies = [
 name = "parversion"
 version = "0.1.0"
 dependencies = [
+ "ammonia",
  "atty",
  "clap",
  "fancy-regex",
@@ -840,6 +860,7 @@ dependencies = [
  "html-minifier",
  "html5ever",
  "log",
+ "maplit",
  "markup5ever_rcdom",
  "pandoculation",
  "regex",

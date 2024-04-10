@@ -71,6 +71,7 @@ pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
             log::info!("Document is valid HTML");
 
             let xhtml = utilities::html::html_to_xhtml(&document).expect("Could not convert HTML to XTML");
+            log::debug!("xhtml: {}", xhtml);
             let json = xml_to_json(xhtml).await?;
 
             return Ok(json);
@@ -95,7 +96,7 @@ pub async fn xml_to_json(xml: String) -> Result<i8, Errors> {
 
     let xml = utilities::xml::preprocess_xml(&xml);
 
-    log::debug!("{:?}", xml);
+    log::debug!("processed xml {:?}", xml);
 
 
     Ok(1)
