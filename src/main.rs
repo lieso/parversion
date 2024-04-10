@@ -54,7 +54,6 @@ fn main() {
              .help("Provide file as document for processing"))
         .get_matches();
 
-
     let result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);

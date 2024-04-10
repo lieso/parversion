@@ -63,13 +63,27 @@ pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
         return Err(Errors::DocumentNotProvided);
     }
 
+    let document = raw_document.trim().to_string();
+
     let _ = Runtime::new().unwrap().block_on(async {
 
-        if utilities::xml::is_valid_xml(&raw_document) {
+        if utilities::xml::is_valid_xml(&document) {
             log::info!("Document is valid XML");
 
-            let json = xml_to_json(raw_document).await?;
+            let json = xml_to_json(document).await?;
+
             return Ok(json);
+        }
+
+        if utilities::html::is_valid_html(&document) {
+            log::info!("Document is valid HTML");
+
+            let xhtml = utilities::html::html_to_xhtml(&document);
+            let json = xml_to_json(xhtml).await?;
+
+            return Ok(json);
+        } else {
+            log::debug!("Not xhtml");
         }
 
         Err(Errors::UnexpectedDocumentType)
