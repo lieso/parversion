@@ -15,3 +15,14 @@ impl CuratedListingParser {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CuratedListingParser2 {
+}
+
+impl CuratedListingParser2 {
+    pub fn new() -> Self {
+        Self {
+        }
+    }
+}
