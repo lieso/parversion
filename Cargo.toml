@@ -27,6 +27,7 @@ html5ever = "0.27.0"
 markup5ever_rcdom = "0.3.0"
 ammonia = "4.0.0"
 maplit = "1.0.2"
+async-recursion = "1.1.0"
 
 [lib]
 name = "parversion"

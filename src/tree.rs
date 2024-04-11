@@ -5,6 +5,12 @@ use sha2::{Sha256, Digest};
 use serde_json::{self, Value};
 use std::io::Cursor;
 use serde::{Serialize, Deserialize};
+use async_recursion::async_recursion;
+
+#[derive(Debug)]
+enum Errors {
+    UnexpectedError
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
@@ -91,6 +97,11 @@ impl Node {
 
         format!("{:x}", result)
     }
+
+    pub async fn obtain_data(&mut self) -> Result<(), Errors> {
+
+        Ok(())
+    }
 }
 
 pub fn build_tree(xml: String) -> Node {
@@ -98,6 +109,23 @@ pub fn build_tree(xml: String) -> Node {
    let element = Element::parse(&mut reader).expect("Could not parse XML");
 
    Node::from_element(&element)
+}
+
+pub async fn grow_tree(tree: &mut Node) -> Node {
+    traverse_and_populate(tree).await;
+
+    log::debug!("tree: {:?}", tree);
+
+    tree.clone()
+}
+
+#[async_recursion]
+async fn traverse_and_populate(node: &mut Node) {
+    node.obtain_data().await.expect("Unable to obtain data for a Node");
+
+    for child in &node.children {
+        traverse_and_populate(&mut child.clone()).await;
+    }
 }
 
 fn element_to_string(element: &Element) -> Result<String, std::io::Error> {
