@@ -69,12 +69,13 @@ impl Node {
     }
     
     pub fn from_element(element: &Element) -> Self {
-        let hash = Self::compute_element_hash(element);
+        let start_tag = utilities::start_tag_to_string(&element);
+        let hash = Self::compute_node_hash(start_tag.clone());
 
         let mut node = Node {
             hash: hash.clone(),
             xml: utilities::element_to_string(&element).unwrap(),
-            start_tag: utilities::start_tag_to_string(&element),
+            start_tag: start_tag,
             data: Vec::new(),
             children: Vec::new(),
         };
@@ -88,19 +89,13 @@ impl Node {
         node
     }
 
-    pub fn compute_element_hash(element: &Element) -> String {
-        let mut cursor = Cursor::new(Vec::new());
-        element.write(&mut cursor).expect("Could not write cursor");
-
-        let xml_string = String::from_utf8(cursor.into_inner())
-            .expect("Found invalid UTF-8");
-
+    pub fn compute_node_hash(text: String) -> String {
         let mut hasher = Sha256::new();
 
-        hasher.update(xml_string);
+        hasher.update(text);
 
         let result = hasher.finalize();
-
+        
         format!("{:x}", result)
     }
 
@@ -108,13 +103,10 @@ impl Node {
 
         // TODO: detect if blank tag without attributes and skip
 
-        if let Some(node_data) = utilities::get_node_data(&db, &self.hash)
-            .expect("Could not obtain node data") {
-
+        if let Some(node_data) = utilities::get_node_data(&db, &self.hash).expect("Could not obtain node data") {
             self.data = node_data.clone();
         } else {
             let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.start_tag.clone()).await.expect("LLM unable to generate node data");
-
             self.data = llm_node_data.clone();
 
             utilities::store_node_data(&db, &self.hash, llm_node_data.clone()).expect("Unable to persist node data to database");

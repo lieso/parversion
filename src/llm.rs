@@ -22,11 +22,15 @@ GPT-4, I'm analyzing an HTML/XML snippet to extract important data elements that
 2. A suitable key name in snake case that can be used to represent the data programmatically.
 3. Whether the data is a URL, absolute or relative
 
-Here is the HTML/XML content I'm examining:
+Here is the HTML/XML text I'm examining:
+
+---
 
 {}
 
-Please provide your response as an array of JSON objects that look like this:
+---
+
+Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Otherwise, please provide your response as an array of JSON objects that look like this:
 
 {{
     "xpath": "/div/tr/*",
