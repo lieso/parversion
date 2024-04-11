@@ -4,8 +4,8 @@ use std::error::Error;
 
 use crate::models::tree::*;
 
-pub fn store_node_data(db: &Db, key: &str, nodes: &[NodeData]) -> Result<(), Box<dyn Error>> {
-    let serialized_nodes = serialize(nodes)?;
+pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
+    let serialized_nodes = serialize(&nodes)?;
     db.insert(key, serialized_nodes)?;
     Ok(())
 }

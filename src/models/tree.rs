@@ -6,6 +6,7 @@ use sled::Db;
 use std::io::Cursor;
 
 use crate::database;
+use crate::llm;
 
 #[derive(Debug)]
 pub enum Errors {
@@ -104,12 +105,12 @@ impl Node {
 
             self.data = node_data.clone();
         } else {
-            return Err(Errors::UnexpectedError);
+            let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.start_tag.clone()).await.expect("LLM unable to generate node data");
+
+            self.data = llm_node_data.clone();
+
+            database::store_node_data(&db, &self.hash, llm_node_data.clone()).expect("Unable to persist node data to database");
         }
-
-
-
-
 
         Ok(())
     }

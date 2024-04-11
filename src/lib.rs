@@ -20,6 +20,7 @@ pub mod adapters;
 pub mod database;
 
 pub mod tree;
+pub mod llm;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {

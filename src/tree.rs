@@ -18,8 +18,6 @@ pub async fn grow_tree(tree: &mut Node) -> Node {
 
     traverse_and_populate(&db, tree).await;
 
-    log::trace!("tree: {:?}", tree);
-
     tree.clone()
 }
 

@@ -14,6 +14,7 @@ pub mod prompts;
 pub mod utilities;
 pub mod adapters;
 pub mod database;
+pub mod llm;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
