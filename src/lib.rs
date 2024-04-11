@@ -17,6 +17,7 @@ pub mod prompts;
 pub mod utilities;
 pub mod categorisers;
 pub mod adapters;
+pub mod database;
 
 pub mod tree;
 

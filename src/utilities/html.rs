@@ -3,15 +3,11 @@ extern crate markup5ever_rcdom;
 
 use html5ever::driver::ParseOpts;
 use markup5ever_rcdom as rcdom;
-use html5ever::serialize::{SerializeOpts, Serializer, TraversalScope};
-use html5ever::{parse_document, serialize};
-use markup5ever_rcdom::{SerializableHandle};
+use html5ever::{parse_document};
 use html5ever::tendril::TendrilSink;
 use std::io;
 use std::default::Default;
 use std::string::String;
-use ammonia::Builder;
-use maplit::hashset;
 
 pub fn is_valid_html(html_string: &str) -> bool {
     let parser = parse_document(rcdom::RcDom::default(), ParseOpts::default());
