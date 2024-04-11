@@ -18,6 +18,8 @@ pub mod utilities;
 pub mod categorisers;
 pub mod adapters;
 
+pub mod tree;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
     DocumentNotProvided,
@@ -70,7 +72,7 @@ pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
         if utilities::html::is_valid_html(&document) {
             log::info!("Document is valid HTML");
 
-            let xhtml = utilities::html::html_to_xhtml(&document).expect("Could not convert HTML to XTML");
+            let xhtml = utilities::html::html_to_xhtml(&document).expect("Could not convert HTML to XHTML");
             log::debug!("xhtml: {}", xhtml);
             let json = xml_to_json(xhtml).await?;
 
@@ -95,8 +97,10 @@ pub async fn xml_to_json(xml: String) -> Result<i8, Errors> {
     log::trace!("In xml_to_json");
 
     let xml = utilities::xml::preprocess_xml(&xml);
+    log::trace!("processed xml {}", xml);
 
-    log::debug!("processed xml {:?}", xml);
+    let t = tree::build_tree(xml);
+    log::debug!("tree: {:?}", t);
 
 
     Ok(1)

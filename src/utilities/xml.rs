@@ -5,8 +5,9 @@ use xmltree::Element;
 use std::io::Cursor;
 use std::str::from_utf8;
 
-const BLACKLISTED_ATTTRIBUTES: [&str; 6] = [
-    "style", "bgColor", "border", "cellpadding", "cellspacing", "width"
+const BLACKLISTED_ATTTRIBUTES: [&str; 7] = [
+    "style", "bgcolor", "border", "cellpadding", "cellspacing",
+    "width", "height", 
 ];
 
 pub fn is_valid_xml(xml_string: &str) -> bool {
