@@ -7,13 +7,8 @@ use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
 
-pub mod parsers;
 pub mod models;
-pub mod transformers;
-pub mod prompts;
 pub mod utilities;
-pub mod adapters;
-pub mod database;
 pub mod llm;
 
 fn load_stdin() -> io::Result<String> {
@@ -44,11 +39,6 @@ fn main() {
     }
 
     let matches = App::new("parversion")
-        .arg(Arg::with_name("parsers")
-             .short('p')
-             .long("parsers")
-             .value_name("PARSERS")
-             .required(false))
         .arg(Arg::with_name("file")
              .short('f')
              .long("file")
@@ -56,26 +46,17 @@ fn main() {
              .help("Provide file as document for processing"))
         .get_matches();
 
-    let result: io::Result<&str> = match matches.value_of("file") {
+    let result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            let result = parversion::file_to_json(file_name);
-            Ok("{}")
+            parversion::file_to_json(file_name);
         }
         None => {
             log::info!("File not provided");
-            let result = parversion::string_to_json(document);
-            Ok("{}")
+            parversion::string_to_json(document);
         }
     };
 
-    if let Ok(result) = result {
-        log::debug!("result: {:?}", result);
-
-        let serialized = serde_json::to_string(&result).expect("Failed to serialize to JSON");
-        println!("{}", serialized);
-    } else {
-        println!("error");
-    }
+    println!("{:?}", result);
 }
 

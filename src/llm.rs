@@ -1,9 +1,9 @@
 use reqwest::header;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-
-use crate::models::tree::*;
 use std::env;
+
+use crate::models::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PartialNodeData {
@@ -12,7 +12,7 @@ struct PartialNodeData {
     pub key: String,
 }
 
-pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, Errors> {
+pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, ()> {
     log::trace!("In generate_node_data");
 
     let prompt = format!(r##"
@@ -36,6 +36,7 @@ Please provide your response as an array of JSON objects that look like this:
 
 And do not include any commentary, introduction or summary. Thank you.
 "##, xml);
+    log::trace!("prompt: {}", prompt);
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
@@ -75,6 +76,7 @@ And do not include any commentary, introduction or summary. Thank you.
             value: None,
         }
     }).collect();
+    log::debug!("node_data: {:?}", node_data);
 
     Ok(node_data)
 }

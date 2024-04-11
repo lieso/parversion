@@ -6,4 +6,4 @@ debug.log
 /dev
 /parsers
 
-/src/data/llm_response_store
+src/database/hash_to_node_data/
