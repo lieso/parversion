@@ -58,11 +58,13 @@ pub fn string_to_json(raw_document: String) -> Result<i8, Errors> {
 pub async fn xml_to_json(xml: String) -> Result<i8, Errors> {
     log::trace!("In xml_to_json");
 
-    let xml = utilities::preprocess_xml(&xml);
+    let result = utilities::preprocess_xml(&xml);
 
-    let t = tree::build_tree(xml);
+    let result = tree::build_tree(result);
 
-    let t = tree::grow_tree(&mut t.clone()).await;
+    let result = tree::grow_tree(&mut result.clone()).await;
+
+    //let result = tree::harvest_json(&mut result.clone()).await;
 
     Ok(1)
 }

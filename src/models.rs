@@ -12,7 +12,6 @@ pub struct NodeData {
 pub struct Node {
     pub hash: String,
     pub xml: String,
-    pub start_tag: String,
     pub data: Vec<NodeData>,
     pub children: Vec<Node>
 }

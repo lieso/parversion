@@ -28,7 +28,7 @@ pub async fn grow_tree(tree: &mut Node) -> Node {
 
 #[async_recursion]
 async fn traverse_and_populate(db: &Db, node: &mut Node) {
-    node.obtain_data(&db).await.expect("Unable to obtain data for a Node");
+    node.obtain_node_data(&db).await.expect("Unable to obtain data for a Node");
 
     for child in &node.children {
         traverse_and_populate(&db, &mut child.clone()).await;
@@ -55,6 +55,23 @@ impl NodeData {
 }
 
 impl Node {
+    pub fn generate_values(&mut self) {
+        let recomputed_node_data = self.data.iter().map(|item| {
+            let mut copy = item.clone();
+
+            if let Some(xpath) = copy.xpath.clone() {
+                copy.value = Some(
+                    utilities::apply_xpath(&self.xml, &xpath)
+                        .expect("Could not apply xpath to xml")
+                );
+            }
+
+            return copy;
+        }).collect();
+
+        self.data = recomputed_node_data;
+    }
+
     pub fn to_simple_json(&self) -> serde_json::Value {
         let mut data: HashMap<String, String> = HashMap::new();
 
@@ -69,13 +86,12 @@ impl Node {
     }
     
     pub fn from_element(element: &Element) -> Self {
-        let start_tag = utilities::start_tag_to_string(&element);
-        let hash = Self::compute_node_hash(start_tag.clone());
+        let xml = utilities::get_element_tag(&element);
+        let hash = Self::compute_node_hash(xml.clone());
 
         let mut node = Node {
             hash: hash.clone(),
-            xml: utilities::element_to_string(&element).unwrap(),
-            start_tag: start_tag,
+            xml: xml,
             data: Vec::new(),
             children: Vec::new(),
         };
@@ -99,20 +115,20 @@ impl Node {
         format!("{:x}", result)
     }
 
-    pub async fn obtain_data(&mut self, db: &Db) -> Result<(),()> {
+    pub async fn obtain_node_data(&mut self, db: &Db) -> Result<(),()> {
 
         // TODO: detect if blank tag without attributes and skip
 
         if let Some(node_data) = utilities::get_node_data(&db, &self.hash).expect("Could not obtain node data") {
             self.data = node_data.clone();
         } else {
-            let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.start_tag.clone()).await.expect("LLM unable to generate node data");
+            let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.xml.clone()).await.expect("LLM unable to generate node data");
             self.data = llm_node_data.clone();
 
             utilities::store_node_data(&db, &self.hash, llm_node_data.clone()).expect("Unable to persist node data to database");
-
-            panic!("testing");
         }
+
+        self.generate_values();
 
         Ok(())
     }

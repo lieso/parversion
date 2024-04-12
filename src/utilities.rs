@@ -16,6 +16,7 @@ use std::str::from_utf8;
 use sled::{Db};
 use bincode::{serialize, deserialize};
 use std::error::Error;
+use xpath_reader::Reader;
 
 use crate::models::*;
 
@@ -98,20 +99,18 @@ pub fn element_to_string(element: &Element) -> Result<String, std::io::Error> {
     Ok(String::from_utf8(cursor.into_inner()).expect("Found invalid UTF-8"))
 }
 
-pub fn start_tag_to_string(element: &Element) -> String {
-    let attributes = element
-        .attributes
-        .iter()
-        .map(|(k, v)| format!(r#"{}="{}""#, k, v))
-        .collect::<Vec<_>>()
-        .join(" ");
+pub fn get_element_tag(element: &Element) -> String {
+    let mut opening_tag = format!("<{}", element.name);
 
-    let prefix = match element.prefix {
-        Some(ref p) => format!("{}:", p),
-        None => "".to_string(),
-    };
+    for (attr_key, attr_value) in element.attributes.iter() {
+        opening_tag.push_str(&format!(" {}=\"{}\"", attr_key, attr_value));
+    }
 
-    format!("<{}{}{}>", prefix, element.name, if attributes.is_empty() { "" } else { " " }.to_owned() + &attributes)
+    opening_tag.push('>');
+
+    let closing_tag = format!("</{}>", element.name);
+
+    format!("{}{}", opening_tag, closing_tag)
 }
 
 pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
@@ -129,3 +128,12 @@ pub fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dy
         None => Ok(None),
     }
 } 
+
+pub fn apply_xpath(xml: &str, xpath: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let reader = Reader::from_str(xml, None).unwrap();
+    let nodes: Vec<String> = reader.read(xpath).unwrap();
+
+    let workaround = nodes.join(" ");
+
+    Ok(workaround)
+}
