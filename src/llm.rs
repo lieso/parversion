@@ -74,9 +74,9 @@ And do not include any commentary, introduction or summary. Thank you.
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
-            xpath: Some(item.xpath.to_string()),
+            xpath: item.xpath.to_string(),
             is_url: item.is_url,
-            variants: vec![item.key.to_string()],
+            key: item.key.to_string(),
             value: None,
         }
     }).collect();

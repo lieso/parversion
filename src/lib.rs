@@ -64,7 +64,7 @@ pub async fn xml_to_json(xml: String) -> Result<i8, Errors> {
 
     let result = tree::grow_tree(&mut result.clone()).await;
 
-    //let result = tree::harvest_json(&mut result.clone()).await;
+    let result = tree::harvest_json(&mut result.clone()).await;
 
     Ok(1)
 }

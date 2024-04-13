@@ -12,10 +12,10 @@ use std::io::Cursor;
 use std::collections::HashMap;
 
 pub fn build_tree(xml: String) -> Node {
-   let mut reader = std::io::Cursor::new(xml);
-   let element = Element::parse(&mut reader).expect("Could not parse XML");
+    let mut reader = std::io::Cursor::new(xml);
+    let element = Element::parse(&mut reader).expect("Could not parse XML");
 
-   Node::from_element(&element)
+    Node::from_element(&element)
 }
 
 pub async fn grow_tree(tree: &mut Node) -> Node {
@@ -24,6 +24,11 @@ pub async fn grow_tree(tree: &mut Node) -> Node {
     traverse_and_populate(&db, tree).await;
 
     tree.clone()
+}
+
+pub fn harvest_json(tree: &mut Node) -> Node {
+
+    Node::post_order_traversal(tree)
 }
 
 #[async_recursion]
@@ -35,36 +40,15 @@ async fn traverse_and_populate(db: &Db, node: &mut Node) {
     }
 }
 
-impl NodeData {
-    pub fn new() -> Self {
-        NodeData {
-            xpath: None,
-            variants: Vec::new(),
-            is_url: false,
-            value: None,
-        }
-    }
-
-    pub fn peek(&self) -> Option<&str> {
-        self.variants.last().map(|x| x.as_str())
-    }
-
-    pub fn push(&mut self, variant: String) {
-        self.variants.push(variant)
-    }
-}
-
 impl Node {
     pub fn generate_values(&mut self) {
         let recomputed_node_data = self.data.iter().map(|item| {
             let mut copy = item.clone();
 
-            if let Some(xpath) = copy.xpath.clone() {
-                copy.value = Some(
-                    utilities::apply_xpath(&self.xml, &xpath)
-                        .expect("Could not apply xpath to xml")
-                );
-            }
+            copy.value = Some(
+                utilities::apply_xpath(&self.xml, &copy.xpath.clone())
+                    .expect("Could not apply xpath to xml")
+            );
 
             return copy;
         }).collect();
@@ -76,10 +60,10 @@ impl Node {
         let mut data: HashMap<String, String> = HashMap::new();
 
         for node_data in self.data.iter() {
-            let simple_key = node_data.peek().expect("Could not peek at last key").to_string();
+            let key = node_data.key.to_string();
             let value = node_data.value.as_ref().unwrap_or(&String::new()).clone();
 
-            data.insert(simple_key, value);
+            data.insert(key, value);
         }
 
         serde_json::to_value(data).expect("Failed to convert map to JSON")
@@ -131,5 +115,27 @@ impl Node {
         self.generate_values();
 
         Ok(())
+    }
+
+    pub fn post_order_traversal(&self, node: &mut Node) {
+        for child in node.children {
+            self.post_order_traversal(child);
+        }
+
+        self.visit_node(node);
+    }
+
+    fn visit_node(&self, node: &mut Node) {
+        if node.children.is_empty() {
+            return;
+        }
+
+        for child in node.children {
+            if child.complex_object_id.is_some()
+        }
+
+        let set = node.to_hash_set();
+
+
     }
 }
