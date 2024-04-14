@@ -8,7 +8,6 @@ use crate::llm;
 use xmltree::{Element, XMLNode};
 use async_recursion::async_recursion;
 use sled::Db;
-use std::io::Cursor;
 use std::collections::HashMap;
 
 pub fn build_tree(xml: String) -> Node {
@@ -26,9 +25,13 @@ pub async fn grow_tree(tree: &mut Node) -> Node {
     tree.clone()
 }
 
-pub fn harvest_json(tree: &mut Node) -> Node {
+pub fn post_order_traversal<F>(node: &Node, visit: &mut F)
+where F: FnMut(&Node) {
+    for child in &node.children {
+        post_order_traversal(child, visit);
+    }
 
-    Node::post_order_traversal(tree)
+    visit(node);
 }
 
 #[async_recursion]
@@ -115,27 +118,5 @@ impl Node {
         self.generate_values();
 
         Ok(())
-    }
-
-    pub fn post_order_traversal(&self, node: &mut Node) {
-        for child in node.children {
-            self.post_order_traversal(child);
-        }
-
-        self.visit_node(node);
-    }
-
-    fn visit_node(&self, node: &mut Node) {
-        if node.children.is_empty() {
-            return;
-        }
-
-        for child in node.children {
-            if child.complex_object_id.is_some()
-        }
-
-        let set = node.to_hash_set();
-
-
     }
 }

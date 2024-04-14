@@ -11,6 +11,7 @@ mod models;
 mod utilities;
 mod tree;
 mod llm;
+mod document;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
@@ -64,7 +65,7 @@ pub async fn xml_to_json(xml: String) -> Result<i8, Errors> {
 
     let result = tree::grow_tree(&mut result.clone()).await;
 
-    let result = tree::harvest_json(&mut result.clone()).await;
+    let result = document::harvest_json(&result);
 
     Ok(1)
 }
