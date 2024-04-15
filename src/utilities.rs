@@ -1,8 +1,3 @@
-extern crate html5ever;
-extern crate markup5ever_rcdom;
-extern crate xml;
-extern crate xmltree;
-
 use html5ever::driver::ParseOpts;
 use markup5ever_rcdom as rcdom;
 use html5ever::{parse_document};
@@ -48,19 +43,8 @@ pub fn is_valid_html(html_string: &str) -> bool {
 }
 
 pub fn html_to_xhtml(html: &str) -> io::Result<String> {
-    log::debug!("html: {}", html);
     let xhtml = remove_doctype(&html);
-    //let xhtml = Builder::new()
-    //    .clean(&xhtml)
-    //    .to_string();
-
-
-
-    log::warn!("NOT IMPLEMENTED. TAGS ARE NOT CLOSED.");
-
-
-
-
+    log::warn!("NOT IMPLEMENTED");
     Ok(xhtml)
 }
 
@@ -93,13 +77,7 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     return as_string.to_string();
 }
 
-pub fn element_to_string(element: &Element) -> Result<String, std::io::Error> {
-    let mut cursor = Cursor::new(Vec::new());
-    element.write(&mut cursor).expect("Element could not write");
-    Ok(String::from_utf8(cursor.into_inner()).expect("Found invalid UTF-8"))
-}
-
-pub fn get_element_tag(element: &Element) -> String {
+pub fn get_element_xml(element: &Element) -> String {
     let mut opening_tag = format!("<{}", element.name);
 
     for (attr_key, attr_value) in element.attributes.iter() {
@@ -113,27 +91,3 @@ pub fn get_element_tag(element: &Element) -> String {
     format!("{}{}", opening_tag, closing_tag)
 }
 
-pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
-    let serialized_nodes = serialize(&nodes)?;
-    db.insert(key, serialized_nodes)?;
-    Ok(())
-}
-
-pub fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Error>> {
-    match db.get(key)? {
-        Some(serialized_nodes) => {
-            let nodes_data: Vec<NodeData> = deserialize(&serialized_nodes)?;
-            Ok(Some(nodes_data))
-        },
-        None => Ok(None),
-    }
-} 
-
-pub fn apply_xpath(xml: &str, xpath: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let reader = Reader::from_str(xml, None).unwrap();
-    let nodes: Vec<String> = reader.read(xpath).unwrap();
-
-    let workaround = nodes.join(" ");
-
-    Ok(workaround)
-}

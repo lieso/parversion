@@ -1,6 +1,3 @@
-extern crate simple_logging;
-extern crate log;
-
 use std::io::{Read};
 use std::io::{self};
 use atty::Stream;

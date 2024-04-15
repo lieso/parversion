@@ -80,7 +80,6 @@ And do not include any commentary, introduction or summary. Thank you.
             value: None,
         }
     }).collect();
-    log::debug!("node_data: {:?}", node_data);
 
     Ok(node_data)
 }

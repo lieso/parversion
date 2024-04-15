@@ -3,7 +3,7 @@
 # log
 debug.log
 
-/dev
-/parsers
+/resources
+/debug
 
 src/database/hash_to_node_data/

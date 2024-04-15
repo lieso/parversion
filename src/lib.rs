@@ -1,17 +1,51 @@
-extern crate simple_logging;
-extern crate log;
-
 use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 use std::fs::{File};
 use std::process;
 use std::io::{Read};
+use std::rc::{Rc};
 
 mod models;
 mod utilities;
 mod tree;
 mod llm;
-mod document;
+
+
+const _todo: &str = r##"
+
+{{
+    "types": {{
+        "typeid":
+    }},
+    "objects": {{
+        "id": {{
+             "id",
+             "type_id",
+             "name"
+             "description"
+        }}
+    }},
+    "lists": {{
+        "id": [
+            "id1",
+            "id2"
+         ],
+         "id': [
+            [ "id1", "id3" ],
+            [ "id2", "id4" ]
+        ]
+    }},
+    "relationships": {{
+        "id": {
+            "complex_type_id",
+            "origin_field": "parent",
+            "target_field": "id",
+        }
+    }}
+}}
+
+"##;
+
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
@@ -61,11 +95,14 @@ pub async fn xml_to_json(xml: String) -> Result<i8, Errors> {
 
     let result = utilities::preprocess_xml(&xml);
 
-    let result = tree::build_tree(result);
+    let nodes = tree::build_tree(result.clone());
+    tree::log_tree(nodes.clone(), "@Pristine");
 
-    let result = tree::grow_tree(&mut result.clone()).await;
+    let unique_subtrees = tree::update_hashes(Rc::clone(&nodes));
+    tree::log_tree(nodes.clone(), "@Hashed");
 
-    let result = document::harvest_json(&result);
+    tree::prune_tree(Rc::clone(&nodes), &unique_subtrees);
+    tree::log_tree(nodes.clone(), "@Pruned");
 
     Ok(1)
 }
