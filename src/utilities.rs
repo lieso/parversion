@@ -77,6 +77,16 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     return as_string.to_string();
 }
 
+pub fn element_to_string(element: &Element) -> String {
+    let mut buffer = Cursor::new(Vec::new());
+    element.write(&mut buffer).expect("Could not write element");
+
+    let buf = buffer.into_inner();
+    let as_string = from_utf8(&buf).expect("Found invalid UTF-8");
+
+    return as_string.to_string();
+}
+
 pub fn get_element_xml(element: &Element) -> String {
     let mut opening_tag = format!("<{}", element.name);
 
@@ -91,3 +101,39 @@ pub fn get_element_xml(element: &Element) -> String {
     format!("{}{}", opening_tag, closing_tag)
 }
 
+
+pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
+    let serialized_nodes = serialize(&nodes)?;
+    db.insert(key, serialized_nodes)?;
+    Ok(())
+}
+
+pub fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Error>> {
+    match db.get(key)? {
+        Some(serialized_nodes) => {
+            let nodes_data: Vec<NodeData> = deserialize(&serialized_nodes)?;
+            Ok(Some(nodes_data))
+        },
+        None => Ok(None),
+    }
+} 
+
+pub fn apply_xpath(xml: &str, xpath: &str) -> Result<String, Box<dyn std::error::Error>> {
+    log::debug!("xml: {}, xpath: {}", xml, xpath);
+
+    let reader = Reader::from_str(xml, None)?;
+    let nodes: Vec<String> = reader.read(xpath)?;
+
+    let workaround = nodes.join(" ");
+
+    Ok(workaround)
+}
+
+pub fn hash_text(text: &str) -> &str {
+    let mut hasher = Sha256::new();
+    hasher.update(text);
+
+    let hash = hasher.finalize();
+
+    format!("{:x}", hash)
+}

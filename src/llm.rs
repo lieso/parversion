@@ -9,8 +9,10 @@ use crate::models::*;
 struct PartialNodeData {
     pub xpath: String,
     pub is_url: bool,
-    pub key: String,
+    pub name: String,
 }
+
+//pub async self_improve/reconcile twp different result same xpath
 
 pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, ()> {
     log::trace!("In generate_node_data");
@@ -19,7 +21,7 @@ pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, ()> {
 GPT-4, I'm analyzing an HTML/XML snippet to extract important data elements that a user would see or use. For each significant element, I want you to provide the following:
 
 1. The XPath expression that can be used to select the element.
-2. A suitable key name in snake case that can be used to represent the data programmatically.
+2. A suitable name in snake case that can be used to represent the data programmatically.
 3. Whether the data is a URL, absolute or relative
 
 Here is the HTML/XML text I'm examining:
@@ -35,7 +37,7 @@ Anticipate the possibility that there might not be any significant information i
 {{
     "xpath": "/div/tr/*",
     "is_url": true,
-    "key": "url"
+    "name": "url"
 }}
 
 And do not include any commentary, introduction or summary. Thank you.
@@ -76,7 +78,7 @@ And do not include any commentary, introduction or summary. Thank you.
         NodeData {
             xpath: item.xpath.to_string(),
             is_url: item.is_url,
-            key: item.key.to_string(),
+            name: item.name.to_string(),
             value: None,
         }
     }).collect();

@@ -3,6 +3,8 @@ use std::io::{self};
 use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
+use env_logger::Builder;
+use std::io::Write;
 
 pub mod models;
 pub mod utilities;
@@ -19,10 +21,23 @@ fn load_stdin() -> io::Result<String> {
     return Ok(buffer);
 }
 
-fn main() {
-    log::trace!("In main");
+fn init_logging() -> Builder {
+    let mut builder = Builder::from_default_env();
 
-    let _ = simple_logging::log_to_file("debug.log", LevelFilter::Trace);
+    builder.filter(None, LevelFilter::Off); // disables all logging
+    builder.filter_module("parversion", LevelFilter::Trace);
+
+    let log_file = std::fs::File::create("./debug/debug.log").unwrap();
+    builder.target(env_logger::Target::Pipe(Box::new(log_file)));
+
+    builder.init();
+
+    builder
+}
+
+fn main() {
+    let _ = init_logging();
+
 
     let mut document = String::new();
 

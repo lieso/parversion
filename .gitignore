@@ -1,9 +1,15 @@
 /target
 
-# log
-debug.log
+# Resources
+resources/*
+!resources/.gitkeep
 
-/resources
-/debug
+# Debug
+debug/*
+!debug/.gitkeep
+
+# Trees
+trees/*
+!trees/.gitkeep
 
 src/database/hash_to_node_data/
