@@ -9,6 +9,7 @@ mod models;
 mod utilities;
 mod trees;
 mod llm;
+pub mod traversal;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
@@ -58,112 +59,25 @@ pub async fn xml_to_json(xml_string: &str) -> Result<Output, Errors> {
 
     let xml = utilities::preprocess_xml(xml_string);
     let input_tree = trees::build_tree(xml.clone());
+    let output_tree = Rc::clone(&input_tree).as_ref().clone();
 
     let basis_tree: Rc<Node> = get_basis_tree();
 
-    apply_basis_tree(Rc:clone(basis_tree), Rc:clone(input_tree));
+    trees::absorb_tree(Rc:clone(basis_tree), Rc:clone(input_tree));
+    trees::prune_tree(Rc:clone(basis_tree));
+    trees::interpret_tree(Rc:clone(basis_tree));
 
-    basis_tree.harvest()
+    save_basis_tree(Rc:clone(basis_tree));
+
+    Traversal::from_tree(output_tree)
+        .with_basis(basis_tree)
+        .traverse()
+        .harvest()
 }
 
 pub fn get_basis_tree() -> Rc<Node> {
     Node::from_void()
 }
-
-
-
-pub fn apply_basis_tree(basis_tree: Rc<Node>, input_tree: Rc<Node>) {
-
-
-    while !input_tree.children.is_empty() {
-
-        let mut basis_node = basis_tree;
-
-        trees::dfs(input_tree.clone(), &mut |input_node: &Rc<Node>|) {
-
-
-            let basis_child = basis_node.children.find(|&&x| x.equals(input_node));
-
-            if let Some(basis_child) {
-
-                basis_node = basis_child;
-
-            } else {
-
-                basis_node = basis_node.adopt_child(input_node);
-
-            }
-            
-            
-
-
-        });
-
-    }
-
-}
-
-
-
-
-//pub fn apply_basis_tree(basis_tree: Rc<Node>, input_tree: Rc<Node>) {
-//
-//    while !input_tree.children.is_empty() {
-//
-//        basis_tree = basis_tree.navigate_to_root();
-//
-//        trees::dfs(input_tree.clone(), &mut |input_node: &Rc<Node>| {
-//
-//            trees::dfs(Rc::clone(basis_tree)), &mut |basis_node: &Rc<Node>| {
-//
-//
-//
-//            });
-//
-//            for basis_child in basis_tree.children {
-//                if basis_child.subtree_hash == node.subtree_hash {
-//                    basis_child::consume_matching_subtree(node);
-//
-//                    exit
-//                }
-//            }
-//
-//
-//            node.remove_from_parent();
-//            let mut adopted_node = node;
-//            adopted_node.parent = Some(Weak(basis_tree));
-//            basis_tree.children.push(adopted_node);
-//            basis_tree update subtree hashes
-//
-//
-//            exit
-//        });
-//    }
-//}
-
-//pub async fn basis_tree_from_input_tree(tree: Rc<Node>) -> Rc<Node> {
-//    log::trace!("In basis_tree_from_input_tree");
-//    trees::log_tree(tree.clone(), "@Pristine");
-//
-//    trees::merge_recurring_subtrees(Rc::clone(&tree)); // where immediate descendants do not match?
-//    trees::log_tree(tree.clone(), "@Merged");
-//
-//    let unique_subtrees = trees::update_subtree_hashes(Rc::clone(&tree));
-//    trees::log_tree(tree.clone(), "@Hashed");
-//
-//    trees::prune_tree(Rc::clone(&tree), &unique_subtrees);
-//    trees::log_tree(tree.clone(), "@Pruned");
-//
-//    trees::grow_tree(Rc::clone(&tree)).await;
-//    trees::log_tree(tree.clone(), "@Populated");
-//
-//    tree
-//}
-
-
-
-
-
 
 pub fn file_to_json(file_name: &str) -> Result<i8, Errors> {
     log::trace!("In file_to_json");

@@ -49,3 +49,13 @@ pub struct Output {
     pub lists: HashMap<String, Vec<String>>,
     pub relationships: HashMap<String, Relationship>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Traversal {
+    pub ancestry_hash: String,
+    pub subtree_hash: String,
+    pub complex_types: Vec<ComplexType>,
+    pub complex_objects: Vec<ComplexObject>,
+    pub lists: Vec<String>,
+    pub relationships: HashMap<String, Relationship>,
+}

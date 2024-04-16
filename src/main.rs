@@ -9,6 +9,7 @@ use std::io::Write;
 pub mod models;
 pub mod utilities;
 pub mod llm;
+pub mod traversal;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");

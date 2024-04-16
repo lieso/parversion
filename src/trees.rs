@@ -6,7 +6,6 @@ use xmltree::{Element, XMLNode};
 use sled::Db;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::collections::VecDeque;
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 use uuid::Uuid;
@@ -45,6 +44,9 @@ pub async fn grow_tree(tree: Rc<Node>) {
     }
 }
 
+
+// recursively combine two nodes that have the same hash and ancestry
+// into one with two child subtrees
 pub fn prune_tree(tree: Rc<Node>, unique_subtrees: &HashSet<String>) {
 
     let mut subtrees_visited: HashMap<String, bool> = unique_subtrees.iter()
@@ -65,47 +67,42 @@ pub fn prune_tree(tree: Rc<Node>, unique_subtrees: &HashSet<String>) {
     });
 }
 
-pub fn bfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    let mut queue = VecDeque::new();
-    queue.push_back(node.clone());
+pub fn prune_tree(tree: Rc<Node>) {
 
-    while let Some(current) = queue.pop_front() {
-        visit(&current);
 
-        for child in current.children.borrow().iter() {
-            queue.push_back(child.clone());
+    traverse::bfs(Rc::clone(tree), &mut |node: &Rc<Node>| {
+
+
+        loop {
+
+
+
         }
-    }
+
+    });
+
+
 }
 
-pub fn dfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    visit(&node);
+pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
 
-    for child in node.children.borrow().iter() {
-        dfs(child.clone(), visit);
-    }
-}
-
-pub fn post_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    for child in node.children.borrow().iter() {
-        post_order_traversal(child.clone(), visit);
-    }
-
-    visit(&node);
-}
-
-pub fn level_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    visit(&node);
-
-    for child in node.children.borrow().iter() {
-        level_order_traversal(child.clone(), visit);
+   if let Some(recipient_child) = recipient.children.find(|item| item.hash == donor.hash) {
+        if recipient_child.subtree_hash() == donor.subtree_hash() {
+            return;
+        } else {
+            for donor_child in donor.children {
+                absorb_tree(recipient_child, donor_child);
+            }
+        }
+    } else {
+        recipient.adopt_child(donor);
     }
 }
 
 pub fn log_tree(tree: Rc<Node>, title: &str) {
 
     let xml = tree_to_xml(tree.clone());
-    let xml_file_name = format!("tree_{}.xml", tree.ancestory_hash);
+    let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash);
 
 
     let mut file = OpenOptions::new()
@@ -123,7 +120,7 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
     writeln!(file, "{}", text).expect("Could not write to file");
 
-    level_order_traversal(tree.clone(), &mut |node: &Rc<Node>| {
+    dfs(tree.clone(), &mut |node: &Rc<Node>| {
         let divider = std::iter::repeat("-").take(50).collect::<String>();
         let text = format!(
             "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\n",
