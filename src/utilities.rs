@@ -129,7 +129,7 @@ pub fn apply_xpath(xml: &str, xpath: &str) -> Result<String, Box<dyn std::error:
     Ok(workaround)
 }
 
-pub fn hash_text(text: &str) -> &str {
+pub fn hash_text(text: String) -> String {
     let mut hasher = Sha256::new();
     hasher.update(text);
 

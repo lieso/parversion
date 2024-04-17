@@ -9,7 +9,7 @@ mod models;
 mod utilities;
 mod trees;
 mod llm;
-pub mod traversal;
+mod traversals;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
@@ -79,7 +79,11 @@ pub fn get_basis_tree() -> Rc<Node> {
     Node::from_void()
 }
 
-pub fn file_to_json(file_name: &str) -> Result<i8, Errors> {
+pub fn save_basis_tree(tree: Rc<Node>) {
+    unimplemented!()
+}
+
+pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {
     log::trace!("In file_to_json");
     log::debug!("file_name: {}", file_name);
 

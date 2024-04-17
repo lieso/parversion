@@ -15,11 +15,9 @@ pub struct NodeData {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Node {
     pub id: String,
+    pub hash: String,
     pub parent: Weak<Node>,
-    pub subtree_hash: String,
-    pub ancestry_hash: String,
     pub xml: String,
-    pub xml_hash: String,
     pub tag: String,
     pub interpret: bool,
     pub data: RefCell<Vec<NodeData>>,
@@ -52,8 +50,9 @@ pub struct Output {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Traversal {
-    pub ancestry_hash: String,
-    pub subtree_hash: String,
+    pub output_tree: Rc<Node>,
+    pub basis_tree: Option<Rc<Node>>,
+    pub primitives: Vec<HashMap<String, String>>,
     pub complex_types: Vec<ComplexType>,
     pub complex_objects: Vec<ComplexObject>,
     pub lists: Vec<String>,

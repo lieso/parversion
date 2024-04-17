@@ -4,8 +4,7 @@ use crate::utilities;
 use crate::llm;
 use xmltree::{Element, XMLNode};
 use sled::Db;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{VecDeque, HashMap, HashSet};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 use uuid::Uuid;
@@ -47,7 +46,7 @@ pub async fn grow_tree(tree: Rc<Node>) {
 pub fn prune_tree(tree: Rc<Node>) {
     traversal::bfs(Rc::clone(tree), &mut |node: &Rc<Node>| {
         loop {
-            let twins: Option<(Rc<Node>, Rc<Node>)> = tree.children.iter()
+            let twins: Option<(Rc<Node>, Rc<Node>)> = tree.children.borrow().iter()
                 .try_fold(None, |acc, child| {
 
                     if acc.is_some() Err(acc);
@@ -63,12 +62,16 @@ pub fn prune_tree(tree: Rc<Node>) {
                 .map_or_else(|opt1| opt1, |opt2| opt2);
 
             if let Some(twins) = twins {
-                trees::merge_nodes(twins);
+                merge_nodes(twins);
             } else {
                 break;
             }
         }
     });
+}
+
+pub fn merge_nodes((Rc<Node>, Rc<Node>)) {
+    unimplemented!()
 }
 
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
@@ -77,8 +80,8 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
         if recipient_child.subtree_hash() == donor.subtree_hash() {
             return;
         } else {
-            for donor_child in donor.children {
-                absorb_tree(recipient_child, donor_child);
+            for donor_child in donor.children.borrow_mut().iter() {
+                absorb_tree(recipient_child, donor_child.clone());
             }
         }
     } else {
@@ -89,7 +92,7 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
 pub fn log_tree(tree: Rc<Node>, title: &str) {
 
     let xml = tree_to_xml(tree.clone());
-    let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash);
+    let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash());
 
 
     let mut file = OpenOptions::new()
@@ -112,7 +115,7 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
         let text = format!(
             "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\n",
             node.id,
-            node.subtree_hash.borrow().clone().unwrap_or(String::from("None")),
+            node.subtree_hash(),
             node.xml,
             node.tag
         );
@@ -122,15 +125,33 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
     });
 }
 
+pub fn generate_node_hash(tag: String, fields: Vec<String>) -> String {
+    let mut hasher = Sha256::new();
+    
+    let mut hasher_items = Vec::new();
+    hasher_items.push(tag);
+
+    for field in fields.iter() {
+        hasher_items.push(field.to_string());
+    }
+
+    hasher_items.sort();
+
+    hasher.update(hasher_items.join(""));
+
+    format!("{:x}", hasher.finalize())
+}
+
 impl Node {
     pub fn from_void() -> Rc<Self> {
+        let tag = String::from("<>");
+        let hash = utilities::hash_text(tag);
+
         Rc:new(Node {
             id: Uuid::new_v4().to_string(),
-            parent: Weak::new,
-            subtree_hash: RefCell::new(None),
-            ancestry_hash: utilities::hash_text("<>"),
-            xml: xml,
-            xml_hash: xml_hash,
+            hash: hash,
+            parent: Weak::new(),
+            xml: tag,
             tag: tag,
             interpret: false,
             data: RefCell::new(Vec::new()),
@@ -141,25 +162,14 @@ impl Node {
     pub fn from_element(element: &Element, parent: Option<Weak<Node>>) -> Rc<Self> {
         let tag = element.name.clone();
         let xml = utilities::get_element_xml(&element);
-        let xml_hash = utilities::hash_text(&xml);
 
-        let mut parent_contribution = String::from("<>");
-        
-        if let Some(weak_parent) = parent {
-            if let Some(parent) = weak_parent.upgrade() {
-                parent_contribution = parent.ancestry_hash;
-            }
-        }
-        let ancestry_hash = utilities::hash_text(
-            format!("{}{}", parent_contribution, tag)
-        );
+        let element_fields = element.attributes.keys().cloned().collect();
 
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
+            hash: generate_node_hash(tag.clone(), element_fields),
             parent: parent.unwrap_or_else(Weak::new),
-            ancestry_hash: ancestry_hash,
             xml: xml,
-            xml_hash: xml_hash,
             tag: tag,
             interpret: element.attributes.len() > 0,
             data: RefCell::new(Vec::new()),
@@ -175,19 +185,36 @@ impl Node {
         }).collect();
 
         node.children.borrow_mut().extend(children_nodes);
-        node.subtree_hash = self.generate_subtree_hash();
 
         node
     }
 
-    pub fn generate_subtree_hash(&self) -> String {
+    pub fn ancestry_hash(&self) -> String {
         let mut hasher = Sha256::new();
 
         let mut hasher_items = Vec::new();
-        hasher_items.push(self.tag.clone());
+        hasher_items.push(self.hash.clone());
+
+        if let Some(parent) = &self.parent.upgrade() {
+            hasher_items.push(
+                parent.ancestry_hash()
+            );
+        }
+
+        hasher_items.sort();
+        hasher.update(hasher_items.join(""));
+
+        format!("{:x}", hasher.finalize())
+    }
+
+    pub fn subtree_hash(&self) -> String {
+        let mut hasher = Sha256::new();
+
+        let mut hasher_items = Vec::new();
+        hasher_items.push(self.hash.clone());
 
         for child in self.children.borrow().iter() {
-            hasher_items.push(child.subtree_hash);
+            hasher_items.push(child.subtree_hash());
         }
 
         hasher_items.sort();
@@ -215,6 +242,21 @@ impl Node {
             });
         }
     }
+    
+    pub fn get_lineage(&self) -> VecDeque<&str> {
+        if let Some(parent) = self.parent.upgrade() {
+            let lineage = parent.get_lineage().clone();
+            lineage.push_back(&self.hash.clone());
+            return lineage;
+        } else {
+            VecDeque::new()
+        }
+    }
+
+    pub fn adopt_child(self, tree: Rc<Node>) {
+        tree.parent = Rc::downgrade(&Rc<self>);
+        self.children.borrow_mut().push(tree);
+    }
 }
 
 impl Node {
@@ -227,7 +269,7 @@ impl Node {
             return;
         }
 
-        if let Some(node_data) = utilities::get_node_data(&db, &self.xml_hash).expect("Could not update node data") {
+        if let Some(node_data) = utilities::get_node_data(&db, &self.hash).expect("Could not update node data") {
             log::info!("Cache hit!");
             *self.data.borrow_mut() = node_data.clone();
         } else {
@@ -235,7 +277,7 @@ impl Node {
             let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.xml.clone()).await.expect("LLM unable to generate node data");
             *self.data.borrow_mut() = llm_node_data.clone();
 
-            utilities::store_node_data(&db, &self.xml_hash, llm_node_data.clone()).expect("Unable to persist node data to database");
+            utilities::store_node_data(&db, &self.hash, llm_node_data.clone()).expect("Unable to persist node data to database");
         }
     }
 
