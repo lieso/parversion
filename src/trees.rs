@@ -49,7 +49,7 @@ pub fn prune_tree(tree: Rc<Node>) {
             let twins: Option<(Rc<Node>, Rc<Node>)> = tree.children.borrow().iter()
                 .try_fold(None, |acc, child| {
 
-                    if acc.is_some() Err(acc);
+                    if acc.is_some() { Err(acc) }
 
                     if let Some(sibling) = tree.children.find(|c| {
                         c.id != child.id && c.hash == child.hash
@@ -70,7 +70,7 @@ pub fn prune_tree(tree: Rc<Node>) {
     });
 }
 
-pub fn merge_nodes((Rc<Node>, Rc<Node>)) {
+pub fn merge_nodes(nodes: (Rc<Node>, Rc<Node>)) {
     unimplemented!()
 }
 
@@ -147,7 +147,7 @@ impl Node {
         let tag = String::from("<>");
         let hash = utilities::hash_text(tag);
 
-        Rc:new(Node {
+        Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: hash,
             parent: Weak::new(),
@@ -254,7 +254,7 @@ impl Node {
     }
 
     pub fn adopt_child(self, tree: Rc<Node>) {
-        tree.parent = Rc::downgrade(&Rc<self>);
+        tree.parent = Rc::downgrade(&self);
         self.children.borrow_mut().push(tree);
     }
 }

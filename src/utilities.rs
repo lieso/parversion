@@ -12,6 +12,7 @@ use sled::{Db};
 use bincode::{serialize, deserialize};
 use std::error::Error;
 use xpath_reader::Reader;
+use sha2::{Sha256, Digest};
 
 use crate::models::*;
 

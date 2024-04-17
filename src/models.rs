@@ -1,8 +1,14 @@
 use serde::{Serialize, Deserialize};
-use std::collections::HashSet;
 use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum Errors {
+    DocumentNotProvided,
+    UnexpectedDocumentType,
+    UnexpectedError,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
@@ -22,6 +28,12 @@ pub struct Node {
     pub interpret: bool,
     pub data: RefCell<Vec<NodeData>>,
     pub children: RefCell<Vec<Rc<Node>>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ComplexType {
+    pub id: String,
+    pub values: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

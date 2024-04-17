@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::rc::{Rc};
 
 use crate::models::*;
 use crate::trees;
@@ -43,19 +42,19 @@ impl Traversal {
             complex_types: Vec::new(),
             complex_objects: Vec::new(),
             lists: Vec::new(),
-            relationships: Vec::(),
+            relationships: Vec::new(),
         }
     }
 
     pub fn with_basis(self, tree: Rc<Node>) -> Self {
-        self.basis_tree = Some(Rc.clone(tree));
+        self.basis_tree = Some(Rc::clone(tree));
         
         self
     }
 
-    pub fn traverse(self) {
+    pub fn traverse(self) -> Result<Self, Errors> {
         let mut bfs: VecDeque<Rc<Node>> = VecDeque::new();
-        bfs.push_back(Rc:clone(&self.output_tree));
+        bfs.push_back(Rc::clone(&self.output_tree));
 
         while let Some(current) = bfs.pop_front() {
 
@@ -88,10 +87,12 @@ impl Traversal {
                 bfs.push_back(child.clone());
             }
         }
+
+        Ok(self)
     }
 
     // to json, to xml, etc.
-    pub fn harvest() -> Output {
+    pub fn harvest(self) -> Result<Output, Errors> {
         unimplemented!()
     }
 }
