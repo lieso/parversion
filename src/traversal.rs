@@ -23,7 +23,7 @@ pub fn dfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     }
 }
 
-pub fn post_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
+pub fn post_order_traversal(node: Rc<Node>, visit: &mu dyn FnMut(&Rc<Node>)) {
     for child in node.children.borrow().iter() {
         post_order_traversal(child.clone(), visit);
     }
@@ -48,7 +48,21 @@ impl Traversal {
     }
 
     pub fn traverse(&self) -> Self {
+        let mut queue = VecDeque::new();
+        queue.push_back(self.tree.clone());
 
+        while let Some(current) = queue.pop_front() {
+
+            let path = current.get_path();
+
+            let basis_node = trees::walk_path(path).expect().unwrap();
+
+
+
+            for child in current.children.borrow().iter() {
+                queue.push_back(child.clone());
+            }
+        }
     }
 
     pub fn harvest() -> Output {

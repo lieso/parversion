@@ -44,44 +44,31 @@ pub async fn grow_tree(tree: Rc<Node>) {
     }
 }
 
+pub fn prune_tree(tree: Rc<Node>) {
+    traversal::bfs(Rc::clone(tree), &mut |node: &Rc<Node>| {
+        loop {
+            let twins: Option<(Rc<Node>, Rc<Node>)> = tree.children.iter()
+                .try_fold(None, |acc, child| {
 
-// recursively combine two nodes that have the same hash and ancestry
-// into one with two child subtrees
-pub fn prune_tree(tree: Rc<Node>, unique_subtrees: &HashSet<String>) {
+                    if acc.is_some() Err(acc);
 
-    let mut subtrees_visited: HashMap<String, bool> = unique_subtrees.iter()
-        .map(|value| (value.clone(), false))
-        .collect();
+                    if let Some(sibling) = tree.children.find(|c| {
+                        c.id != child.id && c.hash == child.hash
+                    }) {
+                        Some((child, sibling))
+                    } else {
+                        None
+                    }
+                })
+                .map_or_else(|opt1| opt1, |opt2| opt2);
 
-    bfs(tree.clone(), &mut |node: &Rc<Node>| {
-        if let Some(subtree_hash) = node.subtree_hash.borrow().clone() {
-            let subtree_seen = *subtrees_visited.get(&subtree_hash).unwrap_or(&false);
-
-            if subtree_seen {
-                log::info!("Pruning node with id: {}", node.id.clone());
-                node.remove_from_parent();
+            if let Some(twins) = twins {
+                trees::merge_nodes(twins);
             } else {
-                subtrees_visited.insert(subtree_hash.to_string(), true);
+                break;
             }
         }
     });
-}
-
-pub fn prune_tree(tree: Rc<Node>) {
-
-
-    traverse::bfs(Rc::clone(tree), &mut |node: &Rc<Node>| {
-
-
-        loop {
-
-
-
-        }
-
-    });
-
-
 }
 
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
