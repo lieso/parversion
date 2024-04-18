@@ -47,7 +47,7 @@ impl Traversal {
     }
 
     pub fn with_basis(self, tree: Rc<Node>) -> Self {
-        self.basis_tree = Some(Rc::clone(tree));
+        self.basis_tree = Some(Rc::clone(&tree));
         
         self
     }

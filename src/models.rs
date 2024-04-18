@@ -37,6 +37,13 @@ pub struct ComplexType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DerivedType {
+    pub id: String,
+    pub complex_mapping: HashMap<String, HashMap<String, String>>,
+    pub values: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ComplexObject {
     pub id: String,
     pub type_id: String,
@@ -68,5 +75,5 @@ pub struct Traversal {
     pub complex_types: Vec<ComplexType>,
     pub complex_objects: Vec<ComplexObject>,
     pub lists: Vec<String>,
-    pub relationships: HashMap<String, Relationship>,
+    pub relationships: Vec<Relationship>,
 }

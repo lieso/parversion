@@ -1,7 +1,4 @@
 use sha2::{Sha256, Digest};
-use crate::models::*;
-use crate::utilities;
-use crate::llm;
 use xmltree::{Element, XMLNode};
 use sled::Db;
 use std::collections::{VecDeque, HashMap, HashSet};
@@ -11,6 +8,12 @@ use uuid::Uuid;
 use std::fs::OpenOptions;
 use std::io::Write;
 use tokio::time::{sleep, Duration};
+use std::borrow::BorrowMut;
+
+use crate::models::*;
+use crate::utilities;
+use crate::llm;
+use crate::traversals;
 
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
@@ -22,7 +25,7 @@ pub fn build_tree(xml: String) -> Rc<Node> {
 pub fn tree_to_xml(tree: Rc<Node>) -> String {
     let element = tree.to_element();
 
-    utilities::element_to_string(element)
+    utilities::element_to_string(&element)
 }
 
 pub async fn grow_tree(tree: Rc<Node>) {
@@ -44,22 +47,17 @@ pub async fn grow_tree(tree: Rc<Node>) {
 }
 
 pub fn prune_tree(tree: Rc<Node>) {
-    traversal::bfs(Rc::clone(tree), &mut |node: &Rc<Node>| {
+    traversals::bfs(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
-            let twins: Option<(Rc<Node>, Rc<Node>)> = tree.children.borrow().iter()
-                .try_fold(None, |acc, child| {
+            let mut children_borrow = node.children.borrow();
+            let twins: Option<(Rc<Node>, Rc<Node>)> = children_borrow.iter()
+                .find_map(|child| {
+                    children_borrow.iter()
+                        .find(|&sibling| sibling.id != child.id && sibling.hash == child.hash)
+                        .map(|sibling| (Rc::clone(child), Rc::clone(sibling)))
+                });
 
-                    if acc.is_some() { Err(acc) }
-
-                    if let Some(sibling) = tree.children.find(|c| {
-                        c.id != child.id && c.hash == child.hash
-                    }) {
-                        Some((child, sibling))
-                    } else {
-                        None
-                    }
-                })
-                .map_or_else(|opt1| opt1, |opt2| opt2);
+            drop(children_borrow);
 
             if let Some(twins) = twins {
                 merge_nodes(twins);
@@ -76,12 +74,12 @@ pub fn merge_nodes(nodes: (Rc<Node>, Rc<Node>)) {
 
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
 
-   if let Some(recipient_child) = recipient.children.find(|item| item.hash == donor.hash) {
+   if let Some(recipient_child) = recipient.children.borrow_mut().iter().find(|item| item.hash == donor.hash) {
         if recipient_child.subtree_hash() == donor.subtree_hash() {
             return;
         } else {
             for donor_child in donor.children.borrow_mut().iter() {
-                absorb_tree(recipient_child, donor_child.clone());
+                absorb_tree(recipient_child.clone(), donor_child.clone());
             }
         }
     } else {
@@ -253,9 +251,10 @@ impl Node {
         }
     }
 
-    pub fn adopt_child(self, tree: Rc<Node>) {
-        tree.parent = Rc::downgrade(&self);
-        self.children.borrow_mut().push(tree);
+    pub fn adopt_child(&self, child: Rc<Node>) {
+        //let self_weak: Weak<Node> = Rc::downgrade(self);
+        //*child.parent.borrow_mut() = self_weak;
+        //self.children.borrow_mut().push(child);
     }
 }
 
