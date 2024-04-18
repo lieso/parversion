@@ -1,7 +1,7 @@
 use sha2::{Sha256, Digest};
 use xmltree::{Element, XMLNode};
 use sled::Db;
-use std::collections::{VecDeque, HashMap, HashSet};
+use std::collections::{VecDeque, HashMap};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 use uuid::Uuid;
@@ -14,6 +14,18 @@ use crate::models::*;
 use crate::utilities;
 use crate::llm;
 use crate::traversals;
+
+pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<String, String> {
+    unimplemented!()
+}
+
+pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> ComplexObject {
+    unimplemented!()
+}
+
+pub fn search_tree_by_lineage(basis_tree: Rc<Node>, lineage: VecDeque<String>) -> Option<Rc<Node>> {
+    unimplemented!()
+}
 
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
@@ -33,7 +45,7 @@ pub async fn grow_tree(tree: Rc<Node>) {
 
     let mut nodes: Vec<Rc<Node>> = Vec::new();
 
-    post_order_traversal(tree.clone(), &mut |node: &Rc<Node>| {
+    traversals::post_order_traversal(tree.clone(), &mut |node: &Rc<Node>| {
         nodes.push(node.clone());
     });
 
@@ -108,7 +120,7 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
     writeln!(file, "{}", text).expect("Could not write to file");
 
-    dfs(tree.clone(), &mut |node: &Rc<Node>| {
+    traversals::dfs(tree.clone(), &mut |node: &Rc<Node>| {
         let divider = std::iter::repeat("-").take(50).collect::<String>();
         let text = format!(
             "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\n",
@@ -143,14 +155,14 @@ pub fn generate_node_hash(tag: String, fields: Vec<String>) -> String {
 impl Node {
     pub fn from_void() -> Rc<Self> {
         let tag = String::from("<>");
-        let hash = utilities::hash_text(tag);
+        let hash = utilities::hash_text(tag.clone());
 
         Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: hash,
             parent: Weak::new(),
-            xml: tag,
-            tag: tag,
+            xml: tag.clone(),
+            tag: tag.clone(),
             interpret: false,
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
@@ -241,20 +253,27 @@ impl Node {
         }
     }
     
-    pub fn get_lineage(&self) -> VecDeque<&str> {
-        if let Some(parent) = self.parent.upgrade() {
-            let lineage = parent.get_lineage().clone();
-            lineage.push_back(&self.hash.clone());
-            return lineage;
-        } else {
-            VecDeque::new()
+    pub fn get_lineage(&self) -> VecDeque<String> {
+        let mut lineage = VecDeque::new();
+        lineage.push_back(self.hash.clone());
+
+        let mut current_parent = self.parent.upgrade();
+        while let Some(parent) = current_parent {
+            lineage.push_front(parent.hash.clone());
+            current_parent = parent.parent.upgrade();
         }
+
+        lineage
     }
 
     pub fn adopt_child(&self, child: Rc<Node>) {
         //let self_weak: Weak<Node> = Rc::downgrade(self);
         //*child.parent.borrow_mut() = self_weak;
         //self.children.borrow_mut().push(child);
+    }
+
+    pub fn is_complex_node(&self) -> bool {
+        unimplemented!()
     }
 }
 

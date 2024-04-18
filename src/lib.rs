@@ -59,7 +59,7 @@ pub async fn xml_to_json(xml_string: &str) -> Result<Output, Errors> {
 
     trees::absorb_tree(Rc::clone(&basis_tree), Rc::clone(&input_tree));
     trees::prune_tree(Rc::clone(&basis_tree));
-    trees::interpret_tree(Rc::clone(&basis_tree));
+    trees::grow_tree(Rc::clone(&basis_tree));
 
     save_basis_tree(Rc::clone(&basis_tree));
 

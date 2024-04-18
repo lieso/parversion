@@ -46,13 +46,16 @@ impl Traversal {
         }
     }
 
-    pub fn with_basis(self, tree: Rc<Node>) -> Self {
+    pub fn with_basis(mut self, tree: Rc<Node>) -> Self {
         self.basis_tree = Some(Rc::clone(&tree));
         
         self
     }
 
-    pub fn traverse(self) -> Result<Self, Errors> {
+    pub fn traverse(mut self) -> Result<Self, Errors> {
+
+        let basis_tree = self.basis_tree.clone().unwrap();
+
         let mut bfs: VecDeque<Rc<Node>> = VecDeque::new();
         bfs.push_back(Rc::clone(&self.output_tree));
 
@@ -60,24 +63,24 @@ impl Traversal {
 
 
 
-            let lineage = current.get_lineage();
-
-            if let Some(basis_node) = trees::search_tree_by_lineage(&self.basis_tree, lineage) {
-
-                if basis_node.is_complex_node() {
-                    self.complex_objects.push(
-                        trees::map_complex_object(basis_node, current)
-                    );
-                } else {
-                    self.primitives.push(
-                        trees::map_primitives(basis_node, current)
-                    );
-                }
-
-            } else {
-                log::warn!("Basis tree does to contain corresponding node to output tree!");
-                continue;
-            }
+//            let lineage = current.get_lineage();
+//
+//            if let Some(basis_node) = trees::search_tree_by_lineage(basis_tree.clone(), lineage) {
+//
+//                if basis_node.is_complex_node() {
+//                    self.complex_objects.push(
+//                        trees::map_complex_object(basis_node, current.clone())
+//                    );
+//                } else {
+//                    self.primitives.push(
+//                        trees::map_primitives(basis_node, current.clone())
+//                    );
+//                }
+//
+//            } else {
+//                log::warn!("Basis tree does to contain corresponding node to output tree!");
+//                continue;
+//            }
 
 
 
