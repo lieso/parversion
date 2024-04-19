@@ -52,16 +52,30 @@ pub async fn xml_to_json(xml_string: &str) -> Result<Output, Errors> {
     log::trace!("In xml_to_json");
 
     let xml = utilities::preprocess_xml(xml_string);
+    log::info!("Done preprocessing XML");
+
     let input_tree: Rc<Node> = trees::build_tree(xml.clone());
     let output_tree: Rc<Node> = Rc::new((*input_tree).clone());
 
+    log::info!("Done building input/output trees");
+
     let basis_tree: Rc<Node> = get_basis_tree();
+    log::info!("Obtained basis tree with subtree hash: {}", basis_tree.subtree_hash());
 
     trees::absorb_tree(Rc::clone(&basis_tree), Rc::clone(&input_tree));
+    log::info!("Done absorbing input tree into basis tree");
+    trees::log_tree(Rc::clone(&basis_tree), "@ABSORB");
+
     trees::prune_tree(Rc::clone(&basis_tree));
+    log::info!("Done pruning basis tree");
+
     trees::grow_tree(Rc::clone(&basis_tree));
+    log::info!("Done growing basis tree");
 
     save_basis_tree(Rc::clone(&basis_tree));
+    log::info!("Saved basis tree");
+
+    log::info!("Beginning traversal of output tree...");
 
     Traversal::from_tree(output_tree)
         .with_basis(basis_tree)

@@ -3,7 +3,7 @@ use xmltree::{Element, XMLNode};
 use sled::Db;
 use std::collections::{VecDeque, HashMap};
 use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::rc::{Rc};
 use uuid::Uuid;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -85,17 +85,27 @@ pub fn merge_nodes(nodes: (Rc<Node>, Rc<Node>)) {
 }
 
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
+    log::trace!("In absorb_tree");
 
    if let Some(recipient_child) = recipient.children.borrow_mut().iter().find(|item| item.hash == donor.hash) {
-        if recipient_child.subtree_hash() == donor.subtree_hash() {
-            return;
-        } else {
-            for donor_child in donor.children.borrow_mut().iter() {
-                absorb_tree(recipient_child.clone(), donor_child.clone());
-            }
-        }
+       log::trace!("Donor and recipient node have the same hash");
+
+       if recipient_child.subtree_hash() == donor.subtree_hash() {
+           log::trace!("Donor and recipient child subtree hashes match");
+           return;
+       } else {
+           log::trace!("Donor and recipient child have differing subtree hashes");
+           for donor_child in donor.children.borrow_mut().iter() {
+               absorb_tree(recipient_child.clone(), donor_child.clone());
+           }
+       }
     } else {
-        recipient.adopt_child(donor);
+        log::trace!("Donor and recipient subtrees incompatible. Adopting donor node...");
+
+        //recipient.adopt_child(donor);
+
+        *donor.parent.borrow_mut() = Some(recipient);
+        recipient.children.borrow_mut().push(donor);
     }
 }
 
@@ -160,7 +170,7 @@ impl Node {
         Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: hash,
-            parent: Weak::new(),
+            parent: None.into(),
             xml: tag.clone(),
             tag: tag.clone(),
             interpret: false,
@@ -169,7 +179,7 @@ impl Node {
         })
     }
 
-    pub fn from_element(element: &Element, parent: Option<Weak<Node>>) -> Rc<Self> {
+    pub fn from_element(element: &Element, parent: Option<Rc<Node>>) -> Rc<Self> {
         let tag = element.name.clone();
         let xml = utilities::get_element_xml(&element);
 
@@ -178,7 +188,7 @@ impl Node {
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: generate_node_hash(tag.clone(), element_fields),
-            parent: parent.unwrap_or_else(Weak::new),
+            parent: parent.into(),
             xml: xml,
             tag: tag,
             interpret: element.attributes.len() > 0,
@@ -188,7 +198,7 @@ impl Node {
 
        let children_nodes: Vec<Rc<Node>> = element.children.iter().filter_map(|child| {
             if let XMLNode::Element(child_element) = child {
-                Some(Node::from_element(&child_element, Some(Rc::downgrade(&node))))
+                Some(Node::from_element(&child_element, Some(node)))
             } else {
                 None
             }
@@ -205,7 +215,7 @@ impl Node {
         let mut hasher_items = Vec::new();
         hasher_items.push(self.hash.clone());
 
-        if let Some(parent) = &self.parent.upgrade() {
+        if let Some(parent) = *self.parent.borrow() {
             hasher_items.push(
                 parent.ancestry_hash()
             );
@@ -245,31 +255,17 @@ impl Node {
         element
     }
 
-    pub fn remove_from_parent(&self) {
-        if let Some(parent) = self.parent.upgrade() {
-            parent.children.borrow_mut().retain(|child| {
-                child.id != self.id
-            });
-        }
-    }
-    
     pub fn get_lineage(&self) -> VecDeque<String> {
         let mut lineage = VecDeque::new();
         lineage.push_back(self.hash.clone());
 
-        let mut current_parent = self.parent.upgrade();
-        while let Some(parent) = current_parent {
+        let mut current_parent = self.parent.borrow();
+        while let Some(parent) = current_parent.as_ref() {
             lineage.push_front(parent.hash.clone());
-            current_parent = parent.parent.upgrade();
+            current_parent = parent.parent.borrow();
         }
 
         lineage
-    }
-
-    pub fn adopt_child(&self, child: Rc<Node>) {
-        //let self_weak: Weak<Node> = Rc::downgrade(self);
-        //*child.parent.borrow_mut() = self_weak;
-        //self.children.borrow_mut().push(child);
     }
 
     pub fn is_complex_node(&self) -> bool {

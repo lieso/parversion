@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::cell::RefCell;
-use std::rc::{Rc, Weak};
+use std::rc::{Rc};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
@@ -22,7 +22,7 @@ pub struct NodeData {
 pub struct Node {
     pub id: String,
     pub hash: String,
-    pub parent: Weak<Node>,
+    pub parent: RefCell<Option<Rc<Node>>>,
     pub xml: String,
     pub tag: String,
     pub interpret: bool,
