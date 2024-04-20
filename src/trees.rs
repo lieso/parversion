@@ -62,7 +62,14 @@ pub fn prune_tree(tree: Rc<Node>) {
 
     traversals::bfs(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
+
+            if node.parent.borrow().is_none() {
+                break;
+            }
+
             let mut children_borrow = node.children.borrow();
+            log::debug!("Node has {} children", children_borrow.len());
+            
             let twins: Option<(Rc<Node>, Rc<Node>)> = children_borrow.iter()
                 .find_map(|child| {
                     children_borrow.iter()
@@ -73,8 +80,8 @@ pub fn prune_tree(tree: Rc<Node>) {
             drop(children_borrow);
 
             if let Some(twins) = twins {
-                log::trace!("Pruning nodes with ids: {} and {} with hash {} {}", twins.0.id, twins.1.id, twins.0.hash, twins.1.hash);
-                merge_nodes(twins);
+                log::trace!("Pruning nodes with ids: {} and {} with hash {}", twins.0.id, twins.1.id, twins.0.hash);
+                merge_nodes(node.clone(), twins);
             } else {
                 break;
             }
@@ -82,7 +89,7 @@ pub fn prune_tree(tree: Rc<Node>) {
     });
 }
 
-pub fn merge_nodes(nodes: (Rc<Node>, Rc<Node>)) {
+pub fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     log::trace!("In merge_nodes");
 
     *nodes.1.parent.borrow_mut() = None;
@@ -91,6 +98,8 @@ pub fn merge_nodes(nodes: (Rc<Node>, Rc<Node>)) {
         *child.parent.borrow_mut() = Some(nodes.0.clone()).into();
         nodes.0.children.borrow_mut().push(child.clone());
     }
+
+    parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
 }
 
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
@@ -129,7 +138,6 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
     let xml = tree_to_xml(tree.clone());
     let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash());
 
-
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -145,7 +153,11 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
     writeln!(file, "{}", text).expect("Could not write to file");
 
-    traversals::dfs(tree.clone(), &mut |node: &Rc<Node>| {
+    let mut node_count = 0;
+
+    traversals::bfs(tree.clone(), &mut |node: &Rc<Node>| {
+        node_count = node_count + 1;
+
         let divider = std::iter::repeat("-").take(50).collect::<String>();
         let text = format!(
             "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\n",
@@ -158,6 +170,8 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
         writeln!(file, "{}", text).expect("Could not write to file");
     });
+
+    writeln!(file, "node count: {}", node_count).expect("Could not write to file");
 }
 
 pub fn generate_node_hash(tag: String, fields: Vec<String>) -> String {
