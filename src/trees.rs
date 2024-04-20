@@ -8,7 +8,6 @@ use uuid::Uuid;
 use std::fs::OpenOptions;
 use std::io::Write;
 use tokio::time::{sleep, Duration};
-use std::borrow::BorrowMut;
 
 use crate::models::*;
 use crate::utilities;
@@ -59,19 +58,22 @@ pub async fn grow_tree(tree: Rc<Node>) {
 }
 
 pub fn prune_tree(tree: Rc<Node>) {
+    log::trace!("In prune_tree");
+
     traversals::bfs(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
             let mut children_borrow = node.children.borrow();
             let twins: Option<(Rc<Node>, Rc<Node>)> = children_borrow.iter()
                 .find_map(|child| {
                     children_borrow.iter()
-                        .find(|&sibling| sibling.id != child.id && sibling.hash == child.hash)
+                        .find(|&sibling| sibling.id != child.id && sibling.hash == child.hash && sibling.parent.borrow().is_some())
                         .map(|sibling| (Rc::clone(child), Rc::clone(sibling)))
                 });
 
             drop(children_borrow);
 
             if let Some(twins) = twins {
+                log::trace!("Pruning nodes with ids: {} and {} with hash {} {}", twins.0.id, twins.1.id, twins.0.hash, twins.1.hash);
                 merge_nodes(twins);
             } else {
                 break;
@@ -81,7 +83,14 @@ pub fn prune_tree(tree: Rc<Node>) {
 }
 
 pub fn merge_nodes(nodes: (Rc<Node>, Rc<Node>)) {
-    unimplemented!()
+    log::trace!("In merge_nodes");
+
+    *nodes.1.parent.borrow_mut() = None;
+
+    for child in nodes.1.children.borrow_mut().iter() {
+        *child.parent.borrow_mut() = Some(nodes.0.clone()).into();
+        nodes.0.children.borrow_mut().push(child.clone());
+    }
 }
 
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
