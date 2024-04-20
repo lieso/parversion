@@ -12,6 +12,14 @@ mod traversals;
 
 use models::*;
 
+//pub fn map_types(traversal: Traversal) -> Result<Vec<Mapping>, Errors> {
+//    unimplemented!()
+//}
+//
+//pub fn map_type(traversal: Traversal, model: pandoculation::models) -> Result<Mapping, Errors> {
+//    unimplemented!()
+//}
+
 pub fn string_to_json(raw_document: String) -> Result<Output, Errors> {
     log::trace!("In string_to_json");
 

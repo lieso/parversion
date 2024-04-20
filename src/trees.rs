@@ -87,7 +87,11 @@ pub fn merge_nodes(nodes: (Rc<Node>, Rc<Node>)) {
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
     log::trace!("In absorb_tree");
 
-   if let Some(recipient_child) = recipient.children.borrow_mut().iter().find(|item| item.hash == donor.hash) {
+    let recipient_child = {
+        recipient.children.borrow().iter().find(|item| item.hash == donor.hash).cloned()
+    };
+
+   if let Some(recipient_child) = recipient_child {
        log::trace!("Donor and recipient node have the same hash");
 
        if recipient_child.subtree_hash() == donor.subtree_hash() {
@@ -95,7 +99,9 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
            return;
        } else {
            log::trace!("Donor and recipient child have differing subtree hashes");
-           for donor_child in donor.children.borrow_mut().iter() {
+           let donor_children = donor.children.borrow().clone();
+
+           for donor_child in donor_children.iter() {
                absorb_tree(recipient_child.clone(), donor_child.clone());
            }
        }
@@ -104,7 +110,7 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
 
         //recipient.adopt_child(donor);
 
-        *donor.parent.borrow_mut() = Some(recipient);
+        *donor.parent.borrow_mut() = Some(recipient.clone());
         recipient.children.borrow_mut().push(donor);
     }
 }
@@ -198,7 +204,7 @@ impl Node {
 
        let children_nodes: Vec<Rc<Node>> = element.children.iter().filter_map(|child| {
             if let XMLNode::Element(child_element) = child {
-                Some(Node::from_element(&child_element, Some(node)))
+                Some(Node::from_element(&child_element, Some(Rc::clone(&node))))
             } else {
                 None
             }
@@ -215,7 +221,7 @@ impl Node {
         let mut hasher_items = Vec::new();
         hasher_items.push(self.hash.clone());
 
-        if let Some(parent) = *self.parent.borrow() {
+        if let Some(parent) = self.parent.borrow().as_ref() {
             hasher_items.push(
                 parent.ancestry_hash()
             );
@@ -259,10 +265,15 @@ impl Node {
         let mut lineage = VecDeque::new();
         lineage.push_back(self.hash.clone());
 
-        let mut current_parent = self.parent.borrow();
-        while let Some(parent) = current_parent.as_ref() {
+        let mut current_parent = self.parent.borrow().clone();
+
+        while let Some(parent) = current_parent {
             lineage.push_front(parent.hash.clone());
-            current_parent = parent.parent.borrow();
+
+            current_parent = {
+                let node_ref = parent.parent.borrow();
+                node_ref.as_ref().map(|node| node.clone())
+            };
         }
 
         lineage
