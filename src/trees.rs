@@ -160,13 +160,27 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
         let divider = std::iter::repeat("-").take(50).collect::<String>();
         let text = format!(
-            "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\n",
+            "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\nSUBTREE HASH: {}\nANCESTOR HASH: {}\n",
             node.id,
-            node.subtree_hash(),
+            node.hash,
             node.xml,
-            node.tag
+            node.tag,
+            node.subtree_hash(),
+            node.ancestry_hash()
         );
-        let text = format!("\n{}{}{}\n", divider, text, divider);
+
+        let mut node_data_text = String::from("no data\n");
+
+        for d in node.data.borrow().iter() {
+            node_data_text = node_data_text + format!(r##"
+                xpath: {},
+                name: {},
+                is_url: {},
+                value: {:?}
+            "##, d.xpath, d.name, d.is_url, d.value).as_str();
+        }
+
+        let text = format!("\n{}{}{}{}\n", divider, text, node_data_text, divider);
 
         writeln!(file, "{}", text).expect("Could not write to file");
     });

@@ -78,8 +78,9 @@ pub async fn xml_to_json(xml_string: &str) -> Result<Output, Errors> {
     log::info!("Done pruning basis tree");
     trees::log_tree(Rc::clone(&basis_tree), "@PRUNE");
 
-    trees::grow_tree(Rc::clone(&basis_tree));
+    trees::grow_tree(Rc::clone(&basis_tree)).await;
     log::info!("Done growing basis tree");
+    trees::log_tree(Rc::clone(&basis_tree), "@GROW");
 
     save_basis_tree(Rc::clone(&basis_tree));
     log::info!("Saved basis tree");
