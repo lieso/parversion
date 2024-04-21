@@ -18,7 +18,7 @@ pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, ()> {
     log::trace!("In generate_node_data");
 
     let prompt = format!(r##"
-GPT-4, I'm analyzing an HTML/XML snippet to extract important data elements that a user would see or use. For each significant element, I want you to provide the following:
+I'm analyzing an HTML/XML snippet to extract important data elements that a user would see or use. For each significant element, I want you to provide the following:
 
 1. The XPath expression that can be used to select the element.
 2. A suitable name in snake case that can be used to represent the data programmatically.
@@ -67,12 +67,16 @@ And do not include any commentary, introduction or summary. Thank you.
         .await;
     log::trace!("response: {:?}", response);
     let response = response.expect("Failed to send request to OpenAI");
+
     let json_response = response.json::<serde_json::Value>().await.expect("Unable to get JSON from response");
+    log::debug!("json_response: {:?}", json_response);
     let json_response = json_response["choices"].as_array().unwrap();
     let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
+    let json_response = fix_json_response(json_response);
+    log::debug!("json_response: {:?}", json_response);
 
     let partial_node_data = serde_json::from_str::<Vec<PartialNodeData>>(json_response)
-        .expect("Could not marshal respnose to PartialNodeData");
+        .expect("Could not marshal response to PartialNodeData");
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
@@ -84,4 +88,27 @@ And do not include any commentary, introduction or summary. Thank you.
     }).collect();
 
     Ok(node_data)
+}
+
+fn fix_json_response(response: &str) -> &str {
+    let without_backticks = remove_codeblock_delimiters(response);
+    let without_label = remove_label_text(without_backticks);
+
+    return without_label;
+}
+
+fn remove_codeblock_delimiters(s: &str) -> &str {
+     if s.starts_with("```") && s.ends_with("```") {
+         s.trim_start_matches("```").trim_end_matches("```")
+     } else {
+         s
+     }
+}
+
+fn remove_label_text(s: &str) -> &str {
+    if s.starts_with("json") {
+        return &s[4..];
+    }
+
+    s
 }

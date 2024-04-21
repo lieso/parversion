@@ -40,6 +40,8 @@ pub fn tree_to_xml(tree: Rc<Node>) -> String {
 }
 
 pub async fn grow_tree(tree: Rc<Node>) {
+    log::trace!("In grow_tree");
+
     let db = sled::open("src/database/hash_to_node_data").expect("Could not connect to datbase");
 
     let mut nodes: Vec<Rc<Node>> = Vec::new();
@@ -169,7 +171,7 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
             node.ancestry_hash()
         );
 
-        let mut node_data_text = String::from("no data\n");
+        let mut node_data_text = String::from("");
 
         for d in node.data.borrow().iter() {
             node_data_text = node_data_text + format!(r##"
