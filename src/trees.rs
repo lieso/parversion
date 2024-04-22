@@ -52,7 +52,8 @@ pub async fn grow_tree(tree: Rc<Node>) {
 
     log::info!("There are {} nodes to be evaluated", nodes.len());
 
-    for node in nodes.iter() {
+    for (index, node) in nodes.iter().enumerate() {
+        log::info!("Interpreting node #{} out of {}", index + 1, nodes.len());
         node.update_node_data(&db).await;
         node.update_node_data_values();
         node.interpret_node_data(&db).await;
@@ -163,13 +164,14 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
         let divider = std::iter::repeat("-").take(50).collect::<String>();
         let text = format!(
-            "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\nSUBTREE HASH: {}\nANCESTOR HASH: {}\n",
+            "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\nSUBTREE HASH: {}\nANCESTOR HASH: {}\nCOMPLEX TYPE NAME: {:?}\n",
             node.id,
             node.hash,
             node.xml,
             node.tag,
             node.subtree_hash(),
-            node.ancestry_hash()
+            node.ancestry_hash(),
+            node.complex_type_name
         );
 
         let mut node_data_text = String::from("");

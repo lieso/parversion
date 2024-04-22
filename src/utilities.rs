@@ -125,9 +125,9 @@ pub fn store_node_complex_type(db: &Db, key: &str, complex_type: &str) -> Result
 
 pub fn get_node_complex_type(db: &Db, key: &str) -> Result<Option<String>, Box<dyn Error>> {
     match db.get(key)? {
-        Some(complex_type) => {
-            let complex_type: &str = deserialize(&complex_type)?;
-            Ok(Some(complex_type.to_string()))
+        Some(iv) => {
+            let complex_type = String::from_utf8(iv.to_vec())?;
+            Ok(Some(complex_type))
         },
         None => Ok(None),
     }
