@@ -102,7 +102,6 @@ pub fn get_element_xml(element: &Element) -> String {
     format!("{}{}", opening_tag, closing_tag)
 }
 
-
 pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
     let serialized_nodes = serialize(&nodes)?;
     db.insert(key, serialized_nodes)?;
@@ -114,6 +113,21 @@ pub fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dy
         Some(serialized_nodes) => {
             let nodes_data: Vec<NodeData> = deserialize(&serialized_nodes)?;
             Ok(Some(nodes_data))
+        },
+        None => Ok(None),
+    }
+} 
+
+pub fn store_node_complex_type(db: &Db, key: &str, complex_type: &str) -> Result<(), Box<dyn Error>> {
+    db.insert(key, complex_type)?;
+    Ok(())
+}
+
+pub fn get_node_complex_type(db: &Db, key: &str) -> Result<Option<String>, Box<dyn Error>> {
+    match db.get(key)? {
+        Some(complex_type) => {
+            let complex_type: &str = deserialize(&complex_type)?;
+            Ok(Some(complex_type.to_string()))
         },
         None => Ok(None),
     }

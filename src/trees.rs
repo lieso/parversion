@@ -336,7 +336,7 @@ impl Node {
             return;
         }
 
-        if let Some(node_data) = utilities::get_node_data(&db, &self.hash).expect("Could not update node data") {
+        if let Some(node_data) = utilities::get_node_data(&db, &self.hash).expect("Could not get node data from database") {
             log::info!("Cache hit!");
             *self.data.borrow_mut() = node_data.clone();
         } else {
@@ -371,9 +371,20 @@ impl Node {
             return;
         }
 
-        let llm_type_name: String = llm::interpret_node(&Rc::new(self.clone())).await
-            .expect("Could not interpret node");
+        let subtree_hash = &self.subtree_hash();
 
-        *self.complex_type_name.borrow_mut() = Some(llm_type_name).into();
+        if let Some(complex_type) = utilities::get_node_complex_type(&db, subtree_hash).expect("Could not get node complex type from database") {
+            log::info!("Cache hit!");
+            *self.complex_type_name.borrow_mut() = Some(complex_type.clone());
+        } else {
+            log::info!("Cache miss!");
+
+            let llm_type_name: String = llm::interpret_node(&Rc::new(self.clone())).await
+                .expect("Could not interpret node");
+
+            *self.complex_type_name.borrow_mut() = Some(llm_type_name.clone()).into();
+
+            utilities::store_node_complex_type(&db, subtree_hash, &llm_type_name).expect("Unable to persist complex type to database");
+        }
     }
 }
