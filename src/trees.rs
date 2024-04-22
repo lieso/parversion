@@ -14,18 +14,6 @@ use crate::utilities;
 use crate::llm;
 use crate::traversals;
 
-pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<String, String> {
-    unimplemented!()
-}
-
-pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> ComplexObject {
-    unimplemented!()
-}
-
-pub fn search_tree_by_lineage(basis_tree: Rc<Node>, lineage: VecDeque<String>) -> Option<Rc<Node>> {
-    unimplemented!()
-}
-
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
     let element = Element::parse(&mut reader).expect("Could not parse XML");
@@ -303,28 +291,6 @@ impl Node {
         }
 
         element
-    }
-
-    pub fn get_lineage(&self) -> VecDeque<String> {
-        let mut lineage = VecDeque::new();
-        lineage.push_back(self.hash.clone());
-
-        let mut current_parent = self.parent.borrow().clone();
-
-        while let Some(parent) = current_parent {
-            lineage.push_front(parent.hash.clone());
-
-            current_parent = {
-                let node_ref = parent.parent.borrow();
-                node_ref.as_ref().map(|node| node.clone())
-            };
-        }
-
-        lineage
-    }
-
-    pub fn is_complex_node(&self) -> bool {
-        unimplemented!()
     }
 }
 

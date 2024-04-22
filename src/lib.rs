@@ -98,7 +98,7 @@ pub fn get_basis_tree() -> Rc<Node> {
 }
 
 pub fn save_basis_tree(tree: Rc<Node>) {
-    unimplemented!()
+    log::warn!("save_basis_tree unimplemented");
 }
 
 pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {

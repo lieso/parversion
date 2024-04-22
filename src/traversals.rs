@@ -1,8 +1,37 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::rc::{Rc};
 
 use crate::models::*;
-//use crate::trees;
+
+pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<String, String> {
+    unimplemented!()
+}
+
+pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> ComplexObject {
+    unimplemented!()
+}
+
+pub fn search_tree_by_lineage(basis_tree: Rc<Node>, lineage: VecDeque<String>) -> Option<Rc<Node>> {
+    unimplemented!()
+}
+
+pub fn get_lineage(node: Rc<Node>) -> VecDeque<String> {
+    let mut lineage = VecDeque::new();
+    lineage.push_back(node.hash.clone());
+
+    let mut current_parent = node.parent.borrow().clone();
+
+    while let Some(parent) = current_parent {
+        lineage.push_front(parent.hash.clone());
+
+        current_parent = {
+            let node_ref = parent.parent.borrow();
+            node_ref.as_ref().map(|node| node.clone())
+        };
+    }
+
+    lineage
+}
 
 pub fn bfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     let mut queue = VecDeque::new();
@@ -63,24 +92,20 @@ impl Traversal {
 
 
 
-//            let lineage = current.get_lineage();
-//
-//            if let Some(basis_node) = trees::search_tree_by_lineage(basis_tree.clone(), lineage) {
-//
-//                if basis_node.is_complex_node() {
-//                    self.complex_objects.push(
-//                        trees::map_complex_object(basis_node, current.clone())
-//                    );
-//                } else {
-//                    self.primitives.push(
-//                        trees::map_primitives(basis_node, current.clone())
-//                    );
-//                }
-//
-//            } else {
-//                log::warn!("Basis tree does to contain corresponding node to output tree!");
-//                continue;
-//            }
+            let lineage = get_lineage(Rc::clone(&current));
+
+            if let Some(basis_node) = search_tree_by_lineage(basis_tree.clone(), lineage) {
+
+                if basis_node.complex_type_name.borrow().is_some() {
+                    self.complex_objects.push(
+                        map_complex_object(basis_node, current.clone())
+                    );
+                }
+
+            } else {
+                log::warn!("Basis tree does to contain corresponding node to output tree!");
+                continue;
+            }
 
 
 
