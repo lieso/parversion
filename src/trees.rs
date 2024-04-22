@@ -55,6 +55,7 @@ pub async fn grow_tree(tree: Rc<Node>) {
     for node in nodes.iter() {
         node.update_node_data(&db).await;
         node.update_node_data_values();
+        node.interpret_node_data(&db).await;
         sleep(Duration::from_secs(1)).await;
     }
 }
@@ -221,6 +222,7 @@ impl Node {
             interpret: false,
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
+            complex_type_name: RefCell::new(None),
         })
     }
 
@@ -239,6 +241,7 @@ impl Node {
             interpret: element.attributes.len() > 0,
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
+            complex_type_name: RefCell::new(None),
         });
 
        let children_nodes: Vec<Rc<Node>> = element.children.iter().filter_map(|child| {
@@ -358,6 +361,19 @@ impl Node {
             }
         }
     }
+
+    pub async fn interpret_node_data(&self, db: &Db) {
+        log::trace!("In interpret_node_data");
+
+        if self.children.borrow().is_empty() {
+            log::info!("Ignoring leaf node");
+            *self.complex_type_name.borrow_mut() = None.into();
+            return;
+        }
+
+        let llm_type_name: String = llm::interpret_node(&Rc::new(self.clone())).await
+            .expect("Could not interpret node");
+
+        *self.complex_type_name.borrow_mut() = Some(llm_type_name).into();
+    }
 }
-
-

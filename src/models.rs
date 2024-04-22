@@ -28,6 +28,7 @@ pub struct Node {
     pub interpret: bool,
     pub data: RefCell<Vec<NodeData>>,
     pub children: RefCell<Vec<Rc<Node>>>,
+    pub complex_type_name: RefCell<Option<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
