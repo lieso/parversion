@@ -11,8 +11,27 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> Comple
     unimplemented!()
 }
 
-pub fn search_tree_by_lineage(basis_tree: Rc<Node>, lineage: VecDeque<String>) -> Option<Rc<Node>> {
-    unimplemented!()
+pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
+    log::trace!("In search_tree_by_lineage");
+
+    while let Some(hash) = lineage.pop_back() {
+        log::trace!("hash: {}", hash);
+
+        let node = tree
+            .children
+            .borrow()
+            .iter()
+            .find(|item| item.hash == hash)
+            .cloned();
+
+        if let Some(node) = node {
+            tree = node;
+        } else {
+            return None;
+        }
+    }
+
+    Some(tree)
 }
 
 pub fn get_lineage(node: Rc<Node>) -> VecDeque<String> {
@@ -94,7 +113,7 @@ impl Traversal {
 
             let lineage = get_lineage(Rc::clone(&current));
 
-            if let Some(basis_node) = search_tree_by_lineage(basis_tree.clone(), lineage) {
+            if let Some(basis_node) = search_tree_by_lineage(basis_tree.clone(), lineage.clone()) {
 
                 if basis_node.complex_type_name.borrow().is_some() {
                     self.complex_objects.push(
