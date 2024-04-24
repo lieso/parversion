@@ -1,7 +1,6 @@
 use sha2::{Sha256, Digest};
 use xmltree::{Element, XMLNode};
 use sled::Db;
-use std::collections::{VecDeque, HashMap};
 use std::cell::RefCell;
 use std::rc::{Rc};
 use uuid::Uuid;
@@ -45,7 +44,7 @@ pub async fn grow_tree(tree: Rc<Node>) {
         node.update_node_data(&db).await;
         node.update_node_data_values();
         node.interpret_node_data(&db).await;
-        sleep(Duration::from_secs(1)).await;
+        //sleep(Duration::from_secs(1)).await;
     }
 }
 

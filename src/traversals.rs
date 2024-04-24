@@ -2,19 +2,82 @@ use std::collections::{HashMap, VecDeque};
 use std::rc::{Rc};
 
 use crate::models::*;
+use crate::utilities;
 
 pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<String, String> {
     unimplemented!()
 }
 
 pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> ComplexObject {
-    unimplemented!()
+    log::trace!("In map_complex_object");
+
+    let maybe_complex_type_name = basis_tree.complex_type_name.borrow();
+    let type_id_placeholder = maybe_complex_type_name.as_ref().unwrap();
+
+    let mut values: HashMap<String, String> = HashMap::new();
+
+
+    for item in basis_tree.data.borrow().iter() {
+
+        if let Ok(output_tree_value) = utilities::apply_xpath(&output_tree.xml, &item.xpath) {
+            values.insert(item.name.clone(), output_tree_value.clone());
+        } else {
+            log::warn!("xpath from basis tree could not be applied to output tree");
+        }
+    }
+
+    for child in output_tree.children.borrow().iter() {
+
+        let basis_children_ref = basis_tree.children.borrow();
+        let basis_child = basis_children_ref
+            .iter()
+            .find(|item| item.hash == child.hash)
+            .unwrap();
+
+        if let Some(complex_type_name) = basis_child.complex_type_name.borrow().as_ref() {
+            values.insert(child.id.clone(), complex_type_name.clone());
+        } else {
+
+            for item in basis_child.data.borrow().iter() {
+
+                if let Ok(output_tree_value) = utilities::apply_xpath(&child.xml, &item.xpath) {
+                    values.insert(item.name.clone(), output_tree_value.clone());
+                } else {
+                    log::warn!("xpath from basis tree could not be applied to output tree");
+                }
+
+
+
+            }
+
+        };
+
+
+    }
+
+    let complex_object = ComplexObject {
+        id: output_tree.id.clone(),
+        type_id: type_id_placeholder.to_string(),
+        values: values,
+    };
+
+    log::debug!("complex_object: {:?}", complex_object);
+
+    complex_object
 }
 
 pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
     log::trace!("In search_tree_by_lineage");
 
-    while let Some(hash) = lineage.pop_back() {
+    if let Some(hash) = lineage.pop_front() {
+        if tree.hash != hash {
+            return None;
+        }
+    } else {
+        return None;
+    }
+
+    while let Some(hash) = lineage.pop_front() {
         log::trace!("hash: {}", hash);
 
         let node = tree
@@ -112,6 +175,7 @@ impl Traversal {
 
 
             let lineage = get_lineage(Rc::clone(&current));
+            log::debug!("lineage: {:?}", lineage);
 
             if let Some(basis_node) = search_tree_by_lineage(basis_tree.clone(), lineage.clone()) {
 
@@ -123,7 +187,6 @@ impl Traversal {
 
             } else {
                 log::warn!("Basis tree does to contain corresponding node to output tree!");
-                continue;
             }
 
 
