@@ -8,6 +8,7 @@ pub enum Errors {
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,
+    UnexpectedOutputFormat,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -60,15 +61,6 @@ pub struct Relationship {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Output {
-    pub basis_nodes: Node,
-    pub complex_types: HashMap<String, Vec<ComplexType>>,
-    pub complex_objects: HashMap<String, Vec<ComplexObject>>,
-    pub lists: HashMap<String, Vec<String>>,
-    pub relationships: HashMap<String, Relationship>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Traversal {
     pub output_tree: Rc<Node>,
     pub basis_tree: Option<Rc<Node>>,
@@ -77,4 +69,12 @@ pub struct Traversal {
     pub complex_objects: Vec<ComplexObject>,
     pub lists: Vec<String>,
     pub relationships: Vec<Relationship>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Output {
+    pub complex_types: HashMap<String, Vec<ComplexType>>,
+    pub complex_objects: Vec<ComplexObject>,
+    pub lists: HashMap<String, Vec<String>>,
+    pub relationships: HashMap<String, Relationship>,
 }

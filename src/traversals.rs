@@ -5,6 +5,15 @@ use std::cell::RefCell;
 use crate::models::*;
 use crate::utilities;
 
+#[derive(Debug)]
+pub enum OutputFormats {
+    JSON,
+    XML,
+    CSV
+}
+
+const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
+
 pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<String, String> {
     unimplemented!()
 }
@@ -190,8 +199,29 @@ impl Traversal {
         Ok(self)
     }
 
-    // to json, to xml, etc.
-    pub fn harvest(self) -> Result<Output, Errors> {
-        unimplemented!()
+    pub fn harvest(self) -> Result<String, Errors> {
+        let output = Output {
+            complex_types: HashMap::new(),
+            complex_objects: self.complex_objects.clone(),
+            lists: HashMap::new(),
+            relationships: HashMap::new(),
+        };
+
+        let output_format = DEFAULT_OUTPUT_FORMAT;
+        log::debug!("output_format: {:?}", output_format);
+
+        match output_format {
+            OutputFormats::JSON => {
+                log::info!("Harvesting tree as JSON");
+
+                let serialized = serde_json::to_string(&output).expect("Could not serialize output to JSON");
+
+                Ok(serialized)
+            },
+            _ => {
+                log::error!("Unexpected output format: {:?}", output_format);
+                Err(Errors::UnexpectedOutputFormat)
+            }
+        }
     }
 }

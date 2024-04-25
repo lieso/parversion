@@ -62,14 +62,18 @@ fn main() {
     let result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::file_to_json(file_name);
+            parversion::file_to_json(file_name)
         }
         None => {
             log::info!("File not provided");
-            parversion::string_to_json(document);
+            parversion::string_to_json(document)
         }
     };
 
-    println!("{:?}", result);
+    if let Ok(result) = result {
+        println!("{}", result);
+    } else {
+        println!("An error occurred while processing document");
+    }
 }
 

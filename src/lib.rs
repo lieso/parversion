@@ -20,7 +20,7 @@ use models::*;
 //    unimplemented!()
 //}
 
-pub fn string_to_json(raw_document: String) -> Result<Output, Errors> {
+pub fn string_to_json(raw_document: String) -> Result<String, Errors> {
     log::trace!("In string_to_json");
 
     if raw_document.trim().is_empty() {
@@ -30,7 +30,7 @@ pub fn string_to_json(raw_document: String) -> Result<Output, Errors> {
 
     let document = raw_document.trim().to_string();
 
-    let _ = Runtime::new().unwrap().block_on(async {
+    return Runtime::new().unwrap().block_on(async {
 
         if utilities::is_valid_html(&document) {
             log::info!("Document is valid HTML");
@@ -52,11 +52,9 @@ pub fn string_to_json(raw_document: String) -> Result<Output, Errors> {
 
         Err(Errors::UnexpectedDocumentType)
     });
-
-    Err(Errors::UnexpectedError)
 }
 
-pub async fn xml_to_json(xml_string: &str) -> Result<Output, Errors> {
+pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
     log::trace!("In xml_to_json");
 
     let xml = utilities::preprocess_xml(xml_string);
@@ -101,7 +99,7 @@ pub fn save_basis_tree(tree: Rc<Node>) {
     log::warn!("save_basis_tree unimplemented");
 }
 
-pub fn file_to_json(file_name: &str) -> Result<Output, Errors> {
+pub fn file_to_json(file_name: &str) -> Result<String, Errors> {
     log::trace!("In file_to_json");
     log::debug!("file_name: {}", file_name);
 
