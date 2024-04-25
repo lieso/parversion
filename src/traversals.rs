@@ -1,11 +1,28 @@
 use std::collections::{HashMap, VecDeque};
 use std::rc::{Rc};
+use std::cell::RefCell;
 
 use crate::models::*;
 use crate::utilities;
 
 pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<String, String> {
     unimplemented!()
+}
+
+pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc<Node>) -> HashMap<String, String> {
+    log::trace!("In node_data_to_hash_map");
+
+    let mut values: HashMap<String, String> = HashMap::new();
+
+    for item in node_data.borrow().iter() {
+        if let Ok(output_tree_value) = utilities::apply_xpath(&output_tree.xml, &item.xpath) {
+            values.insert(item.name.clone(), output_tree_value.clone());
+        } else {
+            log::warn!("xpath from basis tree could not be applied to output tree");
+        }
+    }
+
+    values
 }
 
 pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> ComplexObject {
@@ -16,18 +33,11 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> Comple
 
     let mut values: HashMap<String, String> = HashMap::new();
 
-
-    for item in basis_tree.data.borrow().iter() {
-
-        if let Ok(output_tree_value) = utilities::apply_xpath(&output_tree.xml, &item.xpath) {
-            values.insert(item.name.clone(), output_tree_value.clone());
-        } else {
-            log::warn!("xpath from basis tree could not be applied to output tree");
-        }
-    }
+    values.extend(
+        node_data_to_hash_map(&basis_tree.data, Rc::clone(&output_tree)).drain()
+    );
 
     for child in output_tree.children.borrow().iter() {
-
         let basis_children_ref = basis_tree.children.borrow();
         let basis_child = basis_children_ref
             .iter()
@@ -37,33 +47,17 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> Comple
         if let Some(complex_type_name) = basis_child.complex_type_name.borrow().as_ref() {
             values.insert(child.id.clone(), complex_type_name.clone());
         } else {
-
-            for item in basis_child.data.borrow().iter() {
-
-                if let Ok(output_tree_value) = utilities::apply_xpath(&child.xml, &item.xpath) {
-                    values.insert(item.name.clone(), output_tree_value.clone());
-                } else {
-                    log::warn!("xpath from basis tree could not be applied to output tree");
-                }
-
-
-
-            }
-
+            values.extend(
+                node_data_to_hash_map(&basis_child.data, Rc::clone(&output_tree)).drain()
+            );
         };
-
-
     }
 
-    let complex_object = ComplexObject {
+    ComplexObject {
         id: output_tree.id.clone(),
         type_id: type_id_placeholder.to_string(),
         values: values,
-    };
-
-    log::debug!("complex_object: {:?}", complex_object);
-
-    complex_object
+    }
 }
 
 pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
@@ -164,7 +158,6 @@ impl Traversal {
     }
 
     pub fn traverse(mut self) -> Result<Self, Errors> {
-
         let basis_tree = self.basis_tree.clone().unwrap();
 
         let mut bfs: VecDeque<Rc<Node>> = VecDeque::new();
@@ -172,26 +165,22 @@ impl Traversal {
 
         while let Some(current) = bfs.pop_front() {
 
-
-
             let lineage = get_lineage(Rc::clone(&current));
             log::debug!("lineage: {:?}", lineage);
 
             if let Some(basis_node) = search_tree_by_lineage(basis_tree.clone(), lineage.clone()) {
 
                 if basis_node.complex_type_name.borrow().is_some() {
-                    self.complex_objects.push(
-                        map_complex_object(basis_node, current.clone())
-                    );
+                    let complex_object = map_complex_object(basis_node, current.clone());
+                    log::debug!("complex_object: {:?}", complex_object);
+
+                    self.complex_objects.push(complex_object);
                 }
 
             } else {
                 log::warn!("Basis tree does to contain corresponding node to output tree!");
+                //continue;
             }
-
-
-
-
 
             for child in current.children.borrow().iter() {
                 bfs.push_back(child.clone());
