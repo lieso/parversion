@@ -13,6 +13,8 @@ use crate::utilities;
 use crate::llm;
 use crate::traversals;
 
+const TEXT_NODE_HASH: String = utilities::hash_text(String::from("text_node"));
+
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
     let element = Element::parse(&mut reader).expect("Could not parse XML");
@@ -151,11 +153,10 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
         let divider = std::iter::repeat("-").take(50).collect::<String>();
         let text = format!(
-            "\nID: {}\nHASH: {}\nXML: {}\nTAG: {}\nSUBTREE HASH: {}\nANCESTOR HASH: {}\nCOMPLEX TYPE NAME: {:?}\n",
+            "\nID: {}\nHASH: {}\nXML: {}\nSUBTREE HASH: {}\nANCESTOR HASH: {}\nCOMPLEX TYPE NAME: {:?}\n",
             node.id,
             node.hash,
             node.xml,
-            node.tag,
             node.subtree_hash(),
             node.ancestry_hash(),
             node.complex_type_name
@@ -180,7 +181,7 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
     writeln!(file, "node count: {}", node_count).expect("Could not write to file");
 }
 
-pub fn generate_node_hash(tag: String, fields: Vec<String>) -> String {
+pub fn generate_element_node_hash(tag: String, fields: Vec<String>) -> String {
     let mut hasher = Sha256::new();
     
     let mut hasher_items = Vec::new();
@@ -207,8 +208,18 @@ impl Node {
             hash: hash,
             parent: None.into(),
             xml: tag.clone(),
-            tag: tag.clone(),
-            interpret: false,
+            data: RefCell::new(Vec::new()),
+            children: RefCell::new(vec![]),
+            complex_type_name: RefCell::new(None),
+        })
+    }
+
+    pub fn from_text(text: &xmltree::Text, parent: Option<Rc<Node>>) => Rc<Self> {
+        Rc::new(Node {
+            id: Uuid::new_v4().to_string(),
+            hash: TEXT_NODE_HASH,
+            parent: parent.into(),
+            xml: text.as_text(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
             complex_type_name: RefCell::new(None),
@@ -223,21 +234,19 @@ impl Node {
 
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
-            hash: generate_node_hash(tag.clone(), element_fields),
+            hash: generate_element_node_hash(tag.clone(), element_fields),
             parent: parent.into(),
             xml: xml,
-            tag: tag,
-            interpret: element.attributes.len() > 0,
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
             complex_type_name: RefCell::new(None),
         });
 
        let children_nodes: Vec<Rc<Node>> = element.children.iter().filter_map(|child| {
-            if let XMLNode::Element(child_element) = child {
-                Some(Node::from_element(&child_element, Some(Rc::clone(&node))))
-            } else {
-                None
+            match child {
+                XMLNode::Element(child_element) => Some(Node::from_element(&child_element, Some(Rc::clone(&node)))),
+                XMLNode::Text(child_text) => Some(Node::from_text(&child_text, Some(Rc::clone(&node)))),
+                _ => None,
             }
         }).collect();
 
@@ -281,15 +290,16 @@ impl Node {
     }
 
     pub fn to_element(&self) -> Element {
-        let mut element = Element::new(&self.tag);
+        unimplemented!()
+        //let mut element = Element::new(&self.tag);
 
-        for child in self.children.borrow().iter() {
-            element.children.push(
-                XMLNode::Element(child.to_element())
-            );
-        }
+        //for child in self.children.borrow().iter() {
+        //    element.children.push(
+        //        XMLNode::Element(child.to_element())
+        //    );
+        //}
 
-        element
+        //element
     }
 }
 
@@ -297,7 +307,9 @@ impl Node {
     pub async fn update_node_data(&self, db: &Db) {
         log::trace!("In update_node_data");
 
-        if !self.interpret {
+        let interpret = should_interpret(Rc::clone(&self));
+
+        if !interpret {
             log::info!("Ignoring node");
             *self.data.borrow_mut() = Vec::new();
             return;
