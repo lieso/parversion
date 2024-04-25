@@ -72,13 +72,13 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> Comple
 pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
     log::trace!("In search_tree_by_lineage");
 
-    if let Some(hash) = lineage.pop_front() {
-        if tree.hash != hash {
-            return None;
-        }
-    } else {
-        return None;
-    }
+    //if let Some(hash) = lineage.pop_front() {
+    //    if tree.hash != hash {
+    //        return None;
+    //    }
+    //} else {
+    //    return None;
+    //}
 
     while let Some(hash) = lineage.pop_front() {
         log::trace!("hash: {}", hash);
@@ -172,7 +172,11 @@ impl Traversal {
         let mut bfs: VecDeque<Rc<Node>> = VecDeque::new();
         bfs.push_back(Rc::clone(&self.output_tree));
 
+        let mut node_count = 1;
+
         while let Some(current) = bfs.pop_front() {
+            log::info!("Traversing node #{}", node_count);
+            node_count = node_count + 1;
 
             let lineage = get_lineage(Rc::clone(&current));
             log::debug!("lineage: {:?}", lineage);

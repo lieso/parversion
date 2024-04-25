@@ -61,7 +61,8 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done preprocessing XML");
 
     let input_tree: Rc<Node> = trees::build_tree(xml.clone());
-    let output_tree: Rc<Node> = Rc::new((*input_tree).clone());
+    //let output_tree: Rc<Node> = Rc::new((*input_tree).clone());
+    let output_tree: Rc<Node> = trees::build_tree(xml.clone());
 
     log::info!("Done building input/output trees");
 
