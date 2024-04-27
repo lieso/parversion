@@ -23,8 +23,9 @@ pub struct NodeData {
 pub struct Node {
     pub id: String,
     pub hash: String,
-    pub parent: RefCell<Option<Rc<Node>>>,
     pub xml: String,
+    pub is_structural: bool,
+    pub parent: RefCell<Option<Rc<Node>>>,
     pub data: RefCell<Vec<NodeData>>,
     pub children: RefCell<Vec<Rc<Node>>>,
     pub complex_type_name: RefCell<Option<String>>,

@@ -13,7 +13,8 @@ use crate::utilities;
 use crate::llm;
 use crate::traversals;
 
-const TEXT_NODE_HASH: String = utilities::hash_text(String::from("text_node"));
+// echo -n "text_node" | sha256sum
+const TEXT_NODE_HASH: &str = "40e215e7587a0edee158a67925057a5137f96c1c877fd3150f7d8760f866592e";
 
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
@@ -206,20 +207,22 @@ impl Node {
         Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: hash,
-            parent: None.into(),
             xml: tag.clone(),
+            is_structural: true,
+            parent: None.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
             complex_type_name: RefCell::new(None),
         })
     }
 
-    pub fn from_text(text: &xmltree::Text, parent: Option<Rc<Node>>) => Rc<Self> {
+    pub fn from_text(text: String, parent: Option<Rc<Node>>) -> Rc<Self> {
         Rc::new(Node {
             id: Uuid::new_v4().to_string(),
-            hash: TEXT_NODE_HASH,
+            hash: TEXT_NODE_HASH.to_string(),
+            xml: text,
+            is_structural: false,
             parent: parent.into(),
-            xml: text.as_text(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
             complex_type_name: RefCell::new(None),
@@ -229,14 +232,15 @@ impl Node {
     pub fn from_element(element: &Element, parent: Option<Rc<Node>>) -> Rc<Self> {
         let tag = element.name.clone();
         let xml = utilities::get_element_xml(&element);
-
         let element_fields = element.attributes.keys().cloned().collect();
+        let is_structural = element.attributes.len() == 0;
 
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: generate_element_node_hash(tag.clone(), element_fields),
-            parent: parent.into(),
             xml: xml,
+            is_structural: is_structural,
+            parent: parent.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
             complex_type_name: RefCell::new(None),
@@ -245,7 +249,7 @@ impl Node {
        let children_nodes: Vec<Rc<Node>> = element.children.iter().filter_map(|child| {
             match child {
                 XMLNode::Element(child_element) => Some(Node::from_element(&child_element, Some(Rc::clone(&node)))),
-                XMLNode::Text(child_text) => Some(Node::from_text(&child_text, Some(Rc::clone(&node)))),
+                XMLNode::Text(child_text) => Some(Node::from_text(child_text.to_string(), Some(Rc::clone(&node)))),
                 _ => None,
             }
         }).collect();
@@ -304,13 +308,64 @@ impl Node {
 }
 
 impl Node {
+    pub fn should_update_node_data(&self) -> bool {
+        log::trace!("In should_update_node_data");
+
+        !self.is_structural
+    }
+
+    pub fn should_interpret_node_data(&self) -> bool {
+        log::trace!("In should_interpret_node_data");
+        
+        // Do not give a node a type if:
+        // * It's a leaf node
+        // * It and all children are structural nodes
+
+        let is_leaf = self.children.borrow().is_empty();
+
+        let is_structural = self.children.borrow().iter().fold(
+            self.is_structural,
+            |acc, item| {
+                acc && item.is_structural
+            }
+        );
+
+        is_leaf || is_structural
+    }
+
+    pub fn should_propagate_node_interpretation(&self) -> Option<String> {
+        log::trace!("In should_propagate_node_interpretation");
+
+        // We should propagate descendant complex type to parent if:
+        // Node only has one non-structural child
+        // TODO: what if node and all children except one are structural, and structural node is leaf node?
+
+        let structural_count: u16 = self.children.borrow().iter().fold(
+            0 as u16,
+            |acc, item| {
+                acc + item.is_structural as u16
+            }
+        );
+
+        if self.is_structural && structural_count == 1 {
+
+            let sole_non_structural_node: Rc<Node> = self.children.borrow().iter().find(|item| {
+                !item.is_structural
+            }).unwrap().clone();
+
+            let complex_type_name = sole_non_structural_node.complex_type_name.borrow().clone().unwrap();
+
+            return Some(complex_type_name);
+        }
+
+        None
+    }
+
     pub async fn update_node_data(&self, db: &Db) {
         log::trace!("In update_node_data");
 
-        let interpret = should_interpret(Rc::clone(&self));
-
-        if !interpret {
-            log::info!("Ignoring node");
+        if !self.should_update_node_data() {
+            log::info!("Not updating this node");
             *self.data.borrow_mut() = Vec::new();
             return;
         }
@@ -344,11 +399,19 @@ impl Node {
     pub async fn interpret_node_data(&self, db: &Db) {
         log::trace!("In interpret_node_data");
 
-        if self.children.borrow().is_empty() {
-            log::info!("Ignoring leaf node");
+        if !self.should_interpret_node_data() {
+            log::info!("Not interpreting this node");
             *self.complex_type_name.borrow_mut() = None.into();
             return;
         }
+        
+        if let Some(propagated_complex_type) = self.should_propagate_node_interpretation() {
+            log::info!("Propagating node interpretation");
+            *self.complex_type_name.borrow_mut() = Some(propagated_complex_type);
+            return;
+        }
+
+        log::info!("Consulting LLM for node interpretation...");
 
         let subtree_hash = &self.subtree_hash();
 
