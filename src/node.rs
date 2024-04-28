@@ -71,10 +71,10 @@ pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc
     let mut values: HashMap<String, String> = HashMap::new();
 
     for item in node_data.borrow().iter() {
-        if let Ok(output_tree_value) = utility::apply_xpath(&output_tree.xml, &item.xpath) {
-            values.insert(item.name.clone(), output_tree_value.clone());
+        if let Some(node_data_value) = item.select(output_tree.xml.clone()) {
+            values.insert(item.name.clone(), node_data_value.text.clone());
         } else {
-            log::warn!("xpath from basis tree could not be applied to output tree");
+            log::warn!("Basis tree node could not be applied to output tree node!");
         }
     }
 
@@ -174,7 +174,9 @@ pub async fn grow_tree(tree: Rc<Node>) {
     log::info!("There are {} nodes to be evaluated", nodes.len());
 
     for (index, node) in nodes.iter().enumerate() {
-        log::info!("Interpreting node #{} out of {}", index + 1, nodes.len());
+        log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
+        log::debug!("xml: {}, is_structural: {}", node.xml, node.is_structural);
+
         node.update_node_data(&db).await;
         node.update_node_data_values();
         node.interpret_node_data(&db).await;
@@ -273,8 +275,8 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
 
 pub fn log_tree(tree: Rc<Node>, title: &str) {
 
-    let xml = tree_to_xml(tree.clone());
-    let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash());
+    //let xml = tree_to_xml(tree.clone());
+    //let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash());
 
     let mut file = OpenOptions::new()
         .create(true)
@@ -311,10 +313,9 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
         for d in node.data.borrow().iter() {
             node_data_text = node_data_text + format!(r##"
-                xpath: {},
                 name: {},
                 value: {:?}
-            "##, d.xpath, d.name, d.value).as_str();
+            "##, d.name, d.value).as_str();
         }
 
         let text = format!("\n{}{}{}{}\n", divider, text, node_data_text, divider);
@@ -522,10 +523,15 @@ impl Node {
         log::trace!("In should_interpret_node_data");
         
         // Do not give a node a type if:
-        // * It's a leaf node
+        // * It's a leaf node - whoops yes we do. e.g. title tag in head is a simple text node, but will need 'page_title' complex type
         // * It and all children are structural nodes
 
-        let is_leaf = self.children.borrow().is_empty();
+        //let is_leaf = self.children.borrow().is_empty();
+        //log::debug!("is_leaf: {}", is_leaf);
+
+        //if is_leaf {
+        //    return false;
+        //}
 
         let is_structural = self.children.borrow().iter().fold(
             self.is_structural,
@@ -533,8 +539,13 @@ impl Node {
                 acc && item.is_structural
             }
         );
+        log::debug!("is_structural: {}", is_structural);
 
-        is_leaf || is_structural
+        if is_structural {
+            return false;
+        }
+
+        true
     }
 
     pub fn should_propagate_node_interpretation(&self) -> Option<String> {
@@ -544,14 +555,15 @@ impl Node {
         // Node only has one non-structural child
         // TODO: what if node and all children except one are structural, and structural node is leaf node?
 
-        let structural_count: u16 = self.children.borrow().iter().fold(
+        let non_structural_count: u16 = self.children.borrow().iter().fold(
             0 as u16,
             |acc, item| {
-                acc + item.is_structural as u16
+                acc + !item.is_structural as u16
             }
         );
 
-        if self.is_structural && structural_count == 1 {
+        if self.is_structural && non_structural_count == 1 {
+            log::info!("Node is structural and has exactly one non-structural child");
 
             let sole_non_structural_node: Rc<Node> = self.children.borrow().iter().find(|item| {
                 !item.is_structural
@@ -573,10 +585,8 @@ impl Node {
         if self.hash == TEXT_NODE_HASH {
             let node_data = NodeData {
                 name: String::from("text"),
-                value: NodeDataValue {
-                    text: self.xml.clone(),
-                },
-                xpath: String::from(""),
+                value: None,
+                xpath: None,
             };
 
             return Some(vec![node_data]);
@@ -594,6 +604,12 @@ impl Node {
             return;
         }
 
+        if let Some(classical_interpretation) = self.should_classically_update_node_data() {
+            log::info!("Node interpreted classically");
+            *self.data.borrow_mut() = classical_interpretation;
+            return;
+        }
+
         if let Some(node_data) = get_node_data(&db, &self.hash).expect("Could not get node data from database") {
             log::info!("Cache hit!");
             *self.data.borrow_mut() = node_data.clone();
@@ -607,18 +623,17 @@ impl Node {
     }
 
     pub fn update_node_data_values(&self) {
-        unimplemented!()
-        //let mut data = self.data.borrow_mut();
+        let mut data = self.data.borrow_mut();
 
-        //for item in data.iter_mut() {
-        //    if let Ok(result) = utility::apply_xpath(&self.xml, &item.xpath) {
-        //        log::trace!("xpath success match: {}", result);
-        //        item.value = Some(result.clone());
-        //    } else {
-        //        log::warn!("Could not apply xpath: {} to node with id: {}", &item.xpath, self.id);
-        //        item.value = None;
-        //    }
-        //}
+        for item in data.iter_mut() {
+            if let Some(node_data_value) = item.select(self.xml.clone()) {
+                log::trace!("Node data selection success: {}", node_data_value.text);
+                item.value = Some(node_data_value);
+            } else {
+                log::warn!("Node could not obtain data from its own xml!");
+                item.value = None;
+            }
+        }
     }
 
     pub async fn interpret_node_data(&self, db: &Db) {

@@ -15,6 +15,7 @@ struct PartialNodeData {
 pub async fn interpret_node(fields: String) -> Result<String, ()> {
     log::trace!("In interpret_node");
 
+    assert!(!fields.is_empty());
 
     //let examples = String::from("");
 
@@ -96,7 +97,6 @@ I'm analyzing an HTML/XML snippet to extract important data elements that a user
 
 1. The XPath expression that can be used to select the element.
 2. A suitable name in snake case that can be used to represent the data programmatically.
-3. Whether the data is a URL, absolute or relative
 
 Here is the HTML/XML text I'm examining:
 
@@ -154,7 +154,7 @@ And do not include any commentary, introduction or summary. Thank you.
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
-            xpath: item.xpath.to_string(),
+            xpath: Some(item.xpath.to_string()),
             name: item.name.to_string(),
             value: None,
         }
