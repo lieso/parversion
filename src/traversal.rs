@@ -1,9 +1,56 @@
-use std::collections::{HashMap, VecDeque};
+use serde::{Serialize, Deserialize};
 use std::rc::{Rc};
-use std::cell::RefCell;
+use std::collections::{HashMap, VecDeque};
 
-use crate::models::*;
-use crate::utilities;
+use crate::node::*;
+use crate::error::{Errors};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ComplexType {
+    pub id: String,
+    pub values: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DerivedType {
+    pub id: String,
+    pub complex_mapping: HashMap<String, HashMap<String, String>>,
+    pub values: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ComplexObject {
+    pub id: String,
+    pub type_id: String,
+    pub values: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Relationship {
+    pub id: String,
+    pub complex_type_id: String,
+    pub origin_field: String,
+    pub target_field: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Traversal {
+    pub output_tree: Rc<Node>,
+    pub basis_tree: Option<Rc<Node>>,
+    pub primitives: Vec<HashMap<String, String>>,
+    pub complex_types: Vec<ComplexType>,
+    pub complex_objects: Vec<ComplexObject>,
+    pub lists: Vec<String>,
+    pub relationships: Vec<Relationship>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Output {
+    pub complex_types: HashMap<String, Vec<ComplexType>>,
+    pub complex_objects: Vec<ComplexObject>,
+    pub lists: HashMap<String, Vec<String>>,
+    pub relationships: HashMap<String, Relationship>,
+}
 
 #[derive(Debug)]
 pub enum OutputFormats {
@@ -13,26 +60,6 @@ pub enum OutputFormats {
 }
 
 const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
-
-pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<String, String> {
-    unimplemented!()
-}
-
-pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc<Node>) -> HashMap<String, String> {
-    log::trace!("In node_data_to_hash_map");
-
-    let mut values: HashMap<String, String> = HashMap::new();
-
-    for item in node_data.borrow().iter() {
-        if let Ok(output_tree_value) = utilities::apply_xpath(&output_tree.xml, &item.xpath) {
-            values.insert(item.name.clone(), output_tree_value.clone());
-        } else {
-            log::warn!("xpath from basis tree could not be applied to output tree");
-        }
-    }
-
-    values
-}
 
 pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> ComplexObject {
     log::trace!("In map_complex_object");
@@ -69,83 +96,12 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> Comple
     }
 }
 
-pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
-    log::trace!("In search_tree_by_lineage");
 
-    //if let Some(hash) = lineage.pop_front() {
-    //    if tree.hash != hash {
-    //        return None;
-    //    }
-    //} else {
-    //    return None;
-    //}
 
-    while let Some(hash) = lineage.pop_front() {
-        log::trace!("hash: {}", hash);
 
-        let node = tree
-            .children
-            .borrow()
-            .iter()
-            .find(|item| item.hash == hash)
-            .cloned();
 
-        if let Some(node) = node {
-            tree = node;
-        } else {
-            return None;
-        }
-    }
 
-    Some(tree)
-}
 
-pub fn get_lineage(node: Rc<Node>) -> VecDeque<String> {
-    let mut lineage = VecDeque::new();
-    lineage.push_back(node.hash.clone());
-
-    let mut current_parent = node.parent.borrow().clone();
-
-    while let Some(parent) = current_parent {
-        lineage.push_front(parent.hash.clone());
-
-        current_parent = {
-            let node_ref = parent.parent.borrow();
-            node_ref.as_ref().map(|node| node.clone())
-        };
-    }
-
-    lineage
-}
-
-pub fn bfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    let mut queue = VecDeque::new();
-    queue.push_back(node.clone());
-
-    while let Some(current) = queue.pop_front() {
-        visit(&current);
-
-        for child in current.children.borrow().iter() {
-            queue.push_back(child.clone());
-        }
-    }
-}
-
-pub fn dfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    visit(&node);
-
-    for child in node.children.borrow().iter() {
-        dfs(child.clone(), visit);
-    }
-}
-
-pub fn post_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    for child in node.children.borrow().iter() {
-        post_order_traversal(child.clone(), visit);
-    }
-
-    visit(&node);
-}
 
 impl Traversal {
     pub fn from_tree(tree: Rc<Node>) -> Self {

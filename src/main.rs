@@ -6,10 +6,12 @@ use log::LevelFilter;
 use env_logger::Builder;
 use std::io::Write;
 
-mod models;
-mod utilities;
+mod error;
 mod llm;
-mod traversals;
+mod node;
+mod node_data;
+mod traversal;
+mod utility;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");

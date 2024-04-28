@@ -8,18 +8,36 @@ use std::string::String;
 use xmltree::Element;
 use std::io::Cursor;
 use std::str::from_utf8;
-use sled::{Db};
-use bincode::{serialize, deserialize};
-use std::error::Error;
 use xpath_reader::Reader;
 use sha2::{Sha256, Digest};
 
-use crate::models::*;
+
+
 
 const BLACKLISTED_ATTTRIBUTES: [&str; 7] = [
     "style", "bgcolor", "border", "cellpadding", "cellspacing",
     "width", "height", 
 ];
+
+
+
+
+pub fn generate_element_node_hash(tag: String, fields: Vec<String>) -> String {
+    let mut hasher = Sha256::new();
+    
+    let mut hasher_items = Vec::new();
+    hasher_items.push(tag);
+
+    for field in fields.iter() {
+        hasher_items.push(field.to_string());
+    }
+
+    hasher_items.sort();
+
+    hasher.update(hasher_items.join(""));
+
+    format!("{:x}", hasher.finalize())
+}
 
 pub fn is_valid_xml(xml_string: &str) -> bool {
     match Element::parse(xml_string.as_bytes()) {
@@ -101,37 +119,6 @@ pub fn get_element_xml(element: &Element) -> String {
 
     format!("{}{}", opening_tag, closing_tag)
 }
-
-pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
-    let serialized_nodes = serialize(&nodes)?;
-    db.insert(key, serialized_nodes)?;
-    Ok(())
-}
-
-pub fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Error>> {
-    match db.get(key)? {
-        Some(serialized_nodes) => {
-            let nodes_data: Vec<NodeData> = deserialize(&serialized_nodes)?;
-            Ok(Some(nodes_data))
-        },
-        None => Ok(None),
-    }
-} 
-
-pub fn store_node_complex_type(db: &Db, key: &str, complex_type: &str) -> Result<(), Box<dyn Error>> {
-    db.insert(key, complex_type)?;
-    Ok(())
-}
-
-pub fn get_node_complex_type(db: &Db, key: &str) -> Result<Option<String>, Box<dyn Error>> {
-    match db.get(key)? {
-        Some(iv) => {
-            let complex_type = String::from_utf8(iv.to_vec())?;
-            Ok(Some(complex_type))
-        },
-        None => Ok(None),
-    }
-} 
 
 pub fn apply_xpath(xml: &str, xpath: &str) -> Result<String, Box<dyn std::error::Error>> {
     log::debug!("xml: {}, xpath: {}", xml, xpath);

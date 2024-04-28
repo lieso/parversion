@@ -4,28 +4,17 @@ use serde_json::json;
 use std::env;
 use std::rc::{Rc};
 
-use crate::models::*;
+use crate::node_data::{NodeData};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PartialNodeData {
     pub xpath: String,
-    pub is_url: bool,
     pub name: String,
 }
 
-pub async fn interpret_node(node: &Rc<Node>) -> Result<String, ()> {
+pub async fn interpret_node(fields: String) -> Result<String, ()> {
     log::trace!("In interpret_node");
 
-    let fields = node.children.borrow().iter().fold(
-        node_data_to_string(node.data.borrow().clone()),
-        |acc, item| {
-            if let Some(complex_type_name) = item.complex_type_name.borrow().clone() {
-                format!("{}\n{}: {}", acc, uncapitalize(&complex_type_name), &complex_type_name)
-            } else {
-                format!("{}\n{}", acc, node_data_to_string(item.data.borrow().clone()))
-            }
-        }
-    );
 
     //let examples = String::from("");
 
@@ -117,11 +106,11 @@ Here is the HTML/XML text I'm examining:
 
 ---
 
-Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Otherwise, please provide your response as an array of JSON objects that look like this:
+Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array.
+Otherwise, please provide your response as an array of JSON objects that look like this:
 
 {{
     "xpath": "/div/tr/*",
-    "is_url": true,
     "name": "url"
 }}
 
@@ -166,7 +155,6 @@ And do not include any commentary, introduction or summary. Thank you.
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
             xpath: item.xpath.to_string(),
-            is_url: item.is_url,
             name: item.name.to_string(),
             value: None,
         }
@@ -196,18 +184,4 @@ fn remove_label_text(s: &str) -> &str {
     }
 
     s
-}
-
-fn node_data_to_string(node_data: Vec<NodeData>) -> String {
-    node_data.iter().fold(String::from(""), |acc, item| {
-        format!("{}\n{}", acc, item.name)
-    })
-}
-
-fn uncapitalize(word: &str) -> String {
-    let mut chars = word.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(f) => f.to_lowercase().collect::<String>() + chars.as_str(),
-    }
 }
