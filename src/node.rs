@@ -662,29 +662,72 @@ impl Node {
             log::info!("Cache miss!");
 
 
-            // TODO: feel this belongs in llm module
-            let fields = self.children.borrow().iter().fold(
-                node_data_to_string(self.data.borrow().clone()),
-                |acc, item| {
-                    if let Some(complex_type_name) = item.complex_type_name.borrow().clone() {
-                        format!("{}\n{}: {}", acc, uncapitalize(&complex_type_name), &complex_type_name)
-                    } else {
-                        format!("{}\n{}", acc, node_data_to_string(item.data.borrow().clone()))
-                    }
-                }
-            );
+            let fields = self.get_node_fields();
+            let context = self.get_node_context();
+            log::debug!("*****************************************************************************************************");
+            log::debug!("context: {}", context);
+            panic!("testing");
+            let examples = self.get_node_examples();
 
 
 
             //let llm_type_name: String = llm::interpret_node(&Rc::new(self.clone())).await
             //    .expect("Could not interpret node");
-            let llm_type_name: String = llm::interpret_node(fields).await
+            let llm_type_name: String = llm::interpret_node(fields, context, examples).await
                 .expect("Could not interpret node");
 
             *self.complex_type_name.borrow_mut() = Some(llm_type_name.clone()).into();
 
             store_node_complex_type(&db, subtree_hash, &llm_type_name).expect("Unable to persist complex type to database");
         }
+    }
+
+    pub fn get_node_fields(&self) -> String {
+
+        // TODO: feel this belongs in llm module
+        self.children.borrow().iter().fold(
+            node_data_to_string(self.data.borrow().clone()),
+            |acc, item| {
+                if let Some(complex_type_name) = item.complex_type_name.borrow().clone() {
+                    format!("{}\n{}: {}", acc, uncapitalize(&complex_type_name), &complex_type_name)
+                } else {
+                    format!("{}\n{}", acc, node_data_to_string(item.data.borrow().clone()))
+                }
+            }
+        )
+
+    }
+
+    pub fn get_node_context(&self) -> String {
+
+        let mut context = String::from("");
+
+        // TODO: ?
+        if self.parent.borrow().is_none() {
+            return String::from("These fields are self-contained and appear by themselves without any relevant context.");
+        }
+
+        let marker = "<!-- FIELDS ARE FOUND HERE -->";
+        let parent = self.parent.borrow().clone().unwrap();
+        let siblings = parent.children.borrow();
+        let position = siblings.iter().position(|node| node.id == self.id)
+            .expect("Node not found as a child of its own parent");
+
+        for i in position.saturating_sub(5)..position {
+            context = context + &siblings[i].xml.clone() + "\n";
+        }
+
+        context = context + &self.xml + marker;
+
+        for i in (position + 1)..std::cmp::max(siblings.len(), position + 5) {
+            context = context + &siblings[i].xml.clone() + "\n";
+        }
+
+        context
+    }
+
+    pub fn get_node_examples(&self) -> String {
+        unimplemented!()
     }
 }
 

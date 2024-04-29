@@ -12,47 +12,35 @@ struct PartialNodeData {
     pub name: String,
 }
 
-pub async fn interpret_node(fields: String) -> Result<String, ()> {
+pub async fn interpret_node(fields: String, context: String, examples: String) -> Result<String, ()> {
     log::trace!("In interpret_node");
 
     assert!(!fields.is_empty());
-
-    //let examples = String::from("");
+    assert!(!context.is_empty());
+    assert!(!examples.is_empty());
 
     let prompt = format!(r##"
 I would like you to come up with an appropriate type name for the following set of fields:
 
----
 
 {}
 
 ---
 
-Examples of expected responses:
+The context is which these field(s) appear which you should consider when naming fields:
 
-Example one:
-
-icon_url
-submit_url
-external_url
-
-Response: UrlGroup
+{}
 
 ---
 
-Example two:
+Examples of objects with populated data:
 
-comment
-user_id
-timestamp
-id
-
-Response: UserComment
+{}
 
 ---
 
 Please provide your response as a single Pascal case string with no commentary, introduction or summary. Thank you.
-"##, fields);
+"##, fields, context, examples);
     log::trace!("prompt: {}", prompt);
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
