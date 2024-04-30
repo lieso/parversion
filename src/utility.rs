@@ -139,3 +139,14 @@ pub fn hash_text(text: String) -> String {
 
     format!("{:x}", hash)
 }
+
+pub fn get_opening_tag(element: &Element) -> String {
+    let mut tag = format!("<{}", element.name);
+
+    for (attr, value) in &element.attributes {
+        tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
+    }
+    tag.push('>');
+
+    tag
+}

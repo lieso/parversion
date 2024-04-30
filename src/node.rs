@@ -639,6 +639,8 @@ impl Node {
     pub async fn interpret_node_data(&self, db: &Db) {
         log::trace!("In interpret_node_data");
 
+        assert!(!self.xml.is_empty());
+
         if !self.should_interpret_node_data() {
             log::info!("Not interpreting this node");
             *self.complex_type_name.borrow_mut() = None.into();
@@ -700,30 +702,38 @@ impl Node {
 
     pub fn get_node_context(&self) -> String {
 
-        let mut context = String::from("");
-
         // TODO: ?
         if self.parent.borrow().is_none() {
             return String::from("These fields are self-contained and appear by themselves without any relevant context.");
         }
 
-        let marker = "<!-- FIELDS ARE FOUND HERE -->";
+        let marker = "\n<-- FIELDS ARE FOUND HERE -->\n";
         let parent = self.parent.borrow().clone().unwrap();
+
+
+
+        let mut sibling_context = String::from("");
         let siblings = parent.children.borrow();
         let position = siblings.iter().position(|node| node.id == self.id)
             .expect("Node not found as a child of its own parent");
 
         for i in position.saturating_sub(5)..position {
-            context = context + &siblings[i].xml.clone() + "\n";
+            sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
         }
 
-        context = context + &self.xml + marker;
+        sibling_context = sibling_context + marker;
 
         for i in (position + 1)..std::cmp::max(siblings.len(), position + 5) {
-            context = context + &siblings[i].xml.clone() + "\n";
+            sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
         }
 
-        context
+
+
+        let mut parsed_parent = Element::parse(parent.xml.as_bytes()).unwrap();
+        let opening_tag = utility::get_opening_tag(&parsed_parent);
+
+        
+        format!("{}\n{}\n...", opening_tag, sibling_context)
     }
 
     pub fn get_node_examples(&self) -> String {
