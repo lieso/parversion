@@ -666,16 +666,11 @@ impl Node {
 
             let fields = self.get_node_fields();
             let context = self.get_node_context();
-            log::debug!("*****************************************************************************************************");
-            log::debug!("context: {}", context);
-            panic!("testing");
-            let examples = self.get_node_examples();
-
 
 
             //let llm_type_name: String = llm::interpret_node(&Rc::new(self.clone())).await
             //    .expect("Could not interpret node");
-            let llm_type_name: String = llm::interpret_node(fields, context, examples).await
+            let llm_type_name: String = llm::interpret_node(fields, context).await
                 .expect("Could not interpret node");
 
             *self.complex_type_name.borrow_mut() = Some(llm_type_name.clone()).into();
@@ -723,7 +718,7 @@ impl Node {
 
         sibling_context = sibling_context + marker;
 
-        for i in (position + 1)..std::cmp::max(siblings.len(), position + 5) {
+        for i in (position + 1)..std::cmp::min(siblings.len(), position + 5) {
             sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
         }
 
@@ -735,15 +730,11 @@ impl Node {
         
         format!("{}\n{}\n...", opening_tag, sibling_context)
     }
-
-    pub fn get_node_examples(&self) -> String {
-        unimplemented!()
-    }
 }
 
 fn node_data_to_string(node_data: Vec<NodeData>) -> String {
     node_data.iter().fold(String::from(""), |acc, item| {
-        format!("{}\n{}", acc, item.name)
+        format!("{}\n{}: {}", acc, item.name, item.value.clone().unwrap().text)
     })
 }
 
