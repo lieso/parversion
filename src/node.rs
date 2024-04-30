@@ -525,6 +525,7 @@ impl Node {
         // Do not give a node a type if:
         // * It's a leaf node - whoops yes we do. e.g. title tag in head is a simple text node, but will need 'page_title' complex type
         // * It and all children are structural nodes
+        // * It doesn't have any data entries. This can happen if a non-structural node was not interpreted to have any salient data
 
         //let is_leaf = self.children.borrow().is_empty();
         //log::debug!("is_leaf: {}", is_leaf);
@@ -532,6 +533,10 @@ impl Node {
         //if is_leaf {
         //    return false;
         //}
+
+        if self.data.borrow().is_empty() {
+            return false;
+        }
 
         let is_structural = self.children.borrow().iter().fold(
             self.is_structural,
@@ -616,6 +621,11 @@ impl Node {
         } else {
             log::info!("Cache miss!");
             let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.xml.clone()).await.expect("LLM unable to generate node data");
+
+            if llm_node_data.len() == 0 {
+                log::warn!("Node has interpreted to have zero data entries. I guess this is now a structural node?");
+            }
+
             *self.data.borrow_mut() = llm_node_data.clone();
 
             store_node_data(&db, &self.hash, llm_node_data.clone()).expect("Unable to persist node data to database");
@@ -624,6 +634,8 @@ impl Node {
 
     pub fn update_node_data_values(&self) {
         let mut data = self.data.borrow_mut();
+
+        log::info!("Node has {} entries", data.len());
 
         for item in data.iter_mut() {
             if let Some(node_data_value) = item.select(self.xml.clone()) {
