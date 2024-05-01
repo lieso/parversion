@@ -150,3 +150,7 @@ pub fn get_opening_tag(element: &Element) -> String {
 
     tag
 }
+
+pub fn get_closing_tag(element: &Element) -> String {
+    format!("</{}>", element.name)
+}

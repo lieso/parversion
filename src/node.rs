@@ -623,7 +623,7 @@ impl Node {
             let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.xml.clone()).await.expect("LLM unable to generate node data");
 
             if llm_node_data.len() == 0 {
-                log::warn!("Node has interpreted to have zero data entries. I guess this is now a structural node?");
+                log::warn!("Node has been interpreted to have zero data entries. I guess this is now a structural node?");
             }
 
             *self.data.borrow_mut() = llm_node_data.clone();
@@ -736,11 +736,39 @@ impl Node {
 
 
 
-        let mut parsed_parent = Element::parse(parent.xml.as_bytes()).unwrap();
+        let parsed_parent = Element::parse(parent.xml.as_bytes()).unwrap();
         let opening_tag = utility::get_opening_tag(&parsed_parent);
+        let closing_tag = utility::get_closing_tag(&parsed_parent);
 
         
-        format!("{}\n{}\n...", opening_tag, sibling_context)
+        let mut context = format!("{}\n{}\n{}", opening_tag, sibling_context, closing_tag);
+
+
+        let result = if let Some(parent_parent) = parent.parent.borrow().clone() {
+
+            let mut sibling_context = String::from("");
+            let siblings = parent_parent.children.borrow();
+            let position = siblings.iter().position(|node| node.id == parent.id)
+                .expect("Node not found as a child of its own parent");
+
+            for i in position.saturating_sub(5)..position {
+                sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
+            }
+
+            sibling_context = sibling_context + &context;
+
+            for i in (position + 1)..std::cmp::min(siblings.len(), position + 5) {
+                sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
+            }
+
+            let parsed_parent_parent = Element::parse(parent_parent.xml.as_bytes()).unwrap();
+            let opening_tag = utility::get_opening_tag(&parsed_parent_parent);
+            let closing_tag = utility::get_closing_tag(&parsed_parent_parent);
+
+            format!("{}\n{}\n{}", opening_tag, sibling_context, closing_tag)
+        } else {
+            context
+        }; result
     }
 }
 
