@@ -10,9 +10,9 @@ pub struct NodeDataValue {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
-    //pub select: Box<dyn Fn(&str) -> Option<NodeDataValue>>,
-    pub xpath: Option<String>,
+    pub attribute: String,
     pub name: String,
+    pub regex: String,
     pub value: Option<NodeDataValue>,
 }
 

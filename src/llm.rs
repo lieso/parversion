@@ -8,8 +8,9 @@ use crate::node_data::{NodeData};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PartialNodeData {
-    pub xpath: String,
-    pub name: String,
+    pub attribute_name: String,
+    pub new_name: String,
+    pub regex: String,
 }
 
 pub async fn interpret_node(fields: String, context: String) -> Result<String, ()> {
@@ -74,11 +75,12 @@ pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, ()> {
     log::trace!("In generate_node_data");
 
     let prompt = format!(r##"
-I'm analyzing an HTML/XML snippet to extract important non-presentational data elements that a user would care about.
-For each significant piece of information in the snippet, I want you to provide the following:
+I want you to analyze an HTML/XML snippet and identify its non-presentational data.
+For each item of information in the snippet, I want you to provide the following:
 
-1. The XPath expression that can be used to select this information.
-2. A suitable name in snake case that can be used to represent the data programmatically.
+1. The attribute name associated with the data
+2. A new suitable name in snake case that would be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus any additional context.
+3. A regular expression, if necessary, that would match the part of the attribute value that contains the data. If the entire attribute value is relevant, only provide identity regular expression ^.*$
 
 Here is the HTML/XML text I'm examining:
 
@@ -90,11 +92,13 @@ Here is the HTML/XML text I'm examining:
 
 Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array.
 If the snippet seems to contain an ID or similar dynamically-generated value, ensure that corresponding xpath expression is generic with respect to the value.
-Otherwise, please provide your response as an array of JSON objects that look like this:
+
+Please provide your response as an array of JSON objects that look like this:
 
 {{
-    "xpath": "/div/tr/*",
-    "name": "url"
+    "attribute_name": "href",
+    "new_name": "icon_url",
+    "regex": "^.*$"
 }}
 
 And do not include any commentary, introduction or summary. Thank you.
@@ -137,8 +141,9 @@ And do not include any commentary, introduction or summary. Thank you.
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
-            xpath: Some(item.xpath.to_string()),
-            name: item.name.to_string(),
+            attribute: item.attribute_name.to_string(),
+            name: item.new_name.to_string(),
+            regex: item.regex.to_string(),
             value: None,
         }
     }).collect();
