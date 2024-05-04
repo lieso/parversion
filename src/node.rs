@@ -589,9 +589,10 @@ impl Node {
 
         if self.hash == TEXT_NODE_HASH {
             let node_data = NodeData {
+                attribute: None,
                 name: String::from("text"),
+                regex: String::from("^.*$"),
                 value: None,
-                xpath: None,
             };
 
             return Some(vec![node_data]);

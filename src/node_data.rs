@@ -1,4 +1,6 @@
 use serde::{Serialize, Deserialize};
+use std::io::Cursor;
+use xmltree::Element;
 
 use crate::utility;
 
@@ -10,7 +12,7 @@ pub struct NodeDataValue {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
-    pub attribute: String,
+    pub attribute: Option<String>,
     pub name: String,
     pub regex: String,
     pub value: Option<NodeDataValue>,
@@ -18,19 +20,24 @@ pub struct NodeData {
 
 impl NodeData {
     pub fn select(&self, xml: String) -> Option<NodeDataValue> {
-        if let Some(xpath) = &self.xpath {
-            if let Ok(result) = utility::apply_xpath(&xml, &xpath) {
-                Some(NodeDataValue {
-                    text: result,
-                })
-            } else {
-                log::warn!("Unable to apply xpath: {} to xml: {}", xpath, xml);
-                None
-            }
-        } else {
+
+        // TODO: apply regex
+
+        if let Some(attribute) = &self.attribute {
+            let cursor = Cursor::new(xml.as_bytes());
+            let element = Element::parse(cursor).expect("Could not parse XML string");
+            let value = element.attributes.get(attribute).unwrap();
+
+
             Some(NodeDataValue {
-                text: xml,
+                text: value.to_string(),
             })
+        } else {
+
+            Some(NodeDataValue {
+                text: xml.to_string(),
+            })
+
         }
     }
 }

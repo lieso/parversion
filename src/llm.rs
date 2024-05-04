@@ -39,7 +39,7 @@ Please provide your response as a single Pascal case string with no commentary, 
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
-        "model":  "gpt-4-0125-preview",
+        "model":  "gpt-3.5-turbo-0125",
         "temperature":  0,
         "messages":  [
             {
@@ -76,7 +76,7 @@ pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, ()> {
 
     let prompt = format!(r##"
 I want you to analyze an HTML/XML snippet and identify its non-presentational data.
-For each item of information in the snippet, I want you to provide the following:
+For each distinct item of information in the snippet, I want you to provide the following:
 
 1. The attribute name associated with the data
 2. A new suitable name in snake case that would be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus any additional context.
@@ -91,7 +91,7 @@ Here is the HTML/XML text I'm examining:
 ---
 
 Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array.
-If the snippet seems to contain an ID or similar dynamically-generated value, ensure that corresponding xpath expression is generic with respect to the value.
+If the snippet seems to contain an ID or similar dynamically-generated value, ensure that the corresponding regular expression is generic with respect to the value.
 
 Please provide your response as an array of JSON objects that look like this:
 
@@ -141,7 +141,7 @@ And do not include any commentary, introduction or summary. Thank you.
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
-            attribute: item.attribute_name.to_string(),
+            attribute: Some(item.attribute_name.to_string()),
             name: item.new_name.to_string(),
             regex: item.regex.to_string(),
             value: None,

@@ -964,7 +964,6 @@ dependencies = [
  "uuid",
  "xml-rs",
  "xmltree",
- "xpath_reader",
 ]
 
 [[package]]
@@ -972,12 +971,6 @@ name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
-
-[[package]]
-name = "peresil"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f658886ed52e196e850cfbbfddab9eaa7f6d90dd0929e264c31e5cec07e09e57"
 
 [[package]]
 name = "phf"
@@ -1074,12 +1067,6 @@ checksum = "e835ff2298f5721608eb1a980ecaee1aef2c132bf95ecc026a11b7bf3c01c02e"
 dependencies = [
  "unicode-ident",
 ]
-
-[[package]]
-name = "quick-error"
-version = "1.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
 name = "quote"
@@ -1499,27 +1486,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 
 [[package]]
-name = "sxd-document"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94d82f37be9faf1b10a82c4bd492b74f698e40082f0f40de38ab275f31d42078"
-dependencies = [
- "peresil",
- "typed-arena",
-]
-
-[[package]]
-name = "sxd-xpath"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36e39da5d30887b5690e29de4c5ebb8ddff64ebd9933f98a01daaa4fd11b36ea"
-dependencies = [
- "peresil",
- "quick-error",
- "sxd-document",
-]
-
-[[package]]
 name = "syn"
 version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1716,12 +1682,6 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
-
-[[package]]
-name = "typed-arena"
-version = "1.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9b2228007eba4120145f785df0f6c92ea538f5a3635a612ecf4e334c8c1446d"
 
 [[package]]
 name = "typenum"
@@ -2092,14 +2052,4 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7d8a75eaf6557bb84a65ace8609883db44a29951042ada9b393151532e41fcb"
 dependencies = [
  "xml-rs",
-]
-
-[[package]]
-name = "xpath_reader"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb6d1ee2e32707ac4e378220b26b0de8d8c11288da9ab86f7a97d277cb7ce0c9"
-dependencies = [
- "sxd-document",
- "sxd-xpath",
 ]

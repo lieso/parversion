@@ -8,7 +8,6 @@ use std::string::String;
 use xmltree::Element;
 use std::io::Cursor;
 use std::str::from_utf8;
-use xpath_reader::Reader;
 use sha2::{Sha256, Digest};
 
 
@@ -118,17 +117,6 @@ pub fn get_element_xml(element: &Element) -> String {
     let closing_tag = format!("</{}>", element.name);
 
     format!("{}{}", opening_tag, closing_tag)
-}
-
-pub fn apply_xpath(xml: &str, xpath: &str) -> Result<String, Box<dyn std::error::Error>> {
-    log::debug!("xml: {}, xpath: {}", xml, xpath);
-
-    let reader = Reader::from_str(xml, None)?;
-    let nodes: Vec<String> = reader.read(xpath)?;
-
-    let workaround = nodes.join(" ");
-
-    Ok(workaround)
 }
 
 pub fn hash_text(text: String) -> String {
