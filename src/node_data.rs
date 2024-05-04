@@ -24,7 +24,9 @@ impl NodeData {
         // TODO: apply regex
 
         if let Some(attribute) = &self.attribute {
-            let cursor = Cursor::new(xml.as_bytes());
+            let escaped_xml = escape_xml(&xml);
+            log::debug!("escaped_xml: {}", escaped_xml);
+            let cursor = Cursor::new(escaped_xml.as_bytes());
             let element = Element::parse(cursor).expect("Could not parse XML string");
             let value = element.attributes.get(attribute).unwrap();
 
@@ -40,4 +42,12 @@ impl NodeData {
 
         }
     }
+}
+
+fn escape_xml(s: &str) -> String {
+    s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
 }

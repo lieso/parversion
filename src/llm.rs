@@ -39,7 +39,7 @@ Please provide your response as a single Pascal case string with no commentary, 
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
-        "model":  "gpt-3.5-turbo-0125",
+        "model":  "gpt-4-0125-preview",
         "temperature":  0,
         "messages":  [
             {
@@ -75,7 +75,10 @@ pub async fn generate_node_data(xml: String) -> Result<Vec<NodeData>, ()> {
     log::trace!("In generate_node_data");
 
     let prompt = format!(r##"
-I want you to analyze an HTML/XML snippet and identify its non-presentational data.
+Your goal is to reverse engineer the data model for a rendered html snippet. This task involves extracting all the information that makes up the content and the organizational structure of the page, while ignoring presentational aspects like styling, decoration, or accessibility enhancements that do not affect the underlying data model.
+
+Disregard any HTML elements and attributes that do not contribute to this data model, including presentation-related content (such as inline CSS or style-related classes), and browser-specific meta tags which provide metadata to the browser rather than intrinsic information about the web page's underlying content and structure.
+
 For each distinct item of information in the snippet, I want you to provide the following:
 
 1. The attribute name associated with the data
@@ -107,7 +110,7 @@ And do not include any commentary, introduction or summary. Thank you.
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
-        "model":  "gpt-3.5-turbo-0125",
+        "model":  "gpt-4-0125-preview",
         "temperature":  0,
         "messages":  [
             {
