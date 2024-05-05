@@ -6,4 +6,5 @@ pub enum Errors {
     UnexpectedDocumentType,
     UnexpectedError,
     UnexpectedOutputFormat,
+    XmlParseError
 }

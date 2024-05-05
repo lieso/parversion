@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use xmltree::{Element, XMLNode};
 
+use crate::error::{Errors};
+
 #[derive(Clone, Debug)]
 pub struct Xml {
     element: Option<Element>,
@@ -23,27 +25,93 @@ impl Serialize for Xml {
 }
 
 impl Xml {
-    pub fn parse(cursor: std::io::Cursor) -> Xml {
-        let element = Element::parse(&mut reader).expect("Could not parse XML");
+    pub fn parse(cursor: std::io::Cursor<T>) -> Result<Xml, Errors> {
+        match Element::parse(&mut cursor) {
+            Ok(element) => {
+                let xml = Xml {
+                    element: Some(element),
+                    text: None,
+                }
+                
+                Ok(xml)
+            }
+            _ => {
+                Err(Errors::XmlParseError)
+            }
+        }
+    }
 
+    pub fn without_children(&self) -> Xml {
+        if self.element.is_some() {
+
+            let mut copy = self.clone();
+
+            copy.element.unwrap().children.clear();
+
+            copy
+
+        } else {
+            self.clone()
+        }
+    }
+
+    pub fn from_void() -> Xml {
         Xml {
-            element: Some(element),
+            element: None,
             text: None,
         }
     }
 }
 
-fn element_to_string(element: &Element) -> String {
-    let mut opening_tag = format!("<{}", element.name);
+impl Xml {
+    pub fn get_element_tag_name(&self) -> String {
+        if let Some(element) = self.element {
+            return element.name.clone();
+        }
 
-    for (attr_key, attr_value) in element.attributes.iter() {
-        opening_tag.push_str(&format!(" {}=\"{}\"", attr_key, attr_value));
+        "".to_string()
     }
 
-    opening_tag.push('>');
+    pub fn get_attributes(&self) -> Vec<String> {
+        if let Some(element) = self.element {
+            return element.attributes.keys().cloned().collect();
+        }
 
-    let closing_tag = format!("</{}>", element.name);
+        Vec::new()
+    }
 
-    format!("{}{}", opening_tag, closing_tag)
+    pub fn get_children(&self) -> Vec<Xml> {
+        if let Some(element) = self.element {
+            return element.children.iter().filter_map(|child| {
+                XMLNode::Element(child_element) => {
+                    let xml = Xml {
+                        element: Some(child_element),
+                        text: None,
+                    }
+
+                    Some(xml)
+                }
+                XMLNode::Text(child_text) => {
+                    let xml = Xml {
+                        element: None,
+                        text: Some(child_text),
+                    }
+
+                    Some(xml)
+                }
+                _ => None,
+
+            }).collect();
+        }
+
+        Vec::new()
+    }
+
+    pub fn is_text(&self) -> bool {
+        self.text.is_some()
+    }
+
+    pub fn is_element(&self) -> bool {
+        self.element.is_some()
+    }
 }
-

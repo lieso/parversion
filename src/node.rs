@@ -1,7 +1,6 @@
 use sled::Db;
 use serde::{Serialize, Deserialize};
 use sha2::{Sha256, Digest};
-use xmltree::{Element, XMLNode};
 use std::cell::RefCell;
 use std::rc::{Rc};
 use uuid::Uuid;
@@ -17,8 +16,10 @@ use crate::utility;
 use crate::llm;
 use crate::xml::{Xml};
 
-// echo -n "text_node" | sha256sum
-const TEXT_NODE_HASH: &str = "40e215e7587a0edee158a67925057a5137f96c1c877fd3150f7d8760f866592e";
+// echo -n "text" | sha256sum
+const TEXT_NODE_HASH: &str = "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1";
+// echo -n "root" | sha256sum
+const ROOT_NODE_HASH: &str = "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2";
 
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -41,7 +42,6 @@ pub struct Node {
 
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
-    let element = Element::parse(&mut reader).expect("Could not parse XML");
     let xml = Xml::parse(&mut reader).expect("Could not parse XML");
 
     Node::from_xml(&xml, None)
@@ -352,13 +352,10 @@ pub fn log_tree(tree: Rc<Node>, title: &str) {
 
 impl Node {
     pub fn from_void() -> Rc<Self> {
-        let tag = String::from("<>");
-        let hash = utility::hash_text(tag.clone());
-
         Rc::new(Node {
             id: Uuid::new_v4().to_string(),
-            hash: hash,
-            xml: tag.clone(),
+            hash: ROOT_NODE_HASH.to_string(),
+            xml: Xml::from_void(),
             is_structural: true,
             parent: None.into(),
             data: RefCell::new(Vec::new()),
@@ -367,29 +364,28 @@ impl Node {
         })
     }
 
-    pub fn from_text(text: String, parent: Option<Rc<Node>>) -> Rc<Self> {
-        Rc::new(Node {
-            id: Uuid::new_v4().to_string(),
-            hash: TEXT_NODE_HASH.to_string(),
-            xml: text,
-            is_structural: false,
-            parent: parent.into(),
-            data: RefCell::new(Vec::new()),
-            children: RefCell::new(vec![]),
-            complex_type_name: RefCell::new(None),
-        })
-    }
+    pub fn from_xml(xml: &Xml, parent: Option<Rc<Node>>) -> Rc<Self> {
+        if xml.is_text() {
+            return Rc::new(Node {
+                id: Uuid::new_v4().to_string(),
+                hash: TEXT_NODE_HASH.to_string(),
+                xml: xml.without_children(),
+                is_structural: false,
+                parent: parent.into(),
+                data: RefCell::new(Vec::new()),
+                children: RefCell::new(vec![]),
+                complex_type_name: RefCell::new(None),
+            })
+        }
 
-    pub fn from_xml(element: &Element, parent: Option<Rc<Node>>) -> Rc<Self> {
-        let tag = element.name.clone();
-        let xml = utility::element_to_string(&element);
-        let element_fields = element.attributes.keys().cloned().collect();
-        let is_structural = element.attributes.len() == 0;
+        let tag = xml.get_element_tag_name();
+        let attributes = xml.get_attributes();
+        let is_structural = attributes.is_empty();
 
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
-            hash: utility::generate_element_node_hash(tag.clone(), element_fields),
-            xml: xml,
+            hash: utility::generate_element_node_hash(tag.clone(), attributes),
+            xml: xml.without_children(),
             is_structural: is_structural,
             parent: parent.into(),
             data: RefCell::new(Vec::new()),
@@ -397,30 +393,17 @@ impl Node {
             complex_type_name: RefCell::new(None),
         });
 
-       let children_nodes: Vec<Rc<Node>> = element.children.iter().filter_map(|child| {
-            match child {
-                XMLNode::Element(child_element) => Some(Node::from_xml(&child_element, Some(Rc::clone(&node)))),
-                XMLNode::Text(child_text) => Some(Node::from_text(child_text.to_string(), Some(Rc::clone(&node)))),
-                _ => None,
-            }
+        let children: Vec<Rc<Node>> = xml.get_children().iter().map(|child| {
+            Node::from_xml(child, Some(Rc::clone(&node)))
         }).collect();
 
-        node.children.borrow_mut().extend(children_nodes);
+        node.children.borrow_mut().extend(children);
 
         node
     }
 
     pub fn to_element(&self) -> Element {
         unimplemented!()
-        //let mut element = Element::new(&self.tag);
-
-        //for child in self.children.borrow().iter() {
-        //    element.children.push(
-        //        XMLNode::Element(child.to_element())
-        //    );
-        //}
-
-        //element
     }
 }
 
