@@ -10,6 +10,7 @@ mod node;
 mod node_data;
 mod traversal;
 mod utility;
+mod xml;
 
 use node::{
     Node,

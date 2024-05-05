@@ -15,17 +15,17 @@ use std::collections::{HashMap, VecDeque};
 use crate::node_data::{NodeData};
 use crate::utility;
 use crate::llm;
+use crate::xml::{Xml};
 
 // echo -n "text_node" | sha256sum
 const TEXT_NODE_HASH: &str = "40e215e7587a0edee158a67925057a5137f96c1c877fd3150f7d8760f866592e";
-
 
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Node {
     pub id: String,
     pub hash: String,
-    pub xml: String,
+    pub xml: Xml,
     pub is_structural: bool,
     pub parent: RefCell<Option<Rc<Node>>>,
     pub data: RefCell<Vec<NodeData>>,
@@ -42,8 +42,9 @@ pub struct Node {
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
     let element = Element::parse(&mut reader).expect("Could not parse XML");
+    let xml = Xml::parse(&mut reader).expect("Could not parse XML");
 
-    Node::from_element(&element, None)
+    Node::from_xml(&xml, None)
 }
 
 pub fn tree_to_xml(tree: Rc<Node>) -> String {
@@ -379,9 +380,9 @@ impl Node {
         })
     }
 
-    pub fn from_element(element: &Element, parent: Option<Rc<Node>>) -> Rc<Self> {
+    pub fn from_xml(element: &Element, parent: Option<Rc<Node>>) -> Rc<Self> {
         let tag = element.name.clone();
-        let xml = utility::get_element_xml(&element);
+        let xml = utility::element_to_string(&element);
         let element_fields = element.attributes.keys().cloned().collect();
         let is_structural = element.attributes.len() == 0;
 
@@ -398,7 +399,7 @@ impl Node {
 
        let children_nodes: Vec<Rc<Node>> = element.children.iter().filter_map(|child| {
             match child {
-                XMLNode::Element(child_element) => Some(Node::from_element(&child_element, Some(Rc::clone(&node)))),
+                XMLNode::Element(child_element) => Some(Node::from_xml(&child_element, Some(Rc::clone(&node)))),
                 XMLNode::Text(child_text) => Some(Node::from_text(child_text.to_string(), Some(Rc::clone(&node)))),
                 _ => None,
             }

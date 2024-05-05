@@ -12,6 +12,7 @@ mod node;
 mod node_data;
 mod traversal;
 mod utility;
+mod xml;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");

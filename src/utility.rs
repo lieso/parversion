@@ -105,20 +105,6 @@ pub fn element_to_string(element: &Element) -> String {
     return as_string.to_string();
 }
 
-pub fn get_element_xml(element: &Element) -> String {
-    let mut opening_tag = format!("<{}", element.name);
-
-    for (attr_key, attr_value) in element.attributes.iter() {
-        opening_tag.push_str(&format!(" {}=\"{}\"", attr_key, attr_value));
-    }
-
-    opening_tag.push('>');
-
-    let closing_tag = format!("</{}>", element.name);
-
-    format!("{}{}", opening_tag, closing_tag)
-}
-
 pub fn hash_text(text: String) -> String {
     let mut hasher = Sha256::new();
     hasher.update(text);
