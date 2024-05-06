@@ -1,3 +1,5 @@
+use std::fmt;
+use std::io::{Cursor, Read};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use xmltree::{Element, XMLNode};
 
@@ -24,14 +26,26 @@ impl Serialize for Xml {
     }
 }
 
+impl fmt::Display for Xml {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(element) = self.element {
+            write!(f, "{}", &element_to_string(&element))
+        } else if let Some(text) = self.text {
+            write!(f, "{}", &text)
+        } else {
+            write!(f, "{}", "")
+        }
+    }
+}
+
 impl Xml {
-    pub fn parse(cursor: std::io::Cursor<T>) -> Result<Xml, Errors> {
-        match Element::parse(&mut cursor) {
+    pub fn parse<R: Read>(reader: &mut R) -> Result<Xml, Errors> {
+        match Element::parse(&mut reader) {
             Ok(element) => {
                 let xml = Xml {
                     element: Some(element),
                     text: None,
-                }
+                };
                 
                 Ok(xml)
             }
@@ -83,23 +97,25 @@ impl Xml {
     pub fn get_children(&self) -> Vec<Xml> {
         if let Some(element) = self.element {
             return element.children.iter().filter_map(|child| {
-                XMLNode::Element(child_element) => {
-                    let xml = Xml {
-                        element: Some(child_element),
-                        text: None,
-                    }
+                match child {
+                    XMLNode::Element(child_element) => {
+                        let xml = Xml {
+                            element: Some(child_element.clone()),
+                            text: None,
+                        };
 
-                    Some(xml)
-                }
-                XMLNode::Text(child_text) => {
-                    let xml = Xml {
-                        element: None,
-                        text: Some(child_text),
-                    }
+                        Some(xml)
+                    },
+                    XMLNode::Text(child_text) => {
+                        let xml = Xml {
+                            element: None,
+                            text: Some(child_text.to_string()),
+                        };
 
-                    Some(xml)
+                        Some(xml)
+                    },
+                    _ => None,
                 }
-                _ => None,
 
             }).collect();
         }
@@ -113,5 +129,9 @@ impl Xml {
 
     pub fn is_element(&self) -> bool {
         self.element.is_some()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.text.is_none() && self.element.is_none()
     }
 }

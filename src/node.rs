@@ -401,10 +401,6 @@ impl Node {
 
         node
     }
-
-    pub fn to_element(&self) -> Element {
-        unimplemented!()
-    }
 }
 
 
