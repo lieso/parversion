@@ -1,8 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::io::Cursor;
-use xmltree::Element;
 
-use crate::utility;
 use crate::xml::{Xml};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

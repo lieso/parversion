@@ -16,25 +16,13 @@ impl Serialize for Xml {
     where
         S: Serializer,
     {
-        if let Some(element) = self.element {
-            serializer.serialize_str(&element_to_string(&element))
-        } else if let Some(text) = self.text {
-            serializer.serialize_str(&text)
-        } else {
-            serializer.serialize_str("")
-        }
+        serializer.serialize_str(&self.to_string())
     }
 }
 
 impl fmt::Display for Xml {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(element) = self.element {
-            write!(f, "{}", &element_to_string(&element))
-        } else if let Some(text) = self.text {
-            write!(f, "{}", &text)
-        } else {
-            write!(f, "{}", "")
-        }
+        write!(f, "{}", &self.to_string())
     }
 }
 
@@ -100,7 +88,7 @@ impl Xml {
             return None;
         }
 
-        Some(self.element.unwrap().attributes.get(name).cloned())
+        self.element.unwrap().attributes.get(name).cloned()
     }
 
     pub fn get_children(&self) -> Vec<Xml> {
@@ -153,4 +141,14 @@ impl Xml {
             format!("{}", "")
         }
     }
+}
+
+fn element_to_string(element: &Element) -> String {
+    let mut cursor = Cursor::new(Vec::new());
+
+    element.write(&mut cursor).unwrap();
+
+    let serialized_xml = String::from_utf8(cursor.into_inner()).unwrap();
+
+    serialized_xml
 }

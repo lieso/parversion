@@ -2,7 +2,6 @@ use reqwest::header;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
-use std::rc::{Rc};
 
 use crate::node_data::{NodeData};
 

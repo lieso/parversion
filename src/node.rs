@@ -48,9 +48,7 @@ pub fn build_tree(xml: String) -> Rc<Node> {
 }
 
 pub fn tree_to_xml(tree: Rc<Node>) -> String {
-    let element = tree.to_element();
-
-    utility::element_to_string(&element)
+    unimplemented!()
 }
 
 
