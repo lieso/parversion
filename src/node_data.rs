@@ -3,6 +3,7 @@ use std::io::Cursor;
 use xmltree::Element;
 
 use crate::utility;
+use crate::xml::{Xml};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeDataValue {
@@ -19,35 +20,16 @@ pub struct NodeData {
 }
 
 impl NodeData {
-    pub fn select(&self, xml: String) -> Option<NodeDataValue> {
-
-        // TODO: apply regex
+    pub fn select(&self, xml: Xml) -> Option<NodeDataValue> {
 
         if let Some(attribute) = &self.attribute {
-            let escaped_xml = escape_xml(&xml);
-            log::debug!("escaped_xml: {}", escaped_xml);
-            let cursor = Cursor::new(escaped_xml.as_bytes());
-            let element = Element::parse(cursor).expect("Could not parse XML string");
-            let value = element.attributes.get(attribute).unwrap();
-
-
-            Some(NodeDataValue {
-                text: value.to_string(),
-            })
-        } else {
-
-            Some(NodeDataValue {
-                text: xml.to_string(),
-            })
-
+            return Some(NodeDataValue {
+                text: xml.get_attribute_value(attribute).unwrap()
+            });
         }
-    }
-}
 
-fn escape_xml(s: &str) -> String {
-    s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&apos;")
+        Some(NodeDataValue {
+            text: xml.to_string(),
+        })
+    }
 }

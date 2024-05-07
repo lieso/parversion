@@ -94,6 +94,15 @@ impl Xml {
         Vec::new()
     }
 
+    pub fn get_attribute_value(&self, name: &str) -> Option<String> {
+        if self.element.is_none() {
+            log::warn!("Attempting to get attribute: {} on Xml, but xml is not an element", name);
+            return None;
+        }
+
+        Some(self.element.unwrap().attributes.get(name).cloned())
+    }
+
     pub fn get_children(&self) -> Vec<Xml> {
         if let Some(element) = self.element {
             return element.children.iter().filter_map(|child| {
@@ -133,5 +142,15 @@ impl Xml {
 
     pub fn is_empty(&self) -> bool {
         self.text.is_none() && self.element.is_none()
+    }
+
+    pub fn to_string(&self) -> String {
+        if let Some(element) = self.element {
+            format!("{}", &element_to_string(&element))
+        } else if let Some(text) = self.text {
+            format!("{}", &text)
+        } else {
+            format!("{}", "")
+        }
     }
 }
