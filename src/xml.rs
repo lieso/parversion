@@ -2,6 +2,7 @@ use std::fmt;
 use std::io::{Cursor, Read};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use xmltree::{Element, XMLNode};
+use serde::de::{self, Visitor};
 
 use crate::error::{Errors};
 
@@ -17,6 +18,42 @@ impl Serialize for Xml {
         S: Serializer,
     {
         serializer.serialize_str(&self.to_string())
+    }
+}
+
+struct XmlVisitor;
+
+impl<'de> Visitor<'de> for XmlVisitor {
+    type Value = Xml;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("valid XML in a string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        if let Ok(element) = Element::parse(value.as_bytes()) {
+            Ok(Xml {
+                element: Some(element),
+                text: None,
+            })
+        } else {
+            Ok(Xml {
+                element: None,
+                text: Some(value.to_owned()),
+            })
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Xml {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(XmlVisitor)
     }
 }
 
