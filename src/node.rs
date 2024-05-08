@@ -687,6 +687,35 @@ impl Node {
     }
 
     pub fn get_node_context(&self) -> String {
+        if self.parent.borrow().is_none() {
+            return String::from("These fields are self-contained and appear by themselves without any relevant context.");
+        }
+
+        let max_siblings = 4;
+        let max_parents = 2;
+        let marker = "\n<-- FIELDS ARE FOUND HERE -->\n";
+
+        let mut parent = self.parent.borrow().clone().unwrap();
+
+
+
+        let siblings = parent.children.borrow();
+        let position = siblings.iter().position(|node| node.id == self.id)
+            .expect("Node not found as a child of its own parent");
+        let start = position.saturating_sub(max_siblings);
+        let end = std::cmp::min(siblings.len(), position + max_siblings);
+        let sibling_context: String = siblings[start..end]
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i != position - start)
+            .map(|(_, sibling)| sibling.xml.to_string() + "\n")
+            .collect::<Vec<_>>()
+            .join("") + marker;
+
+
+    }
+
+    pub fn get_node_contextx(&self) -> String {
 
         // TODO: ?
         if self.parent.borrow().is_none() {

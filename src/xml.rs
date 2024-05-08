@@ -178,6 +178,21 @@ impl Xml {
             format!("{}", "")
         }
     }
+
+    pub fn to_string_with_child_string(&self, content: String) -> Result<String, String> {
+        if let Some(element) = self.element {
+            let result = format!(
+                "{}{}{}",
+                get_opening_tag(&element),
+                content,
+                get_closing_tag(&element),
+            );
+
+            Ok(result)
+        } else {
+            Err("XML is not an Element; it can't take any children".to_string())
+        }
+    }
 }
 
 fn element_to_string(element: &Element) -> String {
@@ -188,4 +203,19 @@ fn element_to_string(element: &Element) -> String {
     let serialized_xml = String::from_utf8(cursor.into_inner()).unwrap();
 
     serialized_xml
+}
+
+fn get_opening_tag(element: &Element) -> String {
+    let mut tag = format!("<{}", element.name);
+
+    for (attr, value) in &element.attributes {
+        tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
+    }
+    tag.push('>');
+
+    tag
+}
+
+fn get_closing_tag(element: &Element) -> String {
+    format!("</{}>", element.name)
 }
