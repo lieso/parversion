@@ -158,6 +158,10 @@ impl Xml {
         Vec::new()
     }
 
+    pub fn has_children(&self) -> bool {
+        !&self.get_children().is_empty()
+    }
+
     pub fn is_text(&self) -> bool {
         self.text.is_some()
     }
@@ -205,6 +209,9 @@ fn element_to_string(element: &Element) -> String {
      element.write_with_config(&mut cursor, config).unwrap();
 
      let serialized_xml = String::from_utf8(cursor.into_inner()).unwrap();
+
+     // TODO
+     let serialized_xml = serialized_xml.replace(" xmlns=\"http://www.w3.org/1999/xhtml\"", "");
 
      serialized_xml
 }

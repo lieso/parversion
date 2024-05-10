@@ -176,6 +176,12 @@ pub async fn grow_tree(tree: Rc<Node>) {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
         log::debug!("xml: {}, is_structural: {}", node.xml, node.is_structural);
 
+        assert!(!node.xml.has_children());
+
+        if let Some(parent) = node.parent.borrow().as_ref() {
+            assert!(!parent.xml.has_children());
+        }
+
         node.update_node_data(&db).await;
         node.update_node_data_values();
         node.interpret_node_data(&db).await;
@@ -599,6 +605,7 @@ impl Node {
             *self.data.borrow_mut() = node_data.clone();
         } else {
             log::info!("Cache miss!");
+
             let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.xml.to_string()).await.expect("LLM unable to generate node data");
 
             if llm_node_data.len() == 0 {
@@ -657,6 +664,7 @@ impl Node {
             let fields = self.get_node_fields();
             let context = self.get_node_context();
             log::debug!("context: {}", context);
+            panic!("testing");
 
             let llm_type_name: String = llm::interpret_node(fields, context).await
                 .expect("Could not interpret node");
@@ -690,32 +698,42 @@ impl Node {
 
         let max_siblings = 4;
         let max_parents = 2;
-        let context = "\n<-- FIELDS ARE FOUND HERE -->\n";
+        let mut context = "\n<-- FIELDS ARE FOUND HERE -->\n".to_string();
+        let mut comparison_node_id = self.id.clone();
         let mut parent = self.parent.borrow().clone().unwrap();
 
         for _ in 0..max_parents {
-            let siblings = parent.children.borrow();
-            let position = siblings.iter().position(|node| node.id == self.id)
-                .expect("Node not found as a child of its own parent");
-            let start = position.saturating_sub(max_siblings);
-            let end = std::cmp::min(siblings.len(), position + max_siblings);
-            let sibling_context = siblings[start..end]
-                .iter()
-                .enumerate()
-                .filter(|&(i, _)| i != position - start)
-                .map(|(_, sibling)| sibling.xml.to_string() + "\n")
-                .collect::<Vec<_>>()
-                .join("") + context;
-            let context = &parent.xml.to_string_with_child_string(sibling_context).expect("Could not embed string inside parent element");
+            let next_parent = {
+                let siblings = parent.children.borrow();
+                let position = siblings.iter().position(|node| node.id == comparison_node_id)
+                    .expect("Node not found as a child of its own parent");
+                let start = position.saturating_sub(max_siblings);
+                let end = std::cmp::min(siblings.len(), position + max_siblings);
+                let sibling_context = siblings[start..end]
+                    .iter()
+                    .enumerate()
+                    .filter(|&(i, _)| i != position - start)
+                    .map(|(_, sibling)| sibling.xml.to_string() + "\n")
+                    .collect::<String>();
 
-            if let Some(some_parent) = parent.parent.borrow().clone() {
-                let parent = some_parent.clone();
+                context = sibling_context + &context;
+
+                context = parent.xml.to_string_with_child_string(context.clone())
+                    .expect("Could not embed string inside parent element");
+
+                comparison_node_id = parent.id.clone();
+
+                parent.parent.borrow().clone()
+            };
+
+            if let Some(next_parent) = next_parent {
+                parent = next_parent;
             } else {
                 break;
             }
         }
 
-        context.to_string()
+        context
     }
 }
 
