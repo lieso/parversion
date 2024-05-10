@@ -2,6 +2,7 @@ use std::fmt;
 use std::io::{Cursor, Read};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use xmltree::{Element, XMLNode};
+use xmltree::EmitterConfig;
 use serde::de::{self, Visitor};
 
 use crate::error::{Errors};
@@ -196,13 +197,16 @@ impl Xml {
 }
 
 fn element_to_string(element: &Element) -> String {
-    let mut cursor = Cursor::new(Vec::new());
+     let mut config = EmitterConfig::new();
+     config.write_document_declaration = false;
 
-    element.write(&mut cursor).unwrap();
+     let mut cursor = Cursor::new(Vec::new());
 
-    let serialized_xml = String::from_utf8(cursor.into_inner()).unwrap();
+     element.write_with_config(&mut cursor, config).unwrap();
 
-    serialized_xml
+     let serialized_xml = String::from_utf8(cursor.into_inner()).unwrap();
+
+     serialized_xml
 }
 
 fn get_opening_tag(element: &Element) -> String {

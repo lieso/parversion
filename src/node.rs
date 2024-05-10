@@ -654,13 +654,10 @@ impl Node {
         } else {
             log::info!("Cache miss!");
 
-
             let fields = self.get_node_fields();
             let context = self.get_node_context();
+            log::debug!("context: {}", context);
 
-
-            //let llm_type_name: String = llm::interpret_node(&Rc::new(self.clone())).await
-            //    .expect("Could not interpret node");
             let llm_type_name: String = llm::interpret_node(fields, context).await
                 .expect("Could not interpret node");
 
