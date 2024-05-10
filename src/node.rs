@@ -599,7 +599,7 @@ impl Node {
             *self.data.borrow_mut() = node_data.clone();
         } else {
             log::info!("Cache miss!");
-            let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.xml.clone()).await.expect("LLM unable to generate node data");
+            let llm_node_data: Vec<NodeData> = llm::generate_node_data(self.xml.to_string()).await.expect("LLM unable to generate node data");
 
             if llm_node_data.len() == 0 {
                 log::warn!("Node has been interpreted to have zero data entries. I guess this is now a structural node?");
@@ -693,90 +693,32 @@ impl Node {
 
         let max_siblings = 4;
         let max_parents = 2;
-        let marker = "\n<-- FIELDS ARE FOUND HERE -->\n";
-
+        let context = "\n<-- FIELDS ARE FOUND HERE -->\n";
         let mut parent = self.parent.borrow().clone().unwrap();
 
-
-
-        let siblings = parent.children.borrow();
-        let position = siblings.iter().position(|node| node.id == self.id)
-            .expect("Node not found as a child of its own parent");
-        let start = position.saturating_sub(max_siblings);
-        let end = std::cmp::min(siblings.len(), position + max_siblings);
-        let sibling_context: String = siblings[start..end]
-            .iter()
-            .enumerate()
-            .filter(|&(i, _)| i != position - start)
-            .map(|(_, sibling)| sibling.xml.to_string() + "\n")
-            .collect::<Vec<_>>()
-            .join("") + marker;
-
-
-    }
-
-    pub fn get_node_contextx(&self) -> String {
-
-        // TODO: ?
-        if self.parent.borrow().is_none() {
-            return String::from("These fields are self-contained and appear by themselves without any relevant context.");
-        }
-
-        let marker = "\n<-- FIELDS ARE FOUND HERE -->\n";
-        let parent = self.parent.borrow().clone().unwrap();
-
-
-
-        let mut sibling_context = String::from("");
-        let siblings = parent.children.borrow();
-        let position = siblings.iter().position(|node| node.id == self.id)
-            .expect("Node not found as a child of its own parent");
-
-        for i in position.saturating_sub(5)..position {
-            sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
-        }
-
-        sibling_context = sibling_context + marker;
-
-        for i in (position + 1)..std::cmp::min(siblings.len(), position + 5) {
-            sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
-        }
-
-
-
-        let parsed_parent = Element::parse(parent.xml.as_bytes()).unwrap();
-        let opening_tag = utility::get_opening_tag(&parsed_parent);
-        let closing_tag = utility::get_closing_tag(&parsed_parent);
-
-        
-        let mut context = format!("{}\n{}\n{}", opening_tag, sibling_context, closing_tag);
-
-
-        let result = if let Some(parent_parent) = parent.parent.borrow().clone() {
-
-            let mut sibling_context = String::from("");
-            let siblings = parent_parent.children.borrow();
-            let position = siblings.iter().position(|node| node.id == parent.id)
+        for _ in 0..max_parents {
+            let siblings = parent.children.borrow();
+            let position = siblings.iter().position(|node| node.id == self.id)
                 .expect("Node not found as a child of its own parent");
+            let start = position.saturating_sub(max_siblings);
+            let end = std::cmp::min(siblings.len(), position + max_siblings);
+            let sibling_context = siblings[start..end]
+                .iter()
+                .enumerate()
+                .filter(|&(i, _)| i != position - start)
+                .map(|(_, sibling)| sibling.xml.to_string() + "\n")
+                .collect::<Vec<_>>()
+                .join("") + context;
+            let context = &parent.xml.to_string_with_child_string(sibling_context).expect("Could not embed string inside parent element");
 
-            for i in position.saturating_sub(5)..position {
-                sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
+            if let Some(some_parent) = parent.parent.borrow().clone() {
+                let parent = some_parent.clone();
+            } else {
+                break;
             }
+        }
 
-            sibling_context = sibling_context + &context;
-
-            for i in (position + 1)..std::cmp::min(siblings.len(), position + 5) {
-                sibling_context = sibling_context + &siblings[i].xml.clone() + "\n";
-            }
-
-            let parsed_parent_parent = Element::parse(parent_parent.xml.as_bytes()).unwrap();
-            let opening_tag = utility::get_opening_tag(&parsed_parent_parent);
-            let closing_tag = utility::get_closing_tag(&parsed_parent_parent);
-
-            format!("{}\n{}\n{}", opening_tag, sibling_context, closing_tag)
-        } else {
-            context
-        }; result
+        context.to_string()
     }
 }
 

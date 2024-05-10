@@ -65,7 +65,7 @@ impl fmt::Display for Xml {
 
 impl Xml {
     pub fn parse<R: Read>(reader: &mut R) -> Result<Xml, Errors> {
-        match Element::parse(&mut reader) {
+        match Element::parse(reader) {
             Ok(element) => {
                 let xml = Xml {
                     element: Some(element),
@@ -83,9 +83,9 @@ impl Xml {
     pub fn without_children(&self) -> Xml {
         if self.element.is_some() {
 
-            let mut copy = self.clone();
+            let copy = self.clone();
 
-            copy.element.unwrap().children.clear();
+            copy.element.clone().unwrap().children.clear();
 
             copy
 
@@ -104,7 +104,7 @@ impl Xml {
 
 impl Xml {
     pub fn get_element_tag_name(&self) -> String {
-        if let Some(element) = self.element {
+        if let Some(element) = &self.element {
             return element.name.clone();
         }
 
@@ -112,7 +112,7 @@ impl Xml {
     }
 
     pub fn get_attributes(&self) -> Vec<String> {
-        if let Some(element) = self.element {
+        if let Some(element) = &self.element {
             return element.attributes.keys().cloned().collect();
         }
 
@@ -125,11 +125,11 @@ impl Xml {
             return None;
         }
 
-        self.element.unwrap().attributes.get(name).cloned()
+        self.element.clone().unwrap().attributes.get(name).cloned()
     }
 
     pub fn get_children(&self) -> Vec<Xml> {
-        if let Some(element) = self.element {
+        if let Some(element) = &self.element {
             return element.children.iter().filter_map(|child| {
                 match child {
                     XMLNode::Element(child_element) => {
@@ -170,9 +170,9 @@ impl Xml {
     }
 
     pub fn to_string(&self) -> String {
-        if let Some(element) = self.element {
+        if let Some(element) = &self.element {
             format!("{}", &element_to_string(&element))
-        } else if let Some(text) = self.text {
+        } else if let Some(text) = &self.text {
             format!("{}", &text)
         } else {
             format!("{}", "")
@@ -180,7 +180,7 @@ impl Xml {
     }
 
     pub fn to_string_with_child_string(&self, content: String) -> Result<String, String> {
-        if let Some(element) = self.element {
+        if let Some(element) = &self.element {
             let result = format!(
                 "{}{}{}",
                 get_opening_tag(&element),
