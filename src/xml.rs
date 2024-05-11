@@ -84,9 +84,9 @@ impl Xml {
     pub fn without_children(&self) -> Xml {
         if self.element.is_some() {
 
-            let copy = self.clone();
+            let mut copy = self.clone();
 
-            copy.element.clone().unwrap().children.clear();
+            copy.element.as_mut().unwrap().children.clear();
 
             copy
 
