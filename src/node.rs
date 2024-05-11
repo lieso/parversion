@@ -174,7 +174,12 @@ pub async fn grow_tree(tree: Rc<Node>) {
 
     for (index, node) in nodes.iter().enumerate() {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
-        log::debug!("xml: {}, is_structural: {}", node.xml, node.is_structural);
+        log::debug!("id: {}, xml: {}, is_structural: {}", node.id, node.xml, node.is_structural);
+
+        if node.hash == ROOT_NODE_HASH {
+            log::info!("Node is root node, probably don't need to do anything here");
+            continue;
+        }
 
         assert!(!node.xml.has_children());
 
