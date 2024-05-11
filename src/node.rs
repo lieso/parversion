@@ -182,10 +182,15 @@ pub async fn grow_tree(tree: Rc<Node>) {
             assert!(!parent.xml.has_children());
         }
 
-        node.update_node_data(&db).await;
+        if node.update_node_data(&db).await {
+            sleep(Duration::from_secs(1)).await;
+        }
+
         node.update_node_data_values();
-        node.interpret_node_data(&db).await;
-        sleep(Duration::from_secs(1)).await;
+
+        if node.interpret_node_data(&db).await {
+            sleep(Duration::from_secs(1)).await;
+        }
     }
 }
 
@@ -585,24 +590,25 @@ impl Node {
         None
     }
 
-    pub async fn update_node_data(&self, db: &Db) {
+    pub async fn update_node_data(&self, db: &Db) -> bool {
         log::trace!("In update_node_data");
 
         if !self.should_update_node_data() {
             log::info!("Not updating this node");
             *self.data.borrow_mut() = Vec::new();
-            return;
+            return false;
         }
 
         if let Some(classical_interpretation) = self.should_classically_update_node_data() {
             log::info!("Node interpreted classically");
             *self.data.borrow_mut() = classical_interpretation;
-            return;
+            return false;
         }
 
         if let Some(node_data) = get_node_data(&db, &self.hash).expect("Could not get node data from database") {
             log::info!("Cache hit!");
             *self.data.borrow_mut() = node_data.clone();
+            return false;
         } else {
             log::info!("Cache miss!");
 
@@ -616,6 +622,8 @@ impl Node {
 
             store_node_data(&db, &self.hash, llm_node_data.clone()).expect("Unable to persist node data to database");
         }
+
+        true
     }
 
     pub fn update_node_data_values(&self) {
@@ -634,7 +642,7 @@ impl Node {
         }
     }
 
-    pub async fn interpret_node_data(&self, db: &Db) {
+    pub async fn interpret_node_data(&self, db: &Db) -> bool {
         log::trace!("In interpret_node_data");
 
         assert!(!self.xml.is_empty());
@@ -642,13 +650,13 @@ impl Node {
         if !self.should_interpret_node_data() {
             log::info!("Not interpreting this node");
             *self.complex_type_name.borrow_mut() = None.into();
-            return;
+            return false;
         }
         
         if let Some(propagated_complex_type) = self.should_propagate_node_interpretation() {
             log::info!("Propagating node interpretation");
             *self.complex_type_name.borrow_mut() = Some(propagated_complex_type);
-            return;
+            return false;
         }
 
         log::info!("Consulting LLM for node interpretation...");
@@ -658,13 +666,13 @@ impl Node {
         if let Some(complex_type) = get_node_complex_type(&db, subtree_hash).expect("Could not get node complex type from database") {
             log::info!("Cache hit!");
             *self.complex_type_name.borrow_mut() = Some(complex_type.clone());
+
+            return false;
         } else {
             log::info!("Cache miss!");
 
             let fields = self.get_node_fields();
             let context = self.get_node_context();
-            log::debug!("context: {}", context);
-            panic!("testing");
 
             let llm_type_name: String = llm::interpret_node(fields, context).await
                 .expect("Could not interpret node");
@@ -673,6 +681,8 @@ impl Node {
 
             store_node_complex_type(&db, subtree_hash, &llm_type_name).expect("Unable to persist complex type to database");
         }
+
+        true
     }
 
     pub fn get_node_fields(&self) -> String {
