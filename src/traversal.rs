@@ -137,7 +137,7 @@ impl Traversal {
             let lineage = current.get_lineage();
             log::debug!("lineage: {:?}", lineage);
 
-            if let Some(basis_node) = search_tree_by_lineage(basis_tree.clone(), lineage.clone()) {
+            if let Some(basis_node) = search_tree_by_lineage(Rc::clone(&basis_tree), lineage.clone()) {
 
                 if basis_node.complex_type_name.borrow().is_some() {
                     let complex_object = map_complex_object(basis_node, current.clone());
@@ -148,7 +148,7 @@ impl Traversal {
 
             } else {
                 log::warn!("Basis tree does to contain corresponding node to output tree!");
-                //continue;
+                continue;
             }
 
             for child in current.children.borrow().iter() {

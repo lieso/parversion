@@ -83,14 +83,6 @@ pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc
 pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
     log::trace!("In search_tree_by_lineage");
 
-    //if let Some(hash) = lineage.pop_front() {
-    //    if tree.hash != hash {
-    //        return None;
-    //    }
-    //} else {
-    //    return None;
-    //}
-
     while let Some(hash) = lineage.pop_front() {
         log::trace!("hash: {}", hash);
 
