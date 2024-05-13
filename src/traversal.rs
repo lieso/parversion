@@ -134,7 +134,7 @@ impl Traversal {
             log::info!("Traversing node #{}", node_count);
             node_count = node_count + 1;
 
-            let lineage = get_lineage(Rc::clone(&current));
+            let lineage = current.get_lineage();
             log::debug!("lineage: {:?}", lineage);
 
             if let Some(basis_node) = search_tree_by_lineage(basis_tree.clone(), lineage.clone()) {

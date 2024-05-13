@@ -16,7 +16,6 @@ use node::{
     Node,
     build_tree,
     absorb_tree,
-    log_tree,
     prune_tree,
     grow_tree
 };
@@ -82,15 +81,15 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
 
     absorb_tree(Rc::clone(&basis_tree), Rc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis tree");
-    log_tree(Rc::clone(&basis_tree), "@ABSORB");
+    basis_tree.log_tree("@ABSORB");
 
     prune_tree(Rc::clone(&basis_tree));
     log::info!("Done pruning basis tree");
-    log_tree(Rc::clone(&basis_tree), "@PRUNE");
+    basis_tree.log_tree("@PRUNE");
 
     grow_tree(Rc::clone(&basis_tree)).await;
     log::info!("Done growing basis tree");
-    log_tree(Rc::clone(&basis_tree), "@GROW");
+    basis_tree.log_tree("@GROW");
 
     save_basis_tree(Rc::clone(&basis_tree));
     log::info!("Saved basis tree");

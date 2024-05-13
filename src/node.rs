@@ -287,82 +287,60 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
 
 
 
+impl Node {
+    pub fn log_tree(&self, title: &str) {
 
-pub fn log_tree(tree: Rc<Node>, title: &str) {
+        //let xml = tree_to_xml(tree.clone());
+        //let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash());
 
-    //let xml = tree_to_xml(tree.clone());
-    //let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash());
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("./debug/trees")
+            .expect("Could not open file");
 
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("./debug/trees")
-        .expect("Could not open file");
-
-    let divider = std::iter::repeat("*").take(100).collect::<String>();
-    let text = format!(
-        "\n\n{} {}\n",
-        divider,
-        title
-    );
-
-    writeln!(file, "{}", text).expect("Could not write to file");
-
-    let mut node_count = 0;
-
-    bfs(tree.clone(), &mut |node: &Rc<Node>| {
-        node_count = node_count + 1;
-
-        let divider = std::iter::repeat("-").take(50).collect::<String>();
+        let divider = std::iter::repeat("*").take(100).collect::<String>();
         let text = format!(
-            "\nID: {}\nHASH: {}\nXML: {}\nSUBTREE HASH: {}\nANCESTOR HASH: {}\nCOMPLEX TYPE NAME: {:?}\n",
-            node.id,
-            node.hash,
-            node.xml,
-            node.subtree_hash(),
-            node.ancestry_hash(),
-            node.complex_type_name
+            "\n\n{} {}\n",
+            divider,
+            title
         );
 
-        let mut node_data_text = String::from("");
-
-        for d in node.data.borrow().iter() {
-            node_data_text = node_data_text + format!(r##"
-                name: {},
-                value: {:?}
-            "##, d.name, d.value).as_str();
-        }
-
-        let text = format!("\n{}{}{}{}\n", divider, text, node_data_text, divider);
-
         writeln!(file, "{}", text).expect("Could not write to file");
-    });
 
-    writeln!(file, "node count: {}", node_count).expect("Could not write to file");
+        let mut node_count = 0;
+
+        bfs(self.clone().into(), &mut |node: &Rc<Node>| {
+            node_count = node_count + 1;
+
+            let divider = std::iter::repeat("-").take(50).collect::<String>();
+            let text = format!(
+                "\nID: {}\nHASH: {}\nXML: {}\nSUBTREE HASH: {}\nANCESTOR HASH: {}\nCOMPLEX TYPE NAME: {:?}\n",
+                node.id,
+                node.hash,
+                node.xml,
+                node.subtree_hash(),
+                node.ancestry_hash(),
+                node.complex_type_name
+            );
+
+            let mut node_data_text = String::from("");
+
+            for d in node.data.borrow().iter() {
+                node_data_text = node_data_text + format!(r##"
+                    name: {},
+                    value: {:?}
+                "##, d.name, d.value).as_str();
+            }
+
+            let text = format!("\n{}{}{}{}\n", divider, text, node_data_text, divider);
+
+            writeln!(file, "{}", text).expect("Could not write to file");
+        });
+
+        writeln!(file, "node count: {}", node_count).expect("Could not write to file");
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 impl Node {
     pub fn from_void() -> Rc<Self> {
@@ -415,44 +393,6 @@ impl Node {
 
         node
     }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-pub fn get_lineage(node: Rc<Node>) -> VecDeque<String> {
-    let mut lineage = VecDeque::new();
-    lineage.push_back(node.hash.clone());
-
-    let mut current_parent = node.parent.borrow().clone();
-
-    while let Some(parent) = current_parent {
-        lineage.push_front(parent.hash.clone());
-
-        current_parent = {
-            let node_ref = parent.parent.borrow();
-            node_ref.as_ref().map(|node| node.clone())
-        };
-    }
-
-    lineage
-}
-
-impl Node {
 
     pub fn ancestry_hash(&self) -> String {
         let mut hasher = Sha256::new();
@@ -487,24 +427,25 @@ impl Node {
 
         format!("{:x}", hasher.finalize())
     }
+
+    pub fn get_lineage(&self) -> VecDeque<String> {
+        let mut lineage = VecDeque::new();
+        lineage.push_back(self.hash.clone());
+
+        let mut current_parent = self.parent.borrow().clone();
+
+        while let Some(parent) = current_parent {
+            lineage.push_front(parent.hash.clone());
+
+            current_parent = {
+                let node_ref = parent.parent.borrow();
+                node_ref.as_ref().map(|node| node.clone())
+            };
+        }
+
+        lineage
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 impl Node {
     pub fn should_update_node_data(&self) -> bool {
@@ -765,20 +706,6 @@ fn uncapitalize(word: &str) -> String {
         Some(f) => f.to_lowercase().collect::<String>() + chars.as_str(),
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
     let serialized_nodes = serialize(&nodes)?;
