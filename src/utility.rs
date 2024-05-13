@@ -94,37 +94,3 @@ pub fn preprocess_xml(xml_string: &str) -> String {
 
     return as_string.to_string();
 }
-
-pub fn element_to_string(element: &Element) -> String {
-    let mut buffer = Cursor::new(Vec::new());
-    element.write(&mut buffer).expect("Could not write element");
-
-    let buf = buffer.into_inner();
-    let as_string = from_utf8(&buf).expect("Found invalid UTF-8");
-
-    return as_string.to_string();
-}
-
-pub fn hash_text(text: String) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(text);
-
-    let hash = hasher.finalize();
-
-    format!("{:x}", hash)
-}
-
-pub fn get_opening_tag(element: &Element) -> String {
-    let mut tag = format!("<{}", element.name);
-
-    for (attr, value) in &element.attributes {
-        tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
-    }
-    tag.push('>');
-
-    tag
-}
-
-pub fn get_closing_tag(element: &Element) -> String {
-    format!("</{}>", element.name)
-}

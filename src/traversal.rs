@@ -55,8 +55,8 @@ pub struct Output {
 #[derive(Debug)]
 pub enum OutputFormats {
     JSON,
-    XML,
-    CSV
+    //XML,
+    //CSV
 }
 
 const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
