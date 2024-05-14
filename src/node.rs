@@ -599,9 +599,11 @@ impl Node {
 
         log::info!("Consulting LLM for node interpretation...");
 
-        let subtree_hash = &self.subtree_hash();
+        // TODO: had to change from subtree_hash to ancestry_hash, but I don't think this is right either
+        // Perhaps it needs to be ancestry_hash + node hash?
+        let ancestry_hash = &self.ancestry_hash();
 
-        if let Some(complex_type) = get_node_complex_type(&db, subtree_hash).expect("Could not get node complex type from database") {
+        if let Some(complex_type) = get_node_complex_type(&db, ancestry_hash).expect("Could not get node complex type from database") {
             log::info!("Cache hit!");
             *self.complex_type_name.borrow_mut() = Some(complex_type.clone());
 
@@ -617,7 +619,7 @@ impl Node {
 
             *self.complex_type_name.borrow_mut() = Some(llm_type_name.clone()).into();
 
-            store_node_complex_type(&db, subtree_hash, &llm_type_name).expect("Unable to persist complex type to database");
+            store_node_complex_type(&db, ancestry_hash, &llm_type_name).expect("Unable to persist complex type to database");
         }
 
         true
