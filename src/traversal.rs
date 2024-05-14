@@ -42,6 +42,14 @@ pub struct Traversal {
     pub complex_objects: Vec<ComplexObject>,
     pub lists: Vec<String>,
     pub relationships: Vec<Relationship>,
+    pub object_count: u64,
+    pub type_count: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OutputMeta {
+    object_count: u64,
+    type_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -50,6 +58,7 @@ pub struct Output {
     pub complex_objects: Vec<ComplexObject>,
     pub lists: HashMap<String, Vec<String>>,
     pub relationships: HashMap<String, Relationship>,
+    pub meta: OutputMeta,
 }
 
 #[derive(Debug)]
@@ -113,6 +122,8 @@ impl Traversal {
             complex_objects: Vec::new(),
             lists: Vec::new(),
             relationships: Vec::new(),
+            object_count: 0,
+            type_count: 0,
         }
     }
 
@@ -144,6 +155,7 @@ impl Traversal {
                     log::debug!("complex_object: {:?}", complex_object);
 
                     self.complex_objects.push(complex_object);
+                    self.object_count += 1;
                 }
 
             } else {
@@ -165,6 +177,10 @@ impl Traversal {
             complex_objects: self.complex_objects.clone(),
             lists: HashMap::new(),
             relationships: HashMap::new(),
+            meta: OutputMeta {
+                object_count: self.object_count,
+                type_count: self.type_count,
+            }
         };
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
