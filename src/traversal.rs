@@ -236,7 +236,27 @@ impl Traversal {
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
 
+
+
         log::debug!("subtree_hashes_at_depth: {:?}", self.subtree_hashes_at_depth);
+
+
+        let mut depths: Vec<&u16> = self.subtree_hashes_at_depth
+            .keys()
+            .collect();
+        depths.sort();
+
+        let values_at_depth: Vec<HashMap<String, Vec<String>>> = depths
+            .iter()
+            .map(|key| self.subtree_hashes_at_depth.get(key).unwrap().clone())
+            .collect();
+
+        let lists: Vec<Vec<Vec<String>>> = values_at_depth
+            .iter()
+            .map(|hash_map| hash_map.values().collect::<&Vec<String>>())
+            .map(|item| item.clone())
+            .collect();
+
 
         match output_format {
             OutputFormats::JSON => {
