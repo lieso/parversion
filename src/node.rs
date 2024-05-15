@@ -437,6 +437,23 @@ impl Node {
 
         lineage
     }
+
+    pub fn get_depth(&self) -> u16 {
+        let mut depth = 0;
+
+        let mut current_parent = self.parent.borrow().clone();
+
+        while let Some(parent) = current_parent {
+            depth += 1;
+
+            current_parent = {
+                let node_ref = parent.parent.borrow();
+                node_ref.as_ref().map(|node| node.clone())
+            };
+        }
+
+        depth
+    }
 }
 
 impl Node {

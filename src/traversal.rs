@@ -47,6 +47,7 @@ pub struct Traversal {
     pub relationships: Vec<Relationship>,
     pub object_count: u64,
     pub type_count: u64,
+    pub subtree_hashes_at_depth: HashMap<u16, HashMap<String, Vec<String>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -126,6 +127,7 @@ impl Traversal {
             relationships: Vec::new(),
             object_count: 0,
             type_count: 0,
+            subtree_hashes_at_depth: HashMap::new(),
         }
     }
 
@@ -133,6 +135,18 @@ impl Traversal {
         self.basis_tree = Some(Rc::clone(&tree));
         
         self
+    }
+
+    pub fn update_subtree_counts(&mut self, output_node: Rc<Node>, complex_object: &ComplexObject) {
+        let depth = output_node.get_depth();
+        let subtree_hash = output_node.subtree_hash();
+
+        self.subtree_hashes_at_depth
+            .entry(depth)
+            .or_default()
+            .entry(subtree_hash)
+            .or_default()
+            .push(complex_object.id.clone());
     }
 
     pub fn traverse(mut self) -> Result<Self, Errors> {
@@ -151,13 +165,14 @@ impl Traversal {
             log::debug!("lineage: {:?}", lineage);
 
             if let Some(basis_node) = search_tree_by_lineage(Rc::clone(&basis_tree), lineage.clone()) {
-
                 if let Some(complex_type_name) = basis_node.complex_type_name.borrow().as_ref() {
-
                     let complex_type = self.complex_types.iter().find(|item| item.name == *complex_type_name);
 
                     if let Some(complex_type) = complex_type {
                         let complex_object = map_complex_object(basis_node.clone(), current.clone(), complex_type);
+
+                        self.update_subtree_counts(current.clone(), &complex_object);
+
                         self.complex_objects.push(complex_object);
                     } else {
                         let complex_type = ComplexType {
@@ -171,12 +186,14 @@ impl Traversal {
                         self.complex_types.push(complex_type.clone());
 
                         let complex_object = map_complex_object(basis_node.clone(), current.clone(), &complex_type);
+
+                        self.update_subtree_counts(current.clone(), &complex_object);
+
                         self.complex_objects.push(complex_object);
                     };
 
                     self.object_count += 1;
                 };
-
             } else {
                 log::warn!("Basis tree does to contain corresponding node to output tree!");
                 continue;
@@ -218,6 +235,8 @@ impl Traversal {
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
+
+        log::debug!("subtree_hashes_at_depth: {:?}", self.subtree_hashes_at_depth);
 
         match output_format {
             OutputFormats::JSON => {
