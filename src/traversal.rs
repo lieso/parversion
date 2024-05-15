@@ -25,6 +25,7 @@ pub struct ComplexObject {
     pub id: String,
     pub type_id: String,
     pub values: HashMap<String, String>,
+    pub complex_objects: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -76,6 +77,7 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>, complex_t
     log::trace!("In map_complex_object");
 
     let mut values: HashMap<String, String> = HashMap::new();
+    let mut complex_objects: Vec<String> = Vec::new();
 
     values.extend(
         node_data_to_hash_map(&basis_tree.data, Rc::clone(&output_tree)).drain()
@@ -89,7 +91,7 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>, complex_t
             .unwrap();
 
         if let Some(complex_type_name) = basis_child.complex_type_name.borrow().as_ref() {
-            values.insert(child.id.clone(), complex_type_name.clone());
+            complex_objects.push(child.id.clone());
         } else {
             values.extend(
                 node_data_to_hash_map(&basis_child.data, Rc::clone(&output_tree)).drain()
@@ -101,6 +103,7 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>, complex_t
         id: output_tree.id.clone(),
         type_id: complex_type.id.to_string(),
         values: values,
+        complex_objects: complex_objects,
     }
 }
 
