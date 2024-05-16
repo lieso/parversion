@@ -43,7 +43,6 @@ pub struct Traversal {
     pub primitives: Vec<HashMap<String, String>>,
     pub complex_types: Vec<ComplexType>,
     pub complex_objects: Vec<ComplexObject>,
-    pub lists: Vec<String>,
     pub relationships: Vec<Relationship>,
     pub object_count: u64,
     pub type_count: u64,
@@ -60,7 +59,7 @@ pub struct OutputMeta {
 pub struct Output {
     pub complex_types: HashMap<String, ComplexType>,
     pub complex_objects: HashMap<String, ComplexObject>,
-    pub lists: HashMap<String, Vec<String>>,
+    pub lists: Vec<Vec<Vec<String>>>,
     pub relationships: HashMap<String, Relationship>,
     pub meta: OutputMeta,
 }
@@ -123,7 +122,6 @@ impl Traversal {
             primitives: Vec::new(),
             complex_types: Vec::new(),
             complex_objects: Vec::new(),
-            lists: Vec::new(),
             relationships: Vec::new(),
             object_count: 0,
             type_count: 0,
@@ -211,7 +209,7 @@ impl Traversal {
         let mut output = Output {
             complex_types: HashMap::new(),
             complex_objects: HashMap::new(),
-            lists: HashMap::new(),
+            lists: Vec::new(),
             relationships: HashMap::new(),
             meta: OutputMeta {
                 object_count: self.object_count,
@@ -248,15 +246,18 @@ impl Traversal {
 
         let values_at_depth: Vec<HashMap<String, Vec<String>>> = depths
             .iter()
-            .map(|key| self.subtree_hashes_at_depth.get(key).unwrap().clone())
+            .filter_map(|key| self.subtree_hashes_at_depth.get(key))
+            .cloned()
             .collect();
 
         let lists: Vec<Vec<Vec<String>>> = values_at_depth
             .iter()
-            .map(|hash_map| hash_map.values().collect::<&Vec<String>>())
-            .map(|item| item.clone())
+            .map(|hash_map| {
+                hash_map.values().cloned().collect::<Vec<Vec<String>>>()
+            })
             .collect();
 
+        output.lists = lists;
 
         match output_format {
             OutputFormats::JSON => {
