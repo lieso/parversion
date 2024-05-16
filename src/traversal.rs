@@ -46,6 +46,7 @@ pub struct Traversal {
     pub relationships: Vec<Relationship>,
     pub object_count: u64,
     pub type_count: u64,
+    pub list_count: u64,
     pub subtree_hashes_at_depth: HashMap<u16, HashMap<String, Vec<String>>>,
 }
 
@@ -53,6 +54,7 @@ pub struct Traversal {
 pub struct OutputMeta {
     object_count: u64,
     type_count: u64,
+    list_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -125,6 +127,7 @@ impl Traversal {
             relationships: Vec::new(),
             object_count: 0,
             type_count: 0,
+            list_count: 0,
             subtree_hashes_at_depth: HashMap::new(),
         }
     }
@@ -214,6 +217,7 @@ impl Traversal {
             meta: OutputMeta {
                 object_count: self.object_count,
                 type_count: self.type_count,
+                list_count: self.list_count,
             }
         };
 
@@ -253,10 +257,16 @@ impl Traversal {
         let lists: Vec<Vec<Vec<String>>> = values_at_depth
             .iter()
             .map(|hash_map| {
-                hash_map.values().cloned().collect::<Vec<Vec<String>>>()
+                hash_map
+                    .values()
+                    .cloned()
+                    .filter(|vec| vec.len() != 1)
+                    .collect::<Vec<Vec<String>>>()
             })
+            .filter(|vec| vec.len() > 0)
             .collect();
 
+        output.meta.list_count = lists.len() as u64;
         output.lists = lists;
 
         match output_format {
