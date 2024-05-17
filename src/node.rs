@@ -469,7 +469,7 @@ impl Node {
         // Do not give a node a type if:
         // * It's a leaf node - whoops yes we do. e.g. title tag in head is a simple text node, but will need 'page_title' complex type
         // * It and all children are structural nodes
-        // * It doesn't have any data entries. This can happen if a non-structural node was not interpreted to have any salient data
+        // * It has no data AND children neither have data or a complex type
 
         //let is_leaf = self.children.borrow().is_empty();
         //log::debug!("is_leaf: {}", is_leaf);
@@ -479,6 +479,8 @@ impl Node {
         //}
 
         if self.data.borrow().is_empty() {
+
+
             return false;
         }
 
@@ -602,22 +604,21 @@ impl Node {
 
         assert!(!self.xml.is_empty());
 
-        if !self.should_interpret_node_data() {
-            log::info!("Not interpreting this node");
-            *self.complex_type_name.borrow_mut() = None.into();
-            return false;
-        }
-        
-        if let Some(propagated_complex_type) = self.should_propagate_node_interpretation() {
-            log::info!("Propagating node interpretation");
-            *self.complex_type_name.borrow_mut() = Some(propagated_complex_type);
-            return false;
-        }
+        //if let Some(propagated_complex_type) = self.should_propagate_node_interpretation() {
+        //    log::info!("Propagating node interpretation");
+        //    *self.complex_type_name.borrow_mut() = Some(propagated_complex_type);
+        //    return false;
+        //}
+
+        //if !self.should_interpret_node_data() {
+        //    log::info!("Not interpreting this node");
+        //    *self.complex_type_name.borrow_mut() = None.into();
+        //    return false;
+        //}
 
         log::info!("Consulting LLM for node interpretation...");
 
         // TODO: had to change from subtree_hash to ancestry_hash, but I don't think this is right either
-        // Perhaps it needs to be ancestry_hash + node hash?
         let ancestry_hash = &self.ancestry_hash();
 
         if let Some(complex_type) = get_node_complex_type(&db, ancestry_hash).expect("Could not get node complex type from database") {
@@ -630,6 +631,20 @@ impl Node {
 
             let fields = self.get_node_fields();
             let context = self.get_node_context();
+
+
+
+
+            if fields.is_empty() {
+                log::info!("Node has no fields!");
+                return false;
+            }
+
+
+
+
+
+
 
             let llm_type_name: String = llm::interpret_node(fields, context).await
                 .expect("Could not interpret node");
@@ -669,6 +684,10 @@ impl Node {
         let mut comparison_node_id = self.id.clone();
         let mut parent = self.parent.borrow().clone().unwrap();
 
+        if parent.hash == ROOT_NODE_HASH {
+            return String::from("These fields are self-contained and appear by themselves without any relevant context.");
+        }
+
         for _ in 0..max_parents {
             let next_parent = {
                 let siblings = parent.children.borrow();
@@ -685,6 +704,8 @@ impl Node {
 
                 context = sibling_context + &context;
 
+                log::debug!("parent.xml: {}", parent.xml.to_string());
+
                 context = parent.xml.to_string_with_child_string(context.clone())
                     .expect("Could not embed string inside parent element");
 
@@ -695,6 +716,10 @@ impl Node {
 
             if let Some(next_parent) = next_parent {
                 parent = next_parent;
+
+                if parent.hash == ROOT_NODE_HASH {
+                    break;
+                }
             } else {
                 break;
             }
