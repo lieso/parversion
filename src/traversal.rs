@@ -238,10 +238,7 @@ impl Traversal {
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
 
-
-
         log::debug!("subtree_hashes_at_depth: {:?}", self.subtree_hashes_at_depth);
-
 
         let mut depths: Vec<&u16> = self.subtree_hashes_at_depth
             .keys()
@@ -266,8 +263,23 @@ impl Traversal {
             .filter(|vec| vec.len() > 0)
             .collect();
 
+
+        for (i1, i) in lists.clone().iter().enumerate() {
+            log::debug!("*****************************************************************************************************");
+            for (i2, j) in i.iter().enumerate() {
+                log::debug!("#####################################################################################################");
+                for (i3, k) in j.iter().enumerate() {
+                    log::debug!("---");
+                    let complex_object = self.complex_objects.iter().find(|item| item.id == *k).unwrap();
+                    let complex_type = self.complex_types.iter().find(|item| item.id == complex_object.type_id).unwrap();
+                    log::debug!("{}", complex_type.name);
+                }
+            }
+        }
+
         output.meta.list_count = lists.len() as u64;
         output.lists = lists;
+
 
         match output_format {
             OutputFormats::JSON => {
