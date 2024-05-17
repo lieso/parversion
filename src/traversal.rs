@@ -25,6 +25,7 @@ pub struct ComplexObject {
     pub id: String,
     pub type_id: String,
     pub values: HashMap<String, String>,
+    pub depth: u16,
     pub complex_objects: Vec<String>,
 }
 
@@ -46,22 +47,18 @@ pub struct Traversal {
     pub relationships: Vec<Relationship>,
     pub object_count: u64,
     pub type_count: u64,
-    pub list_count: u64,
-    pub subtree_hashes_at_depth: HashMap<u16, HashMap<String, Vec<String>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OutputMeta {
     object_count: u64,
     type_count: u64,
-    list_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Output {
     pub complex_types: HashMap<String, ComplexType>,
     pub complex_objects: HashMap<String, ComplexObject>,
-    pub lists: Vec<Vec<Vec<String>>>,
     pub relationships: HashMap<String, Relationship>,
     pub meta: OutputMeta,
 }
@@ -105,6 +102,7 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>, complex_t
         id: output_tree.id.clone(),
         type_id: complex_type.id.to_string(),
         values: values,
+        depth: output_tree.get_depth(),
         complex_objects: complex_objects,
     }
 }
@@ -127,8 +125,6 @@ impl Traversal {
             relationships: Vec::new(),
             object_count: 0,
             type_count: 0,
-            list_count: 0,
-            subtree_hashes_at_depth: HashMap::new(),
         }
     }
 
@@ -136,18 +132,6 @@ impl Traversal {
         self.basis_tree = Some(Rc::clone(&tree));
         
         self
-    }
-
-    pub fn update_subtree_counts(&mut self, output_node: Rc<Node>, complex_object: &ComplexObject) {
-        let depth = output_node.get_depth();
-        let subtree_hash = output_node.subtree_hash();
-
-        self.subtree_hashes_at_depth
-            .entry(depth)
-            .or_default()
-            .entry(subtree_hash)
-            .or_default()
-            .push(complex_object.id.clone());
     }
 
     pub fn traverse(mut self) -> Result<Self, Errors> {
@@ -172,7 +156,11 @@ impl Traversal {
                     if let Some(complex_type) = complex_type {
                         let complex_object = map_complex_object(basis_node.clone(), current.clone(), complex_type);
 
-                        self.update_subtree_counts(current.clone(), &complex_object);
+                        if complex_object.values.is_empty() && complex_object.complex_objects.is_empty() {
+                            // TODO
+                            log::warn!("I'm ignoring an empty complex object without understanding why it's empty");
+                            continue;
+                        }
 
                         self.complex_objects.push(complex_object);
                     } else {
@@ -188,7 +176,11 @@ impl Traversal {
 
                         let complex_object = map_complex_object(basis_node.clone(), current.clone(), &complex_type);
 
-                        self.update_subtree_counts(current.clone(), &complex_object);
+                        if complex_object.values.is_empty() && complex_object.complex_objects.is_empty() {
+                            // TODO
+                            log::warn!("I'm ignoring an empty complex object without understanding why it's empty");
+                            continue;
+                        }
 
                         self.complex_objects.push(complex_object);
                     };
@@ -212,13 +204,11 @@ impl Traversal {
         let mut output = Output {
             complex_types: HashMap::new(),
             complex_objects: HashMap::new(),
-            lists: Vec::new(),
             relationships: HashMap::new(),
             meta: OutputMeta {
                 object_count: self.object_count,
                 type_count: self.type_count,
-                list_count: self.list_count,
-            }
+            },
         };
 
         for complex_type in self.complex_types.iter() {
@@ -237,49 +227,6 @@ impl Traversal {
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
-
-        log::debug!("subtree_hashes_at_depth: {:?}", self.subtree_hashes_at_depth);
-
-        let mut depths: Vec<&u16> = self.subtree_hashes_at_depth
-            .keys()
-            .collect();
-        depths.sort();
-
-        let values_at_depth: Vec<HashMap<String, Vec<String>>> = depths
-            .iter()
-            .filter_map(|key| self.subtree_hashes_at_depth.get(key))
-            .cloned()
-            .collect();
-
-        let lists: Vec<Vec<Vec<String>>> = values_at_depth
-            .iter()
-            .map(|hash_map| {
-                hash_map
-                    .values()
-                    .cloned()
-                    .filter(|vec| vec.len() != 1)
-                    .collect::<Vec<Vec<String>>>()
-            })
-            .filter(|vec| vec.len() > 0)
-            .collect();
-
-
-        for (i1, i) in lists.clone().iter().enumerate() {
-            log::debug!("*****************************************************************************************************");
-            for (i2, j) in i.iter().enumerate() {
-                log::debug!("#####################################################################################################");
-                for (i3, k) in j.iter().enumerate() {
-                    log::debug!("---");
-                    let complex_object = self.complex_objects.iter().find(|item| item.id == *k).unwrap();
-                    let complex_type = self.complex_types.iter().find(|item| item.id == complex_object.type_id).unwrap();
-                    log::debug!("{}", complex_type.name);
-                }
-            }
-        }
-
-        output.meta.list_count = lists.len() as u64;
-        output.lists = lists;
-
 
         match output_format {
             OutputFormats::JSON => {
