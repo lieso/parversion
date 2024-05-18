@@ -2,6 +2,8 @@ use serde::{Serialize, Deserialize};
 use std::rc::{Rc};
 use std::collections::{HashMap, VecDeque};
 use uuid::Uuid;
+use std::fs::{OpenOptions};
+use std::io::{Write};
 
 use crate::node::*;
 use crate::error::{Errors};
@@ -14,19 +16,19 @@ pub struct ComplexType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DerivedType {
-    pub id: String,
-    pub complex_mapping: HashMap<String, HashMap<String, String>>,
-    pub values: HashMap<String, String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ComplexObject {
     pub id: String,
     pub type_id: String,
     pub values: HashMap<String, String>,
     pub depth: u16,
     pub complex_objects: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DerivedType {
+    pub id: String,
+    pub complex_mapping: HashMap<String, HashMap<String, String>>,
+    pub values: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -156,12 +158,6 @@ impl Traversal {
                     if let Some(complex_type) = complex_type {
                         let complex_object = map_complex_object(basis_node.clone(), current.clone(), complex_type);
 
-                        if complex_object.values.is_empty() && complex_object.complex_objects.is_empty() {
-                            // TODO
-                            log::warn!("I'm ignoring an empty complex object without understanding why it's empty");
-                            continue;
-                        }
-
                         self.complex_objects.push(complex_object);
                     } else {
                         let complex_type = ComplexType {
@@ -175,12 +171,6 @@ impl Traversal {
                         self.complex_types.push(complex_type.clone());
 
                         let complex_object = map_complex_object(basis_node.clone(), current.clone(), &complex_type);
-
-                        if complex_object.values.is_empty() && complex_object.complex_objects.is_empty() {
-                            // TODO
-                            log::warn!("I'm ignoring an empty complex object without understanding why it's empty");
-                            continue;
-                        }
 
                         self.complex_objects.push(complex_object);
                     };
@@ -200,7 +190,54 @@ impl Traversal {
         Ok(self)
     }
 
+    fn complex_object_id_to_values_string(&self, id: &str) -> String {
+        let complex_object = self.complex_objects.iter().find(|item| item.id == id).unwrap();
+
+        let values: String = complex_object.values.keys().fold(
+            String::from(""),
+            |acc, key| {
+                format!("{}\n{}: {}", acc, key, complex_object.values.get(key).unwrap())
+            }
+        );
+
+        complex_object.complex_objects.iter().fold(
+            values,
+            |acc, id| {
+                format!("{}\n", self.complex_object_id_to_values_string(id))
+            }
+        )
+    }
+
+    fn generate_report(&self) {
+        log::info!("Generating report...");
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .create(true)
+            .open(format!("./debug/report_{}", Uuid::new_v4().to_string()))
+            .expect("Could not open file for writing");
+
+        for complex_object in self.complex_objects.iter() {
+            let complex_type: ComplexType = self.complex_types.iter().find(|item| item.id == complex_object.type_id).unwrap().clone();
+
+            let values = self.complex_object_id_to_values_string(&complex_object.id);
+
+            let output = format!("
+                \nID: {}\nTYPE: {}\nDEPTH: {}\nVALUES: {}",
+                complex_object.id,
+                complex_type.name, 
+                complex_object.depth,
+                values
+            );
+
+            writeln!(file, "{}", output).expect("Could to write to file");
+        }
+    }
+
     pub fn harvest(self) -> Result<String, Errors> {
+        self.generate_report();
+
         let mut output = Output {
             complex_types: HashMap::new(),
             complex_objects: HashMap::new(),
