@@ -196,14 +196,16 @@ impl Traversal {
         let values: String = complex_object.values.keys().fold(
             String::from(""),
             |acc, key| {
-                format!("{}\n{}: {}", acc, key, complex_object.values.get(key).unwrap())
+                let maybe_newline = if acc.is_empty() { "" } else { "\n" };
+                format!("{}{}{}: {}", acc, maybe_newline, key, complex_object.values.get(key).unwrap())
             }
         );
 
         complex_object.complex_objects.iter().fold(
             values,
             |acc, id| {
-                format!("{}\n", self.complex_object_id_to_values_string(id))
+                let maybe_newline = if acc.is_empty() { "" } else { "\n" };
+                format!("{}{}{}", acc, maybe_newline, self.complex_object_id_to_values_string(id))
             }
         )
     }
@@ -224,7 +226,8 @@ impl Traversal {
             let values = self.complex_object_id_to_values_string(&complex_object.id);
 
             let output = format!("
-                \nID: {}\nTYPE: {}\nDEPTH: {}\nVALUES: {}",
+                * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+                \nID: {}\nTYPE: {}\nDEPTH: {}\nVALUES: \n{}",
                 complex_object.id,
                 complex_type.name, 
                 complex_object.depth,
