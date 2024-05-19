@@ -59,8 +59,8 @@ pub struct OutputMeta {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Output {
-    pub complex_types: HashMap<String, ComplexType>,
-    pub complex_objects: HashMap<String, ComplexObject>,
+    pub complex_types: Vec<ComplexType>,
+    pub complex_objects: Vec<ComplexObject>,
     pub relationships: HashMap<String, Relationship>,
     pub meta: OutputMeta,
 }
@@ -242,28 +242,14 @@ impl Traversal {
         self.generate_report();
 
         let mut output = Output {
-            complex_types: HashMap::new(),
-            complex_objects: HashMap::new(),
+            complex_types: self.complex_types.clone(),
+            complex_objects: self.complex_objects.clone(),
             relationships: HashMap::new(),
             meta: OutputMeta {
                 object_count: self.object_count,
                 type_count: self.type_count,
             },
         };
-
-        for complex_type in self.complex_types.iter() {
-            output.complex_types.insert(
-                complex_type.id.to_string(),
-                complex_type.clone()
-            );
-        }
-
-        for complex_object in self.complex_objects.iter() {
-            output.complex_objects.insert(
-                complex_object.id.to_string(),
-                complex_object.clone()
-            );
-        }
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
