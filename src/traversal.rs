@@ -18,6 +18,7 @@ pub struct ComplexType {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ComplexObject {
     pub id: String,
+    pub parent_id: Option<String>,
     pub type_id: String,
     pub values: HashMap<String, String>,
     pub depth: u16,
@@ -102,6 +103,7 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>, complex_t
 
     ComplexObject {
         id: output_tree.id.clone(),
+        parent_id: output_tree.parent.borrow().clone().map(|p| p.id.clone()),
         type_id: complex_type.id.to_string(),
         values: values,
         depth: output_tree.get_depth(),
