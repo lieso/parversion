@@ -13,6 +13,9 @@ pub struct NodeData {
     pub attribute: Option<String>,
     pub name: String,
     pub regex: String,
+    pub is_id: bool,
+    pub is_url: bool,
+    pub is_decorative: bool,
     pub value: Option<NodeDataValue>,
 }
 

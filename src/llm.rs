@@ -10,6 +10,9 @@ struct PartialNodeData {
     pub attribute_name: String,
     pub new_name: String,
     pub regex: String,
+    pub is_id: bool,
+    pub is_url: bool,
+    pub is_decorative: bool,
 }
 
 pub async fn interpret_node(fields: String, context: String) -> Result<String, ()> {
@@ -83,6 +86,9 @@ For each distinct item of information in the snippet, I want you to provide the 
 1. The attribute name associated with the data
 2. A new suitable name in snake case that would be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus any additional context.
 3. A regular expression, if necessary, that would match the part of the attribute value that contains the data. If the entire attribute value is relevant, only provide identity regular expression ^.*$
+4. If the value is an ID of some kind (is_id)
+5. If the value is a URL (is_url)
+6. If the value is decorative and not informational (is_decorative)
 
 Here is the HTML/XML text I'm examining:
 
@@ -100,7 +106,10 @@ Please provide your response as an array of JSON objects that look like this:
 {{
     "attribute_name": "href",
     "new_name": "icon_url",
-    "regex": "^.*$"
+    "regex": "^.*$",
+    "is_id": true,
+    "is_url": true,
+    "is_decorative": false
 }}
 
 And do not include any commentary, introduction or summary. Thank you.
@@ -146,6 +155,9 @@ And do not include any commentary, introduction or summary. Thank you.
             attribute: Some(item.attribute_name.to_string()),
             name: item.new_name.to_string(),
             regex: item.regex.to_string(),
+            is_id: item.is_id,
+            is_url: item.is_url,
+            is_decorative: item.is_decorative,
             value: None,
         }
     }).collect();

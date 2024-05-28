@@ -20,7 +20,7 @@ pub struct ComplexObject {
     pub id: String,
     pub parent_id: Option<String>,
     pub type_id: String,
-    pub values: HashMap<String, String>,
+    pub values: HashMap<String, HashMap<String, String>>,
     pub depth: u16,
     pub complex_objects: Vec<String>,
 }
@@ -78,7 +78,7 @@ const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
 pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>, complex_type: &ComplexType) -> ComplexObject {
     log::trace!("In map_complex_object");
 
-    let mut values: HashMap<String, String> = HashMap::new();
+    let mut values: HashMap<String, HashMap<String, String>> = HashMap::new();
     let mut complex_objects: Vec<String> = Vec::new();
 
     values.extend(
@@ -199,7 +199,7 @@ impl Traversal {
             String::from(""),
             |acc, key| {
                 let maybe_newline = if acc.is_empty() { "" } else { "\n" };
-                format!("{}{}{}: {}", acc, maybe_newline, key, complex_object.values.get(key).unwrap())
+                format!("{}{}{}: {}", acc, maybe_newline, key, complex_object.values.get(key).unwrap().get("value").unwrap())
             }
         );
 

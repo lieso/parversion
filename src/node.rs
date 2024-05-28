@@ -64,14 +64,22 @@ pub fn map_primitives(basis_tree: Rc<Node>, output_tree: Rc<Node>) -> HashMap<St
     unimplemented!()
 }
 
-pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc<Node>) -> HashMap<String, String> {
+pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc<Node>) -> HashMap<String, HashMap<String, String>> {
     log::trace!("In node_data_to_hash_map");
 
-    let mut values: HashMap<String, String> = HashMap::new();
+    let mut values: HashMap<String, HashMap<String, String>> = HashMap::new();
 
     for item in node_data.borrow().iter() {
         if let Some(node_data_value) = item.select(output_tree.xml.clone()) {
-            values.insert(item.name.clone(), node_data_value.text.clone());
+
+            let mut value = HashMap::new();
+            value.insert(String::from("value"), node_data_value.text.clone());
+            value.insert(String::from("is_url"), item.is_url.to_string());
+            value.insert(String::from("is_id"), item.is_id.to_string());
+            value.insert(String::from("is_decorative"), item.is_decorative.to_string());
+
+            values.insert(item.name.clone(), value);
+
         } else {
             log::warn!("Basis tree node could not be applied to output tree node!");
         }
@@ -528,37 +536,12 @@ impl Node {
         None
     }
 
-    pub fn should_classically_update_node_data(&self) -> Option<Vec<NodeData>> {
-        log::trace!("In should_classically_update_node_data");
-
-        // * We don't need to consult an LLM to interpret text nodes
-
-        if self.hash == TEXT_NODE_HASH {
-            let node_data = NodeData {
-                attribute: None,
-                name: String::from("text"),
-                regex: String::from("^.*$"),
-                value: None,
-            };
-
-            return Some(vec![node_data]);
-        }
-
-        None
-    }
-
     pub async fn update_node_data(&self, db: &Db) -> bool {
         log::trace!("In update_node_data");
 
         if !self.should_update_node_data() {
             log::info!("Not updating this node");
             *self.data.borrow_mut() = Vec::new();
-            return false;
-        }
-
-        if let Some(classical_interpretation) = self.should_classically_update_node_data() {
-            log::info!("Node interpreted classically");
-            *self.data.borrow_mut() = classical_interpretation;
             return false;
         }
 
