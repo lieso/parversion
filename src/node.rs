@@ -536,6 +536,28 @@ impl Node {
         None
     }
 
+    pub fn should_classically_update_node_data(&self) -> Option<Vec<NodeData>> {
+        log::trace!("In should_classically_update_node_data");
+
+        // * We don't need to consult an LLM to interpret text nodes
+
+        if self.hash == TEXT_NODE_HASH {
+            let node_data = NodeData {
+                attribute: None,
+                name: String::from("text"),
+                regex: String::from("^.*$"),
+                value: None,
+                is_url: false,
+                is_id: false,
+                is_decorative: false,
+            };
+
+            return Some(vec![node_data]);
+        }
+
+        None
+    }
+
     pub async fn update_node_data(&self, db: &Db) -> bool {
         log::trace!("In update_node_data");
 
@@ -545,7 +567,13 @@ impl Node {
             return false;
         }
 
-        if let Some(node_data) = get_node_data(&db, &self.hash).expect("Could not get node data from database") {
+        if let Some(classical_interpretation) = self.should_classically_update_node_data() {
+            log::info!("Node interpreted classically");
+            *self.data.borrow_mut() = classical_interpretation;
+            return false;
+        }
+
+        if let Some(node_data) = get_node_data(&db, &self.xml.to_string()).expect("Could not get node data from database") {
             log::info!("Cache hit!");
             *self.data.borrow_mut() = node_data.clone();
             return false;
@@ -560,7 +588,7 @@ impl Node {
 
             *self.data.borrow_mut() = llm_node_data.clone();
 
-            store_node_data(&db, &self.hash, llm_node_data.clone()).expect("Unable to persist node data to database");
+            store_node_data(&db, &self.xml.to_string(), llm_node_data.clone()).expect("Unable to persist node data to database");
         }
 
         true
@@ -622,9 +650,6 @@ impl Node {
                 log::info!("Node has no fields!");
                 return false;
             }
-
-
-
 
 
 
