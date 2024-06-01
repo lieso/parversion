@@ -13,6 +13,7 @@ struct PartialNodeData {
     pub is_id: bool,
     pub is_url: bool,
     pub is_decorative: bool,
+    pub is_js: bool,
 }
 
 pub async fn interpret_node(fields: String, context: String) -> Result<String, ()> {
@@ -89,6 +90,7 @@ For each distinct item of information in the snippet, I want you to provide the 
 4. If the value is an ID of some kind (is_id)
 5. If the value is a URL (is_url)
 6. If the value is decorative and not informational (is_decorative)
+7. If the value is javascript (is_js)
 
 Here is the HTML/XML text I'm examining:
 
@@ -109,7 +111,8 @@ Please provide your response as an array of JSON objects that look like this:
     "regex": "^.*$",
     "is_id": true,
     "is_url": true,
-    "is_decorative": false
+    "is_decorative": false,
+    "is_js": false
 }}
 
 And do not include any commentary, introduction or summary. Thank you.
@@ -158,6 +161,7 @@ And do not include any commentary, introduction or summary. Thank you.
             is_id: item.is_id,
             is_url: item.is_url,
             is_decorative: item.is_decorative,
+            is_js: item.is_js,
             value: None,
         }
     }).collect();

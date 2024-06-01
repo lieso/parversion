@@ -16,6 +16,7 @@ pub struct NodeData {
     pub is_id: bool,
     pub is_url: bool,
     pub is_decorative: bool,
+    pub is_js: bool,
     pub value: Option<NodeDataValue>,
 }
 

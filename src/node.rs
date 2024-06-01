@@ -77,6 +77,7 @@ pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc
             value.insert(String::from("is_url"), item.is_url.to_string());
             value.insert(String::from("is_id"), item.is_id.to_string());
             value.insert(String::from("is_decorative"), item.is_decorative.to_string());
+            value.insert(String::from("is_js"), item.is_js.to_string());
 
             values.insert(item.name.clone(), value);
 
@@ -542,6 +543,9 @@ impl Node {
         // * We don't need to consult an LLM to interpret text nodes
 
         if self.hash == TEXT_NODE_HASH {
+
+            let is_js = self.parent.borrow().clone().unwrap().xml.is_script_element();
+
             let node_data = NodeData {
                 attribute: None,
                 name: String::from("text"),
@@ -550,6 +554,7 @@ impl Node {
                 is_url: false,
                 is_id: false,
                 is_decorative: false,
+                is_js: is_js,
             };
 
             return Some(vec![node_data]);

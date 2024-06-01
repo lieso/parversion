@@ -174,6 +174,14 @@ impl Xml {
         self.text.is_none() && self.element.is_none()
     }
 
+    pub fn is_script_element(&self) -> bool {
+        if let Some(element) = &self.element {
+            return element.name == "script";
+        }
+
+        false
+    }
+
     pub fn to_string(&self) -> String {
         if let Some(element) = &self.element {
             format!("{}", &element_to_string(&element))
