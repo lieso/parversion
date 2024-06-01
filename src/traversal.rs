@@ -41,6 +41,13 @@ pub struct Relationship {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ColorPalette {
+    pub one: String,
+    pub two: String,
+    pub three: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Traversal {
     pub output_tree: Rc<Node>,
     pub basis_tree: Option<Rc<Node>>,
