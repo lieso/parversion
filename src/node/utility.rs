@@ -1,3 +1,25 @@
+use std::collections::{VecDeque};
+use sha2::{Sha256, Digest};
+
+use super::Node;
+
+pub fn generate_element_node_hash(tag: String, fields: Vec<String>) -> String {
+    let mut hasher = Sha256::new();
+    
+    let mut hasher_items = Vec::new();
+    hasher_items.push(tag);
+
+    for field in fields.iter() {
+        hasher_items.push(field.to_string());
+    }
+
+    hasher_items.sort();
+
+    hasher.update(hasher_items.join(""));
+
+    format!("{:x}", hasher.finalize())
+}
+
 impl Node {
     pub fn ancestry_hash(&self) -> String {
         let mut hasher = Sha256::new();

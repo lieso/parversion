@@ -1,3 +1,10 @@
+use std::rc::{Rc};
+use std::fs::OpenOptions;
+use std::io::Write;
+
+use super::{Node};
+use crate::node::traversal;
+
 impl Node {
     pub fn log_tree(&self, title: &str) {
 
@@ -21,7 +28,7 @@ impl Node {
 
         let mut node_count = 0;
 
-        bfs(self.clone().into(), &mut |node: &Rc<Node>| {
+        traversal::bfs(self.clone().into(), &mut |node: &Rc<Node>| {
             node_count = node_count + 1;
 
             let divider = std::iter::repeat("-").take(50).collect::<String>();

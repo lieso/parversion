@@ -81,15 +81,12 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
 
     absorb_tree(Rc::clone(&basis_tree), Rc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis tree");
-    basis_tree.log_tree("@ABSORB");
 
     prune_tree(Rc::clone(&basis_tree));
     log::info!("Done pruning basis tree");
-    basis_tree.log_tree("@PRUNE");
 
     grow_tree(Rc::clone(&basis_tree)).await;
     log::info!("Done growing basis tree");
-    basis_tree.log_tree("@GROW");
 
     save_basis_tree(Rc::clone(&basis_tree));
     log::info!("Saved basis tree");

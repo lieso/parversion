@@ -13,7 +13,7 @@ mod utility;
 
 use crate::node_data::{NodeData};
 use crate::node::traversal::*;
-use crate::utility;
+use crate::xml::*;
 
 // echo -n "text" | sha256sum
 const TEXT_NODE_HASH: &str = "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1";
@@ -92,45 +92,6 @@ pub fn build_tree(xml: String) -> Rc<Node> {
     Node::from_xml(&xml, None)
 }
 
-pub async fn grow_tree(tree: Rc<Node>) {
-    log::trace!("In grow_tree");
-
-    let db = sled::open("src/database/hash_to_node_data").expect("Could not connect to datbase");
-
-    let mut nodes: Vec<Rc<Node>> = Vec::new();
-
-    post_order_traversal(tree.clone(), &mut |node: &Rc<Node>| {
-        nodes.push(node.clone());
-    });
-
-    log::info!("There are {} nodes to be evaluated", nodes.len());
-
-    for (index, node) in nodes.iter().enumerate() {
-        log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
-        log::debug!("id: {}, xml: {}, is_structural: {}", node.id, node.xml, node.is_structural);
-
-        if node.hash == ROOT_NODE_HASH {
-            log::info!("Node is root node, probably don't need to do anything here");
-            continue;
-        }
-
-        assert!(!node.xml.has_children());
-
-        if let Some(parent) = node.parent.borrow().as_ref() {
-            assert!(!parent.xml.has_children());
-        }
-
-        if node.update_node_data(&db).await {
-            sleep(Duration::from_secs(1)).await;
-        }
-
-        node.update_node_data_values();
-
-        if node.interpret_node_data(&db).await {
-            sleep(Duration::from_secs(1)).await;
-        }
-    }
-}
 pub async fn grow_tree(tree: Rc<Node>) {
     log::trace!("In grow_tree");
 
@@ -281,10 +242,6 @@ pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc
 
     values
 }
-
-
-
-
 
 fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     log::trace!("In merge_nodes");

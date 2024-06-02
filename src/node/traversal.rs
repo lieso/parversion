@@ -1,3 +1,6 @@
+use std::rc::{Rc};
+use std::collections::{VecDeque};
+
 use super::Node;
 
 pub fn bfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {

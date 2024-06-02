@@ -8,7 +8,6 @@ use std::string::String;
 use xmltree::Element;
 use std::io::Cursor;
 use std::str::from_utf8;
-use sha2::{Sha256, Digest};
 
 
 
@@ -20,23 +19,6 @@ const BLACKLISTED_ATTTRIBUTES: [&str; 7] = [
 
 
 
-
-pub fn generate_element_node_hash(tag: String, fields: Vec<String>) -> String {
-    let mut hasher = Sha256::new();
-    
-    let mut hasher_items = Vec::new();
-    hasher_items.push(tag);
-
-    for field in fields.iter() {
-        hasher_items.push(field.to_string());
-    }
-
-    hasher_items.sort();
-
-    hasher.update(hasher_items.join(""));
-
-    format!("{:x}", hasher.finalize())
-}
 
 pub fn is_valid_xml(xml_string: &str) -> bool {
     match Element::parse(xml_string.as_bytes()) {
