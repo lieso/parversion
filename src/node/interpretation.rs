@@ -8,103 +8,6 @@ use crate::node_data::{NodeData};
 use crate::llm;
 
 impl Node {
-    pub fn should_update_node_data(&self) -> bool {
-        log::trace!("In should_update_node_data");
-
-        !self.is_structural
-    }
-
-    pub fn should_interpret_node_data(&self) -> bool {
-        log::trace!("In should_interpret_node_data");
-        
-        // Do not give a node a type if:
-        // * It's a leaf node - whoops yes we do. e.g. title tag in head is a simple text node, but will need 'page_title' complex type
-        // * It and all children are structural nodes
-        // * It has no data AND children neither have data or a complex type
-
-        //let is_leaf = self.children.borrow().is_empty();
-        //log::debug!("is_leaf: {}", is_leaf);
-
-        //if is_leaf {
-        //    return false;
-        //}
-
-        if self.data.borrow().is_empty() {
-
-
-            return false;
-        }
-
-        let is_structural = self.children.borrow().iter().fold(
-            self.is_structural,
-            |acc, item| {
-                acc && item.is_structural
-            }
-        );
-        log::debug!("is_structural: {}", is_structural);
-
-        if is_structural {
-            return false;
-        }
-
-        true
-    }
-
-    pub fn should_propagate_node_interpretation(&self) -> Option<String> {
-        log::trace!("In should_propagate_node_interpretation");
-
-        // We should propagate descendant complex type to parent if:
-        // Node only has one non-structural child
-        // TODO: what if node and all children except one are structural, and structural node is leaf node?
-
-        let non_structural_count: u16 = self.children.borrow().iter().fold(
-            0 as u16,
-            |acc, item| {
-                acc + !item.is_structural as u16
-            }
-        );
-
-        if self.is_structural && non_structural_count == 1 {
-            log::info!("Node is structural and has exactly one non-structural child");
-
-            let sole_non_structural_node: Rc<Node> = self.children.borrow().iter().find(|item| {
-                !item.is_structural
-            }).unwrap().clone();
-
-            let complex_type_name = sole_non_structural_node.complex_type_name.borrow().clone().unwrap();
-
-            return Some(complex_type_name);
-        }
-
-        None
-    }
-
-    pub fn should_classically_update_node_data(&self) -> Option<Vec<NodeData>> {
-        log::trace!("In should_classically_update_node_data");
-
-        // * We don't need to consult an LLM to interpret text nodes
-
-        if self.hash == TEXT_NODE_HASH {
-
-            let is_js = self.parent.borrow().clone().unwrap().xml.is_script_element();
-
-            let node_data = NodeData {
-                attribute: None,
-                name: String::from("text"),
-                regex: String::from("^.*$"),
-                value: None,
-                is_url: false,
-                is_id: false,
-                is_decorative: false,
-                is_js: is_js,
-            };
-
-            return Some(vec![node_data]);
-        }
-
-        None
-    }
-
     pub async fn update_node_data(&self, db: &Db) -> bool {
         log::trace!("In update_node_data");
 
@@ -211,8 +114,107 @@ impl Node {
 
         true
     }
+}
 
-    pub fn get_node_fields(&self) -> String {
+impl Node {
+    fn should_update_node_data(&self) -> bool {
+        log::trace!("In should_update_node_data");
+
+        !self.is_structural
+    }
+
+    fn should_interpret_node_data(&self) -> bool {
+        log::trace!("In should_interpret_node_data");
+        
+        // Do not give a node a type if:
+        // * It's a leaf node - whoops yes we do. e.g. title tag in head is a simple text node, but will need 'page_title' complex type
+        // * It and all children are structural nodes
+        // * It has no data AND children neither have data or a complex type
+
+        //let is_leaf = self.children.borrow().is_empty();
+        //log::debug!("is_leaf: {}", is_leaf);
+
+        //if is_leaf {
+        //    return false;
+        //}
+
+        if self.data.borrow().is_empty() {
+
+
+            return false;
+        }
+
+        let is_structural = self.children.borrow().iter().fold(
+            self.is_structural,
+            |acc, item| {
+                acc && item.is_structural
+            }
+        );
+        log::debug!("is_structural: {}", is_structural);
+
+        if is_structural {
+            return false;
+        }
+
+        true
+    }
+
+    fn should_propagate_node_interpretation(&self) -> Option<String> {
+        log::trace!("In should_propagate_node_interpretation");
+
+        // We should propagate descendant complex type to parent if:
+        // Node only has one non-structural child
+        // TODO: what if node and all children except one are structural, and structural node is leaf node?
+
+        let non_structural_count: u16 = self.children.borrow().iter().fold(
+            0 as u16,
+            |acc, item| {
+                acc + !item.is_structural as u16
+            }
+        );
+
+        if self.is_structural && non_structural_count == 1 {
+            log::info!("Node is structural and has exactly one non-structural child");
+
+            let sole_non_structural_node: Rc<Node> = self.children.borrow().iter().find(|item| {
+                !item.is_structural
+            }).unwrap().clone();
+
+            let complex_type_name = sole_non_structural_node.complex_type_name.borrow().clone().unwrap();
+
+            return Some(complex_type_name);
+        }
+
+        None
+    }
+
+    fn should_classically_update_node_data(&self) -> Option<Vec<NodeData>> {
+        log::trace!("In should_classically_update_node_data");
+
+        // * We don't need to consult an LLM to interpret text nodes
+
+        if self.hash == TEXT_NODE_HASH {
+
+            let is_js = self.parent.borrow().clone().unwrap().xml.is_script_element();
+
+            let node_data = NodeData {
+                attribute: None,
+                name: String::from("text"),
+                regex: String::from("^.*$"),
+                value: None,
+                is_url: false,
+                is_id: false,
+                is_decorative: false,
+                is_js: is_js,
+            };
+
+            return Some(vec![node_data]);
+        }
+
+        None
+    }
+
+    fn get_node_fields(&self) -> String {
 
         // TODO: feel this belongs in llm module
         self.children.borrow().iter().fold(
@@ -225,10 +227,9 @@ impl Node {
                 }
             }
         )
-
     }
 
-    pub fn get_node_context(&self) -> String {
+    fn get_node_context(&self) -> String {
         if self.parent.borrow().is_none() {
             return String::from("These fields are self-contained and appear by themselves without any relevant context.");
         }
@@ -298,13 +299,13 @@ fn uncapitalize(word: &str) -> String {
     }
 }
 
-pub fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
+fn store_node_data(db: &Db, key: &str, nodes: Vec<NodeData>) -> Result<(), Box<dyn Error>> {
     let serialized_nodes = serialize(&nodes)?;
     db.insert(key, serialized_nodes)?;
     Ok(())
 }
 
-pub fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Error>> {
+fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Error>> {
     match db.get(key)? {
         Some(serialized_nodes) => {
             let nodes_data: Vec<NodeData> = deserialize(&serialized_nodes)?;
@@ -314,12 +315,12 @@ pub fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dy
     }
 } 
 
-pub fn store_node_complex_type(db: &Db, key: &str, complex_type: &str) -> Result<(), Box<dyn Error>> {
+fn store_node_complex_type(db: &Db, key: &str, complex_type: &str) -> Result<(), Box<dyn Error>> {
     db.insert(key, complex_type)?;
     Ok(())
 }
 
-pub fn get_node_complex_type(db: &Db, key: &str) -> Result<Option<String>, Box<dyn Error>> {
+fn get_node_complex_type(db: &Db, key: &str) -> Result<Option<String>, Box<dyn Error>> {
     match db.get(key)? {
         Some(iv) => {
             let complex_type = String::from_utf8(iv.to_vec())?;

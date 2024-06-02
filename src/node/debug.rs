@@ -7,10 +7,6 @@ use crate::node::traversal;
 
 impl Node {
     pub fn log_tree(&self, title: &str) {
-
-        //let xml = tree_to_xml(tree.clone());
-        //let xml_file_name = format!("tree_{}.xml", tree.ancestry_hash());
-
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
