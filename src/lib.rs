@@ -11,6 +11,7 @@ mod node_data;
 mod traversal;
 mod utility;
 mod xml;
+mod vision;
 
 use node::{
     Node,
@@ -44,6 +45,18 @@ pub fn string_to_json(raw_document: String) -> Result<String, Errors> {
 
         if utility::is_valid_html(&document) {
             log::info!("Document is valid HTML");
+
+
+
+
+            let color_palette = vision::html_to_color_palette(document.clone());
+
+            unimplemented!();
+
+
+
+
+
 
             let xhtml = utility::html_to_xhtml(&document).expect("Could not convert HTML to XHTML");
 
