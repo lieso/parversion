@@ -49,7 +49,7 @@ pub fn string_to_json(raw_document: String) -> Result<String, Errors> {
 
 
 
-            let color_palette = vision::html_to_color_palette(document.clone());
+            let color_palette = vision::html_to_color_palette(document.clone()).await;
 
             unimplemented!();
 
