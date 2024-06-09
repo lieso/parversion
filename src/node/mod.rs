@@ -132,12 +132,36 @@ pub async fn grow_tree(tree: Rc<Node>) {
     }
 }
 
+pub fn collapse_linear_nodes(tree: Rc<Node>) {
+    log::trace!("In collapse_linear_nodes");
+
+    let mut nodes: Vec<Rc<Node>> = Vec::new();
+
+    post_order_traversal(tree.clone(), &mut |node: &Rc<Node>| {
+        nodes.push(node.clone());
+    });
+
+    log::info!("There are {} nodes to be evaluated", nodes.len());
+
+    for (index, node) in nodes.iter().enumerate() {
+        log::info!("--- Checking for linearity node #{} out of {} ---", index + 1, nodes.len());
+
+        if node.children.borrow().len() == 1 && node.parent.borrow().is_some() {
+            log::info!("Node is linear");
+
+            let children = node.children.borrow();
+            let child = children.get(0).unwrap();
+
+            collapse_nodes(Rc::clone(node), Rc::clone(child));
+        }
+    }
+}
+
 pub fn prune_tree(tree: Rc<Node>) {
     log::trace!("In prune_tree");
 
     bfs(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
-
             if node.parent.borrow().is_none() {
                 break;
             }
@@ -254,4 +278,20 @@ fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     }
 
     parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
+}
+
+fn collapse_nodes(node: Rc<Node>, child: Rc<Node>) {
+    log::trace!("In collapse_nodes");
+
+    let parent = node.parent.borrow().clone();
+    let children = child.children.borrow().clone();
+    let xml = Xml::combine_xml(node.xml.clone(), child.xml.clone());
+
+    //*child.parent.borrow_mut() = parent;
+
+    let node = Rc::new(Node {
+        id: Uuid::new_v4().to_string(),
+        parent: parent,
+        children: children,
+    });
 }
