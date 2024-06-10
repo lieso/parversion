@@ -13,6 +13,23 @@ pub struct Xml {
     text: Option<String>,
 }
 
+pub fn combine_xml(parent: &Xml, child: &Xml) -> Xml {
+    let mut combined = parent.element.clone().expect("Parent XML is not an Element");
+
+    if let Some(child_element) = &child.element {
+        combined.children.push(xmltree::XMLNode::Element(child_element.clone()));
+    }
+
+    if let Some(child_text) = &child.text {
+        combined.children.push(xmltree::XMLNode::Text(child_text.clone()));
+    }
+
+    Xml {
+        element: Some(combined),
+        text: None,
+    }
+}
+
 impl Serialize for Xml {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -104,6 +121,22 @@ impl Xml {
 }
 
 impl Xml {
+    pub fn get_all_attributes(&self) -> Vec<String> {
+        if let Some(element) = &self.element {
+            return get_all_attributes(&element);
+        }
+
+        Vec::new()
+    }
+
+    pub fn get_all_tags(&self) -> Vec<String> {
+        if let Some(element) = &self.element {
+            return get_all_tags(&element);
+        }
+
+        Vec::new()
+    }
+
     pub fn get_element_tag_name(&self) -> String {
         if let Some(element) = &self.element {
             return element.name.clone();
@@ -237,4 +270,33 @@ fn get_opening_tag(element: &Element) -> String {
 
 fn get_closing_tag(element: &Element) -> String {
     format!("</{}>", element.name)
+}
+
+fn get_all_attributes(element: &Element) -> Vec<String> {
+    let mut attributes = Vec::new();
+
+    for key in element.attributes.keys() {
+        attributes.push(key.clone());
+    }
+
+    for child in &element.children {
+        if let xmltree::XMLNode::Element(child_element) = child {
+            attributes.extend(get_all_attributes(child_element));
+        }
+    }
+
+    attributes
+}
+
+fn get_all_tags(element: &Element) -> Vec<String> {
+    let mut tags = Vec::new();
+    tags.push(element.name.clone());
+
+    for child in &element.children {
+        if let xmltree::XMLNode::Element(child_element) = child {
+            tags.extend(get_all_tags(child_element));
+        }
+    }
+
+    tags
 }

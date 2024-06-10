@@ -66,7 +66,7 @@ impl Node {
 
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
-            hash: utility::generate_element_node_hash(tag.clone(), attributes),
+            hash: utility::generate_element_node_hash(vec![tag.clone()], attributes),
             xml: xml.without_children(),
             is_structural: is_structural,
             parent: parent.into(),
@@ -152,7 +152,7 @@ pub fn collapse_linear_nodes(tree: Rc<Node>) {
             let children = node.children.borrow();
             let child = children.get(0).unwrap();
 
-            collapse_nodes(Rc::clone(node), Rc::clone(child));
+            combine_nodes(Rc::clone(node), Rc::clone(child));
         }
     }
 }
@@ -280,18 +280,32 @@ fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
 }
 
-fn collapse_nodes(node: Rc<Node>, child: Rc<Node>) {
-    log::trace!("In collapse_nodes");
+fn combine_nodes(current_node: Rc<Node>, child: Rc<Node>) {
+    log::trace!("In combine_nodes");
 
-    let parent = node.parent.borrow().clone();
+    let parent = current_node.parent.borrow().clone();
     let children = child.children.borrow().clone();
-    let xml = Xml::combine_xml(node.xml.clone(), child.xml.clone());
+    let xml = combine_xml(&current_node.xml, &child.xml);
+    let tags = xml.get_all_tags();
+    let attributes = xml.get_all_attributes();
 
-    //*child.parent.borrow_mut() = parent;
-
-    let node = Rc::new(Node {
+    let combined_node = Rc::new(Node {
         id: Uuid::new_v4().to_string(),
-        parent: parent,
-        children: children,
+        hash: utility::generate_element_node_hash(tags, attributes.clone()),
+        xml: xml,
+        is_structural: attributes.is_empty(),
+        parent: parent.into(),
+        data: RefCell::new(Vec::new()),
+        children: children.into(),
+        complex_type_name: RefCell::new(None),
     });
+
+    for child in child.children.borrow_mut().iter() {
+        *child.parent.borrow_mut() = Some(Rc::clone(&combined_node)).into();
+    }
+
+    if let Some(parent) = current_node.parent.borrow().as_ref() {
+        parent.children.borrow_mut().retain(|child| child.id != current_node.id);
+        parent.children.borrow_mut().push(combined_node.clone());
+    };
 }

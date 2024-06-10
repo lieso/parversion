@@ -24,14 +24,6 @@ use node::{
 use error::{Errors};
 use traversal::{Traversal};
 
-//pub fn map_types(traversal: Traversal) -> Result<Vec<Mapping>, Errors> {
-//    unimplemented!()
-//}
-//
-//pub fn map_type(traversal: Traversal, model: pandoculation::models) -> Result<Mapping, Errors> {
-//    unimplemented!()
-//}
-
 pub fn string_to_json(raw_document: String) -> Result<String, Errors> {
     log::trace!("In string_to_json");
 
@@ -50,9 +42,9 @@ pub fn string_to_json(raw_document: String) -> Result<String, Errors> {
 
 
 
-            let color_palette = vision::html_to_color_palette(document.clone()).await;
+            //let color_palette = vision::html_to_color_palette(document.clone()).await;
 
-            unimplemented!();
+            //unimplemented!();
 
 
 
@@ -100,7 +92,7 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done pruning basis tree");
 
     collapse_linear_nodes(Rc::clone(&basis_tree));
-    //collapse_linear_nodes(Rc::clone(&output_tree));
+    collapse_linear_nodes(Rc::clone(&output_tree));
     log::info!("Done collapsing linear nodes");
 
     grow_tree(Rc::clone(&basis_tree)).await;
