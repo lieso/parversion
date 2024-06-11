@@ -198,7 +198,6 @@ impl Node {
             let is_js = self.parent.borrow().clone().unwrap().xml.is_script_element();
 
             let node_data = NodeData {
-                attribute: None,
                 name: String::from("text"),
                 regex: String::from("^.*$"),
                 value: None,

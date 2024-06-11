@@ -114,11 +114,11 @@ pub async fn grow_tree(tree: Rc<Node>) {
             continue;
         }
 
-        assert!(!node.xml.has_children());
+        //assert!(!node.xml.has_children());
 
-        if let Some(parent) = node.parent.borrow().as_ref() {
-            assert!(!parent.xml.has_children());
-        }
+        //if let Some(parent) = node.parent.borrow().as_ref() {
+        //    assert!(!parent.xml.has_children());
+        //}
 
         if node.update_node_data(&db).await {
             sleep(Duration::from_secs(1)).await;

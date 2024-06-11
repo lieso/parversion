@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use fancy_regex::Regex;
 
 use crate::xml::{Xml};
 
@@ -10,9 +11,8 @@ pub struct NodeDataValue {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
-    pub attribute: Option<String>,
-    pub name: String,
     pub regex: String,
+    pub name: String,
     pub is_id: bool,
     pub is_url: bool,
     pub is_decorative: bool,
@@ -22,11 +22,27 @@ pub struct NodeData {
 
 impl NodeData {
     pub fn select(&self, xml: Xml) -> Option<NodeDataValue> {
+        if let Ok(regex) = Regex::new(&self.regex) {
+            log::debug!("Regex is ok");
+            log::debug!("regex: {}", regex);
 
-        if let Some(attribute) = &self.attribute {
-            return Some(NodeDataValue {
-                text: xml.get_attribute_value(attribute).unwrap()
-            });
+            let xml_string = xml.to_string();
+            log::debug!("xml_string: {}", xml_string);
+
+            let matches: Vec<&str> = regex
+                .captures_iter(&xml_string)
+                .filter_map(|cap| {
+                    cap.expect("Could not capture").get(1).map(|mat| mat.as_str())
+                })
+                .collect();
+            log::debug!("{:?}", matches);
+
+            if let Some(first_match) = matches.first() {
+                log::debug!("first_match: {}", first_match.to_string());
+                return Some(NodeDataValue {
+                    text: first_match.to_string()
+                });
+            }
         }
 
         Some(NodeDataValue {

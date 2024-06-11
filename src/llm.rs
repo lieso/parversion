@@ -7,9 +7,8 @@ use crate::node_data::{NodeData};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PartialNodeData {
-    pub attribute_name: String,
-    pub new_name: String,
     pub regex: String,
+    pub new_name: String,
     pub is_id: bool,
     pub is_url: bool,
     pub is_decorative: bool,
@@ -84,9 +83,8 @@ Disregard any HTML elements and attributes that do not contribute to this data m
 
 For each distinct item of information in the snippet, I want you to provide the following:
 
-1. The attribute name associated with the data
+1. A regular expression that would capture this information from HTML snippets similar to the one I provide you.
 2. A new suitable name in snake case that would be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus any additional context.
-3. A regular expression, if necessary, that would match the part of the attribute value that contains the data. If the entire attribute value is relevant, only provide identity regular expression ^.*$
 4. If the value is an ID of some kind (is_id)
 5. If the value is a URL (is_url)
 6. If the value is decorative and not informational (is_decorative)
@@ -106,9 +104,8 @@ If the snippet seems to contain an ID or similar dynamically-generated value, en
 Please provide your response as an array of JSON objects that look like this:
 
 {{
-    "attribute_name": "href",
-    "new_name": "icon_url",
     "regex": "^.*$",
+    "new_name": "icon_url",
     "is_id": true,
     "is_url": true,
     "is_decorative": false,
@@ -155,9 +152,8 @@ And do not include any commentary, introduction or summary. Thank you.
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
-            attribute: Some(item.attribute_name.to_string()),
-            name: item.new_name.to_string(),
             regex: item.regex.to_string(),
+            name: item.new_name.to_string(),
             is_id: item.is_id,
             is_url: item.is_url,
             is_decorative: item.is_decorative,
