@@ -1,11 +1,25 @@
 use std::rc::{Rc};
 use std::fs::OpenOptions;
 use std::io::Write;
+use dot::{GraphWalk, Labeller};
+use std::fs::File;
 
 use super::{Node};
 use crate::node::traversal;
 
 impl Node {
+    pub fn debug_visualize(&self, label: &str) {
+        let dot_path = format!("./debug/{}.dot", label);
+        let png_path = format!("./debug/{}.png", label);
+        let mut file = File::create(dot_path.clone()).expect("Unable to create file");
+        dot::render(self, &mut file).expect("Unable to render dot file");
+
+        std::process::Command::new("dot")
+            .args(&["-Tpng", &dot_path, "-o", &png_path])
+            .output()
+            .expect("Failed to execute dot command");
+    }
+
     pub fn log_tree(&self, title: &str) {
         let mut file = OpenOptions::new()
             .create(true)
@@ -18,7 +32,7 @@ impl Node {
             "\n\n{} {}\n",
             divider,
             title
-        );
+            );
 
         writeln!(file, "{}", text).expect("Could not write to file");
 
@@ -36,7 +50,7 @@ impl Node {
                 node.subtree_hash(),
                 node.ancestry_hash(),
                 node.complex_type_name
-            );
+                );
 
             let mut node_data_text = String::from("");
 
@@ -55,3 +69,66 @@ impl Node {
         writeln!(file, "node count: {}", node_count).expect("Could not write to file");
     }
 }
+
+impl<'a> Labeller<'a, Rc<Node>, Rc<Node>> for Node {
+    fn graph_id(&'a self) -> dot::Id<'a> {
+        dot::Id::new("tree").unwrap()
+    }
+
+    fn node_id(&'a self, node: &Rc<Node>) -> dot::Id<'a> {
+        let text = "id_".to_owned() + &node.id.clone().chars().take(7).collect::<String>();
+        match dot::Id::new(text.clone()) {
+            Ok(id) => id,
+            Err(err) => {
+                eprintln!("Failed to create Id for '{}': {:?}", text, err);
+                panic!("Invalid node id");
+            },
+        }
+    }
+
+    fn node_label(&'a self, node: &Rc<Node>) -> dot::LabelText<'a> {
+        let label = node.hash.clone().chars().take(7).collect::<String>();
+        dot::LabelText::label(label)
+    }
+}
+
+impl GraphWalk<'_, Rc<Node>, Rc<Node>> for Node {
+    fn nodes(&self) -> dot::Nodes<Rc<Node>> {
+        let mut nodes = vec![];
+        let self_rc = Rc::new(self.clone());
+        self.collect_nodes(&self_rc, &mut nodes);
+        nodes.into()
+    }
+
+    fn edges(&self) -> dot::Edges<Rc<Node>> {
+        let mut edges = vec![];
+        let self_rc = Rc::new(self.clone());
+        self.collect_edges(&self_rc, &mut edges);
+        edges.into()
+    }
+
+    fn source(&self, edge: &Rc<Node>) -> Rc<Node> {
+        edge.clone()
+    }
+
+    fn target(&self, edge: &Rc<Node>) -> Rc<Node> {
+        edge.clone()
+    }
+}
+
+impl Node {
+    fn collect_nodes(&self, node: &Rc<Node>, nodes: &mut Vec<Rc<Node>>) {
+        nodes.push(node.clone());
+        for child in node.children.borrow().iter() {
+            self.collect_nodes(child, nodes);
+        }
+    }
+
+    fn collect_edges(&self, node: &Rc<Node>, edges: &mut Vec<Rc<Node>>) {
+        for child in node.children.borrow().iter() {
+            edges.push(child.clone());
+            self.collect_edges(child, edges);
+        }
+    }
+}
+

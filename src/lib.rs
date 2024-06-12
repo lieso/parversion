@@ -91,6 +91,8 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
     prune_tree(Rc::clone(&basis_tree));
     log::info!("Done pruning basis tree");
 
+    basis_tree.debug_visualize("pruned");
+
     collapse_linear_nodes(Rc::clone(&basis_tree));
     collapse_linear_nodes(Rc::clone(&output_tree));
     log::info!("Done collapsing linear nodes");
