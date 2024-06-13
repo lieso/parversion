@@ -76,14 +76,8 @@ impl<'a> Labeller<'a, Rc<Node>, Rc<Node>> for Node {
     }
 
     fn node_id(&'a self, node: &Rc<Node>) -> dot::Id<'a> {
-        let text = "id_".to_owned() + &node.id.clone().chars().take(7).collect::<String>();
-        match dot::Id::new(text.clone()) {
-            Ok(id) => id,
-            Err(err) => {
-                eprintln!("Failed to create Id for '{}': {:?}", text, err);
-                panic!("Invalid node id");
-            },
-        }
+        let id = "node_".to_owned() + &node.id.replace("-", "");
+        dot::Id::new(id.clone()).unwrap()
     }
 
     fn node_label(&'a self, node: &Rc<Node>) -> dot::LabelText<'a> {
