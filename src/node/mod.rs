@@ -34,6 +34,7 @@ pub struct Node {
     pub parent: RefCell<Option<Rc<Node>>>,
     pub data: RefCell<Vec<NodeData>>,
     pub children: RefCell<Vec<Rc<Node>>>,
+    pub minor: RefCell<Option<Rc<Node>>>,
     pub complex_type_name: RefCell<Option<String>>,
 }
 
@@ -45,6 +46,7 @@ impl Node {
             xml: Xml::from_void(),
             is_structural: true,
             parent: None.into(),
+            minor: None.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
             complex_type_name: RefCell::new(None),
@@ -61,6 +63,7 @@ impl Node {
                 parent: parent.into(),
                 data: RefCell::new(Vec::new()),
                 children: RefCell::new(vec![]),
+                minor: None.into(),
                 complex_type_name: RefCell::new(None),
             })
         }
@@ -77,6 +80,7 @@ impl Node {
             parent: parent.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
+            minor: None.into(),
             complex_type_name: RefCell::new(None),
         });
 
@@ -154,10 +158,7 @@ pub fn collapse_linear_nodes(tree: Rc<Node>) {
         if node.children.borrow().len() == 1 && node.parent.borrow().is_some() {
             log::info!("Node is linear");
 
-            let children = node.children.borrow();
-            let child = children.get(0).unwrap();
-
-            combine_nodes(Rc::clone(node), Rc::clone(child));
+            collapse_node(Rc::clone(node));
         }
     }
 }
@@ -285,32 +286,25 @@ fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
 }
 
-fn combine_nodes(current_node: Rc<Node>, child: Rc<Node>) {
-    log::trace!("In combine_nodes");
+fn collapse_node(node: Rc<Node>) {
+    log::trace!("In collapse_node");
 
-    let parent = current_node.parent.borrow().clone();
-    let children = child.children.borrow().clone();
-    let xml = combine_xml(&current_node.xml, &child.xml);
-    let tags = xml.get_all_tags();
-    let attributes = xml.get_all_attributes();
+    let mut node_children = node.children.borrow_mut();
 
-    let combined_node = Rc::new(Node {
-        id: Uuid::new_v4().to_string(),
-        hash: utility::generate_element_node_hash(tags, attributes.clone()),
-        xml: xml,
-        is_structural: attributes.is_empty(),
-        parent: parent.into(),
-        data: RefCell::new(Vec::new()),
-        children: children.into(),
-        complex_type_name: RefCell::new(None),
-    });
-
-    for child in child.children.borrow_mut().iter() {
-        *child.parent.borrow_mut() = Some(Rc::clone(&combined_node)).into();
+    if node_children.len() > 1 {
+        panic!("Node has more than one child, did you mean to collapse this node?");
     }
 
-    if let Some(parent) = current_node.parent.borrow().as_ref() {
-        parent.children.borrow_mut().retain(|child| child.id != current_node.id);
-        parent.children.borrow_mut().push(combined_node.clone());
-    };
+    let only_child = node_children.get(0).unwrap().clone();
+    let child_children = only_child.children.borrow().clone();
+
+    *node_children = child_children.clone();
+
+    for child_node in child_children.iter() {
+        *child_node.parent.borrow_mut() = Some(Rc::clone(&node));
+    }
+
+    *node.minor.borrow_mut() = Some(only_child.clone());
+
+    *only_child.children.borrow_mut() = Vec::new();
 }

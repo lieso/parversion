@@ -187,7 +187,7 @@ impl Traversal {
                     self.object_count += 1;
                 };
             } else {
-                log::warn!("Basis tree does to contain corresponding node to output tree!");
+                log::warn!("Basis tree does not contain corresponding node to output tree!");
                 continue;
             }
 
