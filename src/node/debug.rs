@@ -70,7 +70,7 @@ impl Node {
     }
 }
 
-impl<'a> Labeller<'a, Rc<Node>, Rc<Node>> for Node {
+impl<'a> Labeller<'a, Rc<Node>, (Rc<Node>, Rc<Node>)> for Node {
     fn graph_id(&'a self) -> dot::Id<'a> {
         dot::Id::new("tree").unwrap()
     }
@@ -86,7 +86,7 @@ impl<'a> Labeller<'a, Rc<Node>, Rc<Node>> for Node {
     }
 }
 
-impl GraphWalk<'_, Rc<Node>, Rc<Node>> for Node {
+impl<'a> GraphWalk<'a, Rc<Node>, (Rc<Node>, Rc<Node>)> for Node {
     fn nodes(&self) -> dot::Nodes<Rc<Node>> {
         let mut nodes = vec![];
         let self_rc = Rc::new(self.clone());
@@ -94,19 +94,19 @@ impl GraphWalk<'_, Rc<Node>, Rc<Node>> for Node {
         nodes.into()
     }
 
-    fn edges(&self) -> dot::Edges<Rc<Node>> {
+    fn edges(&self) -> dot::Edges<(Rc<Node>, Rc<Node>)> {
         let mut edges = vec![];
         let self_rc = Rc::new(self.clone());
         self.collect_edges(&self_rc, &mut edges);
         edges.into()
     }
 
-    fn source(&self, edge: &Rc<Node>) -> Rc<Node> {
-        edge.clone()
+    fn source(&self, edge: &(Rc<Node>, Rc<Node>)) -> Rc<Node> {
+        edge.0.clone()
     }
 
-    fn target(&self, edge: &Rc<Node>) -> Rc<Node> {
-        edge.clone()
+    fn target(&self, edge: &(Rc<Node>, Rc<Node>)) -> Rc<Node> {
+        edge.1.clone()
     }
 }
 
@@ -118,11 +118,10 @@ impl Node {
         }
     }
 
-    fn collect_edges(&self, node: &Rc<Node>, edges: &mut Vec<Rc<Node>>) {
+    fn collect_edges(&self, node: &Rc<Node>, edges: &mut Vec<(Rc<Node>, Rc<Node>)>) {
         for child in node.children.borrow().iter() {
-            edges.push(child.clone());
+            edges.push((node.clone(), child.clone()));
             self.collect_edges(child, edges);
         }
     }
 }
-
