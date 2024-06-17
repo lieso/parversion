@@ -92,21 +92,21 @@ pub fn map_complex_object(basis_tree: Rc<Node>, output_tree: Rc<Node>, complex_t
         node_data_to_hash_map(&basis_tree.data, Rc::clone(&output_tree)).drain()
     );
 
-    for child in output_tree.children.borrow().iter() {
-        let basis_children_ref = basis_tree.children.borrow();
-        let basis_child = basis_children_ref
-            .iter()
-            .find(|item| item.hash == child.hash)
-            .unwrap();
+    //for child in output_tree.children.borrow().iter() {
+    //    let basis_children_ref = basis_tree.children.borrow();
+    //    let basis_child = basis_children_ref
+    //        .iter()
+    //        .find(|item| item.hash == child.hash)
+    //        .unwrap();
 
-        if let Some(complex_type_name) = basis_child.complex_type_name.borrow().as_ref() {
-            complex_objects.push(child.id.clone());
-        } else {
-            values.extend(
-                node_data_to_hash_map(&basis_child.data, Rc::clone(&output_tree)).drain()
-            );
-        };
-    }
+    //    if let Some(complex_type_name) = basis_child.complex_type_name.borrow().as_ref() {
+    //        complex_objects.push(child.id.clone());
+    //    } else {
+    //        values.extend(
+    //            node_data_to_hash_map(&basis_child.data, Rc::clone(&output_tree)).drain()
+    //        );
+    //    };
+    //}
 
     ComplexObject {
         id: output_tree.id.clone(),

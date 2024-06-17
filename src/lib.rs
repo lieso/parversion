@@ -80,6 +80,8 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
     //let output_tree: Rc<Node> = Rc::new((*input_tree).clone());
     let output_tree: Rc<Node> = build_tree(xml.clone());
 
+    output_tree.debug_visualize("output");
+
     log::info!("Done building input/output trees");
 
     let basis_tree: Rc<Node> = get_basis_tree();

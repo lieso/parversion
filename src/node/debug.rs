@@ -81,8 +81,8 @@ impl<'a> Labeller<'a, Rc<Node>, (Rc<Node>, Rc<Node>)> for Node {
     }
 
     fn node_label(&'a self, node: &Rc<Node>) -> dot::LabelText<'a> {
-        //let label = node.hash.clone().chars().take(7).collect::<String>();
-        let label = node.xml.get_all_tags().join(",");
+        let label = node.hash.clone().chars().take(7).collect::<String>();
+        //let label = node.xml.get_all_tags().join(",");
         dot::LabelText::label(label)
     }
 }

@@ -241,7 +241,27 @@ pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>)
         if let Some(node) = node {
             tree = node;
         } else {
-            return None;
+            log::info!("Could not find child node with hash");
+
+            let find_minor = |n: &Rc<Node>| {
+                fn recurse(n: &Rc<Node>, hash: &str) -> Option<Rc<Node>> {
+                    if let Some(minor) = n.minor.borrow().as_ref() {
+                        log::debug!("{} x {}", minor.hash, hash);
+                        if minor.hash == hash {
+                            return Some(minor.clone());
+                        } else {
+                            return recurse(minor, hash);
+                        }
+                    }
+
+                    None
+                }
+                recurse(n, &hash)
+            };
+
+            if find_minor(&tree).is_none() {
+                return None;
+            }
         }
     }
 
