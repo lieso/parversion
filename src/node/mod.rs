@@ -30,7 +30,6 @@ pub struct Node {
     pub id: String,
     pub hash: String,
     pub xml: Xml,
-    pub is_structural: bool,
     pub parent: RefCell<Option<Rc<Node>>>,
     pub data: RefCell<Vec<NodeData>>,
     pub children: RefCell<Vec<Rc<Node>>>,
@@ -44,7 +43,6 @@ impl Node {
             id: Uuid::new_v4().to_string(),
             hash: ROOT_NODE_HASH.to_string(),
             xml: Xml::from_void(),
-            is_structural: true,
             parent: None.into(),
             minor: None.into(),
             data: RefCell::new(Vec::new()),
@@ -59,7 +57,6 @@ impl Node {
                 id: Uuid::new_v4().to_string(),
                 hash: TEXT_NODE_HASH.to_string(),
                 xml: xml.without_children(),
-                is_structural: false,
                 parent: parent.into(),
                 data: RefCell::new(Vec::new()),
                 children: RefCell::new(vec![]),
@@ -70,13 +67,11 @@ impl Node {
 
         let tag = xml.get_element_tag_name();
         let attributes = xml.get_attributes();
-        let is_structural = attributes.is_empty();
 
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: utility::generate_element_node_hash(vec![tag.clone()], attributes),
             xml: xml.without_children(),
-            is_structural: is_structural,
             parent: parent.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
@@ -116,18 +111,12 @@ pub async fn grow_tree(tree: Rc<Node>) {
 
     for (index, node) in nodes.iter().enumerate() {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
-        log::debug!("id: {}, xml: {}, is_structural: {}", node.id, node.xml, node.is_structural);
+        log::debug!("id: {}, xml: {}", node.id, node.xml);
 
         if node.hash == ROOT_NODE_HASH {
             log::info!("Node is root node, probably don't need to do anything here");
             continue;
         }
-
-        //assert!(!node.xml.has_children());
-
-        //if let Some(parent) = node.parent.borrow().as_ref() {
-        //    assert!(!parent.xml.has_children());
-        //}
 
         if node.update_node_data(&db).await {
             sleep(Duration::from_secs(1)).await;

@@ -92,4 +92,14 @@ impl Node {
 
         depth
     }
+
+    pub fn is_linear(&self) -> bool {
+        let is_linear = self.children.borrow().len() == 1 && self.parent.borrow().is_some();
+        log::debug!("Node is {}", if is_linear { "linear" } else { "not linear" });
+        is_linear
+    }
+
+    pub fn is_structural(&self) -> bool {
+        self.xml.get_attributes().is_empty()
+    }
 }

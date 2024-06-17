@@ -8,6 +8,21 @@ use crate::node_data::{NodeData};
 use crate::llm;
 
 impl Node {
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+impl Node {
     pub async fn update_node_data(&self, db: &Db) -> bool {
         log::trace!("In update_node_data");
 
