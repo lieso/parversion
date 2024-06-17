@@ -153,6 +153,42 @@ impl Traversal {
 
         let mut node_count = 1;
 
+        while let Some(output_node) = bfs.pop_front() {
+            log::info!("Traversing node #{}", node_count);
+
+            for child in output_node.children.borrow().iter() {
+                bfs.push_back(child.clone());
+            }
+            node_count = node_count + 1;
+
+            let lineage = output_node.get_lineage();
+            log::debug!("lineage: {:?}", lineage);
+
+            let basis_node = search_tree_by_lineage(Rc::clone(&basis_tree), lineage.clone()).unwrap();
+            log::info!("Found basis node with corresponding output node lineage");
+
+            if basis_node.is_linear_tail() {
+                log::info!("Skipping basis node which is inside tail of linear sequence of nodes");
+                continue;
+            }
+
+            if basis_node.is_linear_head() {
+                log::info!("Basis node is head of linear sequence of nodes");
+            }
+
+
+
+        }
+    }
+
+    pub fn traverse(mut self) -> Result<Self, Errors> {
+        let basis_tree = self.basis_tree.clone().unwrap();
+
+        let mut bfs: VecDeque<Rc<Node>> = VecDeque::new();
+        bfs.push_back(Rc::clone(&self.output_tree));
+
+        let mut node_count = 1;
+
         while let Some(current) = bfs.pop_front() {
             log::info!("Traversing node #{}", node_count);
             node_count = node_count + 1;

@@ -33,8 +33,6 @@ pub struct Node {
     pub parent: RefCell<Option<Rc<Node>>>,
     pub data: RefCell<Vec<NodeData>>,
     pub children: RefCell<Vec<Rc<Node>>>,
-    pub minor: RefCell<Option<Rc<Node>>>,
-    pub complex_type_name: RefCell<Option<String>>,
 }
 
 impl Node {
@@ -44,10 +42,8 @@ impl Node {
             hash: ROOT_NODE_HASH.to_string(),
             xml: Xml::from_void(),
             parent: None.into(),
-            minor: None.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
-            complex_type_name: RefCell::new(None),
         })
     }
 
@@ -60,8 +56,6 @@ impl Node {
                 parent: parent.into(),
                 data: RefCell::new(Vec::new()),
                 children: RefCell::new(vec![]),
-                minor: None.into(),
-                complex_type_name: RefCell::new(None),
             })
         }
 
@@ -75,8 +69,6 @@ impl Node {
             parent: parent.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
-            minor: None.into(),
-            complex_type_name: RefCell::new(None),
         });
 
         let children: Vec<Rc<Node>> = xml.get_children().iter().map(|child| {
@@ -96,14 +88,14 @@ pub fn build_tree(xml: String) -> Rc<Node> {
     Node::from_xml(&xml, None)
 }
 
-pub async fn grow_tree(tree: Rc<Node>) {
+pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
     log::trace!("In grow_tree");
 
     let db = sled::open("src/database/hash_to_node_data").expect("Could not connect to datbase");
 
     let mut nodes: Vec<Rc<Node>> = Vec::new();
 
-    post_order_traversal(tree.clone(), &mut |node: &Rc<Node>| {
+    post_order_traversal(basis_tree.clone(), &mut |node: &Rc<Node>| {
         nodes.push(node.clone());
     });
 
@@ -118,13 +110,12 @@ pub async fn grow_tree(tree: Rc<Node>) {
             continue;
         }
 
-        if node.update_node_data(&db).await {
-            sleep(Duration::from_secs(1)).await;
+        if node.is_structural() {
+            log::info!("Node is structural, nothing to interpret");
+            continue;
         }
 
-        node.update_node_data_values();
-
-        if node.interpret_node_data(&db).await {
+        if node.interpret_node(&db).await {
             sleep(Duration::from_secs(1)).await;
         }
     }
@@ -168,24 +159,22 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
         recipient.children.borrow().iter().find(|item| item.hash == donor.hash).cloned()
     };
 
-   if let Some(recipient_child) = recipient_child {
-       log::trace!("Donor and recipient node have the same hash");
+    if let Some(recipient_child) = recipient_child {
+        log::trace!("Donor and recipient node have the same hash");
 
-       if recipient_child.subtree_hash() == donor.subtree_hash() {
-           log::trace!("Donor and recipient child subtree hashes match");
-           return;
-       } else {
-           log::trace!("Donor and recipient child have differing subtree hashes");
-           let donor_children = donor.children.borrow().clone();
-
-           for donor_child in donor_children.iter() {
-               absorb_tree(recipient_child.clone(), donor_child.clone());
-           }
-       }
+        if recipient_child.subtree_hash() == donor.subtree_hash() {
+            log::trace!("Donor and recipient child subtree hashes match");
+            return;
+        } else {
+            log::trace!("Donor and recipient child have differing subtree hashes");
+            let donor_children = donor.children.borrow().clone();
+    
+            for donor_child in donor_children.iter() {
+                absorb_tree(recipient_child.clone(), donor_child.clone());
+            }
+        }
     } else {
         log::trace!("Donor and recipient subtrees incompatible. Adopting donor node...");
-
-        //recipient.adopt_child(donor);
 
         *donor.parent.borrow_mut() = Some(recipient.clone());
         recipient.children.borrow_mut().push(donor);
@@ -210,25 +199,7 @@ pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>)
         } else {
             log::info!("Could not find child node with hash");
 
-            let find_minor = |n: &Rc<Node>| {
-                fn recurse(n: &Rc<Node>, hash: &str) -> Option<Rc<Node>> {
-                    if let Some(minor) = n.minor.borrow().as_ref() {
-                        log::debug!("{} x {}", minor.hash, hash);
-                        if minor.hash == hash {
-                            return Some(minor.clone());
-                        } else {
-                            return recurse(minor, hash);
-                        }
-                    }
-
-                    None
-                }
-                recurse(n, &hash)
-            };
-
-            if find_minor(&tree).is_none() {
-                return None;
-            }
+            return None;
         }
     }
 

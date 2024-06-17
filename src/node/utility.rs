@@ -99,6 +99,20 @@ impl Node {
         is_linear
     }
 
+    pub fn is_linear_head(&self) -> bool {
+        if self.is_linear() {
+            if !self.parent.borrow().is_linear() {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    pub fn is_linear_tail(&self) -> bool {
+        self.is_linear() && !self.is_linear_head()
+    }
+
     pub fn is_structural(&self) -> bool {
         self.xml.get_attributes().is_empty()
     }

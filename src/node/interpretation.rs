@@ -8,9 +8,26 @@ use crate::node_data::{NodeData};
 use crate::llm;
 
 impl Node {
+    pub async fn interpret_node(&self, db: &Db) -> bool {
 
+        if let Some(classical_interpretation) = self.interpret_node_classically() {
+            log::info!("Node interpreted classically");
+            *self.data.borrow_mut() = classical_interpretation;
+            return false;
+        }
+
+    }
+
+    fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {
+
+        // * Elements that contain single attribute "class" and nothing else
+        let attributes = self.xml.get_attributes();
+        if attributes.len() == 1 && attributes[0] == "class" {
+            return Vec::new();
+        }
+
+    }
 }
-
 
 
 
