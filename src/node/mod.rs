@@ -141,28 +141,6 @@ pub async fn grow_tree(tree: Rc<Node>) {
     }
 }
 
-pub fn collapse_linear_nodes(tree: Rc<Node>) {
-    log::trace!("In collapse_linear_nodes");
-
-    let mut nodes: Vec<Rc<Node>> = Vec::new();
-
-    post_order_traversal(tree.clone(), &mut |node: &Rc<Node>| {
-        nodes.push(node.clone());
-    });
-
-    log::info!("There are {} nodes to be evaluated", nodes.len());
-
-    for (index, node) in nodes.iter().enumerate() {
-        log::info!("--- Checking for linearity node #{} out of {} ---", index + 1, nodes.len());
-
-        if node.children.borrow().len() == 1 && node.parent.borrow().is_some() {
-            log::info!("Node is linear");
-
-            collapse_node(Rc::clone(node));
-        }
-    }
-}
-
 pub fn prune_tree(tree: Rc<Node>) {
     log::trace!("In prune_tree");
 
@@ -304,27 +282,4 @@ fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     }
 
     parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
-}
-
-fn collapse_node(node: Rc<Node>) {
-    log::trace!("In collapse_node");
-
-    let mut node_children = node.children.borrow_mut();
-
-    if node_children.len() > 1 {
-        panic!("Node has more than one child, did you mean to collapse this node?");
-    }
-
-    let only_child = node_children.get(0).unwrap().clone();
-    let child_children = only_child.children.borrow().clone();
-
-    *node_children = child_children.clone();
-
-    for child_node in child_children.iter() {
-        *child_node.parent.borrow_mut() = Some(Rc::clone(&node));
-    }
-
-    *node.minor.borrow_mut() = Some(only_child.clone());
-
-    *only_child.children.borrow_mut() = Vec::new();
 }
