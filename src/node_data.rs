@@ -4,72 +4,33 @@ use fancy_regex::Regex;
 use crate::xml::{Xml};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NodeDataValue {
-    //pub is_url: bool,
-    pub text: String,
+pub struct ElementNodeData {
+    attribute: String,
+    is_id: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TextNodeData {
+    is_informational: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
-    pub regex: String,
-    pub name: String,
-    pub is_id: bool,
-    pub is_url: bool,
-    pub is_decorative: bool,
-    pub is_js: bool,
-    pub value: Option<NodeDataValue>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ElementFields {
-
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TextFields {
-
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NodeData {
-    pub element_fields: Option<ElementFields>,
-    pub text_fields: Option<TextFields>,
+    pub element_fields: Option<ElementNodeData>,
+    pub text_fields: Option<TextNodeData>,
     pub name: String,
 }
 
 impl NodeData {
     pub fn value(&self, xml: &Xml) -> String {
-
-    }
-}
-
-impl NodeData {
-    pub fn select(&self, xml: Xml) -> Option<NodeDataValue> {
-        if let Ok(regex) = Regex::new(&self.regex) {
-            log::debug!("Regex is ok");
-            log::debug!("regex: {}", regex);
-
-            let xml_string = xml.to_string();
-            log::debug!("xml_string: {}", xml_string);
-
-            let matches: Vec<&str> = regex
-                .captures_iter(&xml_string)
-                .filter_map(|cap| {
-                    cap.expect("Could not capture").get(1).map(|mat| mat.as_str())
-                })
-                .collect();
-            log::debug!("{:?}", matches);
-
-            if let Some(first_match) = matches.first() {
-                log::debug!("first_match: {}", first_match.to_string());
-                return Some(NodeDataValue {
-                    text: first_match.to_string()
-                });
-            }
+        if let Some(text_fields) = self.text_fields {
+            return xml.to_string();
         }
 
-        Some(NodeDataValue {
-            text: xml.to_string(),
-        })
+        if let Some(element_fields) = self.element_fields {
+            return xml.get_attribute_value(element_fields.attribute);
+        }
+
+        panic!("NodeData neither has element or text fields!");
     }
 }
