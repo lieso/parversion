@@ -105,16 +105,6 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
         log::debug!("id: {}, xml: {}", node.id, node.xml);
 
-        if node.hash == ROOT_NODE_HASH {
-            log::info!("Node is root node, probably don't need to do anything here");
-            continue;
-        }
-
-        if node.is_structural() {
-            log::info!("Node is structural, nothing to interpret");
-            continue;
-        }
-
         if node.interpret_node(&db).await {
             sleep(Duration::from_secs(1)).await;
         }

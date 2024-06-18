@@ -9,6 +9,7 @@ use crate::llm;
 
 impl Node {
     pub async fn interpret_node(&self, db: &Db) -> bool {
+        log::trace!("In interpret_node");
 
         if let Some(classical_interpretation) = self.interpret_node_classically() {
             log::info!("Node interpreted classically");
@@ -16,13 +17,48 @@ impl Node {
             return false;
         }
 
+        let key = &self.xml.to_hash();
+        let cache = get_node_data(&db, &key)
+            .expect("Could not get node data from database");
+
+        if let Some(cache) = cache {
+            log::info!("Cache hit!");
+            *self.data.borrow_mut() = cache.clone();
+            return false;
+        } else {
+            log::info!("Cache miss!");
+
+            let llm_result: Vec<NodeData> = llm::xml_to_data(self.xml.to_string())
+                .await
+                .expect("LLM unable to generate node data");
+
+            *self.data.borrow_mut() = llm_result.clone();
+
+            store_node_data(&db, &key, llm_result.clone())
+                .expect("Unable to persist node data to database");
+        }
     }
 
     fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {
+        log::trace!("In interpret_node_classically");
+
+        let attributes = self.xml.get_attributes();
+
+        // * Root node
+        if self.hash == ROOT_NODE_HASH {
+            log::info!("Node is root node, probably don't need to do anything here");
+            return Vec::new();
+        }
 
         // * Elements that contain single attribute "class" and nothing else
-        let attributes = self.xml.get_attributes();
         if attributes.len() == 1 && attributes[0] == "class" {
+            log::info!("Node only contains single attribute 'class'");
+            return Vec::new();
+        }
+
+        // * Structural elements
+        if self.is_structural() {
+            log::info!("Node is structural, nothing to interpret");
             return Vec::new();
         }
 
