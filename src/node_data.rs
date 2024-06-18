@@ -20,6 +20,29 @@ pub struct NodeData {
     pub value: Option<NodeDataValue>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ElementFields {
+
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TextFields {
+
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeData {
+    pub element_fields: Option<ElementFields>,
+    pub text_fields: Option<TextFields>,
+    pub name: String,
+}
+
+impl NodeData {
+    pub fn value(&self, xml: &Xml) -> String {
+
+    }
+}
+
 impl NodeData {
     pub fn select(&self, xml: Xml) -> Option<NodeDataValue> {
         if let Ok(regex) = Regex::new(&self.regex) {

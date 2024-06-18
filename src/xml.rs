@@ -239,6 +239,14 @@ impl Xml {
             Err("XML is not an Element; it can't take any children".to_string())
         }
     }
+
+    pub fn to_hash(&self) -> String {
+        let mut hasher = Sha256::new();
+
+        hasher.update(self.to_string());
+
+        format!("{:x}", hasher.finalize())
+    }
 }
 
 fn element_to_string(element: &Element) -> String {

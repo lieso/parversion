@@ -28,7 +28,7 @@ impl Node {
         } else {
             log::info!("Cache miss!");
 
-            let llm_result: Vec<NodeData> = llm::xml_to_data(self.xml.to_string())
+            let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml)
                 .await
                 .expect("LLM unable to generate node data");
 
@@ -37,6 +37,8 @@ impl Node {
             store_node_data(&db, &key, llm_result.clone())
                 .expect("Unable to persist node data to database");
         }
+
+        true
     }
 
     fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {
