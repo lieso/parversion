@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-use fancy_regex::Regex;
 
 use crate::xml::{Xml};
 
@@ -28,7 +27,7 @@ impl NodeData {
         }
 
         if let Some(element_fields) = self.element_fields {
-            return xml.get_attribute_value(element_fields.attribute);
+            return xml.get_attribute_value(&element_fields.attribute).unwrap();
         }
 
         panic!("NodeData neither has element or text fields!");

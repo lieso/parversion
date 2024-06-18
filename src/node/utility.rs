@@ -101,7 +101,12 @@ impl Node {
 
     pub fn is_linear_head(&self) -> bool {
         if self.is_linear() {
-            if !self.parent.borrow().is_linear() {
+            if self
+                .parent
+                .borrow()
+                .as_ref()
+                .map_or(false, |parent| !parent.is_linear())
+            {
                 return true;
             }
         }

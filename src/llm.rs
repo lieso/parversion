@@ -23,26 +23,27 @@ pub async fn xml_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) 
     log::trace!("In xml_to_data");
 
     if xml.is_element() {
-        return element_to_data(xml, surrounding_xml, examples);
+        return element_to_data(xml, surrounding_xml, examples).await;
     } else {
-        return text_to_data(xml, surrounding_xml, examples);
+        return text_to_data(xml, surrounding_xml, examples).await;
     }
 }
 
-async fn element_to_data(xml: String, surrounding_xml: &Xml, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
+async fn element_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In element_to_data");
     
-    let examples_message = if examples.is_empty() {
-        ""
+    let examples_message: String = if examples.is_empty() {
+        "".to_string()
     } else {
         examples.iter().enumerate().fold(
             format!(r##"
 The following are examples of this element node as it appears in other sections of the web page or in other versions of the web page. Use this to help you complete your task."##),
             |mut acc, (index, example)| {
-                acc.push_str(format!(r##"
+                acc.push_str(&format!(r##"
 
 Example {}:
-{}"##, index + 1, example))
+{}"##, index + 1, example.to_string()));
+                acc
             })
     };
 
@@ -86,7 +87,7 @@ Please provide your response as an array of JSON objects that looks like this:
     "is_id": false
 }}
 
-Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Do no include any commentary, introduction or summary. Thank you."##, xml, surrounding_xml, examples);
+Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Do no include any commentary, introduction or summary. Thank you."##, xml.to_string(), surrounding_xml.to_string(), examples_message);
     log::debug!("prompt: {}", prompt);
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
@@ -130,17 +131,18 @@ Anticipate the possibility that there might not be any significant information i
                 attribute: item.attribute,
                 is_id: item.is_id,
             }),
+            text_fields: None,
         }
     }).collect();
 
     Ok(node_data)
 }
 
-async fn text_to_data(xml: String, surrounding_xml: String, examples: Vec<String>) -> Result<Vec<NodeData>, ()> {
+async fn text_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("text_to_data");
     
-    let examples_message = if examples.is_empty() {
-        ""
+    let examples_message: String = if examples.is_empty() {
+        "".to_string()
     } else {
         examples.iter().enumerate().fold(
             format!(r##"
@@ -149,7 +151,8 @@ The following are examples of this text node as it appears in other sections of 
                 acc.push_str(format!(r##"
 
 Example {}:
-{}"##, index + 1, example))
+{}"##, index + 1, example));
+                acc
             })
     };
 
@@ -228,6 +231,7 @@ And do not include any commentary, introduction or summary. Thank you."##, xml, 
         text_fields: Some(TextNodeData {
             is_informational: partial_node_data.is_informational,
         }),
+        element_fields: None,
     };
 
     Ok(vec![node_data])

@@ -49,21 +49,22 @@ impl Node {
         // * Root node
         if self.hash == ROOT_NODE_HASH {
             log::info!("Node is root node, probably don't need to do anything here");
-            return Vec::new();
+            return Some(Vec::new());
         }
 
         // * Elements that contain single attribute "class" and nothing else
         if attributes.len() == 1 && attributes[0] == "class" {
             log::info!("Node only contains single attribute 'class'");
-            return Vec::new();
+            return Some(Vec::new());
         }
 
         // * Structural elements
         if self.is_structural() {
             log::info!("Node is structural, nothing to interpret");
-            return Vec::new();
+            return Some(Vec::new());
         }
 
+        None
     }
 }
 

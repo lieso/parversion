@@ -196,31 +196,6 @@ pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>)
     Some(tree)
 }
 
-pub fn node_data_to_hash_map(node_data: &RefCell<Vec<NodeData>>, output_tree: Rc<Node>) -> HashMap<String, HashMap<String, String>> {
-    log::trace!("In node_data_to_hash_map");
-
-    let mut values: HashMap<String, HashMap<String, String>> = HashMap::new();
-
-    for item in node_data.borrow().iter() {
-        if let Some(node_data_value) = item.select(output_tree.xml.clone()) {
-
-            let mut value = HashMap::new();
-            value.insert(String::from("value"), node_data_value.text.clone());
-            value.insert(String::from("is_url"), item.is_url.to_string());
-            value.insert(String::from("is_id"), item.is_id.to_string());
-            value.insert(String::from("is_decorative"), item.is_decorative.to_string());
-            value.insert(String::from("is_js"), item.is_js.to_string());
-
-            values.insert(item.name.clone(), value);
-
-        } else {
-            log::warn!("Basis tree node could not be applied to output tree node!");
-        }
-    }
-
-    values
-}
-
 fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     log::trace!("In merge_nodes");
 
