@@ -126,10 +126,10 @@ Anticipate the possibility that there might not be any significant information i
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
-            name: item.new_name,
+            name: item.new_name.clone(),
             element_fields: Some(ElementNodeData {
-                attribute: item.attribute,
-                is_id: item.is_id,
+                attribute: item.attribute.clone(),
+                is_id: item.is_id.clone(),
             }),
             text_fields: None,
         }
@@ -148,10 +148,10 @@ async fn text_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) -> 
             format!(r##"
 The following are examples of this text node as it appears in other sections of the web page or in other versions of the web page. Use this to help you complete your task."##),
             |mut acc, (index, example)| {
-                acc.push_str(format!(r##"
+                acc.push_str(&format!(r##"
 
 Example {}:
-{}"##, index + 1, example));
+{}"##, index + 1, example.to_string()));
                 acc
             })
     };
