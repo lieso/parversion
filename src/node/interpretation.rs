@@ -65,9 +65,20 @@ impl Node {
         log::trace!("In node_to_xml_snippet_with_context");
 
         let root_node = get_root_node(Rc::new(self.clone()));
-        let document = node_to_html_with_target_node(Rc::clone(&root_node), Rc::new(self.clone()));
 
-        String::new()
+        // TODO: this is bad, need to properly skip root node
+        let html_node = root_node.children.borrow()[0].clone();
+
+        let document = node_to_html_with_target_node(Rc::clone(&html_node), Rc::new(self.clone()));
+
+        format!(
+            "{}<!--Target node start -->{}<!--Target node end -->{}{}{}",
+            document.0,
+            document.1,
+            document.2,
+            document.3,
+            document.4
+        )
     }
 
     fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {

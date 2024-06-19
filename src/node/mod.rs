@@ -206,6 +206,8 @@ pub fn node_to_html_with_target_node(
     String, // target node closing tag
     String, // html after target node
 ) {
+    log::trace!("In node_to_html_with_target_node");
+
     let mut before_html = String::new();
     let mut target_opening_html = String::new();
     let mut target_child_content = String::new();
@@ -223,8 +225,10 @@ pub fn node_to_html_with_target_node(
         target_closing_html: &mut String,
         after_html: &mut String
     ) {
+        log::trace!("In traverse");
 
         if let Some(element) = &current.xml.element {
+            log::info!("Node is element");
 
             let opening_tag = get_opening_tag(&element);
             let closing_tag = get_closing_tag(&element);
@@ -261,6 +265,7 @@ pub fn node_to_html_with_target_node(
         }
 
         if let Some(text) = &current.xml.text {
+            log::info!("Node is text");
 
             if *found_target {
                 after_html.push_str(&text.clone());

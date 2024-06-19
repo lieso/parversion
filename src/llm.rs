@@ -69,7 +69,7 @@ Here is the HTML element node for you to examine:
 
 ---
 
-This is the surrounding HTML in which the element node appears:
+This is the surrounding HTML in which the element node appears (the element node is indicated with an HTML comment):
 
 ---
 
@@ -172,7 +172,7 @@ Here is the HTML text node for you to examine:
 
 ---
 
-This is the surrounding HTML in which the text node appears:
+This is the surrounding HTML in which the text node appears (the text node is indicared with an HTML comment):
 
 ---
 
