@@ -105,7 +105,7 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
         log::debug!("id: {}, xml: {}", node.id, node.xml);
 
-        if node.interpret_node(&db).await {
+        if node.interpret_node(&db, &output_tree).await {
             sleep(Duration::from_secs(1)).await;
         }
     }
@@ -194,6 +194,105 @@ pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>)
     }
 
     Some(tree)
+}
+
+pub fn node_to_html_with_target_node(
+    node: Rc<Node>,
+    target_node: Rc<Node>
+) -> (
+    String, // html before target node
+    String, // target node opening tag
+    String, // target node child content
+    String, // target node closing tag
+    String, // html after target node
+) {
+    let mut before_html = String::new();
+    let mut target_opening_html = String::new();
+    let mut target_child_content = String::new();
+    let mut target_closing_html = String::new();
+    let mut after_html = String::new();
+    let mut found_target = false;
+
+    fn traverse(
+        current: Rc<Node>,
+        target: Rc<Node>,
+        found_target: &mut bool,
+        before_html: &mut String,
+        target_opening_html: &mut String,
+        target_child_content: &mut String,
+        target_closing_html: &mut String,
+        after_html: &mut String
+    ) {
+
+        if let Some(element) = &current.xml.element {
+
+            let opening_tag = get_opening_tag(&element);
+            let closing_tag = get_closing_tag(&element);
+
+            if *found_target {
+                after_html.push_str(&opening_tag);
+            } else if current.id == target.id {
+                *found_target = true;
+                target_opening_html.push_str(&opening_tag);
+            } else {
+                before_html.push_str(&opening_tag);
+            }
+
+            for child in current.children.borrow().iter() {
+                traverse(
+                    child.clone(),
+                    target.clone(),
+                    found_target,
+                    before_html,
+                    target_opening_html,
+                    target_child_content,
+                    target_closing_html,
+                    after_html
+                );
+            }
+
+            if *found_target && current.id == target.id {
+                target_closing_html.push_str(&closing_tag);
+            } else if *found_target {
+                after_html.push_str(&closing_tag);
+            } else {
+                before_html.push_str(&closing_tag);
+            }
+        }
+
+        if let Some(text) = &current.xml.text {
+
+            if *found_target {
+                after_html.push_str(&text.clone());
+            } else if current.id == target.id {
+                *found_target = true;
+                target_child_content.push_str(&text.clone());
+            } else {
+                before_html.push_str(&text.clone());
+            }
+
+        }
+
+    }
+
+    traverse(
+        node.clone(),
+        target_node.clone(),
+        &mut found_target,
+        &mut before_html,
+        &mut target_opening_html,
+        &mut target_child_content,
+        &mut target_closing_html,
+        &mut after_html
+    );
+
+    (
+        before_html,
+        target_opening_html,
+        target_child_content,
+        target_closing_html,
+        after_html
+    )
 }
 
 fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {

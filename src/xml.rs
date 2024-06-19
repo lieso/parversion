@@ -10,8 +10,8 @@ use crate::error::{Errors};
 
 #[derive(Clone, Debug)]
 pub struct Xml {
-    element: Option<Element>,
-    text: Option<String>,
+    pub element: Option<Element>,
+    pub text: Option<String>,
 }
 
 pub fn combine_xml(parent: &Xml, child: &Xml) -> Xml {
@@ -266,7 +266,7 @@ fn element_to_string(element: &Element) -> String {
      serialized_xml
 }
 
-fn get_opening_tag(element: &Element) -> String {
+pub fn get_opening_tag(element: &Element) -> String {
     let mut tag = format!("<{}", element.name);
 
     for (attr, value) in &element.attributes {
@@ -277,7 +277,7 @@ fn get_opening_tag(element: &Element) -> String {
     tag
 }
 
-fn get_closing_tag(element: &Element) -> String {
+pub fn get_closing_tag(element: &Element) -> String {
     format!("</{}>", element.name)
 }
 

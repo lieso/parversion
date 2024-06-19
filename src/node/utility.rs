@@ -1,5 +1,6 @@
 use std::collections::{VecDeque};
 use sha2::{Sha256, Digest};
+use std::rc::{Rc};
 
 use super::Node;
 
@@ -121,4 +122,5 @@ impl Node {
     pub fn is_structural(&self) -> bool {
         self.xml.get_attributes().is_empty()
     }
+
 }

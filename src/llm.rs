@@ -19,7 +19,7 @@ struct PartialTextNodeData {
     pub is_informational: bool,
 }
 
-pub async fn xml_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
+pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In xml_to_data");
 
     if xml.is_element() {
@@ -29,7 +29,7 @@ pub async fn xml_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) 
     }
 }
 
-async fn element_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
+async fn element_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In element_to_data");
     
     let examples_message: String = if examples.is_empty() {
@@ -87,7 +87,7 @@ Please provide your response as an array of JSON objects that looks like this:
     "is_id": false
 }}
 
-Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Do no include any commentary, introduction or summary. Thank you."##, xml.to_string(), surrounding_xml.to_string(), examples_message);
+Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Do no include any commentary, introduction or summary. Thank you."##, xml.to_string(), surrounding_xml, examples_message);
     log::debug!("prompt: {}", prompt);
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
@@ -138,7 +138,7 @@ Anticipate the possibility that there might not be any significant information i
     Ok(node_data)
 }
 
-async fn text_to_data(xml: &Xml, surrounding_xml: &Xml, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
+async fn text_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("text_to_data");
     
     let examples_message: String = if examples.is_empty() {

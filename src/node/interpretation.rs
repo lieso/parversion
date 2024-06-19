@@ -3,12 +3,30 @@ use std::error::Error;
 use bincode::{serialize, deserialize};
 use std::rc::{Rc};
 
-use super::{Node, ROOT_NODE_HASH, TEXT_NODE_HASH};
+use super::{Node, ROOT_NODE_HASH, TEXT_NODE_HASH, node_to_html_with_target_node};
 use crate::node_data::{NodeData};
 use crate::llm;
 
+pub fn get_root_node(node: Rc<Node>) -> Rc<Node> {
+    let mut root_node = node.clone();
+
+    loop {
+        let parent_option = {
+            let parent_borrow = root_node.parent.borrow();
+            parent_borrow.clone()
+        };
+
+        match parent_option {
+            Some(parent) => root_node = parent,
+            None => break,
+        }
+    }
+
+    root_node
+}
+
 impl Node {
-    pub async fn interpret_node(&self, db: &Db) -> bool {
+    pub async fn interpret_node(&self, db: &Db, output_tree: &Rc<Node>) -> bool {
         log::trace!("In interpret_node");
 
         if let Some(classical_interpretation) = self.interpret_node_classically() {
@@ -28,7 +46,9 @@ impl Node {
         } else {
             log::info!("Cache miss!");
 
-            let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml)
+            let surrounding_xml: String = self.node_to_xml_snippet_with_context();
+
+            let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml, surrounding_xml, Vec::new())
                 .await
                 .expect("LLM unable to generate node data");
 
@@ -39,6 +59,15 @@ impl Node {
         }
 
         true
+    }
+
+    fn node_to_xml_snippet_with_context(&self) -> String {
+        log::trace!("In node_to_xml_snippet_with_context");
+
+        let root_node = get_root_node(Rc::new(self.clone()));
+        let document = node_to_html_with_target_node(Rc::clone(&root_node), Rc::new(self.clone()));
+
+        String::new()
     }
 
     fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {

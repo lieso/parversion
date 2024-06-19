@@ -4,13 +4,13 @@ use crate::xml::{Xml};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ElementNodeData {
-    attribute: String,
-    is_id: bool,
+    pub attribute: String,
+    pub is_id: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TextNodeData {
-    is_informational: bool,
+    pub is_informational: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -22,11 +22,11 @@ pub struct NodeData {
 
 impl NodeData {
     pub fn value(&self, xml: &Xml) -> String {
-        if let Some(text_fields) = self.text_fields {
+        if let Some(text_fields) = &self.text_fields {
             return xml.to_string();
         }
 
-        if let Some(element_fields) = self.element_fields {
+        if let Some(element_fields) = &self.element_fields {
             return xml.get_attribute_value(&element_fields.attribute).unwrap();
         }
 
