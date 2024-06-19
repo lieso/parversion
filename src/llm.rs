@@ -58,7 +58,7 @@ Disregard anything that does not contribute to the data model, including the fol
 For each informative attribute, I want you to provide the following:
 
 1. The attribute name
-2. A new suitable name in snake case that could be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus and additional context.
+2. A new suitable name in snake case that could be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus any additional context.
 3. If the attribute value is an ID
 
 Here is the HTML element node for you to examine:
