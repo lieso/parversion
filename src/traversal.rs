@@ -42,6 +42,17 @@ pub enum OutputFormats {
 
 const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
 
+impl Output {
+    pub fn remove_empty(&mut self) {
+        self.children.iter_mut().for_each(|child| child.remove_empty());
+        self.children.retain(|child| !child.is_empty());
+    }
+
+    fn is_empty(&self) -> bool {
+        self.values.is_empty() && self.children.is_empty()
+    }
+}
+
 impl Traversal {
     pub fn from_tree(tree: Rc<Node>) -> Self {
         Traversal {
@@ -122,6 +133,9 @@ impl Traversal {
             self.basis_tree.clone().unwrap(),
             &mut output,
         );
+
+        log::info!("Removing empty objects from output...");
+        output.remove_empty();
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
