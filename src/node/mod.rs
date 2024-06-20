@@ -215,7 +215,7 @@ pub fn node_to_html_with_target_node(
     let mut after_html = String::new();
     let mut found_target = false;
 
-    fn traverse(
+    fn recurse(
         current: Rc<Node>,
         target: Rc<Node>,
         found_target: &mut bool,
@@ -225,11 +225,7 @@ pub fn node_to_html_with_target_node(
         target_closing_html: &mut String,
         after_html: &mut String
     ) {
-        log::trace!("In traverse");
-
         if let Some(element) = &current.xml.element {
-            log::info!("Node is element");
-
             let opening_tag = get_opening_tag(&element);
             let closing_tag = get_closing_tag(&element);
 
@@ -243,7 +239,7 @@ pub fn node_to_html_with_target_node(
             }
 
             for child in current.children.borrow().iter() {
-                traverse(
+                recurse(
                     child.clone(),
                     target.clone(),
                     found_target,
@@ -275,12 +271,10 @@ pub fn node_to_html_with_target_node(
             } else {
                 before_html.push_str(&text.clone());
             }
-
         }
-
     }
 
-    traverse(
+    recurse(
         node.clone(),
         target_node.clone(),
         &mut found_target,

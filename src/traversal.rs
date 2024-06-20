@@ -67,10 +67,8 @@ pub struct OutputMeta {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Output {
-    pub complex_types: Vec<ComplexType>,
-    pub complex_objects: Vec<ComplexObject>,
-    pub relationships: HashMap<String, Relationship>,
-    pub meta: OutputMeta,
+    pub values: HashMap<String, String>,
+    pub children: Vec<Output>,
 }
 
 #[derive(Debug)]
@@ -117,118 +115,72 @@ impl Traversal {
         self
     }
 
-    pub fn traverse(mut self) -> Result<Self, Errors> {
-        let basis_tree = self.basis_tree.clone().unwrap();
+    pub fn harvest(mut self) -> Result<String, Errors> {
+        let mut output = Output {
+            values: HashMap::new(),
+            children: Vec::new(),
+        };
 
-        let mut bfs: VecDeque<Rc<Node>> = VecDeque::new();
-        bfs.push_back(Rc::clone(&self.output_tree));
+        fn recurse(
+            mut output_node: Rc<Node>,
+            basis_tree: Rc<Node>,
+            output: &mut Output,
+        ) {
+            if output_node.is_linear_tail() {
+                panic!("Did not expect to encounter node in linear tail");
+            }
 
-        let mut node_count = 1;
+            if output_node.is_linear_head() {
+                log::info!("Output node is head of linear sequence of nodes");
 
-        while let Some(output_node) = bfs.pop_front() {
-            log::info!("Traversing node #{}", node_count);
+                while output_node.is_linear() {
+                    let lineage = output_node.get_lineage();
+                    let basis_node = search_tree_by_lineage(Rc::clone(&basis_tree), lineage.clone()).unwrap();
+
+                    for node_data in basis_node.data.borrow().iter() {
+                        let output_value = node_data.value(&output_node.xml);
+                        output.values.insert(node_data.name.clone(), output_value.clone());
+                    }
+
+                    output_node = {
+                        let next_node = output_node.children.borrow().first().expect("Linear output node has no children").clone();
+                        next_node.clone()
+                    };
+                }
+
+            } else {
+                log::info!("Output node is non-linear");
+
+                let lineage = output_node.get_lineage();
+                let basis_node = search_tree_by_lineage(Rc::clone(&basis_tree), lineage.clone()).unwrap();
+
+                for node_data in basis_node.data.borrow().iter() {
+                    let output_value = node_data.value(&output_node.xml);
+                    output.values.insert(node_data.name.clone(), output_value.clone());
+                }
+            }
 
             for child in output_node.children.borrow().iter() {
-                bfs.push_back(child.clone());
+                let mut child_output = Output {
+                    values: HashMap::new(),
+                    children: Vec::new(),
+                };
+
+                recurse(
+                    child.clone(),
+                    basis_tree.clone(),
+                    &mut child_output,
+                );
+
+                output.children.push(child_output);
             }
-            node_count = node_count + 1;
-
-            let lineage = output_node.get_lineage();
-            log::debug!("lineage: {:?}", lineage);
-
-            let basis_node = search_tree_by_lineage(Rc::clone(&basis_tree), lineage.clone()).unwrap();
-            log::info!("Found basis node with corresponding output node lineage");
-
-            if basis_node.is_linear_tail() {
-                log::info!("Skipping basis node which is inside tail of linear sequence of nodes");
-                continue;
-            }
-
-            if basis_node.is_linear_head() {
-                log::info!("Basis node is head of linear sequence of nodes");
-                
-                let complex_object = map_linear_nodes(Rc::clone(&basis_node), Rc::clone(&output_node));
-
-                if !complex_object.values.is_empty() {
-                    self.complex_objects.push(complex_object);
-                }
-            } else {
-                log::info!("Basis node is non-linear");
-
-                let complex_object = map_nonlinear_nodes(Rc::clone(&basis_node), Rc::clone(&output_node));
-
-                self.complex_objects.push(complex_object);
-            }
-
-            
-
-
-
         }
 
-        Ok(self)
-    }
-
-    fn complex_object_id_to_values_string(&self, id: &str) -> String {
-        let complex_object = self.complex_objects.iter().find(|item| item.id == id).unwrap();
-
-        let values: String = complex_object.values.keys().fold(
-            String::from(""),
-            |acc, key| {
-                let maybe_newline = if acc.is_empty() { "" } else { "\n" };
-                format!("{}{}{}: {}", acc, maybe_newline, key, complex_object.values.get(key).unwrap().get("value").unwrap())
-            }
+        recurse(
+            self.output_tree.clone(),
+            self.basis_tree.clone().unwrap(),
+            &mut output,
         );
-
-        complex_object.complex_objects.iter().fold(
-            values,
-            |acc, id| {
-                let maybe_newline = if acc.is_empty() { "" } else { "\n" };
-                format!("{}{}{}", acc, maybe_newline, self.complex_object_id_to_values_string(id))
-            }
-        )
-    }
-
-    fn generate_report(&self) {
-        log::info!("Generating report...");
-
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .create(true)
-            .open(format!("./debug/report_{}", Uuid::new_v4().to_string()))
-            .expect("Could not open file for writing");
-
-        for complex_object in self.complex_objects.iter() {
-            let complex_type: ComplexType = self.complex_types.iter().find(|item| item.id == complex_object.type_id).unwrap().clone();
-
-            let values = self.complex_object_id_to_values_string(&complex_object.id);
-
-            let output = format!("
-                * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
-                \nID: {}\nTYPE: {}\nDEPTH: {}\nVALUES: \n{}",
-                complex_object.id,
-                complex_type.name, 
-                complex_object.depth,
-                values
-            );
-
-            writeln!(file, "{}", output).expect("Could to write to file");
-        }
-    }
-
-    pub fn harvest(self) -> Result<String, Errors> {
-        self.generate_report();
-
-        let mut output = Output {
-            complex_types: self.complex_types.clone(),
-            complex_objects: self.complex_objects.clone(),
-            relationships: HashMap::new(),
-            meta: OutputMeta {
-                object_count: self.object_count,
-                type_count: self.type_count,
-            },
-        };
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);

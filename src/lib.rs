@@ -104,7 +104,6 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
 
     Traversal::from_tree(output_tree)
         .with_basis(basis_tree)
-        .traverse()?
         .harvest()
 }
 
