@@ -122,22 +122,6 @@ impl Xml {
 }
 
 impl Xml {
-    pub fn get_all_attributes(&self) -> Vec<String> {
-        if let Some(element) = &self.element {
-            return get_all_attributes(&element);
-        }
-
-        Vec::new()
-    }
-
-    pub fn get_all_tags(&self) -> Vec<String> {
-        if let Some(element) = &self.element {
-            return get_all_tags(&element);
-        }
-
-        Vec::new()
-    }
-
     pub fn get_element_tag_name(&self) -> String {
         if let Some(element) = &self.element {
             return element.name.clone();
@@ -279,33 +263,4 @@ pub fn get_opening_tag(element: &Element) -> String {
 
 pub fn get_closing_tag(element: &Element) -> String {
     format!("</{}>", element.name)
-}
-
-fn get_all_attributes(element: &Element) -> Vec<String> {
-    let mut attributes = Vec::new();
-
-    for key in element.attributes.keys() {
-        attributes.push(key.clone());
-    }
-
-    for child in &element.children {
-        if let xmltree::XMLNode::Element(child_element) = child {
-            attributes.extend(get_all_attributes(child_element));
-        }
-    }
-
-    attributes
-}
-
-fn get_all_tags(element: &Element) -> Vec<String> {
-    let mut tags = Vec::new();
-    tags.push(element.name.clone());
-
-    for child in &element.children {
-        if let xmltree::XMLNode::Element(child_element) = child {
-            tags.extend(get_all_tags(child_element));
-        }
-    }
-
-    tags
 }

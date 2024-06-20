@@ -106,6 +106,18 @@ impl Node {
             return Some(Vec::new());
         }
 
+        // * Link elements
+        if self.xml.get_element_tag_name() == "link" {
+            log::info!("Node represents link HTML element. We ignore these, for now...");
+            return Some(Vec::new());
+        }
+
+        // * Meta elements
+        if self.xml.get_element_tag_name() == "meta" {
+            log::info!("Node represents meta HTML element. We ignore these, for now...");
+            return Some(Vec::new());
+        }
+
         None
     }
 }
