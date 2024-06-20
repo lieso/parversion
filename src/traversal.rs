@@ -137,6 +137,18 @@ impl Traversal {
         log::info!("Removing empty objects from output...");
         output.remove_empty();
 
+        //=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>
+        //
+        // Making an assumption here that root output represents <html> element
+        // and that it can be ignored. 
+        // We do this for slightly cleaner JSON output
+        //
+        //<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=
+        if let Some(first_child) = output.children.get_mut(0) {
+            output.values = std::mem::take(&mut first_child.values);
+            output.children = std::mem::take(&mut first_child.children);
+        }
+
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
 
