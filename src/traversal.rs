@@ -9,38 +9,6 @@ use crate::node::*;
 use crate::error::{Errors};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ComplexType {
-    pub id: String,
-    pub name: String,
-    pub fields: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ComplexObject {
-    pub id: String,
-    pub parent_id: Option<String>,
-    pub type_id: String,
-    pub values: HashMap<String, HashMap<String, String>>,
-    pub depth: u16,
-    pub complex_objects: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DerivedType {
-    pub id: String,
-    pub complex_mapping: HashMap<String, HashMap<String, String>>,
-    pub values: HashMap<String, String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Relationship {
-    pub id: String,
-    pub complex_type_id: String,
-    pub origin_field: String,
-    pub target_field: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ColorPalette {
     pub one: String,
     pub two: String,
@@ -51,12 +19,6 @@ pub struct ColorPalette {
 pub struct Traversal {
     pub output_tree: Rc<Node>,
     pub basis_tree: Option<Rc<Node>>,
-    pub primitives: Vec<HashMap<String, String>>,
-    pub complex_types: Vec<ComplexType>,
-    pub complex_objects: Vec<ComplexObject>,
-    pub relationships: Vec<Relationship>,
-    pub object_count: u64,
-    pub type_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -80,32 +42,11 @@ pub enum OutputFormats {
 
 const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
 
-fn map_linear_nodes(basis_node: Rc<Node>, output_node: Rc<Node>) -> ComplexObject {
-    unimplemented!()
-}
-
-fn map_nonlinear_nodes(basis_node: Rc<Node>, output_node: Rc<Node>) -> ComplexObject {
-    unimplemented!()
-}
-
-
-
-
-
-
-
-
 impl Traversal {
     pub fn from_tree(tree: Rc<Node>) -> Self {
         Traversal {
             output_tree: tree,
             basis_tree: None,
-            primitives: Vec::new(),
-            complex_types: Vec::new(),
-            complex_objects: Vec::new(),
-            relationships: Vec::new(),
-            object_count: 0,
-            type_count: 0,
         }
     }
 
