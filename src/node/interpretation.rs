@@ -101,7 +101,7 @@ impl Node {
         }
 
         // * Structural elements
-        if self.is_structural() {
+        if self.xml.is_element() && self.is_structural() {
             log::info!("Node is structural, nothing to interpret");
             return Some(Vec::new());
         }
