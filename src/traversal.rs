@@ -100,6 +100,14 @@ impl Traversal {
                     };
                 }
 
+                let lineage = output_node.get_lineage();
+                let basis_node = search_tree_by_lineage(Rc::clone(&basis_tree), lineage.clone()).unwrap();
+
+                for node_data in basis_node.data.borrow().iter() {
+                    let output_value = node_data.value(&output_node.xml);
+                    output.values.insert(node_data.name.clone(), output_value.clone());
+                }
+
             } else {
                 log::info!("Output node is non-linear");
 
@@ -136,18 +144,6 @@ impl Traversal {
 
         log::info!("Removing empty objects from output...");
         output.remove_empty();
-
-        //=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>=>
-        //
-        // Making an assumption here that root output represents <html> element
-        // and that it can be ignored. 
-        // We do this for slightly cleaner JSON output
-        //
-        //<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=
-        if let Some(first_child) = output.children.get_mut(0) {
-            output.values = std::mem::take(&mut first_child.values);
-            output.children = std::mem::take(&mut first_child.children);
-        }
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);
