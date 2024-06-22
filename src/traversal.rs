@@ -62,6 +62,11 @@ fn process_node(
     let basis_node = search_tree_by_lineage(Rc::clone(basis_tree), lineage.clone()).unwrap();
 
     for node_data in basis_node.data.borrow().iter() {
+        if output_node.xml.is_text() && !node_data.text_fields.clone().unwrap().is_informational {
+            log::info!("Ignoring non-informational text node");
+            continue;
+        }
+
         let output_value = node_data.value(&output_node.xml);
         output.values.insert(node_data.name.clone(), output_value.clone());
     }
