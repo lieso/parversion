@@ -28,8 +28,23 @@ pub struct OutputMeta {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OutputMetadata {
+    pub is_id: bool,
+    pub is_url: bool,
+    pub is_page_link: bool,
+    pub is_action_link: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OutputValue {
+    pub meta: OutputMetadata,
+    pub name: String,
+    pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Output {
-    pub values: HashMap<String, String>,
+    pub values: Vec<OutputValue>,
     pub children: Vec<Output>,
 }
 
@@ -67,8 +82,18 @@ fn process_node(
             continue;
         }
 
-        let output_value = node_data.value(&output_node.xml);
-        output.values.insert(node_data.name.clone(), output_value.clone());
+        let output_value = OutputValue {
+            name: node_data.name.clone(),
+            value: node_data.value(&output_node.xml),
+            meta: OutputMetadata {
+                is_id: node_data.element_fields.clone().map_or(false, |fields| fields.is_id),
+                is_url: node_data.element_fields.clone().map_or(false, |fields| fields.is_url),
+                is_page_link: node_data.element_fields.clone().map_or(false, |fields| fields.is_page_link),
+                is_action_link: node_data.element_fields.clone().map_or(false, |fields| fields.is_action_link),
+            },
+        };
+
+        output.values.push(output_value);
     }
 }
 
@@ -88,7 +113,7 @@ impl Traversal {
 
     pub fn harvest(mut self) -> Result<String, Errors> {
         let mut output = Output {
-            values: HashMap::new(),
+            values: Vec::new(),
             children: Vec::new(),
         };
 
@@ -122,7 +147,7 @@ impl Traversal {
 
             for child in output_node.children.borrow().iter() {
                 let mut child_output = Output {
-                    values: HashMap::new(),
+                    values: Vec::new(),
                     children: Vec::new(),
                 };
 

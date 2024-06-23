@@ -6,6 +6,9 @@ use crate::xml::{Xml};
 pub struct ElementNodeMetadata {
     pub attribute: String,
     pub is_id: bool,
+    pub is_url: bool,
+    pub is_page_link: bool,
+    pub is_action_link: bool
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

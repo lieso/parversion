@@ -6,11 +6,22 @@ use std::env;
 use crate::node_data::{NodeData, ElementNodeMetadata, TextNodeMetadata};
 use crate::xml::{Xml};
 
+fn default_is_false() -> bool {
+    false
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PartialElementNodeMetadata {
     pub attribute: String,
     pub new_name: String,
+    #[serde(default = "default_is_false")]
     pub is_id: bool,
+    #[serde(default = "default_is_false")]
+    pub is_url: bool,
+    #[serde(default = "default_is_false")]
+    pub is_page_link: bool,
+    #[serde(default = "default_is_false")]
+    pub is_action_link: bool
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -60,6 +71,7 @@ For each informative attribute, I want you to provide the following:
 1. The attribute name
 2. A new suitable name in snake case that could be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus any additional context.
 3. If the attribute value is an ID
+4. If the attribute value is a URL (is_url). For each URL, if present, classify each link as either "page link" (is_page_link) if it leads to another page (e.g., content pages, informational pages), or "action link" if it performs an action that mutates something (e.g., form submissions, deletion actions) (is_action_link)
 
 Here is the HTML element node for you to examine:
 
@@ -79,12 +91,14 @@ This is the surrounding HTML in which the element node appears (the element node
 
 {}
 
-Please provide your response as an array of JSON objects that looks like this:
+Please provide your response as an array of JSON objects that look like this:
 
 {{
     "attribute": "href",
     "new_name": "icon_url",
-    "is_id": false
+    "is_id": false,
+    "is_page_link": false,
+    "is_action_link": false
 }}
 
 Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Do no include any commentary, introduction or summary. Thank you."##, xml.to_string(), surrounding_xml, examples_message);
@@ -130,6 +144,9 @@ Anticipate the possibility that there might not be any significant information i
             element_fields: Some(ElementNodeMetadata {
                 attribute: item.attribute.clone(),
                 is_id: item.is_id.clone(),
+                is_url: item.is_url.clone(),
+                is_page_link: item.is_page_link.clone(),
+                is_action_link: item.is_action_link.clone(),
             }),
             text_fields: None,
         }
