@@ -3,20 +3,20 @@ use serde::{Serialize, Deserialize};
 use crate::xml::{Xml};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ElementNodeData {
+pub struct ElementNodeMetadata {
     pub attribute: String,
     pub is_id: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TextNodeData {
+pub struct TextNodeMetadata {
     pub is_informational: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
-    pub element_fields: Option<ElementNodeData>,
-    pub text_fields: Option<TextNodeData>,
+    pub element_fields: Option<ElementNodeMetadata>,
+    pub text_fields: Option<TextNodeMetadata>,
     pub name: String,
 }
 

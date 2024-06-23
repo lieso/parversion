@@ -3,18 +3,18 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
 
-use crate::node_data::{NodeData, ElementNodeData, TextNodeData};
+use crate::node_data::{NodeData, ElementNodeMetadata, TextNodeMetadata};
 use crate::xml::{Xml};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct PartialElementNodeData {
+struct PartialElementNodeMetadata {
     pub attribute: String,
     pub new_name: String,
     pub is_id: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct PartialTextNodeData {
+struct PartialTextNodeMetadata {
     pub name: String,
     pub is_informational: bool,
 }
@@ -121,13 +121,13 @@ Anticipate the possibility that there might not be any significant information i
     let json_response = fix_json_response(json_response);
     log::debug!("json_response: {:?}", json_response);
 
-    let partial_node_data = serde_json::from_str::<Vec<PartialElementNodeData>>(json_response)
-        .expect("Could not marshal response to PartialElementNodeData");
+    let partial_node_data = serde_json::from_str::<Vec<PartialElementNodeMetadata>>(json_response)
+        .expect("Could not marshal response to PartialElementNodeMetadata");
 
     let node_data: Vec<NodeData> = partial_node_data.iter().map(|item| {
         NodeData {
             name: item.new_name.clone(),
-            element_fields: Some(ElementNodeData {
+            element_fields: Some(ElementNodeMetadata {
                 attribute: item.attribute.clone(),
                 is_id: item.is_id.clone(),
             }),
@@ -223,12 +223,12 @@ And do not include any commentary, introduction or summary. Thank you."##, xml, 
     let json_response = fix_json_response(json_response);
     log::debug!("json_response: {:?}", json_response);
 
-    let partial_node_data = serde_json::from_str::<PartialTextNodeData>(json_response)
-        .expect("Could not marshal response to PartialTextNodeData");
+    let partial_node_data = serde_json::from_str::<PartialTextNodeMetadata>(json_response)
+        .expect("Could not marshal response to PartialTextNodeMetadata");
 
     let node_data = NodeData {
         name: partial_node_data.name,
-        text_fields: Some(TextNodeData {
+        text_fields: Some(TextNodeMetadata {
             is_informational: partial_node_data.is_informational,
         }),
         element_fields: None,
