@@ -27,7 +27,7 @@ struct PartialElementNodeMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct PartialTextNodeMetadata {
     pub name: String,
-    pub is_informational: bool,
+    pub is_semantically_significant: bool,
 }
 
 pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
@@ -179,7 +179,7 @@ Your job is to reverse engineer the data model for a rendered HTML text node. I 
 Please provide the following:
 
 1. An appropriate variable name in snake case that could be used to represent this data programmatically. For example strings containing integers may take a name like 'order' if the surrounding HTML appears to be rendering a list of items in a particular order.
-2. If the value is informational. For example, a text node that is just a standalone pipe symbol may be used to visually separate content, but doesn't contribute to the underlying data model of the web page so it is not informational.
+2. If the text node is semantically significant (is_semantically_significant)
 
 Here is the HTML text node for you to examine:
 
@@ -203,7 +203,7 @@ Please provide your response as a JSON object that looks like this:
 
 {{
     "name": "reply",
-    "is_informational": true
+    "is_semantically_significant": true
 }}
 
 And do not include any commentary, introduction or summary. Thank you."##, xml, surrounding_xml, examples_message);
@@ -246,7 +246,7 @@ And do not include any commentary, introduction or summary. Thank you."##, xml, 
     let node_data = NodeData {
         name: partial_node_data.name,
         text_fields: Some(TextNodeMetadata {
-            is_informational: partial_node_data.is_informational,
+            is_informational: partial_node_data.is_semantically_significant,
         }),
         element_fields: None,
     };
