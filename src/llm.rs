@@ -28,6 +28,7 @@ struct PartialElementNodeMetadata {
 struct PartialTextNodeMetadata {
     pub name: String,
     pub is_semantically_significant: bool,
+    pub is_page_action: bool,
 }
 
 pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
@@ -174,12 +175,13 @@ Example {}:
     };
 
     let prompt = format!(r##"
-Your job is to reverse engineer the data model for a rendered HTML text node. I will provide the surrounding HTML which should help you to determine the context in which this text appears.
+Your job is to reverse engineer the data model for a rendered HTML text node. I will provide the surrounding HTML which should help you to determine the appropriate classification.
 
 Please provide the following:
 
 1. An appropriate variable name in snake case that could be used to represent this data programmatically. For example strings containing integers may take a name like 'order' if the surrounding HTML appears to be rendering a list of items in a particular order.
 2. If the text node is semantically significant (is_semantically_significant)
+3. If the text node represents an in-page action (is_page_action). These are non-informational action-oriented text nodes that do not represent the primary content of the document, but instead assist the reader in using the website.
 
 Here is the HTML text node for you to examine:
 
@@ -203,7 +205,8 @@ Please provide your response as a JSON object that looks like this:
 
 {{
     "name": "reply",
-    "is_semantically_significant": true
+    "is_semantically_significant": true,
+    "is_page_action": false
 }}
 
 And do not include any commentary, introduction or summary. Thank you."##, xml, surrounding_xml, examples_message);
@@ -246,7 +249,7 @@ And do not include any commentary, introduction or summary. Thank you."##, xml, 
     let node_data = NodeData {
         name: partial_node_data.name,
         text_fields: Some(TextNodeMetadata {
-            is_informational: partial_node_data.is_semantically_significant,
+            is_informational: partial_node_data.is_semantically_significant && !partial_node_data.is_page_action,
         }),
         element_fields: None,
     };
