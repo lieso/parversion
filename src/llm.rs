@@ -107,7 +107,7 @@ Anticipate the possibility that there might not be any significant information i
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
-        "model":  "gpt-4-0125-preview",
+        "model":  "gpt-4o",
         "temperature":  0,
         "messages":  [
             {
@@ -214,7 +214,7 @@ And do not include any commentary, introduction or summary. Thank you."##, xml, 
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
-        "model":  "gpt-4-0125-preview",
+        "model":  "gpt-4o",
         "temperature":  0,
         "messages":  [
             {
