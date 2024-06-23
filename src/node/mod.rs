@@ -261,8 +261,6 @@ pub fn node_to_html_with_target_node(
         }
 
         if let Some(text) = &current.xml.text {
-            log::info!("Node is text");
-
             if *found_target {
                 after_html.push_str(&text.clone());
             } else if current.id == target.id {

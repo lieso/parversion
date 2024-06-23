@@ -189,7 +189,7 @@ Here is the HTML text node for you to examine:
 
 ---
 
-This is the surrounding HTML in which the text node appears (the text node is indicared with an HTML comment):
+This is the surrounding HTML in which the text node appears (the text node is indicated with an HTML comment):
 
 ---
 

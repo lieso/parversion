@@ -73,14 +73,23 @@ impl Node {
 
         let document = node_to_html_with_target_node(Rc::clone(&html_node), Rc::new(self.clone()));
 
-        format!(
-            "{}<!--Target node start -->{}<!--Target node end -->{}{}{}",
-            document.0,
-            document.1,
-            document.2,
-            document.3,
-            document.4
-        )
+        if self.xml.is_text() {
+            format!(
+                "{}<!--Target node start -->{}<!--Target node end -->{}",
+                document.0,
+                document.2,
+                document.4
+            )
+        } else {
+            format!(
+                "{}<!--Target node start -->{}<!--Target node end -->{}{}{}",
+                document.0,
+                document.1,
+                document.2,
+                document.3,
+                document.4
+            )
+        }
     }
 
     fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {
