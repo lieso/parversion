@@ -232,6 +232,47 @@ impl Xml {
 
         format!("{:x}", hasher.finalize())
     }
+
+    pub fn is_equal(&self, xml: Xml) -> bool {
+        if let Some(element_a) = &self.element {
+            if let Some(element_b) = xml.element {
+                if element_a.name != element_b.name {
+                    return false;
+                }
+
+                let attributes_a = &element_a.attributes;
+                let attributes_b = &element_b.attributes;
+
+                if attributes_a.keys().len() != attributes_b.keys().len() {
+                    return false;
+                }
+
+                for (attribute, value_a) in attributes_a {
+                    let value_b = attributes_b.get(attribute);
+
+                    if let Some(value_b) = value_b {
+                        if value_a != value_b {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+
+            } else {
+                return false;
+            }
+
+        } else if let Some(text_a) = &self.text {
+            if let Some(text_b) = xml.text {
+                return text_a == &text_b;
+            } else {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 fn element_to_string(element: &Element) -> String {
