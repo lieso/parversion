@@ -1,3 +1,5 @@
+use sled::Db;
+use std::error::Error;
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 use tokio::time::{sleep, Duration};
@@ -113,6 +115,8 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 
 pub async fn prune_tree(tree: Rc<Node>) {
     log::trace!("In prune_tree");
+    
+    let db = sled::open("src/database/semantic_consistency").expect("Could not connect to datbase");
 
     bfs_async(Rc::clone(&tree), |node: Rc<Node>| async move {
         loop {
@@ -135,7 +139,7 @@ pub async fn prune_tree(tree: Rc<Node>) {
             if let Some(twins) = purported_twins {
                 log::info!("Found two sibling nodes with the same hash: {}", twins.0.hash);
 
-                if merge_nodes(node.clone(), twins).await {
+                if merge_nodes(&db, node.clone(), twins).await {
                     sleep(Duration::from_secs(1)).await;
                 }
             } else {
@@ -295,7 +299,7 @@ pub fn node_to_html_with_target_node(
     )
 }
 
-async fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) -> bool {
+async fn merge_nodes(db: &Db, parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) -> bool {
     log::trace!("In merge_nodes");
 
     if 
@@ -307,6 +311,36 @@ async fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) -> bool {
         log::debug!("{}", nodes.0.xml.to_string());
         log::debug!("{}", nodes.1.xml.to_string());
 
+        let key = nodes.0.path_hash();
+        log::debug!("key: {}", key);
+
+        let cache = get_path_semantic_consistency(&db, &key)
+            .expect("Could not get path semantic consistency from database");
+
+        if let Some(is_semantically_consistent) = cache {
+            log::info!("Cache hit!");
+
+            if !is_semantically_consistent {
+                log::info!("Nodes are semantically inconsistent, we will not merge these nodes");
+                return false;
+            }
+
+            log::info!("Nodes are semantically consistent");
+        } else {
+            log::info!("Cache miss!");
+
+            let is_semantically_consistent = llm::is_semantically_consistent(nodes.0.xml.to_string(), nodes.1.xml.to_string());
+
+            store_path_semantic_consistency(&db, &key, is_semantically_consistent)
+                .expect("Could not persist semantic consistency to database");
+
+            if !is_semantically_consistent {
+                log::info!("Nodes are semantically inconsistent, we will not merge these nodes");
+                return false;
+            }
+
+            log::info!("Nodes are semantically consistent");
+        }
     }
 
     log::trace!("Pruning nodes with ids: {} and {} with hash {}", nodes.0.id, nodes.1.id, nodes.0.hash);
@@ -323,15 +357,14 @@ async fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) -> bool {
     false
 }
 
-//fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
-//    log::trace!("In merge_nodes");
-//
-//    *nodes.1.parent.borrow_mut() = None;
-//
-//    for child in nodes.1.children.borrow_mut().iter() {
-//        *child.parent.borrow_mut() = Some(nodes.0.clone()).into();
-//        nodes.0.children.borrow_mut().push(child.clone());
-//    }
-//
-//    parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
-//}
+fn get_path_semantic_consistency(db: &Db, key: &str) -> Result<Option<bool>, Box<dyn Error>> {
+    match db.get(key)? {
+        Some(value) => Ok(Some(value)),
+        None => Ok(None),
+    }
+}
+
+fn store_path_semantic_consistency(db: &Db, key: &str, value: bool) -> Result<(), Box<dyn Error>> {
+    db.insert(key, value)?;
+    Ok(())
+}
