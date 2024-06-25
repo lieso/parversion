@@ -16,6 +16,22 @@ pub fn bfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     }
 }
 
+pub async fn bfs_async<F, Fut>(tree: Rc<Node>, mut f: F)
+    where
+    F: FnMut(Rc<Node>) -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    let mut queue = vec![tree];
+
+    while let Some(node) = queue.pop() {
+        let next_fut = f(Rc::clone(&node));
+        next_fut.await;
+
+        let children = node.children.borrow();
+        queue.extend(children.iter().cloned());
+    }
+}
+
 pub fn dfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     visit(&node);
 
