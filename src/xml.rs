@@ -8,10 +8,33 @@ use sha2::{Sha256, Digest};
 
 use crate::error::{Errors};
 
+// echo -n "text" | sha256sum
+const TEXT_NODE_HASH: &str = "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1";
+
 #[derive(Clone, Debug)]
 pub struct Xml {
     pub element: Option<Element>,
     pub text: Option<String>,
+}
+
+pub fn xml_to_hash(xml: &Xml) -> String {
+    if xml.is_text() {
+        return TEXT_NODE_HASH.to_string();
+    }
+
+    let mut hasher = Sha256::new();
+
+    let mut hasher_items = Vec::new();
+    hasher_items.push(xml.get_element_tag_name());
+
+    for (attribute, value) in xml.element.unwrap().attributes {
+
+        if attribute == "href" {
+
+        }
+
+    }
+
 }
 
 pub fn combine_xml(parent: &Xml, child: &Xml) -> Xml {

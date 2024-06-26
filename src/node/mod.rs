@@ -15,8 +15,6 @@ use crate::node_data::{NodeData};
 use crate::node::traversal::*;
 use crate::xml::*;
 
-// echo -n "text" | sha256sum
-const TEXT_NODE_HASH: &str = "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1";
 // echo -n "root" | sha256sum
 const ROOT_NODE_HASH: &str = "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2";
 
@@ -59,12 +57,9 @@ impl Node {
             })
         }
 
-        let tag = xml.get_element_tag_name();
-        let attributes = xml.get_attributes();
-
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
-            hash: utility::generate_element_node_hash(vec![tag.clone()], attributes),
+            hash: xml:xml_to_hash(&xml),
             xml: xml.without_children(),
             parent: parent.into(),
             data: RefCell::new(Vec::new()),
@@ -111,7 +106,7 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
     }
 }
 
-pub async fn prune_tree(tree: Rc<Node>) {
+pub fn prune_tree(tree: Rc<Node>) {
     log::trace!("In prune_tree");
 
     bfs(Rc::clone(&tree), &mut |node: &Rc<Node>| {
