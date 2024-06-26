@@ -25,20 +25,6 @@ pub fn generate_element_node_hash(tags: Vec<String>, attributes: Vec<String>) ->
 }
 
 impl Node {
-    pub fn path_hash(&self) -> String {
-        let mut hasher = Sha256::new();
-
-        let mut hasher_items = vec![
-            self.hash,
-            self.ancestry_hash()
-        ];
-
-        hasher_items.sort();
-        hasher.update(hasher_items.join(""));
-
-        format!("{:x}", hasher.finalize())
-    }
-
     pub fn ancestry_hash(&self) -> String {
         let mut hasher = Sha256::new();
 
