@@ -114,7 +114,7 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 pub async fn prune_tree(tree: Rc<Node>) {
     log::trace!("In prune_tree");
 
-    bfs_async(Rc::clone(&tree), |node: Rc<Node>| async move {
+    bfs(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
             if node.parent.borrow().is_none() {
                 break;
@@ -135,14 +135,22 @@ pub async fn prune_tree(tree: Rc<Node>) {
             if let Some(twins) = purported_twins {
                 log::info!("Found two sibling nodes with the same hash: {}", twins.0.hash);
 
-                if merge_nodes(node.clone(), twins).await {
-                    sleep(Duration::from_secs(1)).await;
+                if 
+                    twins.0.xml.element.is_some() && twins.1.xml.element.is_some() &&
+                    !twins.0.xml.is_equal(twins.1.xml.clone())
+                {
+                    log::info!("*****************************************************************************************************");
+                    log::debug!("{}", twins.0.xml.to_string());
+                    log::debug!("{}", twins.1.xml.to_string());
                 }
+
+                log::trace!("Pruning nodes with ids: {} and {} with hash {}", twins.0.id, twins.1.id, twins.0.hash);
+                merge_nodes(node.clone(), twins);
             } else {
                 break;
             }
         }
-    }).await;
+    });
 }
 
 pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
@@ -295,21 +303,8 @@ pub fn node_to_html_with_target_node(
     )
 }
 
-async fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) -> bool {
+fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
     log::trace!("In merge_nodes");
-
-    if 
-        nodes.0.xml.element.is_some() &&
-        nodes.1.xml.element.is_some() &&
-        !nodes.0.xml.is_equal(nodes.1.xml.clone())
-    {
-        log::info!("*****************************************************************************************************");
-        log::debug!("{}", nodes.0.xml.to_string());
-        log::debug!("{}", nodes.1.xml.to_string());
-
-    }
-
-    log::trace!("Pruning nodes with ids: {} and {} with hash {}", nodes.0.id, nodes.1.id, nodes.0.hash);
 
     *nodes.1.parent.borrow_mut() = None;
 
@@ -319,19 +314,4 @@ async fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) -> bool {
     }
 
     parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
-
-    false
 }
-
-//fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {
-//    log::trace!("In merge_nodes");
-//
-//    *nodes.1.parent.borrow_mut() = None;
-//
-//    for child in nodes.1.children.borrow_mut().iter() {
-//        *child.parent.borrow_mut() = Some(nodes.0.clone()).into();
-//        nodes.0.children.borrow_mut().push(child.clone());
-//    }
-//
-//    parent.children.borrow_mut().retain(|child| child.id != nodes.1.id);
-//}
