@@ -42,6 +42,8 @@ pub fn xml_to_hash(xml: &Xml) -> String {
 
     hasher_items.sort();
 
+    hasher.update(hasher_items.join(""));
+
     format!("{:x}", hasher.finalize())
 }
 
