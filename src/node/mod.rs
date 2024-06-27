@@ -118,17 +118,8 @@ pub fn prune_tree(tree: Rc<Node>) {
 
             if let Some(twins) = purported_twins {
                 log::info!("Found two sibling nodes with the same hash: {}", twins.0.hash);
+                log::info!("Pruning nodes with ids: {} and {} with hash {}", twins.0.id, twins.1.id, twins.0.hash);
 
-                //if 
-                //    twins.0.xml.element.is_some() && twins.1.xml.element.is_some() &&
-                //    !twins.0.xml.is_equal(twins.1.xml.clone())
-                //{
-                //    log::info!("*****************************************************************************************************");
-                //    log::debug!("{}", twins.0.xml.to_string());
-                //    log::debug!("{}", twins.1.xml.to_string());
-                //}
-
-                log::trace!("Pruning nodes with ids: {} and {} with hash {}", twins.0.id, twins.1.id, twins.0.hash);
                 merge_nodes(node.clone(), twins);
             } else {
                 break;
