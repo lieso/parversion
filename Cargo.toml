@@ -26,6 +26,8 @@ roxmltree = "0.19.0"
 uuid = {version = "1.8.0", features = ["v4"]}
 env_logger = "0.11.3"
 dot = "0.1.4"
+pathetic = "0.3.0"
+url = "2.5.2"
 
 [lib]
 name = "parversion"

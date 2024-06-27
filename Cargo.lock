@@ -959,6 +959,7 @@ dependencies = [
  "log",
  "markup5ever_rcdom",
  "pandoculation",
+ "pathetic",
  "regex",
  "reqwest",
  "roxmltree",
@@ -968,9 +969,20 @@ dependencies = [
  "simple-logging",
  "sled",
  "tokio",
+ "url",
  "uuid",
  "xml-rs",
  "xmltree",
+]
+
+[[package]]
+name = "pathetic"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed9c672fd61cdb1257e09b5dffc20bb26721c6e7d60ed5af0fe38dc31a1c81a5"
+dependencies = [
+ "once_cell",
+ "url",
 ]
 
 [[package]]
@@ -1729,9 +1741,9 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.5.0"
+version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31e6302e3bb753d46e83516cae55ae196fc0c309407cf11ab35cc51a4c2a4633"
+checksum = "22784dbdf76fdde8af1aeda5622b546b422b6fc585325248a2bf9f5e41e94d6c"
 dependencies = [
  "form_urlencoded",
  "idna",

@@ -5,6 +5,8 @@ use xmltree::{Element, XMLNode};
 use xmltree::EmitterConfig;
 use serde::de::{self, Visitor};
 use sha2::{Sha256, Digest};
+use pathetic;
+use url::Url;
 
 use crate::error::{Errors};
 
@@ -25,16 +27,22 @@ pub fn xml_to_hash(xml: &Xml) -> String {
     let mut hasher = Sha256::new();
 
     let mut hasher_items = Vec::new();
-    hasher_items.push(xml.get_element_tag_name());
+    hasher_items.push("TAG:".to_owned() + &xml.get_element_tag_name());
 
-    for (attribute, value) in xml.element.unwrap().attributes {
+    for (attribute, value) in xml.element.clone().unwrap().attributes {
+        hasher_items.push("ATTRIBUTE:".to_owned() + &attribute.clone());
 
         if attribute == "href" {
-
+            let mut parts = url_to_hash_parts(&value);
+            for part in parts {
+                hasher_items.push("HREF:".to_owned() + &part);
+            }
         }
-
     }
 
+    hasher_items.sort();
+
+    format!("{:x}", hasher.finalize())
 }
 
 pub fn combine_xml(parent: &Xml, child: &Xml) -> Xml {
@@ -327,4 +335,31 @@ pub fn get_opening_tag(element: &Element) -> String {
 
 pub fn get_closing_tag(element: &Element) -> String {
     format!("</{}>", element.name)
+}
+
+fn url_to_hash_parts(url: &str) -> Vec<String> {
+    // This is how I'm checking if a URL is absolute...
+    // pathetic is a library for dealing with relative URLs
+    if Url::parse(url).is_ok() {
+        return Vec::new();
+    }
+
+    let parsed_url = pathetic::Uri::new(url).expect("Failed to parse the URL");
+
+    let mut output = Vec::new();
+
+    let path = parsed_url.path_segments().collect::<Vec<_>>().join("/");
+    output.push(path);
+
+    if let Some(query) = parsed_url.query() {
+        for param in query.split('&') {
+            if let Some((name, _)) = param.split_once('=') {
+                output.push(name.to_string());
+            } else {
+                output.push(param.to_string());
+            }
+        }
+    }
+
+    output
 }

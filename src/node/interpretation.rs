@@ -3,7 +3,7 @@ use std::error::Error;
 use bincode::{serialize, deserialize};
 use std::rc::{Rc};
 
-use super::{Node, ROOT_NODE_HASH, TEXT_NODE_HASH, node_to_html_with_target_node};
+use super::{Node, ROOT_NODE_HASH, node_to_html_with_target_node};
 use crate::node_data::{NodeData};
 use crate::llm;
 
