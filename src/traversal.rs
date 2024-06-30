@@ -19,16 +19,11 @@ pub struct ColorPalette {
 pub struct Traversal {
     pub output_tree: Rc<Node>,
     pub basis_tree: Option<Rc<Node>>,
+    pub metadata: Option<TreeMetadata>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OutputMeta {
-    object_count: u64,
-    type_count: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OutputMetadata {
+pub struct ContentMetadata {
     pub is_id: bool,
     pub is_url: bool,
     pub is_page_link: bool,
@@ -36,16 +31,22 @@ pub struct OutputMetadata {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OutputValue {
-    pub meta: OutputMetadata,
+pub struct ContentValue {
+    pub meta: ContentMetadata,
     pub name: String,
     pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Content {
+    pub values: Vec<ContentValue>,
+    pub children: Vec<Content>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Output {
-    pub values: Vec<OutputValue>,
-    pub children: Vec<Output>,
+    pub data: Content,
+    pub metadata: Option<TreeMetadata>,
 }
 
 #[derive(Debug)]
@@ -57,7 +58,7 @@ pub enum OutputFormats {
 
 const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
 
-impl Output {
+impl Content {
     pub fn remove_empty(&mut self) {
         self.children.iter_mut().for_each(|child| child.remove_empty());
         self.children.retain(|child| !child.is_empty());
@@ -69,23 +70,23 @@ impl Output {
 }
 
 fn process_node(
-    output_node: &Rc<Node>,
+    content_node: &Rc<Node>,
     basis_tree: &Rc<Node>,
-    output: &mut Output
+    content: &mut Content
 ) {
-    let lineage = output_node.get_lineage();
+    let lineage = content_node.get_lineage();
     let basis_node = search_tree_by_lineage(Rc::clone(basis_tree), lineage.clone()).unwrap();
 
     for node_data in basis_node.data.borrow().iter() {
-        if output_node.xml.is_text() && !node_data.text_fields.clone().unwrap().is_informational {
+        if content_node.xml.is_text() && !node_data.text_fields.clone().unwrap().is_informational {
             log::info!("Ignoring non-informational text node");
             continue;
         }
 
-        let output_value = OutputValue {
+        let content_value = ContentValue {
             name: node_data.name.clone(),
-            value: node_data.value(&output_node.xml),
-            meta: OutputMetadata {
+            value: node_data.value(&content_node.xml),
+            meta: ContentMetadata {
                 is_id: node_data.element_fields.clone().map_or(false, |fields| fields.is_id),
                 is_url: node_data.element_fields.clone().map_or(false, |fields| fields.is_url),
                 is_page_link: node_data.element_fields.clone().map_or(false, |fields| fields.is_page_link),
@@ -93,7 +94,7 @@ fn process_node(
             },
         };
 
-        output.values.push(output_value);
+        content.values.push(content_value);
     }
 }
 
@@ -102,6 +103,7 @@ impl Traversal {
         Traversal {
             output_tree: tree,
             basis_tree: None,
+            metadata: None,
         }
     }
 
@@ -111,42 +113,48 @@ impl Traversal {
         self
     }
 
+    pub fn with_metadata(mut self, metadata: TreeMetadata) -> Self {
+        self.metadata = Some(metadata);
+
+        self
+    }
+
     pub fn harvest(mut self) -> Result<String, Errors> {
-        let mut output = Output {
+        let mut content = Content {
             values: Vec::new(),
             children: Vec::new(),
         };
 
         fn recurse(
-            mut output_node: Rc<Node>,
+            mut content_node: Rc<Node>,
             basis_tree: Rc<Node>,
-            output: &mut Output,
+            content: &mut Content,
         ) {
-            if output_node.is_linear_tail() {
+            if content_node.is_linear_tail() {
                 panic!("Did not expect to encounter node in linear tail");
             }
 
-            if output_node.is_linear_head() {
-                log::info!("Output node is head of linear sequence of nodes");
+            if content_node.is_linear_head() {
+                log::info!("Content node is head of linear sequence of nodes");
 
-                while output_node.is_linear() {
-                    process_node(&output_node, &basis_tree, output);
+                while content_node.is_linear() {
+                    process_node(&content_node, &basis_tree, content);
 
-                    output_node = {
-                        let next_node = output_node.children.borrow().first().expect("Linear output node has no children").clone();
+                    content_node = {
+                        let next_node = content_node.children.borrow().first().expect("Linear content node has no children").clone();
                         next_node.clone()
                     };
                 }
 
-                process_node(&output_node, &basis_tree, output);
+                process_node(&content_node, &basis_tree, content);
             } else {
-                log::info!("Output node is non-linear");
+                log::info!("Content node is non-linear");
 
-                process_node(&output_node, &basis_tree, output);
+                process_node(&content_node, &basis_tree, content);
             }
 
-            for child in output_node.children.borrow().iter() {
-                let mut child_output = Output {
+            for child in content_node.children.borrow().iter() {
+                let mut child_content = Content {
                     values: Vec::new(),
                     children: Vec::new(),
                 };
@@ -154,21 +162,26 @@ impl Traversal {
                 recurse(
                     child.clone(),
                     basis_tree.clone(),
-                    &mut child_output,
+                    &mut child_content,
                 );
 
-                output.children.push(child_output);
+                content.children.push(child_content);
             }
         }
 
         recurse(
             self.output_tree.clone(),
             self.basis_tree.clone().unwrap(),
-            &mut output,
+            &mut content,
         );
 
-        log::info!("Removing empty objects from output...");
-        output.remove_empty();
+        log::info!("Removing empty objects from content...");
+        content.remove_empty();
+
+        let output = Output {
+           data: content,
+           metadata: self.metadata,
+        };
 
         let output_format = DEFAULT_OUTPUT_FORMAT;
         log::debug!("output_format: {:?}", output_format);

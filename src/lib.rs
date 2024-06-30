@@ -94,10 +94,15 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done pruning basis tree");
 
     basis_tree.debug_visualize("basis");
+
+
+
     
     let metadata = get_tree_metadata(Rc::clone(&basis_tree)).await;
     log::debug!("metadata: {:?}", metadata);
-    unimplemented!();
+
+
+
 
     grow_tree(Rc::clone(&basis_tree), Rc::clone(&output_tree)).await;
     log::info!("Done growing basis tree");
@@ -109,6 +114,7 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
 
     Traversal::from_tree(output_tree)
         .with_basis(basis_tree)
+        .with_metadata(metadata)
         .harvest()
 }
 
