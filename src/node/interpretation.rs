@@ -26,6 +26,30 @@ pub fn get_root_node(node: Rc<Node>) -> Rc<Node> {
 }
 
 impl Node {
+    pub async fn get_tree_title(&self, _db: &Db) -> String {
+        log::trace!("In get_tree_title");
+
+        assert!(self.parent.borrow().is_none(), "Expected to receive root node");
+
+        // Assuming, for now, it is good enough to use text node under title tag
+        // which can be done classically
+
+        let children = self.children.borrow();
+        let html = children.first().unwrap();
+        let children = html.children.borrow();
+        let head = children.iter().find(|item| {
+            item.xml.get_element_tag_name() == "head"
+        }).unwrap();
+        let children = head.children.borrow();
+        let title = children.iter().find(|item| {
+            item.xml.get_element_tag_name() == "title"
+        }).unwrap();
+        let children = title.children.borrow();
+        let text = children.first().unwrap().xml.to_string();
+
+        text
+    }
+
     pub async fn interpret_node(&self, db: &Db, output_tree: &Rc<Node>) -> bool {
         log::trace!("In interpret_node");
 

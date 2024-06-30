@@ -19,6 +19,11 @@ use crate::xml::*;
 const ROOT_NODE_HASH: &str = "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TreeMetadata {
+    pub title: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Tree {
     pub root: Rc<Node>, 
 }
@@ -70,6 +75,18 @@ pub fn build_tree(xml: String) -> Rc<Node> {
     let xml = Xml::parse(&mut reader).expect("Could not parse XML");
 
     Node::from_xml(&xml, None)
+}
+
+pub async fn get_tree_metadata(basis_tree: Rc<Node>) -> TreeMetadata {
+    log::trace!("In get_tree_metadata");
+
+    let db = sled::open("src/database/tree_metadata").expect("Could not connect to datbase");
+
+    let title = basis_tree.get_tree_title(&db).await;
+
+    TreeMetadata {
+        title: title,
+    }
 }
 
 pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
