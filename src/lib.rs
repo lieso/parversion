@@ -3,6 +3,7 @@ use std::fs::{File};
 use std::process;
 use std::io::{Read};
 use std::rc::{Rc};
+use scraper::Html;
 
 mod error;
 mod llm;
@@ -24,54 +25,56 @@ use node::{
 use error::{Errors};
 use traversal::{Traversal};
 
-pub fn string_to_json(raw_document: String) -> Result<String, Errors> {
-    log::trace!("In string_to_json");
+pub fn normalize(text: String) -> Result<String, Errors> {
+    log::trace!("In normalize");
 
-    if raw_document.trim().is_empty() {
+    if text.trim().is_empty() {
         log::info!("Document not provided, aborting...");
         return Err(Errors::DocumentNotProvided);
     }
 
-    let document = raw_document.trim().to_string();
-
     return Runtime::new().unwrap().block_on(async {
-
-        if utility::is_valid_html(&document) {
-            log::info!("Document is valid HTML");
-
-
-
-
-            //let color_palette = vision::html_to_color_palette(document.clone()).await;
-
-            //unimplemented!();
-
-
-
-
-
-
-            let xhtml = utility::html_to_xhtml(&document).expect("Could not convert HTML to XHTML");
-
-            let json = xml_to_json(&xhtml).await?;
-
-            return Ok(json);
-        }
-
-        if utility::is_valid_xml(&document) {
+        if utility::is_valid_xml(&text) {
             log::info!("Document is valid XML");
 
-            let json = xml_to_json(&document).await?;
+            let result = normalize_xml(&text).await?;
 
-            return Ok(json);
+            return Ok(result);
+        }
+
+        if let Some(xml) = utility::string_to_xml(&text) {
+            log:info!("Managed to convert string to XML");
+
+            let result = normalize_xml(&text).await?;
+
+            return Ok(result);
         }
 
         Err(Errors::UnexpectedDocumentType)
     });
 }
 
-pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
-    log::trace!("In xml_to_json");
+pub fn normalize_file(file_name: &str) -> Result<String, Errors> {
+    log::trace!("In normalize_file");
+    log::debug!("file_name: {}", file_name);
+
+    let mut document = String::new();
+
+    let mut file = File::open(file_name).unwrap_or_else(|err| {
+        eprintln!("Failed to open file: {}", err);
+        process::exit(1);
+    });
+
+    file.read_to_string(&mut document).unwrap_or_else(|err| {
+        eprintln!("Failed to read file: {}", err);
+        process::exit(1);
+    });
+
+    return normalize(document);
+}
+
+pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
+    log::trace!("In normalize_xml");
 
     let xml = utility::preprocess_xml(xml_string);
     log::info!("Done preprocessing XML");
@@ -94,15 +97,12 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done pruning basis tree");
 
     basis_tree.debug_visualize("basis");
+    panic!("testing");
 
-
-
-    
     let metadata = get_tree_metadata(Rc::clone(&basis_tree)).await;
     log::debug!("metadata: {:?}", metadata);
 
-
-
+    panic!("testing");
 
     grow_tree(Rc::clone(&basis_tree), Rc::clone(&output_tree)).await;
     log::info!("Done growing basis tree");
@@ -118,29 +118,10 @@ pub async fn xml_to_json(xml_string: &str) -> Result<String, Errors> {
         .harvest()
 }
 
-pub fn get_basis_tree() -> Rc<Node> {
+fn get_basis_tree() -> Rc<Node> {
     Node::from_void()
 }
 
-pub fn save_basis_tree(tree: Rc<Node>) {
+fn save_basis_tree(tree: Rc<Node>) {
     log::warn!("save_basis_tree unimplemented");
-}
-
-pub fn file_to_json(file_name: &str) -> Result<String, Errors> {
-    log::trace!("In file_to_json");
-    log::debug!("file_name: {}", file_name);
-
-    let mut document = String::new();
-
-    let mut file = File::open(file_name).unwrap_or_else(|err| {
-        eprintln!("Failed to open file: {}", err);
-        process::exit(1);
-    });
-
-    file.read_to_string(&mut document).unwrap_or_else(|err| {
-        eprintln!("Failed to read file: {}", err);
-        process::exit(1);
-    });
-
-    return string_to_json(document);
 }

@@ -33,7 +33,6 @@ fn init_logging() -> Builder {
 fn main() {
     let _ = init_logging();
 
-
     let mut document = String::new();
 
     match load_stdin() {
@@ -56,11 +55,11 @@ fn main() {
     let result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::file_to_json(file_name)
+            parversion::normalize_file(file_name)
         }
         None => {
             log::info!("File not provided");
-            parversion::string_to_json(document)
+            parversion::normalize(document)
         }
     };
 
@@ -70,4 +69,3 @@ fn main() {
         println!("An error occurred while processing document");
     }
 }
-

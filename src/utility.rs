@@ -9,48 +9,16 @@ use xmltree::Element;
 use std::io::Cursor;
 use std::str::from_utf8;
 
-
-
-
 const BLACKLISTED_ATTTRIBUTES: [&str; 7] = [
     "style", "bgcolor", "border", "cellpadding", "cellspacing",
     "width", "height", 
 ];
-
-
-
 
 pub fn is_valid_xml(xml_string: &str) -> bool {
     match Element::parse(xml_string.as_bytes()) {
         Ok(_) => true,
         Err(_) => false,
     }
-}
-
-pub fn is_valid_html(html_string: &str) -> bool {
-    let parser = parse_document(rcdom::RcDom::default(), ParseOpts::default());
-
-    let dom = parser.one(html_string);
-    log::debug!("dom.errors: {:?}", dom.errors);
-
-    if !dom.errors.is_empty() {
-        for error in &dom.errors {
-            log::debug!("Error: {}", error);
-         }
-    }
-
-    dom.errors.is_empty()
-}
-
-pub fn html_to_xhtml(html: &str) -> io::Result<String> {
-    let xhtml = remove_doctype(&html);
-    log::warn!("NOT IMPLEMENTED");
-    Ok(xhtml)
-}
-
-pub fn remove_doctype(html: &str) -> String {
-    let doctype_pattern = regex::Regex::new(r"(?i)<!DOCTYPE\s+[^>]*>").unwrap();
-    doctype_pattern.replace(html, "").to_string()
 }
 
 pub fn preprocess_xml(xml_string: &str) -> String {
