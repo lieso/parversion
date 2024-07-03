@@ -43,7 +43,7 @@ pub fn normalize(text: String) -> Result<String, Errors> {
         }
 
         if let Some(xml) = utility::string_to_xml(&text) {
-            log:info!("Managed to convert string to XML");
+            log::info!("Managed to convert string to XML");
 
             let result = normalize_xml(&text).await?;
 
