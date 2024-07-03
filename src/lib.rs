@@ -45,7 +45,7 @@ pub fn normalize(text: String) -> Result<String, Errors> {
         if let Some(xml) = utility::string_to_xml(&text) {
             log::info!("Managed to convert string to XML");
 
-            let result = normalize_xml(&text).await?;
+            let result = normalize_xml(&xml).await?;
 
             return Ok(result);
         }
@@ -97,12 +97,9 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done pruning basis tree");
 
     basis_tree.debug_visualize("basis");
-    panic!("testing");
 
     let metadata = get_tree_metadata(Rc::clone(&basis_tree)).await;
     log::debug!("metadata: {:?}", metadata);
-
-    panic!("testing");
 
     grow_tree(Rc::clone(&basis_tree), Rc::clone(&output_tree)).await;
     log::info!("Done growing basis tree");

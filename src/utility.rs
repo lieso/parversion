@@ -54,9 +54,9 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
             }
         }
         NodeData::Text { ref contents } => {
-            //let contents = &contents.borrow().escape_default();
             let contents = &contents.borrow();
-            let text = format!("{}{}\n", real_indent, contents.trim());
+            let text = format!("{}{}\n", real_indent, escape_xml(contents.trim()));
+
             if !text.trim().is_empty() {
                 xhtml.push_str(&text);
             }
@@ -75,10 +75,10 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
 
             for attr in attrs.borrow().iter() {
                 let attr_name = &*attr.name.local.trim();
-                let attr_value = &*attr.value.trim();
-                
+                let attr_value = escape_xml(&*attr.value.trim());
+
                 xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(),
- attr_value.escape_default()));
+ attr_value));
             }
 
             xhtml.push_str(">\n");
@@ -91,6 +91,14 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
         },
         _ => {}
     }
+}
+
+fn escape_xml(data: &str) -> String {
+    data.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
 }
 
 pub fn preprocess_xml(xml_string: &str) -> String {
