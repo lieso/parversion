@@ -7,6 +7,8 @@ use super::{Node, ROOT_NODE_HASH, node_to_html_with_target_node};
 use crate::node_data::{NodeData};
 use crate::llm;
 
+const SURROUNDING_XML_LENGTH: usize = 2000;
+
 pub fn get_root_node(node: Rc<Node>) -> Rc<Node> {
     let mut root_node = node.clone();
 
@@ -100,18 +102,23 @@ impl Node {
         if self.xml.is_text() {
             format!(
                 "{}<!--Target node start -->{}<!--Target node end -->{}",
-                document.0,
+                take_from_end(&document.0),
                 document.2,
-                document.4
+                take_from_start(&document.4),
             )
         } else {
-            format!(
-                "{}<!--Target node start -->{}<!--Target node end -->{}{}{}",
-                document.0,
-                document.1,
+            let after_start_tag = &format!(
+                "{}{}{}",
                 document.2,
                 document.3,
                 document.4
+            );
+
+            format!(
+                "{}<!--Target node start -->{}<!--Target node end -->{}",
+                take_from_end(&document.0),
+                document.1,
+                take_from_start(after_start_tag),
             )
         }
     }
@@ -170,3 +177,20 @@ fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Er
         None => Ok(None),
     }
 } 
+
+fn take_from_end(s: &str) -> &str {
+    let len = s.len();
+    if SURROUNDING_XML_LENGTH >= len {
+        s
+    } else {
+        &s[len - SURROUNDING_XML_LENGTH..]
+    }
+}
+
+fn take_from_start(s: &str) -> &str {
+    if SURROUNDING_XML_LENGTH >= s.len() {
+        s
+    } else {
+        &s[..SURROUNDING_XML_LENGTH]
+    }
+}
