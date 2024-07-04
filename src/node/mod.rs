@@ -4,7 +4,7 @@ use tokio::time::{sleep, Duration};
 
 use std::rc::{Rc};
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{VecDeque};
 
 mod debug;
 mod interpretation;
@@ -121,7 +121,7 @@ pub fn prune_tree(tree: Rc<Node>) {
                 break;
             }
 
-            let mut children_borrow = node.children.borrow();
+            let children_borrow = node.children.borrow();
             log::debug!("Node has {} children", children_borrow.len());
 
             let purported_twins: Option<(Rc<Node>, Rc<Node>)> = children_borrow.iter()

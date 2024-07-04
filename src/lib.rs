@@ -3,7 +3,6 @@ use std::fs::{File};
 use std::process;
 use std::io::{Read};
 use std::rc::{Rc};
-use scraper::Html;
 
 mod error;
 mod llm;
@@ -12,7 +11,6 @@ mod node_data;
 mod traversal;
 mod utility;
 mod xml;
-mod vision;
 
 use node::{
     Node,
@@ -119,6 +117,6 @@ fn get_basis_tree() -> Rc<Node> {
     Node::from_void()
 }
 
-fn save_basis_tree(tree: Rc<Node>) {
+fn save_basis_tree(_tree: Rc<Node>) {
     log::warn!("save_basis_tree unimplemented");
 }

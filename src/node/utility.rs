@@ -1,31 +1,10 @@
 use std::collections::{VecDeque};
 use sha2::{Sha256, Digest};
-use std::rc::{Rc};
 
 use super::Node;
 
-pub fn generate_element_node_hash(tags: Vec<String>, attributes: Vec<String>) -> String {
-    let mut hasher = Sha256::new();
-    
-    let mut hasher_items = Vec::new();
-
-    for tag in tags.iter() {
-        hasher_items.push(tag.to_string());
-    }
-
-    for attribute in attributes.iter() {
-        hasher_items.push(attribute.to_string());
-    }
-
-    hasher_items.sort();
-
-    hasher.update(hasher_items.join(""));
-
-    format!("{:x}", hasher.finalize())
-}
-
 impl Node {
-    pub fn ancestry_hash(&self) -> String {
+    pub fn _ancestry_hash(&self) -> String {
         let mut hasher = Sha256::new();
 
         let mut hasher_items = Vec::new();
@@ -33,7 +12,7 @@ impl Node {
 
         if let Some(parent) = self.parent.borrow().as_ref() {
             hasher_items.push(
-                parent.ancestry_hash()
+                parent._ancestry_hash()
             );
         }
 
@@ -77,7 +56,7 @@ impl Node {
         lineage
     }
 
-    pub fn get_depth(&self) -> u16 {
+    pub fn _get_depth(&self) -> u16 {
         let mut depth = 0;
 
         let mut current_parent = self.parent.borrow().clone();

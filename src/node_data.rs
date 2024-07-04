@@ -25,7 +25,7 @@ pub struct NodeData {
 
 impl NodeData {
     pub fn value(&self, xml: &Xml) -> String {
-        if let Some(text_fields) = &self.text_fields {
+        if let Some(_text_fields) = &self.text_fields {
             return xml.to_string();
         }
 

@@ -1,6 +1,3 @@
-use std::io;
-use std::default::Default;
-use std::string::String;
 use xmltree::Element;
 use std::io::Cursor;
 use std::str::from_utf8;

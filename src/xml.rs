@@ -33,7 +33,7 @@ pub fn xml_to_hash(xml: &Xml) -> String {
         hasher_items.push("ATTRIBUTE:".to_owned() + &attribute.clone());
 
         if attribute == "href" {
-            let mut parts = url_to_hash_parts(&value);
+            let parts = url_to_hash_parts(&value);
             for part in parts {
                 hasher_items.push("HREF:".to_owned() + &part);
             }
@@ -45,23 +45,6 @@ pub fn xml_to_hash(xml: &Xml) -> String {
     hasher.update(hasher_items.join(""));
 
     format!("{:x}", hasher.finalize())
-}
-
-pub fn combine_xml(parent: &Xml, child: &Xml) -> Xml {
-    let mut combined = parent.element.clone().expect("Parent XML is not an Element");
-
-    if let Some(child_element) = &child.element {
-        combined.children.push(xmltree::XMLNode::Element(child_element.clone()));
-    }
-
-    if let Some(child_text) = &child.text {
-        combined.children.push(xmltree::XMLNode::Text(child_text.clone()));
-    }
-
-    Xml {
-        element: Some(combined),
-        text: None,
-    }
 }
 
 impl Serialize for Xml {
@@ -209,28 +192,12 @@ impl Xml {
         Vec::new()
     }
 
-    pub fn has_children(&self) -> bool {
-        !&self.get_children().is_empty()
-    }
-
     pub fn is_text(&self) -> bool {
         self.text.is_some()
     }
 
     pub fn is_element(&self) -> bool {
         self.element.is_some()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.text.is_none() && self.element.is_none()
-    }
-
-    pub fn is_script_element(&self) -> bool {
-        if let Some(element) = &self.element {
-            return element.name == "script";
-        }
-
-        false
     }
 
     pub fn to_string(&self) -> String {
@@ -243,21 +210,6 @@ impl Xml {
         }
     }
 
-    pub fn to_string_with_child_string(&self, content: String) -> Result<String, String> {
-        if let Some(element) = &self.element {
-            let result = format!(
-                "{}{}{}",
-                get_opening_tag(&element),
-                content,
-                get_closing_tag(&element),
-            );
-
-            Ok(result)
-        } else {
-            Err("XML is not an Element; it can't take any children".to_string())
-        }
-    }
-
     pub fn to_hash(&self) -> String {
         let mut hasher = Sha256::new();
 
@@ -266,7 +218,7 @@ impl Xml {
         format!("{:x}", hasher.finalize())
     }
 
-    pub fn is_equal(&self, xml: Xml) -> bool {
+    pub fn _is_equal(&self, xml: Xml) -> bool {
         if let Some(element_a) = &self.element {
             if let Some(element_b) = xml.element {
                 if element_a.name != element_b.name {

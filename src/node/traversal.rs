@@ -16,14 +16,6 @@ pub fn bfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     }
 }
 
-pub fn dfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
-    visit(&node);
-
-    for child in node.children.borrow().iter() {
-        dfs(child.clone(), visit);
-    }
-}
-
 pub fn post_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     for child in node.children.borrow().iter() {
         post_order_traversal(child.clone(), visit);

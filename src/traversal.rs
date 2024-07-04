@@ -1,9 +1,5 @@
 use serde::{Serialize, Deserialize};
 use std::rc::{Rc};
-use std::collections::{HashMap, VecDeque};
-use uuid::Uuid;
-use std::fs::{OpenOptions};
-use std::io::{Write};
 
 use crate::node::*;
 use crate::error::{Errors};
@@ -119,7 +115,7 @@ impl Traversal {
         self
     }
 
-    pub fn harvest(mut self) -> Result<String, Errors> {
+    pub fn harvest(self) -> Result<String, Errors> {
         let mut content = Content {
             values: Vec::new(),
             children: Vec::new(),
@@ -194,10 +190,6 @@ impl Traversal {
 
                 Ok(serialized)
             },
-            _ => {
-                log::error!("Unexpected output format: {:?}", output_format);
-                Err(Errors::UnexpectedOutputFormat)
-            }
         }
     }
 }

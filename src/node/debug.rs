@@ -1,11 +1,8 @@
 use std::rc::{Rc};
-use std::fs::OpenOptions;
-use std::io::Write;
 use dot::{GraphWalk, Labeller};
 use std::fs::File;
 
 use super::{Node};
-use crate::node::traversal;
 
 impl Node {
     pub fn debug_visualize(&self, label: &str) {

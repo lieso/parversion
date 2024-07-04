@@ -52,7 +52,7 @@ impl Node {
         text
     }
 
-    pub async fn interpret_node(&self, db: &Db, output_tree: &Rc<Node>) -> bool {
+    pub async fn interpret_node(&self, db: &Db, _output_tree: &Rc<Node>) -> bool {
         log::trace!("In interpret_node");
 
         if let Some(classical_interpretation) = self.interpret_node_classically() {
