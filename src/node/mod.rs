@@ -110,7 +110,18 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
             sleep(Duration::from_secs(1)).await;
         }
 
-        *node.data.borrow_mut() = node_data;
+        let filtered_node_data = node_data.clone().into_iter().filter(|item| {
+            if let Some(element_fields) = &item.element_fields {
+                if constants::SEEN_BLACKLISTED_ATTTRIBUTES.contains(&element_fields.attribute.as_str()) {
+                    log::warn!("Ignoring blacklisted attribute: {}", element_fields.attribute);
+                    return false;
+                }
+            }
+
+            true
+        }).collect();
+
+        *node.data.borrow_mut() = filtered_node_data;
     }
 }
 
@@ -180,8 +191,6 @@ pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>)
     log::trace!("In search_tree_by_lineage");
 
     while let Some(hash) = lineage.pop_front() {
-        log::trace!("hash: {}", hash);
-
         let node = tree
             .children
             .borrow()
