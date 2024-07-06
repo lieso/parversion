@@ -9,6 +9,6 @@ pub const UNSEEN_BLACKLISTED_ATTTRIBUTES: [&str; 12] = [
     "aria-hidden", "size",
 ];
 
-pub const SEEN_BLACKLISTED_ATTTRIBUTES: [&str; 3] = [
-    "rel", "class", "indent"
+pub const SEEN_BLACKLISTED_ATTTRIBUTES: [&str; 4] = [
+    "rel", "class", "indent", "title"
 ];
