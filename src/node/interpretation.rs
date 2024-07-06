@@ -52,13 +52,12 @@ impl Node {
         text
     }
 
-    pub async fn interpret_node(&self, db: &Db, _output_tree: &Rc<Node>) -> bool {
+    pub async fn interpret_node(&self, db: &Db, _output_tree: &Rc<Node>) -> (Vec<NodeData>, bool) {
         log::trace!("In interpret_node");
 
         if let Some(classical_interpretation) = self.interpret_node_classically() {
             log::info!("Node interpreted classically");
-            *self.data.borrow_mut() = classical_interpretation;
-            return false;
+            return (classical_interpretation, false);
         }
 
         let key = &self.xml.to_hash();
@@ -69,8 +68,7 @@ impl Node {
 
         if let Some(cache) = cache {
             log::info!("Cache hit!");
-            *self.data.borrow_mut() = cache.clone();
-            return false;
+            return (cache.clone(), false);
         } else {
             log::info!("Cache miss!");
 
@@ -80,13 +78,11 @@ impl Node {
                 .await
                 .expect("LLM unable to generate node data");
 
-            *self.data.borrow_mut() = llm_result.clone();
-
             store_node_data(&db, &key, llm_result.clone())
                 .expect("Unable to persist node data to database");
-        }
 
-        true
+            return (llm_result.clone(), true);
+        }
     }
 
     fn node_to_xml_snippet_with_context(&self) -> String {

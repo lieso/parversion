@@ -104,9 +104,13 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
         log::debug!("id: {}, xml: {}", node.id, node.xml);
 
-        if node.interpret_node(&db, &output_tree).await {
+        let (node_data, should_sleep) = node.interpret_node(&db, &output_tree).await;
+
+        if should_sleep {
             sleep(Duration::from_secs(1)).await;
         }
+
+        *node.data.borrow_mut() = node_data;
     }
 }
 
