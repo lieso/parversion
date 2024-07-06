@@ -26,11 +26,13 @@ pub struct NodeData {
 impl NodeData {
     pub fn value(&self, xml: &Xml) -> String {
         if let Some(_text_fields) = &self.text_fields {
-            return xml.to_string();
+            let value = xml.to_string();
+            return String::from(value.trim_matches(|c| c == ' ' || c == '\n'));
         }
 
         if let Some(element_fields) = &self.element_fields {
-            return xml.get_attribute_value(&element_fields.attribute).unwrap();
+            let value = xml.get_attribute_value(&element_fields.attribute).unwrap();
+            return String::from(value.trim_matches(|c| c == ' ' || c == '\n'));
         }
 
         panic!("NodeData neither has element or text fields!");
