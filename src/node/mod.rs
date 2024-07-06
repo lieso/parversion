@@ -14,9 +14,7 @@ mod utility;
 use crate::node_data::{NodeData};
 use crate::node::traversal::*;
 use crate::xml::*;
-
-// echo -n "root" | sha256sum
-const ROOT_NODE_HASH: &str = "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2";
+use crate::constants;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TreeMetadata {
@@ -42,7 +40,7 @@ impl Node {
     pub fn from_void() -> Rc<Self> {
         Rc::new(Node {
             id: Uuid::new_v4().to_string(),
-            hash: ROOT_NODE_HASH.to_string(),
+            hash: constants::ROOT_NODE_HASH.to_string(),
             xml: Xml::from_void(),
             parent: None.into(),
             data: RefCell::new(Vec::new()),

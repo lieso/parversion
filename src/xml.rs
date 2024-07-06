@@ -9,9 +9,7 @@ use pathetic;
 use url::Url;
 
 use crate::error::{Errors};
-
-// echo -n "text" | sha256sum
-const TEXT_NODE_HASH: &str = "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1";
+use crate::constants;
 
 #[derive(Clone, Debug)]
 pub struct Xml {
@@ -21,7 +19,7 @@ pub struct Xml {
 
 pub fn xml_to_hash(xml: &Xml) -> String {
     if xml.is_text() {
-        return TEXT_NODE_HASH.to_string();
+        return constants::TEXT_NODE_HASH.to_string();
     }
 
     let mut hasher = Sha256::new();

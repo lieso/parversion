@@ -3,11 +3,11 @@ use std::error::Error;
 use bincode::{serialize, deserialize};
 use std::rc::{Rc};
 
-use super::{Node, ROOT_NODE_HASH, node_to_html_with_target_node};
+use super::{Node, node_to_html_with_target_node};
 use crate::node_data::{NodeData};
 use crate::llm;
-
-const SURROUNDING_XML_LENGTH: usize = 2000;
+use crate::config::{CONFIG};
+use crate::constants;
 
 pub fn get_root_node(node: Rc<Node>) -> Rc<Node> {
     let mut root_node = node.clone();
@@ -129,7 +129,7 @@ impl Node {
         let attributes = self.xml.get_attributes();
 
         // * Root node
-        if self.hash == ROOT_NODE_HASH {
+        if self.hash == constants::ROOT_NODE_HASH {
             log::info!("Node is root node, probably don't need to do anything here");
             return Some(Vec::new());
         }
@@ -179,18 +179,20 @@ fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Er
 } 
 
 fn take_from_end(s: &str) -> &str {
+    let config = CONFIG.lock().unwrap();
     let len = s.len();
-    if SURROUNDING_XML_LENGTH >= len {
+    if config.llm.target_node_adjacent_xml_length >= len {
         s
     } else {
-        &s[len - SURROUNDING_XML_LENGTH..]
+        &s[len - config.llm.target_node_adjacent_xml_length..]
     }
 }
 
 fn take_from_start(s: &str) -> &str {
-    if SURROUNDING_XML_LENGTH >= s.len() {
+    let config = CONFIG.lock().unwrap();
+    if config.llm.target_node_adjacent_xml_length >= s.len() {
         s
     } else {
-        &s[..SURROUNDING_XML_LENGTH]
+        &s[..config.llm.target_node_adjacent_xml_length]
     }
 }

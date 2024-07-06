@@ -5,10 +5,7 @@ use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
-const BLACKLISTED_ATTTRIBUTES: [&str; 7] = [
-    "style", "bgcolor", "border", "cellpadding", "cellspacing",
-    "width", "height", 
-];
+use crate::constants;
 
 pub fn is_valid_xml(xml_string: &str) -> bool {
     match Element::parse(xml_string.as_bytes()) {
@@ -102,7 +99,7 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     let mut root = Element::parse(xml_string.as_bytes()).expect("Unable to parse XML");
 
     fn remove_attributes(element: &mut Element) {
-        element.attributes.retain(|attr, _| !BLACKLISTED_ATTTRIBUTES.contains(&attr.as_str()));
+        element.attributes.retain(|attr, _| !constants::BLACKLISTED_ATTTRIBUTES.contains(&attr.as_str()));
 
         for child in &mut element.children {
             if let xmltree::XMLNode::Element(ref mut el) = child {

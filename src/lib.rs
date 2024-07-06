@@ -11,6 +11,8 @@ mod node_data;
 mod traversal;
 mod utility;
 mod xml;
+mod config;
+mod constants;
 
 use node::{
     Node,
