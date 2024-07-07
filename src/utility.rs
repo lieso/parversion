@@ -99,7 +99,7 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     let mut root = Element::parse(xml_string.as_bytes()).expect("Unable to parse XML");
 
     fn remove_attributes(element: &mut Element) {
-        element.attributes.retain(|attr, _| !constants::UNSEEN_BLACKLISTED_ATTTRIBUTES.contains(&attr.as_str()));
+        element.attributes.retain(|attr, _| !constants::UNSEEN_BLACKLISTED_ATTRIBUTES.contains(&attr.as_str()));
 
         for child in &mut element.children {
             if let xmltree::XMLNode::Element(ref mut el) = child {

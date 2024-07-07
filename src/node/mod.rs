@@ -110,16 +110,49 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
             sleep(Duration::from_secs(1)).await;
         }
 
+
+
+
+        // ***************
+
+
+
+
         let filtered_node_data = node_data.clone().into_iter().filter(|item| {
             if let Some(element_fields) = &item.element_fields {
-                if constants::SEEN_BLACKLISTED_ATTTRIBUTES.contains(&element_fields.attribute.as_str()) {
-                    log::warn!("Ignoring blacklisted attribute: {}", element_fields.attribute);
+                let attribute = &element_fields.attribute.as_str();
+                let value = item.value(&node.xml);
+
+                if constants::SEEN_BLACKLISTED_ATTRIBUTES.contains(attribute) {
+                    log::warn!("Ignoring blacklisted attribute: {}", attribute);
                     return false;
                 }
+
+
+                // * href values that execute javascript
+
+                if attribute == &"href" && value.trim_start().to_lowercase().starts_with("javascript") {
+                    log::warn!("Ignoring href that executes javascript");
+                    return false;
+                }
+
+
+
+
+
             }
 
             true
         }).collect();
+
+
+
+
+
+        // ***************
+
+
+
 
         *node.data.borrow_mut() = filtered_node_data;
     }
