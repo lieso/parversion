@@ -183,20 +183,35 @@ fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Er
 } 
 
 fn take_from_end(s: &str) -> &str {
-    let config = CONFIG.lock().unwrap();
-    let len = s.len();
-    if config.llm.target_node_adjacent_xml_length >= len {
-        s
-    } else {
-        &s[len - config.llm.target_node_adjacent_xml_length..]
-    }
-}
+     let config = CONFIG.lock().unwrap();
+     let len = s.len();
+     if config.llm.target_node_adjacent_xml_length >= len {
+         s
+     } else {
+         let start_index = len - config.llm.target_node_adjacent_xml_length;
+         let mut adjusted_start = start_index;
 
-fn take_from_start(s: &str) -> &str {
-    let config = CONFIG.lock().unwrap();
-    if config.llm.target_node_adjacent_xml_length >= s.len() {
-        s
-    } else {
-        &s[..config.llm.target_node_adjacent_xml_length]
-    }
-}
+         while !s.is_char_boundary(adjusted_start) && adjusted_start < len {
+             adjusted_start += 1;
+         }
+
+         &s[adjusted_start..]
+     }
+ }
+
+ fn take_from_start(s: &str) -> &str {
+     let config = CONFIG.lock().unwrap();
+     if config.llm.target_node_adjacent_xml_length >= s.len() {
+         s
+     } else {
+         let end_index = config.llm.target_node_adjacent_xml_length;
+         let mut adjusted_end = end_index;
+
+         while !s.is_char_boundary(adjusted_end) && adjusted_end > 0 {
+             adjusted_end -= 1;
+         }
+
+         &s[..adjusted_end]
+     }
+ }
+
