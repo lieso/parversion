@@ -24,6 +24,7 @@ pub struct ContentMetadata {
     pub is_url: bool,
     pub is_page_link: bool,
     pub is_action_link: bool,
+    pub is_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -87,6 +88,10 @@ fn process_node(
                 is_url: node_data.element_fields.clone().map_or(false, |fields| fields.is_url),
                 is_page_link: node_data.element_fields.clone().map_or(false, |fields| fields.is_page_link),
                 is_action_link: node_data.element_fields.clone().map_or(false, |fields| fields.is_action_link),
+                is_primary_content: node_data.element_fields.clone().map_or(
+                    node_data.text_fields.clone().map_or(false, |fields| fields.is_primary_content),
+                    |fields| fields.is_primary_content
+                ),
             },
         };
 

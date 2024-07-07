@@ -8,12 +8,14 @@ pub struct ElementNodeMetadata {
     pub is_id: bool,
     pub is_url: bool,
     pub is_page_link: bool,
-    pub is_action_link: bool
+    pub is_action_link: bool,
+    pub is_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TextNodeMetadata {
     pub is_informational: bool,
+    pub is_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

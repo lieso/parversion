@@ -21,7 +21,9 @@ struct PartialElementNodeMetadata {
     #[serde(default = "default_is_false")]
     pub is_page_link: bool,
     #[serde(default = "default_is_false")]
-    pub is_action_link: bool
+    pub is_action_link: bool,
+    #[serde(default = "default_is_false")]
+    pub is_primary_content: bool
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -30,6 +32,7 @@ struct PartialTextNodeMetadata {
     pub is_semantically_significant: bool,
     pub is_page_action: bool,
     pub is_presentational: bool,
+    pub is_primary_content: bool
 }
 
 pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
@@ -74,6 +77,7 @@ For each informative attribute, I want you to provide the following:
 2. A new suitable name in snake case that could be used to represent this data programmatically. For example, it makes sense for href attributes to take a name containing the text 'url' plus any additional context.
 3. If the attribute value is an ID
 4. If the attribute value is a URL (is_url). For each URL, if present, classify each link as either "page link" (is_page_link) if it leads to another page (e.g., content pages, informational pages), or "action link" if it performs an action that mutates something (e.g., form submissions, deletion actions) (is_action_link)
+5. If the attribute value is part of the primary content. Primary content is the main information or core purpose of the web page, often the reason users visit the site, and includes closely-related metadata (is_primary_content)
 
 Here is the HTML element node for you to examine:
 
@@ -100,7 +104,8 @@ Please provide your response as an array of JSON objects that look like this:
     "new_name": "icon_url",
     "is_id": false,
     "is_page_link": false,
-    "is_action_link": false
+    "is_action_link": false,
+    "is_primary_content": false
 }}
 
 Anticipate the possibility that there might not be any significant information in the XML, in which case return an empty JSON array. Do no include any commentary, introduction or summary. Thank you."##, xml.to_string(), surrounding_xml, examples_message);
@@ -149,6 +154,7 @@ Anticipate the possibility that there might not be any significant information i
                 is_url: item.is_url.clone(),
                 is_page_link: item.is_page_link.clone(),
                 is_action_link: item.is_action_link.clone(),
+                is_primary_content: item.is_primary_content.clone(),
             }),
             text_fields: None,
         }
@@ -188,6 +194,7 @@ Please provide the following:
 3 Specify if the text node represents an in-page action (e.g., links like "hide" or "submit"):
    • is_page_action: These are non-informational, action-oriented text nodes that do not represent the primary content of the document but instead assist the reader in using the
      website (true/false).
+4 If text node is part of the primary content. Primary content is the main information or core purpose of the web page, often the reason users visit the site (is_primary_content)
 
 Here is the HTML text node for you to examine:
 
@@ -213,7 +220,8 @@ Please provide your response as a JSON object that looks like this:
     "name": "reply",
     "is_semantically_significant": true,
     "is_page_action": false,
-    "is_presentational": true
+    "is_presentational": true,
+    "is_primary_content": false
 }}
 
 And do not include any commentary, introduction or summary. Thank you."##, xml, surrounding_xml, examples_message);
@@ -257,6 +265,7 @@ And do not include any commentary, introduction or summary. Thank you."##, xml, 
         name: partial_node_data.name,
         text_fields: Some(TextNodeMetadata {
             is_informational: partial_node_data.is_semantically_significant && !partial_node_data.is_page_action && !partial_node_data.is_presentational,
+            is_primary_content: partial_node_data.is_primary_content.clone(),
         }),
         element_fields: None,
     };
