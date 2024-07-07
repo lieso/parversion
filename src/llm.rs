@@ -23,7 +23,7 @@ struct PartialElementNodeMetadata {
     #[serde(default = "default_is_false")]
     pub is_action_link: bool,
     #[serde(default = "default_is_false")]
-    pub is_primary_content: bool
+    pub is_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -32,7 +32,8 @@ struct PartialTextNodeMetadata {
     pub is_semantically_significant: bool,
     pub is_page_action: bool,
     pub is_presentational: bool,
-    pub is_primary_content: bool
+    pub is_primary_content: bool,
+    pub is_main_primary_content: bool,
 }
 
 pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
@@ -194,7 +195,8 @@ Please provide the following:
 3 Specify if the text node represents an in-page action (e.g., links like "hide" or "submit"):
    • is_page_action: These are non-informational, action-oriented text nodes that do not represent the primary content of the document but instead assist the reader in using the
      website (true/false).
-4 If text node is part of the primary content. Primary content is the main information or core purpose of the web page, often the reason users visit the site (is_primary_content)
+5. If the text node is part of the primary content. Primary content is the main information or core purpose of the web page, often the reason users visit the site, and includes closely-related metadata (is_primary_content)
+6 If the text node is part of the main primary content. This does not include closely-related metadata which is typically less prominent or greyed out, while the main primary content is often larger with a more contrasting font (is_main_primary_content).
 
 Here is the HTML text node for you to examine:
 
@@ -221,7 +223,8 @@ Please provide your response as a JSON object that looks like this:
     "is_semantically_significant": true,
     "is_page_action": false,
     "is_presentational": true,
-    "is_primary_content": false
+    "is_primary_content": false,
+    "is_main_primary_content": false
 }}
 
 And do not include any commentary, introduction or summary. Thank you."##, xml, surrounding_xml, examples_message);
@@ -266,6 +269,7 @@ And do not include any commentary, introduction or summary. Thank you."##, xml, 
         text_fields: Some(TextNodeMetadata {
             is_informational: partial_node_data.is_semantically_significant && !partial_node_data.is_page_action && !partial_node_data.is_presentational,
             is_primary_content: partial_node_data.is_primary_content.clone(),
+            is_main_primary_content: partial_node_data.is_main_primary_content.clone(),
         }),
         element_fields: None,
     };

@@ -25,6 +25,7 @@ pub struct ContentMetadata {
     pub is_page_link: bool,
     pub is_action_link: bool,
     pub is_primary_content: bool,
+    pub is_main_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -92,6 +93,7 @@ fn process_node(
                     node_data.text_fields.clone().map_or(false, |fields| fields.is_primary_content),
                     |fields| fields.is_primary_content
                 ),
+                is_main_primary_content: node_data.text_fields.clone().map_or(false, |fields| fields.is_main_primary_content),
             },
         };
 

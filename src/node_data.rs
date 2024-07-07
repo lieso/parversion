@@ -16,6 +16,7 @@ pub struct ElementNodeMetadata {
 pub struct TextNodeMetadata {
     pub is_informational: bool,
     pub is_primary_content: bool,
+    pub is_main_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
