@@ -136,8 +136,19 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
                     return false;
                 }
 
+                // * blank href values
 
+                if attribute == &"href" && value.is_empty() {
+                    log::warn!("Ignoring blank href");
+                    return false;
+                }
 
+                // * anchor links
+
+                if attribute == &"href" && value.starts_with("#") {
+                    log::warn!("Ignoring anchor link");
+                    return false;
+                }
 
 
             }
