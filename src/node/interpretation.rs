@@ -48,6 +48,8 @@ impl Node {
         }).unwrap();
         let children = title.children.borrow();
         let text = children.first().unwrap().xml.to_string();
+        
+        let text = String::from(text.trim_matches(|c| c == ' ' || c == '\n'));
 
         text
     }
@@ -151,6 +153,12 @@ impl Node {
         // * Meta elements
         if self.xml.get_element_tag_name() == "meta" {
             log::info!("Node represents meta HTML element. We ignore these, for now...");
+            return Some(Vec::new());
+        }
+
+        // * script
+        if self.xml.get_element_tag_name() == "script" {
+            log::info!("Node represents script HTML element. We ignore these, for now...");
             return Some(Vec::new());
         }
 
