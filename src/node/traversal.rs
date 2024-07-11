@@ -23,3 +23,15 @@ pub fn post_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
 
     visit(&node);
 }
+
+pub fn dfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
+    let mut stack = vec![node.clone()];
+
+    while let Some(current) = stack.pop() {
+        visit(&current);
+
+        for child in current.children.borrow().iter().rev() {
+            stack.push(child.clone());
+        }
+    }
+}

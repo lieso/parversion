@@ -3,11 +3,12 @@ use std::error::Error;
 use bincode::{serialize, deserialize};
 use std::rc::{Rc};
 
-use super::{Node, node_to_html_with_target_node};
+use super::{Node, node_to_html_with_target_node, dfs};
 use crate::node_data::{NodeData};
 use crate::llm;
 use crate::config::{CONFIG};
 use crate::constants;
+use crate::xml::Xml;
 
 pub fn get_root_node(node: Rc<Node>) -> Rc<Node> {
     let mut root_node = node.clone();
@@ -54,7 +55,7 @@ impl Node {
         text
     }
 
-    pub async fn interpret_node(&self, db: &Db, _output_tree: &Rc<Node>) -> (Vec<NodeData>, bool) {
+    pub async fn interpret_node(&self, db: &Db, output_tree: &Rc<Node>) -> (Vec<NodeData>, bool) {
         log::trace!("In interpret_node");
 
         if let Some(classical_interpretation) = self.interpret_node_classically() {
@@ -76,7 +77,22 @@ impl Node {
 
             let surrounding_xml: String = self.node_to_xml_snippet_with_context();
 
-            let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml, surrounding_xml, Vec::new())
+            let examples: Vec<Xml> = self.get_examples(output_tree);
+
+            log::debug!("*****************************************************************************************************");
+            //log::debug!("examples: {:?}", examples);
+
+            log::debug!("example.len(): {}", examples.len());
+
+            for example in examples.iter() {
+                //log::debug!("example: {}", example.to_string());
+            }
+
+            if examples.len() > 0 {
+                panic!("testing");
+            }
+
+            let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml, surrounding_xml, examples)
                 .await
                 .expect("LLM unable to generate node data");
 
@@ -85,6 +101,61 @@ impl Node {
 
             return (llm_result.clone(), true);
         }
+    }
+
+    fn get_examples(&self, output_tree: &Rc<Node>) -> Vec<Xml> {
+         let config = CONFIG.lock().unwrap();
+
+         // first example is the node we're analysing, so add one now and subtract first later
+         let max_examples = config.llm.target_node_examples_max_count + 1;
+
+         let mut lineage = self.get_lineage();
+         let mut tree: Rc<Node> = output_tree.clone();
+         let mut example_fork_nodes: Vec<Rc<Node>> = Vec::new();
+
+         lineage.pop_front(); // root node
+         lineage.pop_front(); // html node
+
+         while let Some(hash) = lineage.pop_front() {
+             log::debug!("lineage: {:?}", lineage);
+
+             let nodes: Vec<Rc<Node>> = tree
+                 .children
+                 .borrow()
+                 .iter()
+                 .filter(|item| item.hash == hash)
+                 .cloned()
+                 .collect();
+
+             if nodes.len() == 0 {
+                 panic!("Could not find even one output node with basis node lineage");
+             } else if nodes.len() > 1 {
+                 let num_available_examples = nodes.len().min(max_examples);
+
+                 example_fork_nodes.extend_from_slice(&nodes[..num_available_examples]);
+                 example_fork_nodes.truncate(max_examples); // might not need this
+
+                 let mut examples: Vec<Xml> = Vec::new();
+
+                 for example_fork_node in example_fork_nodes.iter() {
+
+                     log::debug!("example_fork_node hash: {:?}", example_fork_node.hash);
+                     log::debug!("lineage: {:?}", lineage);
+
+
+                     // TODO
+
+                 }
+
+                 return examples;
+             } else {
+                 tree = nodes.first().unwrap().clone();
+             }
+         }
+
+         log::info!("Could not find any examples of node in output tree");
+
+         Vec::new()
     }
 
     fn node_to_xml_snippet_with_context(&self) -> String {

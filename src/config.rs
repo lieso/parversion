@@ -5,6 +5,7 @@ use std::sync::Mutex;
 #[derive(Debug, Deserialize)]
 pub struct LlmConfig {
     pub target_node_adjacent_xml_length: usize,
+    pub target_node_examples_max_count: usize,
 }
 
 #[derive(Debug, Deserialize)]

@@ -37,7 +37,7 @@ struct PartialTextNodeMetadata {
     pub is_hard_coded: bool,
 }
 
-pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
+pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In xml_to_data");
 
     if xml.is_element() {
@@ -47,7 +47,7 @@ pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>
     }
 }
 
-async fn element_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
+async fn element_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In element_to_data");
     
     let examples_message: String = if examples.is_empty() {
@@ -165,7 +165,7 @@ Anticipate the possibility that there might not be any significant information i
     Ok(node_data)
 }
 
-async fn text_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<&Xml>) -> Result<Vec<NodeData>, ()> {
+async fn text_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("text_to_data");
     
     let examples_message: String = if examples.is_empty() {
