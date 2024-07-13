@@ -3,7 +3,7 @@ use std::error::Error;
 use bincode::{serialize, deserialize};
 use std::rc::{Rc};
 
-use super::{Node, node_to_html_with_target_node, dfs};
+use super::{Node, node_to_html_with_target_node, find_all_node_xml_by_lineage};
 use crate::node_data::{NodeData};
 use crate::llm;
 use crate::config::{CONFIG};
@@ -79,17 +79,10 @@ impl Node {
 
             let examples: Vec<Xml> = self.get_examples(output_tree);
 
-            log::debug!("*****************************************************************************************************");
-            //log::debug!("examples: {:?}", examples);
-
             log::debug!("example.len(): {}", examples.len());
 
             for example in examples.iter() {
-                //log::debug!("example: {}", example.to_string());
-            }
-
-            if examples.len() > 0 {
-                panic!("testing");
+                log::debug!("example: {}", example.to_string());
             }
 
             let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml, surrounding_xml, examples)
@@ -104,58 +97,25 @@ impl Node {
     }
 
     fn get_examples(&self, output_tree: &Rc<Node>) -> Vec<Xml> {
-         let config = CONFIG.lock().unwrap();
-
-         // first example is the node we're analysing, so add one now and subtract first later
-         let max_examples = config.llm.target_node_examples_max_count + 1;
-
          let mut lineage = self.get_lineage();
-         let mut tree: Rc<Node> = output_tree.clone();
-         let mut example_fork_nodes: Vec<Rc<Node>> = Vec::new();
 
          lineage.pop_front(); // root node
-         lineage.pop_front(); // html node
 
-         while let Some(hash) = lineage.pop_front() {
-             log::debug!("lineage: {:?}", lineage);
+         let mut examples = find_all_node_xml_by_lineage(
+             output_tree.clone(),
+             lineage.clone(),
+         );
 
-             let nodes: Vec<Rc<Node>> = tree
-                 .children
-                 .borrow()
-                 .iter()
-                 .filter(|item| item.hash == hash)
-                 .cloned()
-                 .collect();
-
-             if nodes.len() == 0 {
-                 panic!("Could not find even one output node with basis node lineage");
-             } else if nodes.len() > 1 {
-                 let num_available_examples = nodes.len().min(max_examples);
-
-                 example_fork_nodes.extend_from_slice(&nodes[..num_available_examples]);
-                 example_fork_nodes.truncate(max_examples); // might not need this
-
-                 let mut examples: Vec<Xml> = Vec::new();
-
-                 for example_fork_node in example_fork_nodes.iter() {
-
-                     log::debug!("example_fork_node hash: {:?}", example_fork_node.hash);
-                     log::debug!("lineage: {:?}", lineage);
-
-
-                     // TODO
-
-                 }
-
-                 return examples;
-             } else {
-                 tree = nodes.first().unwrap().clone();
-             }
+         // assuming first example is already present in basis tree
+         if !examples.is_empty() {
+             examples.remove(0);
          }
 
-         log::info!("Could not find any examples of node in output tree");
-
-         Vec::new()
+         let config = CONFIG.lock().unwrap();
+         let max_examples = config.llm.target_node_examples_max_count;
+         let number_to_take = std::cmp::min(max_examples, examples.len());
+         
+         examples[..number_to_take].to_vec()
     }
 
     fn node_to_xml_snippet_with_context(&self) -> String {
@@ -279,7 +239,7 @@ fn take_from_end(s: &str) -> &str {
          let mut adjusted_end = end_index;
 
          while !s.is_char_boundary(adjusted_end) && adjusted_end > 0 {
-             adjusted_end -= 1;
+adjusted_end -= 1;
          }
 
          &s[..adjusted_end]

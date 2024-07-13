@@ -73,7 +73,7 @@ fn process_node(
     content: &mut Content
 ) {
     let lineage = content_node.get_lineage();
-    let basis_node = search_tree_by_lineage(Rc::clone(basis_tree), lineage.clone()).unwrap();
+    let basis_node = search_basis_tree_by_lineage(Rc::clone(basis_tree), lineage.clone()).unwrap();
 
     for node_data in basis_node.data.borrow().iter() {
         if content_node.xml.is_text() && !node_data.text_fields.clone().unwrap().is_informational {

@@ -218,7 +218,7 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
         } else {
             log::trace!("Donor and recipient child have differing subtree hashes");
             let donor_children = donor.children.borrow().clone();
-    
+
             for donor_child in donor_children.iter() {
                 absorb_tree(recipient_child.clone(), donor_child.clone());
             }
@@ -231,8 +231,49 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
     }
 }
 
-pub fn search_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
-    log::trace!("In search_tree_by_lineage");
+// *** WARNING ***
+// Idiopathic stack overflow error if pushing cloned node references
+// *** WARNING ***
+pub fn find_all_node_xml_by_lineage(
+    root: Rc<Node>,
+    lineage: VecDeque<String>,
+) -> Vec<Xml> {
+    let mut target_xml = Vec::new();
+
+    let mut queue = VecDeque::new();
+    queue.push_back(root.clone());
+
+    while let Some(current) = queue.pop_front() {
+        let current_lineage = current.get_lineage();
+
+        if current_lineage == lineage {
+            target_xml.push(current.xml.clone());
+        } else if is_queue_prefix(&current_lineage, &lineage) {
+            for child in current.children.borrow().iter() {
+                queue.push_back(child.clone());
+            }
+        }
+    }
+
+    target_xml
+}
+
+fn is_queue_prefix(needle: &VecDeque<String>, haystack: &VecDeque<String>) -> bool {
+    if needle.len() > haystack.len() {
+        return false;
+    }
+
+    for (n, h) in needle.iter().zip(haystack.iter()) {
+        if n != h {
+            return false;
+        }
+    }
+
+    true
+}
+
+pub fn search_basis_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<String>) -> Option<Rc<Node>> {
+    log::trace!("In search_basis_tree_by_lineage");
 
     while let Some(hash) = lineage.pop_front() {
         let node = tree
@@ -258,11 +299,11 @@ pub fn node_to_html_with_target_node(
     node: Rc<Node>,
     target_node: Rc<Node>
 ) -> (
-    String, // html before target node
-    String, // target node opening tag
-    String, // target node child content
-    String, // target node closing tag
-    String, // html after target node
+String, // html before target node
+String, // target node opening tag
+String, // target node child content
+String, // target node closing tag
+String, // html after target node
 ) {
     log::trace!("In node_to_html_with_target_node");
 
