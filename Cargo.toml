@@ -32,7 +32,6 @@ markup5ever_rcdom = "0.3.0"
 html5ever = "0.27.0"
 toml = "0.8.14"
 lazy_static = "1.5.0"
-backtrace = "0.3.73"
 
 [lib]
 name = "parversion"
