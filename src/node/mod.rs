@@ -126,6 +126,25 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
         log::debug!("id: {}, xml: {}", node.id, node.xml);
 
+
+
+
+
+        let (node_data_structure, should_sleep) = node.interpret_node_structure(&db, &output_tree).await;
+
+
+        if should_sleep {
+            sleep(Duration::from_secs(1)).await;
+        }
+
+
+        panic("wip");
+
+
+
+
+
+
         let (node_data, should_sleep) = node.interpret_node(&db, &output_tree).await;
 
         if should_sleep {
