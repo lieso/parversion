@@ -129,8 +129,12 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 
 
 
+        log::debug!("*****************************************************************************************************");
 
         let (node_data_structure, should_sleep) = node.interpret_node_structure(&db, &output_tree).await;
+
+
+        log::debug!("node_data_structure: {:?}", node_data_structure);
 
 
         if should_sleep {
@@ -138,7 +142,7 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
         }
 
 
-        panic("wip");
+        panic!("wip");
 
 
 

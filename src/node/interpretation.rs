@@ -5,6 +5,7 @@ use std::rc::{Rc};
 
 use super::{Node, node_to_html_with_target_node, find_all_node_xml_by_lineage};
 use crate::node_data::{NodeData};
+use crate::node_data_structure::{NodeDataStructure};
 use crate::llm;
 use crate::config::{CONFIG};
 use crate::constants;
@@ -53,6 +54,44 @@ impl Node {
         let text = String::from(text.trim_matches(|c| c == ' ' || c == '\n'));
 
         text
+    }
+
+    pub async fn interpret_node_structure(&self, db: &Db, output_tree: &Rc<Node>) -> (Vec<NodeDataStructure>, bool) {
+        log::trace!("In interpret_node_structure");
+
+        if let Some(classical_interpretation) = self.interpret_node_structure_classically() {
+            log::info!("Node interpreted classically");
+            return (classical_interpretation, false);
+        }
+
+        let key = format!("DS-{}", &self.xml.to_hash());
+        log::debug!("key: {}", key);
+
+        let cache = get_node_data_structure(&db, &key)
+            .expect("Could not get node data structure from database");
+
+        if let Some(cache) = cache {
+            log::info!("Cache hit!");
+            return (cache.clone(), false);
+        } else {
+            log::info!("Cache miss!");
+
+            let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree);
+            let examples: Vec<Xml> = self.get_examples(output_tree);
+
+            let llm_result = llm::xml_to_data_structure(&self.xml, surrounding_xml, examples)
+                .await
+                .expect("LLM unable to generate node data structure");
+
+
+
+
+
+            store_node_data(&db, &key, llm_result.clone())
+                .expect("Unable to persist node data structure to database");
+
+            return (llm_result.clone(), true);
+        }
     }
 
     pub async fn interpret_node(&self, db: &Db, output_tree: &Rc<Node>) -> (Vec<NodeData>, bool) {
@@ -140,6 +179,22 @@ impl Node {
         }
     }
 
+    fn interpret_node_structure_classically(&self) -> Option<Vec<NodeDataStructure>> {
+        log::trace!("In interpret_node_structure_classically");
+
+        // * Root node
+        if self.hash == constants::ROOT_NODE_HASH {
+            log::info!("Node is root node, probably don't need to do anything here");
+            return Some(Vec::new());
+        }
+
+        // * Text node
+        if self.hash == constants::TEXT_NODE_HASH {
+            log::info!("Node is text node, probably don't need to do anything here");
+            return Some(Vec::new());
+        }
+    }
+
     fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {
         log::trace!("In interpret_node_classically");
 
@@ -195,6 +250,22 @@ fn get_node_data(db: &Db, key: &str) -> Result<Option<Vec<NodeData>>, Box<dyn Er
     match db.get(key)? {
         Some(serialized_nodes) => {
             let nodes_data: Vec<NodeData> = deserialize(&serialized_nodes)?;
+            Ok(Some(nodes_data))
+        },
+        None => Ok(None),
+    }
+} 
+
+fn store_node_data_structure(db: &Db, key: &str, nodes: Vec<NodeDataStructure>) -> Result<(), Box<dyn Error>> {
+    let serialized_nodes = serialize(&nodes)?;
+    db.insert(key, serialized_nodes)?;
+    Ok(())
+}
+
+fn get_node_data_structure(db: &Db, key: &str) -> Result<Option<Vec<NodeDataStructure>>, Box<dyn Error>> {
+    match db.get(key)? {
+        Some(serialized_nodes) => {
+            let nodes_data: Vec<NodeDataStructure> = deserialize(&serialized_nodes)?;
             Ok(Some(nodes_data))
         },
         None => Ok(None),

@@ -46,6 +46,42 @@ pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>)
     }
 }
 
+pub async fn xml_to_data_structure(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
+    log::trace!("In xml_to_data_structure");
+
+    assert!(!xml.is_text(), "Did not expect to receive a text node");
+
+    let examples_message: String = if examples.is_empty() {
+        "".to_string()
+    } else {
+        examples.iter().enumerate().fold(
+            format!(r##"
+The following are examples of this element node as it appears in other sections of the web page or in other versions of the web page. Use this to help you complete your task."##),
+            |mut acc, (index, example)| {
+                acc.push_str(&format!(r##"
+
+Example {}:
+{}"##, index + 1, example.to_string()));
+                acc
+            })
+    };
+
+    let prompt = format!(r##"
+Your job is to examine an HTML element node and to infer its relationship to other nodes such as when an element node (along with its children) is actually a member of a list of items that gets rendered to a user or if there is a recursive relationship to other nodes. For example, a website might render a list of weather forecasts for a particular city with one element corresponding to a forecast for one day and the next item being the forecast for the following day. A website may also render a discussion thread consisting of replies which would be an example of a recursive relationship where each item here has a parent relationship to another item (unless it is a root node).
+
+Do your best to determine if any of the following relationships apply to the element node I will provide you. It's possible for multiple relationships to apply to a single element and you should anticipate the possibility that none of these may apply to the node:
+
+1. Does the element represent a recursive relationship to other elements? If so, please provide the following
+   • parent_node_traversal_direction: to get to a parent node (for non-root nodes), would we need to traverse HTML element siblings (Sibling), traverse upward parent elements (Up) or children (Child)?
+   • parent_node: 
+
+
+
+    "##, xml.to_string(), surrounding_xml, examples_message);
+
+
+}
+
 async fn element_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In element_to_data");
     
