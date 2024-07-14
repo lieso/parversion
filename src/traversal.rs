@@ -37,6 +37,7 @@ pub struct ContentValue {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Content {
+    pub id: String,
     pub values: Vec<ContentValue>,
     pub children: Vec<Content>,
 }
@@ -124,6 +125,7 @@ impl Traversal {
 
     pub fn harvest(self) -> Result<String, Errors> {
         let mut content = Content {
+            id: self.output_tree.id.clone(),
             values: Vec::new(),
             children: Vec::new(),
         };
@@ -158,6 +160,7 @@ impl Traversal {
 
             for child in content_node.children.borrow().iter() {
                 let mut child_content = Content {
+                    id: child.id.clone(),
                     values: Vec::new(),
                     children: Vec::new(),
                 };
