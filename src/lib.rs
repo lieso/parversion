@@ -80,8 +80,7 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done preprocessing XML");
 
     let input_tree: Rc<Node> = build_tree(xml.clone());
-    //let output_tree: Rc<Node> = Rc::new((*input_tree).clone());
-    let output_tree: Rc<Node> = build_tree(xml.clone());
+    let output_tree: Rc<Node> = Rc::new((*input_tree).clone());
 
     output_tree.debug_visualize("output");
 

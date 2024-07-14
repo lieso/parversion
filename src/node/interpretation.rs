@@ -75,15 +75,8 @@ impl Node {
         } else {
             log::info!("Cache miss!");
 
-            let surrounding_xml: String = self.node_to_xml_snippet_with_context();
-
+            let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree);
             let examples: Vec<Xml> = self.get_examples(output_tree);
-
-            log::debug!("example.len(): {}", examples.len());
-
-            for example in examples.iter() {
-                log::debug!("example: {}", example.to_string());
-            }
 
             let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml, surrounding_xml, examples)
                 .await
@@ -118,7 +111,7 @@ impl Node {
          examples[..number_to_take].to_vec()
     }
 
-    fn node_to_xml_snippet_with_context(&self) -> String {
+    fn node_to_xml_snippet_with_context(&self, output_tree: &Rc<Node>) -> String {
         log::trace!("In node_to_xml_snippet_with_context");
 
         let root_node = get_root_node(Rc::new(self.clone()));
