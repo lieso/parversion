@@ -68,6 +68,28 @@ impl Node {
     }
 }
 
+pub fn deep_copy(node: &Rc<Node>) -> Rc<Node> {
+    let new_node = Rc::new(Node {
+        id: node.id.clone(),
+        hash: node.hash.clone(),
+        xml: node.xml.clone(),
+        parent: RefCell::new(None),
+        data: RefCell::new(node.data.borrow().clone()),
+        children: RefCell::new(Vec::new()),
+    });
+
+    let children: Vec<Rc<Node>> = node.children.borrow().iter()
+        .map(|child| {
+            let child_copy = deep_copy(child);
+            child_copy.parent.borrow_mut().replace(Rc::clone(&new_node));
+            child_copy
+        })
+    .collect();
+    new_node.children.replace(children);
+
+    new_node
+}
+
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
     let xml = Xml::parse(&mut reader).expect("Could not parse XML");
@@ -296,7 +318,7 @@ pub fn search_basis_tree_by_lineage(mut tree: Rc<Node>, mut lineage: VecDeque<St
 }
 
 pub fn node_to_html_with_target_node(
-    node: Rc<Node>,
+    node: &Rc<Node>,
     target_node: Rc<Node>
 ) -> (
 String, // html before target node

@@ -114,12 +114,7 @@ impl Node {
     fn node_to_xml_snippet_with_context(&self, output_tree: &Rc<Node>) -> String {
         log::trace!("In node_to_xml_snippet_with_context");
 
-        let root_node = get_root_node(Rc::new(self.clone()));
-
-        // TODO: this is bad, need to properly skip root node
-        let html_node = root_node.children.borrow()[0].clone();
-
-        let document = node_to_html_with_target_node(Rc::clone(&html_node), Rc::new(self.clone()));
+        let document = node_to_html_with_target_node(output_tree, Rc::new(self.clone()));
 
         if self.xml.is_text() {
             format!(

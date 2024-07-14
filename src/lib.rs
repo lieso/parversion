@@ -17,6 +17,7 @@ mod constants;
 use node::{
     Node,
     build_tree,
+    deep_copy,
     absorb_tree,
     prune_tree,
     grow_tree,
@@ -80,9 +81,7 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done preprocessing XML");
 
     let input_tree: Rc<Node> = build_tree(xml.clone());
-    let output_tree: Rc<Node> = Rc::new((*input_tree).clone());
-
-    output_tree.debug_visualize("output");
+    let output_tree: Rc<Node> = deep_copy(&input_tree);
 
     log::info!("Done building input/output trees");
 
@@ -96,6 +95,7 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done pruning basis tree");
 
     basis_tree.debug_visualize("basis");
+    output_tree.debug_visualize("output");
 
     let metadata = get_tree_metadata(Rc::clone(&basis_tree)).await;
     log::debug!("metadata: {:?}", metadata);
