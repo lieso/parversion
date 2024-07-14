@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeDataStructure {
@@ -20,9 +21,26 @@ pub enum TraversalDirection {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NodeTreeDataStructure {
+pub struct SearchInstructions {
     traversal_direction: TraversalDirection,
-    parent_hash: String,
+    target_hash: String,
+    target_attributes: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeTreeDataStructure {
+    root_node: SearchInstructions,
+    parent_node: SearchInstructions,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeListDataStructure {
+    next_node: SearchInstructions,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeSetDataStructure {
+    next_node: SearchInstructions,
 }
 
 // provide element and ask llm which other element is the parent providing complete element opening tag
