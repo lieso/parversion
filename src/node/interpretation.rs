@@ -87,7 +87,7 @@ impl Node {
 
 
 
-            store_node_data(&db, &key, llm_result.clone())
+            store_node_data_structure(&db, &key, llm_result.clone())
                 .expect("Unable to persist node data structure to database");
 
             return (llm_result.clone(), true);
@@ -193,6 +193,8 @@ impl Node {
             log::info!("Node is text node, probably don't need to do anything here");
             return Some(Vec::new());
         }
+
+        None
     }
 
     fn interpret_node_classically(&self) -> Option<Vec<NodeData>> {

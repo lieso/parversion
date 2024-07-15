@@ -8,6 +8,7 @@ mod error;
 mod llm;
 mod node;
 mod node_data;
+mod node_data_structure;
 mod traversal;
 mod utility;
 mod xml;

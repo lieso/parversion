@@ -14,6 +14,7 @@ impl NodeDataStructure {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum TraversalDirection {
     Up,
     Sibling,

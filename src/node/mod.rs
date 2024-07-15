@@ -129,6 +129,7 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 
 
 
+
         log::debug!("*****************************************************************************************************");
 
         let (node_data_structure, should_sleep) = node.interpret_node_structure(&db, &output_tree).await;
@@ -138,11 +139,11 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 
 
         if should_sleep {
-            sleep(Duration::from_secs(1)).await;
+            //sleep(Duration::from_secs(1)).await;
         }
 
 
-        panic!("wip");
+        continue;
 
 
 
@@ -212,6 +213,8 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 
         *node.data.borrow_mut() = filtered_node_data;
     }
+
+    panic!("testing");
 }
 
 pub fn prune_tree(tree: Rc<Node>) {

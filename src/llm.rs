@@ -4,6 +4,7 @@ use serde_json::json;
 use std::env;
 
 use crate::node_data::{NodeData, ElementNodeMetadata, TextNodeMetadata};
+use crate::node_data_structure::{NodeDataStructure};
 use crate::xml::{Xml};
 
 fn default_is_false() -> bool {
@@ -46,7 +47,7 @@ pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>)
     }
 }
 
-pub async fn xml_to_data_structure(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
+pub async fn xml_to_data_structure(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeDataStructure>, ()> {
     log::trace!("In xml_to_data_structure");
 
     assert!(!xml.is_text(), "Did not expect to receive a text node");
@@ -67,19 +68,48 @@ Example {}:
     };
 
     let prompt = format!(r##"
-Your job is to examine an HTML element node and to infer its relationship to other nodes such as when an element node (along with its children) is actually a member of a list of items that gets rendered to a user or if there is a recursive relationship to other nodes. For example, a website might render a list of weather forecasts for a particular city with one element corresponding to a forecast for one day and the next item being the forecast for the following day. A website may also render a discussion thread consisting of replies which would be an example of a recursive relationship where each item here has a parent relationship to another item (unless it is a root node).
+Your job is to examine an HTML element node and to infer its relationship to other nodes such as when an element node (along with its children) is actually a member of a list of items that gets rendered to a user or if there is a recursive relationship to other nodes. For example, a website might render a list of weather forecasts for a particular city with one element corresponding to a forecast for one day and the next item being the forecast for the following day. A website may also render a discussion thread consisting of replies which would be an example of a recursive relationship where each item here has a parent relationship to another item (unless it is a root reply).
 
 Do your best to determine if any of the following relationships apply to the element node I will provide you. It's possible for multiple relationships to apply to a single element and you should anticipate the possibility that none of these may apply to the node:
 
-1. Does the element represent a recursive relationship to other elements? If so, please provide the following
+1. Does the element represent a recursive relationship to other elements? If so, please provide the following:
+   • root_node_traversal_direction: to determine if such a node is a root node, would we need to traverse HTML element siblings (Sibling), traverse upward parent elements (Up) or children (Child)?
+   • root_node_tag_name: provide HTML element node tag name of element that would tell you if the current node is a root node
+   • root_node_attributes: provide all HTML element node attribute names of element that would tell if you if the current node is a root node
+   • root_node_target_values: if applicable, provide all HTML element node attribute names and the specific corresponding values that would can be used to check if current node is a root node
    • parent_node_traversal_direction: to get to a parent node (for non-root nodes), would we need to traverse HTML element siblings (Sibling), traverse upward parent elements (Up) or children (Child)?
-   • parent_node: 
+   • parent_node_tag_name: provide HTML element node tag name of a parent
+   • parent_node_attributes: provide all HTML element node attribute names of a parent
+   • parent_node_target_values: if applicable, provide all HTML element node attribute names and the specific corresponding values that would identify a parent node
+2. Does the element represent an item in list? If so, please provide the following:
+   • next_node_traversal_direction: to get to the next item in the, would be need to traverse HTML element siblings (Sibling), traverse upward parent elements (Up) or children (Child)?
+   • next_node_tag_name: what is the HTML element node tag name of the next item in the list?
+   • next_node_attributes: provide all HTML element node attribute names of the next item in the list
 
+Here is the HTML element node for you to examine:
 
+---
 
-    "##, xml.to_string(), surrounding_xml, examples_message);
+{}
 
+---
 
+This is the surrounding HTML in which the element node appears (the element node is indicated with an HTML comment):
+
+---
+
+{}
+
+---
+
+{}
+
+Provide your response as JSON using the above snake case criteria as JSON keys.
+
+Please do not include any commentary, introduction or summary. Thank you."##, xml.to_string(), surrounding_xml, examples_message);
+    log::debug!("prompt: {}", prompt);
+
+    Ok(Vec::new())
 }
 
 async fn element_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
