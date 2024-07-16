@@ -37,11 +37,11 @@ pub fn xml_to_hash(xml: &Xml) -> String {
             }
         }
 
-        if attribute == "class" {
-            for class in value.split_whitespace() {
-                hasher_items.push("CLASS:".to_owned() + &class);
-            }
-        }
+        //if attribute == "class" {
+        //    for class in value.split_whitespace() {
+        //        hasher_items.push("CLASS:".to_owned() + &class);
+        //    }
+        //}
     }
 
     hasher_items.sort();

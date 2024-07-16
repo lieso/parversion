@@ -126,39 +126,11 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
         log::info!("--- Analysing node #{} out of {} ---", index + 1, nodes.len());
         log::debug!("id: {}, xml: {}", node.id, node.xml);
 
-
-        if node.xml.to_string() != r##"<tr class="athing comtr" id="40840791" />"## {
-            continue
-        }
-
-
-
-        log::debug!("*****************************************************************************************************");
-
-        let (node_data_structure, should_sleep) = node.interpret_node_structure(&db, &output_tree).await;
-
-
-        log::debug!("node_data_structure: {:?}", node_data_structure);
-
-
-        if should_sleep {
-            //sleep(Duration::from_secs(1)).await;
-        }
-
-
-        continue;
-
-
-
-
-
-
         let (node_data, should_sleep) = node.interpret_node(&db, &output_tree).await;
 
         if should_sleep {
             sleep(Duration::from_secs(1)).await;
         }
-
 
 
 
@@ -216,8 +188,6 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 
         *node.data.borrow_mut() = filtered_node_data;
     }
-
-    panic!("testing");
 }
 
 pub fn prune_tree(tree: Rc<Node>) {

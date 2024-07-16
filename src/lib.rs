@@ -85,6 +85,7 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let output_tree: Rc<Node> = deep_copy(&input_tree);
 
     log::info!("Done building input/output trees");
+    output_tree.debug_visualize("output");
 
     let basis_tree: Rc<Node> = get_basis_tree();
     log::info!("Obtained basis tree with subtree hash: {}", basis_tree.subtree_hash());
@@ -96,7 +97,12 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done pruning basis tree");
 
     basis_tree.debug_visualize("basis");
-    output_tree.debug_visualize("output");
+
+    // detect cycles and convert to graph
+
+    panic!("test");
+
+    // WYSIWYG
 
     let metadata = get_tree_metadata(Rc::clone(&basis_tree)).await;
     log::debug!("metadata: {:?}", metadata);
