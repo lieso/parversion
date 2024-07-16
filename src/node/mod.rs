@@ -127,6 +127,9 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
         log::debug!("id: {}, xml: {}", node.id, node.xml);
 
 
+        if node.xml.to_string() != r##"<tr class="athing comtr" id="40840791" />"## {
+            continue
+        }
 
 
 
@@ -285,7 +288,9 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
 pub fn find_all_node_xml_by_lineage(
     root: Rc<Node>,
     lineage: VecDeque<String>,
-) -> Vec<Xml> {
+) -> Vec<String> {
+    log::trace!("In find_all_node_xml_by_lineage");
+
     let mut target_xml = Vec::new();
 
     let mut queue = VecDeque::new();
@@ -295,7 +300,7 @@ pub fn find_all_node_xml_by_lineage(
         let current_lineage = current.get_lineage();
 
         if current_lineage == lineage {
-            target_xml.push(current.xml.clone());
+            target_xml.push(current.id.clone());
         } else if is_queue_prefix(&current_lineage, &lineage) {
             for child in current.children.borrow().iter() {
                 queue.push_back(child.clone());
@@ -437,6 +442,20 @@ String, // html after target node
         target_closing_html,
         after_html
     )
+}
+
+pub fn find_node_by_id(root: &Rc<Node>, id: &str) -> Option<Rc<Node>> {
+    if root.id == id {
+        return Some(Rc::clone(root));
+    }
+
+    for child in root.children.borrow().iter() {
+        if let Some(found) = find_node_by_id(child, id) {
+            return Some(found);
+        }
+    }
+
+    None
 }
 
 fn merge_nodes(parent: Rc<Node>, nodes: (Rc<Node>, Rc<Node>)) {

@@ -37,7 +37,7 @@ struct PartialTextNodeMetadata {
     pub is_main_primary_content: bool,
 }
 
-pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
+pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<String>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In xml_to_data");
 
     if xml.is_element() {
@@ -47,7 +47,7 @@ pub async fn xml_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>)
     }
 }
 
-pub async fn xml_to_data_structure(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeDataStructure>, ()> {
+pub async fn xml_to_data_structure(xml: &Xml, surrounding_xml: String, examples: Vec<String>) -> Result<Vec<NodeDataStructure>, ()> {
     log::trace!("In xml_to_data_structure");
 
     assert!(!xml.is_text(), "Did not expect to receive a text node");
@@ -62,7 +62,7 @@ The following are examples of this element node as it appears in other sections 
                 acc.push_str(&format!(r##"
 
 Example {}:
-{}"##, index + 1, example.to_string()));
+{}"##, index + 1, example));
                 acc
             })
     };
@@ -112,7 +112,7 @@ Please do not include any commentary, introduction or summary. Thank you."##, xm
     Ok(Vec::new())
 }
 
-async fn element_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
+async fn element_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<String>) -> Result<Vec<NodeData>, ()> {
     log::trace!("In element_to_data");
     
     let examples_message: String = if examples.is_empty() {
@@ -125,7 +125,7 @@ The following are examples of this element node as it appears in other sections 
                 acc.push_str(&format!(r##"
 
 Example {}:
-{}"##, index + 1, example.to_string()));
+{}"##, index + 1, example));
                 acc
             })
     };
@@ -230,7 +230,7 @@ Anticipate the possibility that there might not be any significant information i
     Ok(node_data)
 }
 
-async fn text_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<Xml>) -> Result<Vec<NodeData>, ()> {
+async fn text_to_data(xml: &Xml, surrounding_xml: String, examples: Vec<String>) -> Result<Vec<NodeData>, ()> {
     log::trace!("text_to_data");
     
     let examples_message: String = if examples.is_empty() {
@@ -243,7 +243,7 @@ The following are examples of this text node as it appears in other sections of 
                 acc.push_str(&format!(r##"
 
 Example {}:
-{}"##, index + 1, example.to_string()));
+{}"##, index + 1, example));
                 acc
             })
     };

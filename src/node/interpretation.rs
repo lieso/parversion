@@ -2,12 +2,13 @@ use sled::Db;
 use std::error::Error;
 use bincode::{serialize, deserialize};
 use std::rc::{Rc};
+use std::sync::{Mutex, MutexGuard};
 
-use super::{Node, node_to_html_with_target_node, find_all_node_xml_by_lineage};
+use super::{Node, node_to_html_with_target_node, find_all_node_xml_by_lineage, deep_copy, find_node_by_id};
 use crate::node_data::{NodeData};
 use crate::node_data_structure::{NodeDataStructure};
 use crate::llm;
-use crate::config::{CONFIG};
+use crate::config::{CONFIG, Config};
 use crate::constants;
 use crate::xml::Xml;
 
@@ -50,7 +51,7 @@ impl Node {
         }).unwrap();
         let children = title.children.borrow();
         let text = children.first().unwrap().xml.to_string();
-        
+
         let text = String::from(text.trim_matches(|c| c == ' ' || c == '\n'));
 
         text
@@ -76,8 +77,12 @@ impl Node {
         } else {
             log::info!("Cache miss!");
 
-            let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree);
-            let examples: Vec<Xml> = self.get_examples(output_tree);
+            let config = CONFIG.lock().unwrap();
+
+            let examples: Vec<String> = self.get_examples(output_tree, &config);
+            log::debug!("examples: {:?}", examples);
+
+            let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree, &config);
 
             let llm_result = llm::xml_to_data_structure(&self.xml, surrounding_xml, examples)
                 .await
@@ -114,8 +119,10 @@ impl Node {
         } else {
             log::info!("Cache miss!");
 
-            let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree);
-            let examples: Vec<Xml> = self.get_examples(output_tree);
+            let config = CONFIG.lock().unwrap();
+
+            let examples: Vec<String> = self.get_examples(output_tree, &config);
+            let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree, &config);
 
             let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml, surrounding_xml, examples)
                 .await
@@ -128,39 +135,51 @@ impl Node {
         }
     }
 
-    fn get_examples(&self, output_tree: &Rc<Node>) -> Vec<Xml> {
-         let mut lineage = self.get_lineage();
+    fn get_examples(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> Vec<String> {
+        log::trace!("In get_examples");
 
-         lineage.pop_front(); // root node
+        let mut lineage = self.get_lineage();
 
-         let mut examples = find_all_node_xml_by_lineage(
-             output_tree.clone(),
-             lineage.clone(),
-         );
+        lineage.pop_front(); // root node
 
-         // assuming first example is already present in basis tree
-         if !examples.is_empty() {
-             examples.remove(0);
-         }
+        let mut examples = find_all_node_xml_by_lineage(
+            output_tree.clone(),
+            lineage.clone(),
+        );
 
-         let config = CONFIG.lock().unwrap();
-         let max_examples = config.llm.target_node_examples_max_count;
-         let number_to_take = std::cmp::min(max_examples, examples.len());
-         
-         examples[..number_to_take].to_vec()
+        // assuming first example is already present in basis tree
+        if !examples.is_empty() {
+            examples.remove(0);
+        }
+
+        let max_examples = config.llm.target_node_examples_max_count;
+        let number_to_take = std::cmp::min(max_examples, examples.len());
+
+        examples[..number_to_take].to_vec().iter().map(|item| {
+            let node = find_node_by_id(&output_tree, item).unwrap();
+            node.node_to_xml_snippet_with_context(&output_tree, config)
+        }).collect()
     }
 
-    fn node_to_xml_snippet_with_context(&self, output_tree: &Rc<Node>) -> String {
+    fn node_to_xml_snippet_with_context(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> String {
         log::trace!("In node_to_xml_snippet_with_context");
 
         let document = node_to_html_with_target_node(output_tree, Rc::new(self.clone()));
 
+        log::debug!("0: {}", document.0);
+        log::debug!("1: {}", document.1);
+        log::debug!("2: {}", document.2);
+        log::debug!("3: {}", document.3);
+        log::debug!("4: {}", document.4);
+
+        let amount_to_take = config.llm.target_node_adjacent_xml_length;
+
         if self.xml.is_text() {
             format!(
                 "{}<!--Target node start -->{}<!--Target node end -->{}",
-                take_from_end(&document.0),
+                take_from_end(&document.0, amount_to_take),
                 document.2,
-                take_from_start(&document.4),
+                take_from_start(&document.4, amount_to_take),
             )
         } else {
             let after_start_tag = &format!(
@@ -172,9 +191,9 @@ impl Node {
 
             format!(
                 "{}<!--Target node start -->{}<!--Target node end -->{}",
-                take_from_end(&document.0),
+                take_from_end(&document.0, amount_to_take),
                 document.1,
-                take_from_start(after_start_tag),
+                take_from_start(after_start_tag, amount_to_take),
             )
         }
     }
@@ -274,36 +293,38 @@ fn get_node_data_structure(db: &Db, key: &str) -> Result<Option<Vec<NodeDataStru
     }
 } 
 
-fn take_from_end(s: &str) -> &str {
-     let config = CONFIG.lock().unwrap();
-     let len = s.len();
-     if config.llm.target_node_adjacent_xml_length >= len {
-         s
-     } else {
-         let start_index = len - config.llm.target_node_adjacent_xml_length;
-         let mut adjusted_start = start_index;
+fn take_from_end(s: &str, amount: usize) -> &str {
+    log::trace!("In take_from_end");
 
-         while !s.is_char_boundary(adjusted_start) && adjusted_start < len {
-             adjusted_start += 1;
-         }
+    let len = s.len();
+    if amount >= len {
+        s
+    } else {
+        let start_index = len - amount;
+        let mut adjusted_start = start_index;
 
-         &s[adjusted_start..]
-     }
- }
+        while !s.is_char_boundary(adjusted_start) && adjusted_start < len {
+            adjusted_start += 1;
+        }
 
- fn take_from_start(s: &str) -> &str {
-     let config = CONFIG.lock().unwrap();
-     if config.llm.target_node_adjacent_xml_length >= s.len() {
-         s
-     } else {
-         let end_index = config.llm.target_node_adjacent_xml_length;
-         let mut adjusted_end = end_index;
+        &s[adjusted_start..]
+    }
+}
 
-         while !s.is_char_boundary(adjusted_end) && adjusted_end > 0 {
-adjusted_end -= 1;
-         }
+fn take_from_start(s: &str, amount: usize) -> &str {
+    log::trace!("In take_from_end");
 
-         &s[..adjusted_end]
-     }
- }
+    if amount >= s.len() {
+        s
+    } else {
+        let end_index = amount;
+        let mut adjusted_end = end_index;
+
+        while !s.is_char_boundary(adjusted_end) && adjusted_end > 0 {
+            adjusted_end -= 1;
+        }
+
+        &s[..adjusted_end]
+    }
+}
 
