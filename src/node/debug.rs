@@ -33,7 +33,7 @@ impl<'a> Labeller<'a, Rc<Node>, (Rc<Node>, Rc<Node>)> for Node {
         //let label = node.id.clone().chars().take(7).collect::<String>();
         //let label = node.hash.clone().chars().take(7).collect::<String>();
         //let label = node.xml.get_all_tags().join(",");
-        let label = node.xml.to_string().chars().take(10).collect::<String>();
+        let label = node.xml.to_string().chars().take(40).collect::<String>();
         dot::LabelText::label(label)
     }
 }

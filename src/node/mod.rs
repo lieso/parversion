@@ -239,7 +239,7 @@ pub fn linearize_tree(tree: Rc<Node>) {
 pub fn prune_tree(tree: Rc<Node>) {
     log::trace!("In prune_tree");
 
-    bfsx(Rc::clone(&tree), &mut |node: &Rc<Node>| {
+    bfs_graph(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
             let children_borrow = node.children.borrow();
             log::debug!("Node has {} children", children_borrow.len());
