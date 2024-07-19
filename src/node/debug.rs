@@ -3,7 +3,7 @@ use dot::{GraphWalk, Labeller};
 use std::fs::File;
 use std::collections::HashSet;
 
-use super::{Node};
+use super::{Node, bfs_graph};
 
 impl Node {
     pub fn debug_visualize(&self, label: &str) {
@@ -16,6 +16,29 @@ impl Node {
             .args(&["-Tpng", &dot_path, "-o", &png_path])
             .output()
             .expect("Failed to execute dot command");
+    }
+
+    pub fn debug_statistics(&self, label: &str) {
+        let mut node_count = 0;
+
+        bfs_graph(Rc::new(self.clone()), &mut |node: &Rc<Node>| {
+            node_count = node_count + 1;
+        });
+
+        let block_separator = "=".repeat(60);
+        let statistics = format!(
+            "\n{}
+GRAPH STATISTICS:
+{}
+Node count:     {}
+{}",
+            block_separator,
+            block_separator,
+            node_count,
+            block_separator,
+        );
+
+        log::debug!("{}", statistics);
     }
 }
 

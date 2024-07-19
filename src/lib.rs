@@ -19,11 +19,11 @@ use node::{
     Node,
     build_tree,
     deep_copy,
-    absorb_tree,
-    prune_tree,
-    grow_tree,
+    absorb,
+    prune,
     get_tree_metadata,
-    linearize_tree
+    linearize,
+    interpret,
 };
 use error::{Errors};
 use traversal::{Traversal};
@@ -85,60 +85,30 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let input_tree: Rc<Node> = build_tree(xml.clone());
     let output_tree: Rc<Node> = deep_copy(&input_tree);
 
+    let basis_graph: Rc<Node> = Node::from_void();
 
+    absorb(Rc::clone(&basis_graph), Rc::clone(&input_tree));
+    log::info!("Done absorbing input tree into basis graph");
 
+    linearize(Rc::clone(&basis_graph));
+    log::info!("Done linearizing basis graph");
 
+    prune(Rc::clone(&basis_graph));
+    log::info!("Done pruning basis graph");
 
+    basis_graph.debug_visualize("basis_graph_pruned");
+    basis_graph.debug_statistics("basis_graph_pruned");
 
-    let basis_graph: Rc<Node> = deep_copy(&input_tree);
-
-    basis_graph.debug_visualize("basis_graph-1");
-    linearize_tree(Rc::clone(&basis_graph));
-    basis_graph.debug_visualize("basis_graph-2");
-    prune_tree(Rc::clone(&basis_graph));
-    basis_graph.debug_visualize("basis_graph-3");
-
-    panic!("abort");
-
-
-
-
-
-    log::info!("Done building input/output trees");
-    output_tree.debug_visualize("output");
-
-    let basis_tree: Rc<Node> = get_basis_tree();
-    log::info!("Obtained basis tree with subtree hash: {}", basis_tree.subtree_hash());
-
-    absorb_tree(Rc::clone(&basis_tree), Rc::clone(&input_tree));
-    log::info!("Done absorbing input tree into basis tree");
-
-    prune_tree(Rc::clone(&basis_tree));
-    log::info!("Done pruning basis tree");
-
-    basis_tree.debug_visualize("basis");
-
-    let metadata = get_tree_metadata(Rc::clone(&basis_tree)).await;
+    let metadata = get_tree_metadata(Rc::clone(&basis_graph)).await;
     log::debug!("metadata: {:?}", metadata);
 
-    grow_tree(Rc::clone(&basis_tree), Rc::clone(&output_tree)).await;
-    log::info!("Done growing basis tree");
-
-    save_basis_tree(Rc::clone(&basis_tree));
-    log::info!("Saved basis tree");
-
-    log::info!("Beginning traversal of output tree...");
+    interpret(Rc::clone(&basis_graph), Rc::clone(&output_tree)).await;
+    log::info!("Done interpreting basis graph");
+    
+    log::info!("Harvesting output tree...");
 
     Traversal::from_tree(output_tree)
-        .with_basis(basis_tree)
+        .with_basis(basis_graph)
         .with_metadata(metadata)
         .harvest()
-}
-
-fn get_basis_tree() -> Rc<Node> {
-    Node::from_void()
-}
-
-fn save_basis_tree(_tree: Rc<Node>) {
-    log::warn!("save_basis_tree unimplemented");
 }

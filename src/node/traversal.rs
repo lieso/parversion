@@ -13,9 +13,7 @@ pub fn bfs_graph(tree: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
         visit(&node);
 
         for child in node.children.borrow().iter() {
-            if visited.contains(&child.id) {
-
-            } else {
+            if !visited.contains(&child.id) {
                 queue.push_back(Rc::clone(child));
                 visited.insert(child.id.clone());
             }

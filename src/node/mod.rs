@@ -190,8 +190,14 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
     }
 }
 
-pub fn linearize_tree(tree: Rc<Node>) {
-    log::trace!("In linearize_tree");
+pub async fn interpret(graph: Rc<Node>, output_tree: Rc<Node>) {
+    log::trace!("In interpret");
+
+    unimplemented!()
+}
+
+pub fn linearize(tree: Rc<Node>) {
+    log::trace!("In linearize");
 
     fn dfs(
         node: Rc<Node>,
@@ -236,8 +242,8 @@ pub fn linearize_tree(tree: Rc<Node>) {
     );
 }
 
-pub fn prune_tree(tree: Rc<Node>) {
-    log::trace!("In prune_tree");
+pub fn prune(tree: Rc<Node>) {
+    log::trace!("In prune");
 
     bfs_graph(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
@@ -265,8 +271,8 @@ pub fn prune_tree(tree: Rc<Node>) {
     });
 }
 
-pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
-    log::trace!("In absorb_tree");
+pub fn absorb(recipient: Rc<Node>, donor: Rc<Node>) {
+    log::trace!("In absorb");
 
     let recipient_child = {
         recipient.children.borrow().iter().find(|item| item.hash == donor.hash).cloned()
@@ -283,7 +289,7 @@ pub fn absorb_tree(recipient: Rc<Node>, donor: Rc<Node>) {
             let donor_children = donor.children.borrow().clone();
 
             for donor_child in donor_children.iter() {
-                absorb_tree(recipient_child.clone(), donor_child.clone());
+                absorb(recipient_child.clone(), donor_child.clone());
             }
         }
     } else {
