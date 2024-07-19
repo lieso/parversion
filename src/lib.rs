@@ -104,6 +104,8 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
 
     interpret(Rc::clone(&basis_graph), Rc::clone(&output_tree)).await;
     log::info!("Done interpreting basis graph");
+
+    panic!("abort");
     
     log::info!("Harvesting output tree...");
 

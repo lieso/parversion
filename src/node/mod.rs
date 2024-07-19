@@ -193,7 +193,18 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 pub async fn interpret(graph: Rc<Node>, output_tree: Rc<Node>) {
     log::trace!("In interpret");
 
-    unimplemented!()
+    let db = sled::open("src/database/hash_to_node_data").expect("Could not connect to datbase");
+
+    let mut node_counter = 0;
+
+    bfs_graph(Rc::clone(&graph), &mut |node: &Rc<Node>| {
+        node_counter = node_counter + 1;
+        log::info!("{}", "=".repeat(60));
+        log::info!("Analyzing node #{}", node_counter);
+        log::info!("{}", "=".repeat(60));
+
+
+    });
 }
 
 pub fn linearize(tree: Rc<Node>) {
