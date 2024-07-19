@@ -1,7 +1,27 @@
 use std::rc::{Rc};
-use std::collections::{VecDeque};
+use std::collections::{VecDeque, HashSet};
 
 use super::Node;
+
+pub fn bfs_graph(tree: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
+    let mut queue = VecDeque::new();
+    let mut visited: HashSet<String> = HashSet::new();
+
+    queue.push_back(tree);
+
+    while let Some(node) = queue.pop_front() {
+        visit(&node);
+
+        for child in node.children.borrow().iter() {
+            if visited.contains(&child.id) {
+
+            } else {
+                queue.push_back(Rc::clone(child));
+                visited.insert(child.id.clone());
+            }
+        }
+    }
+}
 
 pub fn bfs(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     let mut queue = VecDeque::new();
@@ -22,24 +42,4 @@ pub fn post_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
     }
 
     visit(&node);
-}
-
-pub fn dfs_with_path(
-    node: Rc<Node>,
-    visit: &mut dyn FnMut(&Rc<Node>, &Vec<Rc<Node>>) -> bool,
-) {
-    let mut stack = vec![(node.clone(), vec![])];
-
-    while let Some((current, mut path)) = stack.pop() {
-        path.push(current.clone());
-
-        if !visit(&current, &path) {
-            break;
-        }
-
-        for child in current.children.borrow().iter().rev() {
-            let mut new_path = path.clone();
-            stack.push((child.clone(), new_path));
-        }
-    }
 }

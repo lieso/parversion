@@ -4,7 +4,7 @@ use tokio::time::{sleep, Duration};
 
 use std::rc::{Rc};
 use std::cell::RefCell;
-use std::collections::{VecDeque, HashMap};
+use std::collections::{VecDeque, HashMap, HashSet};
 
 mod debug;
 mod interpretation;
@@ -234,29 +234,13 @@ pub fn linearize_tree(tree: Rc<Node>) {
         tree,
         &mut HashMap::new(),
     );
-
-}
-
-fn has_postfix_duplicate(vec: &Vec<String>) -> bool {
-    if vec.len() < 2 {
-        return false;
-    }
-
-    let last_item = vec.last().expect("Vector should have at least one element");
-    let slice = &vec[..vec.len() - 1];
-
-    slice.contains(last_item)
 }
 
 pub fn prune_tree(tree: Rc<Node>) {
     log::trace!("In prune_tree");
 
-    bfs(Rc::clone(&tree), &mut |node: &Rc<Node>| {
+    bfsx(Rc::clone(&tree), &mut |node: &Rc<Node>| {
         loop {
-            if node.parent.borrow().is_none() {
-                break;
-            }
-
             let children_borrow = node.children.borrow();
             log::debug!("Node has {} children", children_borrow.len());
 

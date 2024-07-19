@@ -95,8 +95,8 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     basis_graph.debug_visualize("basis_graph-1");
     linearize_tree(Rc::clone(&basis_graph));
     basis_graph.debug_visualize("basis_graph-2");
-    //prune_tree(Rc::clone(&basis_graph));
-    //basis_graph.debug_visualize("basis_graph-3");
+    prune_tree(Rc::clone(&basis_graph));
+    basis_graph.debug_visualize("basis_graph-3");
 
     panic!("abort");
 
