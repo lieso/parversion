@@ -1,6 +1,7 @@
 use std::rc::{Rc};
 use dot::{GraphWalk, Labeller};
 use std::fs::File;
+use std::collections::HashSet;
 
 use super::{Node};
 
@@ -30,8 +31,9 @@ impl<'a> Labeller<'a, Rc<Node>, (Rc<Node>, Rc<Node>)> for Node {
 
     fn node_label(&'a self, node: &Rc<Node>) -> dot::LabelText<'a> {
         //let label = node.id.clone().chars().take(7).collect::<String>();
-        let label = node.hash.clone().chars().take(7).collect::<String>();
+        //let label = node.hash.clone().chars().take(7).collect::<String>();
         //let label = node.xml.get_all_tags().join(",");
+        let label = node.xml.to_string().chars().take(10).collect::<String>();
         dot::LabelText::label(label)
     }
 }
@@ -40,14 +42,14 @@ impl<'a> GraphWalk<'a, Rc<Node>, (Rc<Node>, Rc<Node>)> for Node {
     fn nodes(&self) -> dot::Nodes<Rc<Node>> {
         let mut nodes = vec![];
         let self_rc = Rc::new(self.clone());
-        self.collect_nodes(&self_rc, &mut nodes);
+        self.collect_nodes(&self_rc, &mut nodes, &mut HashSet::new());
         nodes.into()
     }
 
     fn edges(&self) -> dot::Edges<(Rc<Node>, Rc<Node>)> {
         let mut edges = vec![];
         let self_rc = Rc::new(self.clone());
-        self.collect_edges(&self_rc, &mut edges);
+        self.collect_edges(&self_rc, &mut edges, &mut HashSet::new());
         edges.into()
     }
 
@@ -61,17 +63,35 @@ impl<'a> GraphWalk<'a, Rc<Node>, (Rc<Node>, Rc<Node>)> for Node {
 }
 
 impl Node {
-    fn collect_nodes(&self, node: &Rc<Node>, nodes: &mut Vec<Rc<Node>>) {
-        nodes.push(node.clone());
-        for child in node.children.borrow().iter() {
-            self.collect_nodes(child, nodes);
+    fn collect_nodes(
+        &self,
+        node: &Rc<Node>,
+        nodes: &mut Vec<Rc<Node>>,
+        visited: &mut HashSet<String>,
+    ) {
+        if visited.insert(node.id.clone()) {
+            nodes.push(node.clone());
+            for child in node.children.borrow().iter() {
+                self.collect_nodes(child, nodes, visited);
+            }
         }
     }
 
-    fn collect_edges(&self, node: &Rc<Node>, edges: &mut Vec<(Rc<Node>, Rc<Node>)>) {
-        for child in node.children.borrow().iter() {
-            edges.push((node.clone(), child.clone()));
-            self.collect_edges(child, edges);
+    fn collect_edges(
+        &self,
+        node: &Rc<Node>,
+        edges: &mut Vec<(Rc<Node>, Rc<Node>)>,
+        visited: &mut HashSet<String>,
+    ) {
+        if visited.insert(node.id.clone()) {
+            for child in node.children.borrow().iter() {
+                edges.push((node.clone(), child.clone()));
+                self.collect_edges(child, edges, visited);
+            }
+
+            if let Some(parent) = node.parent.borrow().as_ref() {
+                edges.push((node.clone(), parent.clone()));
+            }
         }
     }
 }

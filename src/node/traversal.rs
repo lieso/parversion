@@ -23,3 +23,23 @@ pub fn post_order_traversal(node: Rc<Node>, visit: &mut dyn FnMut(&Rc<Node>)) {
 
     visit(&node);
 }
+
+pub fn dfs_with_path(
+    node: Rc<Node>,
+    visit: &mut dyn FnMut(&Rc<Node>, &Vec<Rc<Node>>) -> bool,
+) {
+    let mut stack = vec![(node.clone(), vec![])];
+
+    while let Some((current, mut path)) = stack.pop() {
+        path.push(current.clone());
+
+        if !visit(&current, &path) {
+            break;
+        }
+
+        for child in current.children.borrow().iter().rev() {
+            let mut new_path = path.clone();
+            stack.push((child.clone(), new_path));
+        }
+    }
+}

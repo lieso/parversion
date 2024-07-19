@@ -22,7 +22,8 @@ use node::{
     absorb_tree,
     prune_tree,
     grow_tree,
-    get_tree_metadata
+    get_tree_metadata,
+    linearize_tree
 };
 use error::{Errors};
 use traversal::{Traversal};
@@ -84,6 +85,25 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let input_tree: Rc<Node> = build_tree(xml.clone());
     let output_tree: Rc<Node> = deep_copy(&input_tree);
 
+
+
+
+
+
+    let basis_graph: Rc<Node> = deep_copy(&input_tree);
+
+    basis_graph.debug_visualize("basis_graph-1");
+    linearize_tree(Rc::clone(&basis_graph));
+    basis_graph.debug_visualize("basis_graph-2");
+    //prune_tree(Rc::clone(&basis_graph));
+    //basis_graph.debug_visualize("basis_graph-3");
+
+    panic!("abort");
+
+
+
+
+
     log::info!("Done building input/output trees");
     output_tree.debug_visualize("output");
 
@@ -97,12 +117,6 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     log::info!("Done pruning basis tree");
 
     basis_tree.debug_visualize("basis");
-
-    // detect cycles and convert to graph
-
-    panic!("test");
-
-    // WYSIWYG
 
     let metadata = get_tree_metadata(Rc::clone(&basis_tree)).await;
     log::debug!("metadata: {:?}", metadata);

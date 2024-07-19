@@ -4,7 +4,7 @@ use tokio::time::{sleep, Duration};
 
 use std::rc::{Rc};
 use std::cell::RefCell;
-use std::collections::{VecDeque};
+use std::collections::{VecDeque, HashMap};
 
 mod debug;
 mod interpretation;
@@ -188,6 +188,64 @@ pub async fn grow_tree(basis_tree: Rc<Node>, output_tree: Rc<Node>) {
 
         *node.data.borrow_mut() = filtered_node_data;
     }
+}
+
+pub fn linearize_tree(tree: Rc<Node>) {
+    log::trace!("In linearize_tree");
+
+    fn dfs(
+        node: Rc<Node>,
+        visited_hashes: &mut HashMap<String, Rc<Node>>
+    ) {
+        let hash = node.hash.clone();
+
+        if let Some(first_occurrence) = visited_hashes.get(&hash) {
+            log::info!("Detected cycle");
+
+            if let Some(parent) = node.parent.borrow().as_ref() {
+                parent.children.borrow_mut()
+                    .retain(|child| child.id != node.id);
+                parent.children.borrow_mut().push(first_occurrence.clone());
+            }
+
+            let children = node.children.borrow_mut().drain(..).collect::<Vec<_>>();
+            for child in children {
+                *child.parent.borrow_mut() = Some(first_occurrence.clone()).into();
+                first_occurrence.children.borrow_mut().push(child);
+            }
+
+            //*node.parent.borrow_mut() = Some(first_occurrence.clone());
+        } else {
+            visited_hashes.insert(hash.clone(), Rc::clone(&node));
+
+            let children = node.children.borrow().clone();
+            for child in children {
+                dfs(
+                    child,
+                    visited_hashes,
+                );
+            }
+
+            visited_hashes.remove(&hash);
+        }
+    }
+
+    dfs(
+        tree,
+        &mut HashMap::new(),
+    );
+
+}
+
+fn has_postfix_duplicate(vec: &Vec<String>) -> bool {
+    if vec.len() < 2 {
+        return false;
+    }
+
+    let last_item = vec.last().expect("Vector should have at least one element");
+    let slice = &vec[..vec.len() - 1];
+
+    slice.contains(last_item)
 }
 
 pub fn prune_tree(tree: Rc<Node>) {
