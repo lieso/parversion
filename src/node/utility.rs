@@ -41,7 +41,7 @@ impl Node {
     pub fn get_lineage(&self) -> VecDeque<String> {
         let mut lineage = VecDeque::new();
         lineage.push_back(self.hash.clone());
-
+    
         let mut current_parent = self.parent.borrow().clone();
 
         while let Some(parent) = current_parent {

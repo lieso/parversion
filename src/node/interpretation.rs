@@ -147,6 +147,8 @@ impl Node {
             lineage.clone(),
         );
 
+        log::info!("Found {} example nodes", examples.len());
+
         // assuming first example is already present in basis tree
         if !examples.is_empty() {
             examples.remove(0);

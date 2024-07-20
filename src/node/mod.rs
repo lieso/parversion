@@ -195,16 +195,29 @@ pub async fn interpret(graph: Rc<Node>, output_tree: Rc<Node>) {
 
     let db = sled::open("src/database/hash_to_node_data").expect("Could not connect to datbase");
 
-    let mut node_counter = 0;
+    let mut nodes: Vec<Rc<Node>> = Vec::new();
 
     bfs_graph(Rc::clone(&graph), &mut |node: &Rc<Node>| {
-        node_counter = node_counter + 1;
-        log::info!("{}", "=".repeat(60));
-        log::info!("Analyzing node #{}", node_counter);
-        log::info!("{}", "=".repeat(60));
-
-
+        nodes.push(node.clone());
     });
+
+    for (index, node) in nodes.iter().enumerate() {
+        log::info!("{}", "=".repeat(60));
+        log::info!("Analyzing node #{}", index + 1);
+        log::info!("{}", "=".repeat(60));
+
+
+        if node.xml.to_string() == "<tr class=\"athing\" id=\"40840396\" />" {
+            log::debug!("*****************************************************************************************************");
+
+            let (node_data_structure, should_sleep) = node.interpret_node_structure(&db, &output_tree).await;
+
+            if should_sleep {
+                sleep(Duration::from_secs(1)).await;
+            }
+
+        }
+    }
 }
 
 pub fn linearize(tree: Rc<Node>) {
@@ -323,6 +336,8 @@ pub fn find_all_node_xml_by_lineage(
     let mut target_xml = Vec::new();
 
     let mut queue = VecDeque::new();
+    let mut visited: HashSet<String> = HashSet::new();
+    
     queue.push_back(root.clone());
 
     while let Some(current) = queue.pop_front() {
@@ -332,7 +347,10 @@ pub fn find_all_node_xml_by_lineage(
             target_xml.push(current.id.clone());
         } else if is_queue_prefix(&current_lineage, &lineage) {
             for child in current.children.borrow().iter() {
-                queue.push_back(child.clone());
+                if !visited.contains(&child.id) {
+                    queue.push_back(child.clone());
+                    visited.insert(child.id.clone());
+                }
             }
         }
     }
