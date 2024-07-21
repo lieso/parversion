@@ -11,6 +11,7 @@ use crate::llm;
 use crate::config::{CONFIG, Config};
 use crate::constants;
 use crate::xml::Xml;
+use std::collections::{VecDeque};
 
 pub fn get_root_node(node: Rc<Node>) -> Rc<Node> {
     let mut root_node = node.clone();
@@ -136,6 +137,44 @@ impl Node {
     }
 
     fn get_examples(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> Vec<String> {
+        log::trace!("In get_examples");
+
+        let target_nodes: Vec<Rc<Node>> = Vec::new();
+
+        let mut queue = VecDeque::new();
+        queue.push_back(output_tree.clone());
+
+        while let Some(current) = queue.pop_front() {
+            let lineage = current.get_lineage();
+
+            if is_graph_node_reachable(&self, &lineage) {
+                target_nodes.push(current.clone());
+            } else if is_graph_node_almost_reachable(&self, &lineage) {
+                for child in current.children.borrow().iter() {
+                    queue.push_back(child.clone());
+                }
+            }
+        }
+
+        Vec::new()
+    }
+
+    fn is_graph_node_reachable(node: &Rc<Node>, lineage: &Vec<String>) -> bool {
+        if lineage.is_empty() {
+            return true;
+        }
+
+        if lineage.last().unwrap() !== node.hash {
+            return false;
+        }
+
+    }
+
+    fn is_graph_node_almost_reachable(node: &Rc<Node>, lineage: &Vec<String>) -> bool {
+
+    }
+
+    fn get_examplesx(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> Vec<String> {
         log::trace!("In get_examples");
 
         let mut lineage = self.get_lineage();
