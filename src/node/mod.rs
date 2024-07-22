@@ -243,8 +243,6 @@ pub fn linearize(tree: Rc<Node>) {
                 *child.parent.borrow_mut() = Some(first_occurrence.clone()).into();
                 first_occurrence.children.borrow_mut().push(child);
             }
-
-            //*node.parent.borrow_mut() = Some(first_occurrence.clone());
         } else {
             visited_hashes.insert(hash.clone(), Rc::clone(&node));
 

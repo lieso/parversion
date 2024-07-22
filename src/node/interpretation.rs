@@ -174,34 +174,6 @@ impl Node {
         }).collect()
     }
 
-    fn get_examplesx(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> Vec<String> {
-        log::trace!("In get_examples");
-
-        let mut lineage = self.get_lineage();
-
-        lineage.pop_front(); // root node
-
-        let mut examples = find_all_node_xml_by_lineage(
-            output_tree.clone(),
-            lineage.clone(),
-        );
-
-        log::info!("Found {} example nodes", examples.len());
-
-        // assuming first example is already present in basis tree
-        if !examples.is_empty() {
-            examples.remove(0);
-        }
-
-        let max_examples = config.llm.target_node_examples_max_count;
-        let number_to_take = std::cmp::min(max_examples, examples.len());
-
-        examples[..number_to_take].to_vec().iter().map(|item| {
-            let node = find_node_by_id(&output_tree, item).unwrap();
-            node.node_to_xml_snippet_with_context(&output_tree, config)
-        }).collect()
-    }
-
     fn node_to_xml_snippet_with_context(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> String {
         log::trace!("In node_to_xml_snippet_with_context");
 
