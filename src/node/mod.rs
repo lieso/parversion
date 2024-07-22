@@ -202,12 +202,12 @@ pub async fn interpret(graph: Rc<Node>, output_tree: Rc<Node>) {
     });
 
     for (index, node) in nodes.iter().enumerate() {
-        log::info!("{}", "=".repeat(60));
-        log::info!("Analyzing node #{}", index + 1);
-        log::info!("{}", "=".repeat(60));
-
 
         if node.xml.to_string() == "<tr class=\"athing\" id=\"40840396\" />" {
+            log::info!("{}", "=".repeat(60));
+            log::info!("Analyzing node #{}", index + 1);
+            log::info!("{}", "=".repeat(60));
+
             log::debug!("*****************************************************************************************************");
 
             let (node_data_structure, should_sleep) = node.interpret_node_structure(&db, &output_tree).await;

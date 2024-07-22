@@ -81,7 +81,9 @@ impl Node {
             let config = CONFIG.lock().unwrap();
 
             let examples: Vec<String> = self.get_examples(output_tree, &config);
+
             log::debug!("examples: {:?}", examples);
+            panic!("test");
 
             let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree, &config);
 
@@ -123,6 +125,7 @@ impl Node {
             let config = CONFIG.lock().unwrap();
 
             let examples: Vec<String> = self.get_examples(output_tree, &config);
+
             let surrounding_xml: String = self.node_to_xml_snippet_with_context(output_tree, &config);
 
             let llm_result: Vec<NodeData> = llm::xml_to_data(&self.xml, surrounding_xml, examples)
@@ -139,7 +142,7 @@ impl Node {
     fn get_examples(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> Vec<String> {
         log::trace!("In get_examples");
 
-        let target_nodes: Vec<Rc<Node>> = Vec::new();
+        let mut target_nodes: Vec<Rc<Node>> = Vec::new();
 
         let mut queue = VecDeque::new();
         queue.push_back(output_tree.clone());
@@ -147,31 +150,28 @@ impl Node {
         while let Some(current) = queue.pop_front() {
             let lineage = current.get_lineage();
 
-            if is_graph_node_reachable(&self, &lineage) {
+            if is_graph_node_reachable(&Rc::new(self.clone()), lineage.clone().into()) {
                 target_nodes.push(current.clone());
-            } else if is_graph_node_almost_reachable(&self, &lineage) {
-                for child in current.children.borrow().iter() {
-                    queue.push_back(child.clone());
-                }
+            }
+
+            for child in current.children.borrow().iter() {
+                queue.push_back(child.clone());
             }
         }
 
-        Vec::new()
-    }
+        // One of these examples is the basis graph node we're analysing
+        let target_nodes: Vec<Rc<Node>> = target_nodes
+            .iter()
+            .filter(|item| item.id != self.id)
+            .cloned()
+            .collect();
 
-    fn is_graph_node_reachable(node: &Rc<Node>, lineage: &Vec<String>) -> bool {
-        if lineage.is_empty() {
-            return true;
-        }
+        let max_examples = config.llm.target_node_examples_max_count;
+        let number_to_take = std::cmp::min(max_examples, target_nodes.len());
 
-        if lineage.last().unwrap() !== node.hash {
-            return false;
-        }
-
-    }
-
-    fn is_graph_node_almost_reachable(node: &Rc<Node>, lineage: &Vec<String>) -> bool {
-
+        target_nodes[..number_to_take].to_vec().iter().map(|item| {
+            item.node_to_xml_snippet_with_context(&output_tree, config)
+        }).collect()
     }
 
     fn get_examplesx(&self, output_tree: &Rc<Node>, config: &MutexGuard<Config>) -> Vec<String> {
@@ -366,6 +366,23 @@ fn take_from_start(s: &str, amount: usize) -> &str {
         }
 
         &s[..adjusted_end]
+    }
+}
+
+fn is_graph_node_reachable(node: &Rc<Node>, lineage: Vec<String>) -> bool {
+    if let Some((last, rest)) = lineage.split_last() {
+        if last != &node.hash {
+            return false;
+        }
+
+        let parent = node.parent.borrow();
+
+        match parent.as_ref() {
+            Some(parent) => is_graph_node_reachable(&parent.clone(), rest.to_vec()),
+            None => false
+        }
+    } else {
+        true
     }
 }
 
