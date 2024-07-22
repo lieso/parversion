@@ -5,6 +5,7 @@ pub struct BasisNode {
     pub id: String,
     pub hash: String,
     pub parents: Vec<Arc<Mutex<BasisNode>>>,
-    pub data: RefCell<Vec<NodeData>>,
-    pub children: RefCell<Vec<Rc<Node>>>,
+    pub children: Vec<Arc<Mutex<BasisNode>>>,
+    pub data: Arc<Mutex<Vec<NodeData>>>,
+    pub structure: Arc<Mutex<Vec<NodeDataStructure>>>,
 }

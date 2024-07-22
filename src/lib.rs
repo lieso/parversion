@@ -14,6 +14,8 @@ mod utility;
 mod xml;
 mod config;
 mod constants;
+mod tree_node;
+mod basis_node;
 
 use node::{
     Node,
@@ -73,10 +75,22 @@ pub fn normalize_file(file_name: &str) -> Result<String, Errors> {
         process::exit(1);
     });
 
-    return normalize(document);
+    normalize(document)
 }
 
 pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
+    log::trace!("In normalize_xml");
+
+    let xml = utility::preprocess_xml(xml_string);
+    log::info!("Done preprocessing XML");
+
+    let input_tree: Arc<Node> = tree_node::build_tree(xml);
+    let output_tree: Arc<Node> = tree_node::deep_copy(&input_tree);
+
+    unimplemented!()
+}
+
+pub async fn normalize_xml_deprecated(xml_string: &str) -> Result<String, Errors> {
     log::trace!("In normalize_xml");
 
     let xml = utility::preprocess_xml(xml_string);
