@@ -2,7 +2,7 @@ use tokio::runtime::Runtime;
 use std::fs::{File};
 use std::process;
 use std::io::{Read};
-use std::rc::{Rc};
+use std::sync::{Arc};
 
 mod error;
 mod llm;
@@ -20,12 +20,15 @@ mod basis_node;
 use node::{
     Node,
     build_tree,
-    deep_copy,
     absorb,
     prune,
     get_tree_metadata,
     linearize,
     interpret,
+};
+use tree_node::{
+    TreeNode,
+    deep_copy
 };
 use error::{Errors};
 use traversal::{Traversal};
@@ -84,47 +87,47 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml_string);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Arc<Node> = tree_node::build_tree(xml);
-    let output_tree: Arc<Node> = tree_node::deep_copy(&input_tree);
+    let input_tree: Arc<TreeNode> = tree_node::build_tree(xml);
+    let output_tree: Arc<TreeNode> = tree_node::deep_copy(&input_tree);
 
     unimplemented!()
 }
 
-pub async fn normalize_xml_deprecated(xml_string: &str) -> Result<String, Errors> {
-    log::trace!("In normalize_xml");
-
-    let xml = utility::preprocess_xml(xml_string);
-    log::info!("Done preprocessing XML");
-
-    let input_tree: Rc<Node> = build_tree(xml.clone());
-    let output_tree: Rc<Node> = deep_copy(&input_tree);
-
-    let basis_graph: Rc<Node> = Node::from_void();
-
-    absorb(Rc::clone(&basis_graph), Rc::clone(&input_tree));
-    log::info!("Done absorbing input tree into basis graph");
-
-    linearize(Rc::clone(&basis_graph));
-    log::info!("Done linearizing basis graph");
-
-    prune(Rc::clone(&basis_graph));
-    log::info!("Done pruning basis graph");
-
-    basis_graph.debug_visualize("basis_graph_pruned");
-    basis_graph.debug_statistics("basis_graph_pruned");
-
-    let metadata = get_tree_metadata(Rc::clone(&basis_graph)).await;
-    log::debug!("metadata: {:?}", metadata);
-
-    interpret(Rc::clone(&basis_graph), Rc::clone(&output_tree)).await;
-    log::info!("Done interpreting basis graph");
-
-    panic!("abort");
-    
-    log::info!("Harvesting output tree...");
-
-    Traversal::from_tree(output_tree)
-        .with_basis(basis_graph)
-        .with_metadata(metadata)
-        .harvest()
-}
+//pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
+//    log::trace!("In normalize_xml");
+//
+//    let xml = utility::preprocess_xml(xml_string);
+//    log::info!("Done preprocessing XML");
+//
+//    let input_tree: Rc<Node> = build_tree(xml.clone());
+//    let output_tree: Rc<Node> = deep_copy(&input_tree);
+//
+//    let basis_graph: Rc<Node> = Node::from_void();
+//
+//    absorb(Rc::clone(&basis_graph), Rc::clone(&input_tree));
+//    log::info!("Done absorbing input tree into basis graph");
+//
+//    linearize(Rc::clone(&basis_graph));
+//    log::info!("Done linearizing basis graph");
+//
+//    prune(Rc::clone(&basis_graph));
+//    log::info!("Done pruning basis graph");
+//
+//    basis_graph.debug_visualize("basis_graph_pruned");
+//    basis_graph.debug_statistics("basis_graph_pruned");
+//
+//    let metadata = get_tree_metadata(Rc::clone(&basis_graph)).await;
+//    log::debug!("metadata: {:?}", metadata);
+//
+//    interpret(Rc::clone(&basis_graph), Rc::clone(&output_tree)).await;
+//    log::info!("Done interpreting basis graph");
+//
+//    panic!("abort");
+//    
+//    log::info!("Harvesting output tree...");
+//
+//    Traversal::from_tree(output_tree)
+//        .with_basis(basis_graph)
+//        .with_metadata(metadata)
+//        .harvest()
+//}
