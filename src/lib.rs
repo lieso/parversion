@@ -2,7 +2,7 @@ use tokio::runtime::Runtime;
 use std::fs::{File};
 use std::process;
 use std::io::{Read};
-use std::sync::{Arc};
+use std::sync::{Arc, Mutex};
 
 mod error;
 mod llm;
@@ -16,6 +16,7 @@ mod config;
 mod constants;
 mod tree_node;
 mod basis_node;
+mod graph_node;
 
 use node::{
     Node,
@@ -30,6 +31,13 @@ use tree_node::{
     TreeNode,
     deep_copy
 };
+use basis_node::{
+    BasisNode
+};
+use graph_node::{
+    GraphNode,
+};
+use xml::{Xml};
 use error::{Errors};
 use traversal::{Traversal};
 
@@ -87,8 +95,8 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml_string);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Arc<TreeNode> = tree_node::build_tree(xml);
-    let output_tree: Arc<TreeNode> = tree_node::deep_copy(&input_tree);
+    let input_tree: Arc<GraphNode<Xml, Arc>> = graph_node::build_immutable_graph(xml.clone());
+    let basis_graph: Arc<Mutex<GraphNode<BasisNode, Arc<Mutex>>>> = graph_node::build_graph(xml.clone());
 
     unimplemented!()
 }
