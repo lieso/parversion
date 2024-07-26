@@ -91,8 +91,8 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml_string);
     log::info!("Done preprocessing XML");
 
-    let output_tree: Arc<Mutex<MutableGraph<Xml>>> = graph_node::build_graph(xml.clone());
-    let input_tree: Arc<ImmutableGraph<Xml>> = graph_node::build_immutable_graph(output_tree.clone());
+    let input_tree: Arc<Mutex<MutableGraph<Xml>>> = graph_node::build_graph(xml.clone());
+    let output_tree: Arc<ImmutableGraph<Xml>> = graph_node::build_immutable_graph(input_tree.clone());
 
     unimplemented!()
 }

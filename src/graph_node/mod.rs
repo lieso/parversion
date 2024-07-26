@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use std::sync::{Arc, Weak, Mutex};
+use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::xml::{Xml};
@@ -24,7 +25,55 @@ pub struct MutableGraph<T> {
 }
 
 pub fn build_immutable_graph(graph: Arc<Mutex<MutableGraph<Xml>>>) -> Arc<ImmutableGraph<Xml>> {
-    unimplemented!()
+    let mut converted = HashMap::new();
+
+    fn recurse(
+        graph: &Arc<Mutex<MutableGraph<Xml>>>,
+        converted: &mut HashMap<String, Arc<ImmutableGraph<Xml>>>
+    ) -> Arc<ImmutableGraph<Xml>> {
+        let graph = graph.lock().unwrap();
+
+        log::debug!("graph.id: {}", graph.id);
+
+        if let Some(existing) = converted.get(&graph.id) {
+            return existing.clone();
+        }
+
+        let placeholder = Arc::new(ImmutableGraph {
+            id: graph.id.clone(),
+            hash: graph.hash.clone(),
+            parents: Vec::new(),
+            children: Vec::new(),
+            data: graph.data.clone(),
+        });
+
+        converted.insert(graph.id.clone(), placeholder.clone());
+
+        let parents: Vec<Arc<ImmutableGraph<Xml>>> = graph
+            .parents
+            .iter()
+            .map(|parent| recurse(parent, converted))
+            .collect();
+
+        let children: Vec<Arc<ImmutableGraph<Xml>>> = graph
+            .children
+            .iter()
+            .map(|child| recurse(child, converted))
+            .collect();
+
+        let immutable_graph = Arc::new(ImmutableGraph {
+            id: placeholder.id.clone(),
+            hash: placeholder.hash.clone(),
+            parents,
+            children,
+            data: placeholder.data.clone(),
+        });
+
+        converted.insert(graph.id.clone(), immutable_graph.clone());
+        immutable_graph
+    }
+    
+    recurse(&graph, &mut converted)
 }
 
 pub fn build_graph(xml: String) -> Arc<Mutex<MutableGraph<Xml>>> {
