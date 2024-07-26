@@ -14,7 +14,6 @@ mod utility;
 mod xml;
 mod config;
 mod constants;
-mod tree_node;
 mod basis_node;
 mod graph_node;
 
@@ -27,15 +26,12 @@ use node::{
     linearize,
     interpret,
 };
-use tree_node::{
-    TreeNode,
-    deep_copy
-};
 use basis_node::{
     BasisNode
 };
 use graph_node::{
-    GraphNode,
+    ImmutableGraph,
+    MutableGraph,
 };
 use xml::{Xml};
 use error::{Errors};
@@ -95,8 +91,8 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml_string);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Arc<GraphNode<Xml, Arc>> = graph_node::build_immutable_graph(xml.clone());
-    let basis_graph: Arc<Mutex<GraphNode<BasisNode, Arc<Mutex>>>> = graph_node::build_graph(xml.clone());
+    let output_tree: Arc<Mutex<MutableGraph<Xml>>> = graph_node::build_graph(xml.clone());
+    let input_tree: Arc<ImmutableGraph<Xml>> = graph_node::build_immutable_graph(output_tree.clone());
 
     unimplemented!()
 }
