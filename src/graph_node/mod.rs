@@ -24,14 +24,24 @@ pub struct MutableGraph<T> {
     pub data: T,
 }
 
-pub enum Graphs<T: Send + Sync> {
+pub enum Graph<T: Send + Sync> {
     Immutable(Arc<ImmutableGraph<T>>),
     Mutable(Arc<Mutex<MutableGraph<T>>>),
 }
 
+impl<T: Send + Sync> Graph<T> {
+    pub fn as_mutable_ref(&self) -> &Arc<Mutex<MutableGraph<T>>> {
+        if let Graph::Mutable(ref m) = *self {
+            m
+        } else {
+            panic!("Expected a mutable graph");
+        }
+    }
+}
+
 pub trait GraphNode<T: Send + Sync>: Send + Sync {
     fn get_id(&self) -> &String;
-    fn get_children(&self) -> Vec<Graphs<T>>;
+    fn get_children(&self) -> Vec<Graph<T>>;
 }
 
 impl<T: Send + Sync> GraphNode<T> for ImmutableGraph<T> {
@@ -39,8 +49,8 @@ impl<T: Send + Sync> GraphNode<T> for ImmutableGraph<T> {
         &self.id
     }
 
-    fn get_children(&self) -> Vec<Graphs<T>> {
-        self.children.iter().cloned().map(Graphs::Immutable).collect()
+    fn get_children(&self) -> Vec<Graph<T>> {
+        self.children.iter().cloned().map(Graph::Immutable).collect()
     }
 }
 
@@ -49,8 +59,8 @@ impl<T: Send + Sync> GraphNode<T> for MutableGraph<T> {
         &self.id
     }
 
-    fn get_children(&self) -> Vec<Graphs<T>> {
-        self.children.iter().cloned().map(Graphs::Mutable).collect()
+    fn get_children(&self) -> Vec<Graph<T>> {
+        self.children.iter().cloned().map(Graph::Mutable).collect()
     }
 }
 
@@ -104,11 +114,12 @@ pub fn build_immutable_graph(graph: Arc<Mutex<MutableGraph<Xml>>>) -> Arc<Immuta
     recurse(&graph, &mut converted)
 }
 
-pub fn build_graph(xml: String) -> Arc<Mutex<MutableGraph<Xml>>> {
+pub fn build_graph(xml: String) -> Graph<Xml> {
     let mut reader = std::io::Cursor::new(xml);
     let xml = Xml::parse(&mut reader).expect("Could not parse XML");
 
-    MutableGraph::from_xml(&xml, Vec::new())
+    let mutable_graph = MutableGraph::from_xml(&xml, Vec::new());
+    Graph::Mutable(mutable_graph)
 }
 
 impl MutableGraph<Xml> {
@@ -135,15 +146,15 @@ impl MutableGraph<Xml> {
     }
 }
 
-pub fn bft<T: Send + Sync>(start: Graphs<T>, visit: &mut dyn FnMut(&Graphs<T>)) {
+pub fn bft<T: Send + Sync>(start: Graph<T>, visit: &mut dyn FnMut(&Graph<T>)) {
     let mut visited = HashSet::new();
     let mut queue = VecDeque::new();
     queue.push_back(start);
 
     while let Some(current) = queue.pop_front() {
         let id = match &current {
-            Graphs::Immutable(node) => node.get_id().clone(),
-            Graphs::Mutable(node) => node.lock().unwrap().get_id().clone(),
+            Graph::Immutable(node) => node.get_id().clone(),
+            Graph::Mutable(node) => node.lock().unwrap().get_id().clone(),
         };
 
         if !visited.insert(id.clone()) {
@@ -153,8 +164,8 @@ pub fn bft<T: Send + Sync>(start: Graphs<T>, visit: &mut dyn FnMut(&Graphs<T>)) 
         visit(&current);
 
         let children = match &current {
-            Graphs::Immutable(node) => node.get_children(),
-            Graphs::Mutable(node) => node.lock().unwrap().get_children(),
+            Graph::Immutable(node) => node.get_children(),
+            Graph::Mutable(node) => node.lock().unwrap().get_children(),
         };
 
         for child in children {

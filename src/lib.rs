@@ -32,6 +32,8 @@ use basis_node::{
 use graph_node::{
     ImmutableGraph,
     MutableGraph,
+    bft,
+    Graph
 };
 use xml::{Xml};
 use error::{Errors};
@@ -91,8 +93,15 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml_string);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Arc<Mutex<MutableGraph<Xml>>> = graph_node::build_graph(xml.clone());
-    let output_tree: Arc<ImmutableGraph<Xml>> = graph_node::build_immutable_graph(input_tree.clone());
+    let input_tree: Graph<Xml> = graph_node::build_graph(xml.clone());
+
+    bft(input_tree, &mut |node| {
+        let mutable_node = node.as_mutable_ref();
+        let data = mutable_node.lock().unwrap();
+    });
+
+    //let output_tree: Arc<ImmutableGraph<Xml>> = graph_node::build_immutable_graph(input_tree.clone());
+
 
     unimplemented!()
 }
