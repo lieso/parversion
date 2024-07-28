@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use std::sync::{Arc, Weak, Mutex};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 
 use crate::xml::{Xml};
@@ -24,6 +24,36 @@ pub struct MutableGraph<T> {
     pub data: T,
 }
 
+pub enum Graphs<T: Send + Sync> {
+    Immutable(Arc<ImmutableGraph<T>>),
+    Mutable(Arc<Mutex<MutableGraph<T>>>),
+}
+
+pub trait GraphNode<T: Send + Sync>: Send + Sync {
+    fn get_id(&self) -> &String;
+    fn get_children(&self) -> Vec<Graphs<T>>;
+}
+
+impl<T: Send + Sync> GraphNode<T> for ImmutableGraph<T> {
+    fn get_id(&self) -> &String {
+        &self.id
+    }
+
+    fn get_children(&self) -> Vec<Graphs<T>> {
+        self.children.iter().cloned().map(Graphs::Immutable).collect()
+    }
+}
+
+impl<T: Send + Sync> GraphNode<T> for MutableGraph<T> {
+    fn get_id(&self) -> &String {
+        &self.id
+    }
+
+    fn get_children(&self) -> Vec<Graphs<T>> {
+        self.children.iter().cloned().map(Graphs::Mutable).collect()
+    }
+}
+
 pub fn build_immutable_graph(graph: Arc<Mutex<MutableGraph<Xml>>>) -> Arc<ImmutableGraph<Xml>> {
     let mut converted = HashMap::new();
 
@@ -32,8 +62,6 @@ pub fn build_immutable_graph(graph: Arc<Mutex<MutableGraph<Xml>>>) -> Arc<Immuta
         converted: &mut HashMap<String, Arc<ImmutableGraph<Xml>>>
     ) -> Arc<ImmutableGraph<Xml>> {
         let graph = graph.lock().unwrap();
-
-        log::debug!("graph.id: {}", graph.id);
 
         if let Some(existing) = converted.get(&graph.id) {
             return existing.clone();
@@ -104,5 +132,33 @@ impl MutableGraph<Xml> {
         node.lock().unwrap().children.extend(children);
 
         node
+    }
+}
+
+pub fn bft<T: Send + Sync>(start: Graphs<T>, visit: &mut dyn FnMut(&Graphs<T>)) {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(start);
+
+    while let Some(current) = queue.pop_front() {
+        let id = match &current {
+            Graphs::Immutable(node) => node.get_id().clone(),
+            Graphs::Mutable(node) => node.lock().unwrap().get_id().clone(),
+        };
+
+        if !visited.insert(id.clone()) {
+            continue;
+        }
+
+        visit(&current);
+
+        let children = match &current {
+            Graphs::Immutable(node) => node.get_children(),
+            Graphs::Mutable(node) => node.lock().unwrap().get_children(),
+        };
+
+        for child in children {
+            queue.push_back(child);
+        }
     }
 }
