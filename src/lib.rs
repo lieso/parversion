@@ -95,13 +95,19 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
 
     let input_tree: Graph<Xml> = graph_node::build_graph(xml.clone());
 
-    bft(input_tree, &mut |node| {
+    bft(input_tree.clone(), &mut |node| {
         let mutable_node = node.as_mutable_ref();
         let data = mutable_node.lock().unwrap();
+        log::debug!("mutable node id: {}", data.id);
     });
 
-    //let output_tree: Arc<ImmutableGraph<Xml>> = graph_node::build_immutable_graph(input_tree.clone());
+    let output_tree: Graph<Xml> = graph_node::build_graph(xml.clone());
 
+    bft(output_tree.clone(), &mut |node| {
+        let mutable_node = node.as_mutable_ref();
+        let data = mutable_node.lock().unwrap();
+        log::debug!("mutable node id: {}", data.id);
+    });
 
     unimplemented!()
 }

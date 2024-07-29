@@ -37,6 +37,21 @@ impl<T: Send + Sync> Graph<T> {
             panic!("Expected a mutable graph");
         }
     }
+
+    pub fn as_immutable_ref(&self) -> &Arc<ImmutableGraph<T>> {
+        if let Graph::Immutable(ref im) = *self {
+            im
+        } else {
+            panic!("Expected an immutable graph");
+        }
+    }
+
+    pub fn clone(&self) -> Self {
+        match self {
+            Graph::Immutable(arc) => Graph::Immutable(arc.clone()),
+            Graph::Mutable(arc) => Graph::Mutable(arc.clone()),
+        }
+    }
 }
 
 pub trait GraphNode<T: Send + Sync>: Send + Sync {
@@ -64,54 +79,8 @@ impl<T: Send + Sync> GraphNode<T> for MutableGraph<T> {
     }
 }
 
-pub fn build_immutable_graph(graph: Arc<Mutex<MutableGraph<Xml>>>) -> Arc<ImmutableGraph<Xml>> {
-    let mut converted = HashMap::new();
-
-    fn recurse(
-        graph: &Arc<Mutex<MutableGraph<Xml>>>,
-        converted: &mut HashMap<String, Arc<ImmutableGraph<Xml>>>
-    ) -> Arc<ImmutableGraph<Xml>> {
-        let graph = graph.lock().unwrap();
-
-        if let Some(existing) = converted.get(&graph.id) {
-            return existing.clone();
-        }
-
-        let placeholder = Arc::new(ImmutableGraph {
-            id: graph.id.clone(),
-            hash: graph.hash.clone(),
-            parents: Vec::new(),
-            children: Vec::new(),
-            data: graph.data.clone(),
-        });
-
-        converted.insert(graph.id.clone(), placeholder.clone());
-
-        let parents: Vec<Arc<ImmutableGraph<Xml>>> = graph
-            .parents
-            .iter()
-            .map(|parent| recurse(parent, converted))
-            .collect();
-
-        let children: Vec<Arc<ImmutableGraph<Xml>>> = graph
-            .children
-            .iter()
-            .map(|child| recurse(child, converted))
-            .collect();
-
-        let immutable_graph = Arc::new(ImmutableGraph {
-            id: placeholder.id.clone(),
-            hash: placeholder.hash.clone(),
-            parents,
-            children,
-            data: placeholder.data.clone(),
-        });
-
-        converted.insert(graph.id.clone(), immutable_graph.clone());
-        immutable_graph
-    }
-    
-    recurse(&graph, &mut converted)
+pub fn build_immutable_graph(graph: Arc<Mutex<MutableGraph<Xml>>>) -> Graph<Xml> {
+    unimplemented!()
 }
 
 pub fn build_graph(xml: String) -> Graph<Xml> {
@@ -138,7 +107,7 @@ impl MutableGraph<Xml> {
             .map(|child| {
                 MutableGraph::from_xml(child, vec![node.clone()])
             })
-            .collect();
+        .collect();
 
         node.lock().unwrap().children.extend(children);
 
