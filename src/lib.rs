@@ -31,6 +31,7 @@ use basis_node::{
 };
 use graph_node::{
     MutexGraph,
+    MutexGraphNode,
     RwLockGraph,
 };
 use xml::{Xml};
@@ -93,6 +94,12 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
 
     let input_tree: MutexGraph<Xml> = graph_node::build_mutex_graph(xml.clone());
     let output_tree: RwLockGraph<Xml> = graph_node::build_rwlock_graph(xml.clone());
+
+    std::mem::drop(xml);
+
+
+    let basis_graph: MutexGraph<BasisNode> = MutexGraphNode::from_void();
+
 
 
 

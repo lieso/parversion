@@ -5,6 +5,8 @@ use uuid::Uuid;
 
 use crate::xml::{Xml};
 use crate::xml;
+use crate::basis_node::{BasisNode};
+use crate::constants;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MutexGraphNode<T> {
@@ -89,5 +91,20 @@ impl MutexGraphNode<Xml> {
         node.lock().unwrap().children.extend(children);
 
         node
+    }
+}
+
+impl MutexGraphNode<BasisNode> {
+    pub fn from_void() -> MutexGraph<BasisNode> {
+        Arc::new(Mutex::new(MutexGraphNode {
+            id: Uuid::new_v4().to_string(),
+            hash: constants::ROOT_NODE_HASH.to_string(),
+            parents: Vec::new(),
+            children: Vec::new(),
+            data: BasisNode {
+                data: Arc::new(Mutex::new(Vec::new())),
+                structure: Arc::new(Mutex::new(Vec::new())),
+            },
+        }))
     }
 }
