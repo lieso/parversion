@@ -2,7 +2,7 @@ use tokio::runtime::Runtime;
 use std::fs::{File};
 use std::process;
 use std::io::{Read};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 mod error;
 mod llm;
@@ -30,10 +30,8 @@ use basis_node::{
     BasisNode
 };
 use graph_node::{
-    ImmutableGraph,
-    MutableGraph,
-    bft,
-    Graph
+    MutexGraph,
+    RwLockGraph,
 };
 use xml::{Xml};
 use error::{Errors};
@@ -93,21 +91,10 @@ pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml_string);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Graph<Xml> = graph_node::build_graph(xml.clone());
+    let input_tree: Arc<Mutex<MutexGraph<Xml>>> = graph_node::build_mutex_graph(xml.clone());
+    let output_tree: Arc<RwLock<RwLockGraph<Xml>>> = graph_node::build_rwlock_graph(xml.clone());
 
-    bft(input_tree.clone(), &mut |node| {
-        let mutable_node = node.as_mutable_ref();
-        let data = mutable_node.lock().unwrap();
-        log::debug!("mutable node id: {}", data.id);
-    });
 
-    let output_tree: Graph<Xml> = graph_node::build_graph(xml.clone());
-
-    bft(output_tree.clone(), &mut |node| {
-        let mutable_node = node.as_mutable_ref();
-        let data = mutable_node.lock().unwrap();
-        log::debug!("mutable node id: {}", data.id);
-    });
 
     unimplemented!()
 }
