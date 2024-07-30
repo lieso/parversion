@@ -85,14 +85,14 @@ pub fn normalize_file(file_name: &str) -> Result<String, Errors> {
     normalize(document)
 }
 
-pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
+pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     log::trace!("In normalize_xml");
 
-    let xml = utility::preprocess_xml(xml_string);
+    let xml = utility::preprocess_xml(xml);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Arc<Mutex<MutexGraph<Xml>>> = graph_node::build_mutex_graph(xml.clone());
-    let output_tree: Arc<RwLock<RwLockGraph<Xml>>> = graph_node::build_rwlock_graph(xml.clone());
+    let input_tree: MutexGraph<Xml> = graph_node::build_mutex_graph(xml.clone());
+    let output_tree: RwLockGraph<Xml> = graph_node::build_rwlock_graph(xml.clone());
 
 
 

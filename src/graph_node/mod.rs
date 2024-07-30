@@ -7,33 +7,36 @@ use crate::xml::{Xml};
 use crate::xml;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct MutexGraph<T> {
+pub struct MutexGraphNode<T> {
     pub id: String,
     pub hash: String,
-    pub parents: Vec<Arc<Mutex<MutexGraph<T>>>>,
-    pub children: Vec<Arc<Mutex<MutexGraph<T>>>>,
+    pub parents: Vec<Arc<Mutex<MutexGraphNode<T>>>>,
+    pub children: Vec<Arc<Mutex<MutexGraphNode<T>>>>,
     pub data: T,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RwLockGraph<T> {
+pub struct RwLockGraphNode<T> {
     pub id: String,
     pub hash: String,
-    pub parents: Vec<Arc<RwLock<RwLockGraph<T>>>>,
-    pub children: Vec<Arc<RwLock<RwLockGraph<T>>>>,
+    pub parents: Vec<Arc<RwLock<RwLockGraphNode<T>>>>,
+    pub children: Vec<Arc<RwLock<RwLockGraphNode<T>>>>,
     pub data: T,
 }
 
-pub fn build_rwlock_graph(xml: String) -> Arc<RwLock<RwLockGraph<Xml>>> {
+pub type MutexGraph<T> = Arc<Mutex<MutexGraphNode<T>>>;
+pub type RwLockGraph<T> = Arc<RwLock<RwLockGraphNode<T>>>;
+
+pub fn build_rwlock_graph(xml: String) -> Arc<RwLock<RwLockGraphNode<Xml>>> {
     let mut reader = std::io::Cursor::new(xml);
     let xml = Xml::parse(&mut reader).expect("Could not parse XML");
 
-    RwLockGraph::from_xml(&xml, Vec::new())
+    RwLockGraphNode::from_xml(&xml, Vec::new())
 }
 
-impl RwLockGraph<Xml> {
-    fn from_xml(xml: &Xml, parents: Vec<Arc<RwLock<RwLockGraph<Xml>>>>) -> Arc<RwLock<RwLockGraph<Xml>>> {
-        let node = Arc::new(RwLock::new(RwLockGraph {
+impl RwLockGraphNode<Xml> {
+    fn from_xml(xml: &Xml, parents: Vec<Arc<RwLock<RwLockGraphNode<Xml>>>>) -> Arc<RwLock<RwLockGraphNode<Xml>>> {
+        let node = Arc::new(RwLock::new(RwLockGraphNode {
             id: Uuid::new_v4().to_string(),
             hash: xml::xml_to_hash(xml),
             parents,
@@ -42,11 +45,11 @@ impl RwLockGraph<Xml> {
         }));
 
         {
-            let children: Vec<Arc<RwLock<RwLockGraph<Xml>>>> = xml
+            let children: Vec<Arc<RwLock<RwLockGraphNode<Xml>>>> = xml
                 .get_children()
                 .iter()
                 .map(|child| {
-                    RwLockGraph::from_xml(child, vec![node.clone()])
+                    RwLockGraphNode::from_xml(child, vec![node.clone()])
                 })
                 .collect();
 
@@ -58,16 +61,16 @@ impl RwLockGraph<Xml> {
     }
 }
 
-pub fn build_mutex_graph(xml: String) -> Arc<Mutex<MutexGraph<Xml>>> {
+pub fn build_mutex_graph(xml: String) -> Arc<Mutex<MutexGraphNode<Xml>>> {
     let mut reader = std::io::Cursor::new(xml);
     let xml = Xml::parse(&mut reader).expect("Could not parse XML");
 
-    MutexGraph::from_xml(&xml, Vec::new())
+    MutexGraphNode::from_xml(&xml, Vec::new())
 }
 
-impl MutexGraph<Xml> {
-    fn from_xml(xml: &Xml, parents: Vec<Arc<Mutex<MutexGraph<Xml>>>>) -> Arc<Mutex<MutexGraph<Xml>>> {
-        let node = Arc::new(Mutex::new(MutexGraph {
+impl MutexGraphNode<Xml> {
+    fn from_xml(xml: &Xml, parents: Vec<Arc<Mutex<MutexGraphNode<Xml>>>>) -> Arc<Mutex<MutexGraphNode<Xml>>> {
+        let node = Arc::new(Mutex::new(MutexGraphNode {
             id: Uuid::new_v4().to_string(),
             hash: xml::xml_to_hash(xml),
             parents,
@@ -75,11 +78,11 @@ impl MutexGraph<Xml> {
             data: xml.without_children(),
         }));
 
-        let children: Vec<Arc<Mutex<MutexGraph<Xml>>>> = xml
+        let children: Vec<Arc<Mutex<MutexGraphNode<Xml>>>> = xml
             .get_children()
             .iter()
             .map(|child| {
-                MutexGraph::from_xml(child, vec![node.clone()])
+                MutexGraphNode::from_xml(child, vec![node.clone()])
             })
             .collect();
 
