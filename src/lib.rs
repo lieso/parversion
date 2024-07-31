@@ -20,7 +20,6 @@ mod graph_node;
 use node::{
     Node,
     build_tree,
-    absorb,
     prune,
     get_tree_metadata,
     linearize,
@@ -33,6 +32,7 @@ use graph_node::{
     MutexGraph,
     MutexGraphNode,
     RwLockGraph,
+    absorb,
 };
 use xml::{Xml};
 use error::{Errors};
@@ -97,10 +97,10 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
 
     std::mem::drop(xml);
 
-
     let basis_graph: MutexGraph<BasisNode> = MutexGraphNode::from_void();
 
-
+    absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
+    log::info!("Done absorbing input tree into basis graph");
 
 
     unimplemented!()
