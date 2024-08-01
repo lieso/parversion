@@ -182,3 +182,56 @@ pub fn bft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>)) {
         }
     }
 }
+
+pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
+    log::trace!("In cyclize");
+
+    fn dfs<T: GraphNodeData>(
+        node: Graph<T>,
+        visited: &mut HashMap<String, Graph<T>>
+    ) {
+        let node_id = node.read().unwrap().id.clone();
+        let node_hash = node.read().unwrap().hash.clone();
+
+        if let Some(first_occurrence) = visited.get(&node_hash) {
+            log::info!("Detected cycle");
+
+            for parent in node.read().unwrap().parents.iter() {
+                let mut write_lock = parent.write().unwrap();
+                write_lock.children.retain(|child| child.read().unwrap().id != node_id);
+                write_lock.children.push(first_occurrence.clone());
+            }
+
+            let children = node.write().unwrap().children.drain(..).collect::<Vec<_>>();
+            for child in children {
+                let mut write_lock = child.write().unwrap();
+                write_lock.parents.retain(|parent| parent.read().unwrap().id != node_id);
+                write_lock.parents.push(first_occurrence.clone());
+
+                first_occurrence.write().unwrap().children.push(child.clone());
+            }
+        } else {
+            visited.insert(node_hash.clone(), Arc::clone(&node));
+
+            let children: Vec<Graph<T>>;
+            {
+                let read_lock = node.read().unwrap();
+                children = read_lock.children.clone();
+            }
+
+            for child in children.iter() {
+                dfs(
+                    child.clone(),
+                    visited,
+                );
+            }
+
+            visited.remove(&node_hash);
+        }
+    }
+
+    dfs(
+        graph,
+        &mut HashMap::new(),
+    );
+}

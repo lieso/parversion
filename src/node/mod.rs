@@ -208,8 +208,6 @@ pub async fn interpret(graph: Rc<Node>, output_tree: Rc<Node>) {
             log::info!("Analyzing node #{}", index + 1);
             log::info!("{}", "=".repeat(60));
 
-            log::debug!("*****************************************************************************************************");
-
             let (node_data_structure, should_sleep) = node.interpret_node_structure(&db, &output_tree).await;
 
             if should_sleep {

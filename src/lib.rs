@@ -32,6 +32,7 @@ use graph_node::{
     GraphNode,
     Graph,
     absorb,
+    cyclize,
 };
 use xml_node::{XmlNode};
 use error::{Errors};
@@ -107,6 +108,10 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     });
 
     basis_graph.read().unwrap().debug_visualize("basis_graph");
+
+    cyclize(Arc::clone(&basis_graph));
+    log::info!("Done cyclizing basis graph");
+    basis_graph.read().unwrap().debug_visualize("basis_graph_cyclized");
 
 
 
