@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
 
-use crate::xml::{Xml};
-use crate::xml;
+use crate::xml_node::{XmlNode};
+use crate::xml_node;
 use crate::basis_node::{BasisNode};
 use crate::constants;
 
@@ -24,25 +24,25 @@ pub trait GraphNodeData {
     fn new() -> Self;
 }
 
-pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<Xml>>> {
+pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<XmlNode>>> {
     let mut reader = std::io::Cursor::new(xml);
-    let xml = Xml::parse(&mut reader).expect("Could not parse XML");
+    let xml = XmlNode::parse(&mut reader).expect("Could not parse XML");
 
     GraphNode::from_xml(&xml, Vec::new())
 }
 
-impl GraphNode<Xml> {
-    fn from_xml(xml: &Xml, parents: Vec<Arc<RwLock<GraphNode<Xml>>>>) -> Arc<RwLock<GraphNode<Xml>>> {
+impl GraphNode<XmlNode> {
+    fn from_xml(xml: &XmlNode, parents: Vec<Graph<XmlNode>>) -> Graph<XmlNode> {
         let node = Arc::new(RwLock::new(GraphNode {
             id: Uuid::new_v4().to_string(),
-            hash: xml::xml_to_hash(xml),
+            hash: xml_node::xml_to_hash(xml),
             parents,
             children: Vec::new(),
             data: xml.without_children(),
         }));
 
         {
-            let children: Vec<Arc<RwLock<GraphNode<Xml>>>> = xml
+            let children: Vec<Graph<XmlNode>> = xml
                 .get_children()
                 .iter()
                 .map(|child| {

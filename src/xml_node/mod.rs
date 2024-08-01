@@ -10,24 +10,24 @@ use url::Url;
 
 use crate::error::{Errors};
 use crate::constants;
-use crate::graph::{GraphNodeData};
+use crate::graph_node::{GraphNodeData};
 
 #[derive(Clone, Debug)]
-pub struct Xml {
+pub struct XmlNode {
     pub element: Option<Element>,
     pub text: Option<String>,
 }
 
-impl GraphNodeData for Xml {
+impl GraphNodeData for XmlNode {
     fn new() -> Self {
-        Xml {
+        XmlNode {
             element: None,
             text: None,
         }
     }
 }
 
-pub fn xml_to_hash(xml: &Xml) -> String {
+pub fn xml_to_hash(xml: &XmlNode) -> String {
     if xml.is_text() {
         return constants::TEXT_NODE_HASH.to_string();
     }
@@ -61,7 +61,7 @@ pub fn xml_to_hash(xml: &Xml) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-impl Serialize for Xml {
+impl Serialize for XmlNode {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -70,10 +70,10 @@ impl Serialize for Xml {
     }
 }
 
-struct XmlVisitor;
+struct XmlNodeVisitor;
 
-impl<'de> Visitor<'de> for XmlVisitor {
-    type Value = Xml;
+impl<'de> Visitor<'de> for XmlNodeVisitor {
+    type Value = XmlNode;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("valid XML in a string")
@@ -84,12 +84,12 @@ impl<'de> Visitor<'de> for XmlVisitor {
         E: de::Error,
     {
         if let Ok(element) = Element::parse(value.as_bytes()) {
-            Ok(Xml {
+            Ok(XmlNode {
                 element: Some(element),
                 text: None,
             })
         } else {
-            Ok(Xml {
+            Ok(XmlNode {
                 element: None,
                 text: Some(value.to_owned()),
             })
@@ -97,26 +97,26 @@ impl<'de> Visitor<'de> for XmlVisitor {
     }
 }
 
-impl<'de> Deserialize<'de> for Xml {
+impl<'de> Deserialize<'de> for XmlNode {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(XmlVisitor)
+        deserializer.deserialize_any(XmlNodeVisitor)
     }
 }
 
-impl fmt::Display for Xml {
+impl fmt::Display for XmlNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", &self.to_string())
     }
 }
 
-impl Xml {
-    pub fn parse<R: Read>(reader: &mut R) -> Result<Xml, Errors> {
+impl XmlNode {
+    pub fn parse<R: Read>(reader: &mut R) -> Result<XmlNode, Errors> {
         match Element::parse(reader) {
             Ok(element) => {
-                let xml = Xml {
+                let xml = XmlNode {
                     element: Some(element),
                     text: None,
                 };
@@ -129,7 +129,7 @@ impl Xml {
         }
     }
 
-    pub fn without_children(&self) -> Xml {
+    pub fn without_children(&self) -> XmlNode {
         if self.element.is_some() {
 
             let mut copy = self.clone();
@@ -143,15 +143,15 @@ impl Xml {
         }
     }
 
-    pub fn from_void() -> Xml {
-        Xml {
+    pub fn from_void() -> XmlNode {
+        XmlNode {
             element: None,
             text: None,
         }
     }
 }
 
-impl Xml {
+impl XmlNode {
     pub fn get_element_tag_name(&self) -> String {
         if let Some(element) = &self.element {
             return element.name.clone();
@@ -170,19 +170,19 @@ impl Xml {
 
     pub fn get_attribute_value(&self, name: &str) -> Option<String> {
         if self.element.is_none() {
-            log::warn!("Attempting to get attribute: {} on Xml, but xml is not an element", name);
+            log::warn!("Attempting to get attribute: {} on XmlNode, but xml is not an element", name);
             return None;
         }
 
         self.element.clone().unwrap().attributes.get(name).cloned()
     }
 
-    pub fn get_children(&self) -> Vec<Xml> {
+    pub fn get_children(&self) -> Vec<XmlNode> {
         if let Some(element) = &self.element {
             return element.children.iter().filter_map(|child| {
                 match child {
                     XMLNode::Element(child_element) => {
-                        let xml = Xml {
+                        let xml = XmlNode {
                             element: Some(child_element.clone()),
                             text: None,
                         };
@@ -190,7 +190,7 @@ impl Xml {
                         Some(xml)
                     },
                     XMLNode::Text(child_text) => {
-                        let xml = Xml {
+                        let xml = XmlNode {
                             element: None,
                             text: Some(child_text.to_string()),
                         };
@@ -232,7 +232,7 @@ impl Xml {
         format!("{:x}", hasher.finalize())
     }
 
-    pub fn _is_equal(&self, xml: Xml) -> bool {
+    pub fn _is_equal(&self, xml: XmlNode) -> bool {
         if let Some(element_a) = &self.element {
             if let Some(element_b) = xml.element {
                 if element_a.name != element_b.name {

@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-use crate::xml::{Xml};
+use crate::xml_node::{XmlNode};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ElementNodeMetadata {
@@ -27,7 +27,7 @@ pub struct NodeData {
 }
 
 impl NodeData {
-    pub fn value(&self, xml: &Xml) -> String {
+    pub fn value(&self, xml: &XmlNode) -> String {
         if let Some(_text_fields) = &self.text_fields {
             let value = xml.to_string();
             return String::from(value.trim_matches(|c| c == ' ' || c == '\n'));

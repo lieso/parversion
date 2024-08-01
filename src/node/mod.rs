@@ -13,7 +13,7 @@ mod utility;
 
 use crate::node_data::{NodeData};
 use crate::node::traversal::*;
-use crate::xml::*;
+use crate::xml_node::*;
 use crate::constants;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -30,7 +30,7 @@ pub struct Tree {
 pub struct Node {
     pub id: String,
     pub hash: String,
-    pub xml: Xml,
+    pub xml: XmlNode,
     pub parent: RefCell<Option<Rc<Node>>>,
     pub data: RefCell<Vec<NodeData>>,
     pub children: RefCell<Vec<Rc<Node>>>,
@@ -41,14 +41,14 @@ impl Node {
         Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: constants::ROOT_NODE_HASH.to_string(),
-            xml: Xml::from_void(),
+            xml: XmlNode::from_void(),
             parent: None.into(),
             data: RefCell::new(Vec::new()),
             children: RefCell::new(vec![]),
         })
     }
 
-    pub fn from_xml(xml: &Xml, parent: Option<Rc<Node>>) -> Rc<Self> {
+    pub fn from_xml(xml: &XmlNode, parent: Option<Rc<Node>>) -> Rc<Self> {
         let node = Rc::new(Node {
             id: Uuid::new_v4().to_string(),
             hash: xml_to_hash(&xml),
@@ -92,7 +92,7 @@ pub fn deep_copy(node: &Rc<Node>) -> Rc<Node> {
 
 pub fn build_tree(xml: String) -> Rc<Node> {
     let mut reader = std::io::Cursor::new(xml);
-    let xml = Xml::parse(&mut reader).expect("Could not parse XML");
+    let xml = XmlNode::parse(&mut reader).expect("Could not parse XML");
 
     Node::from_xml(&xml, None)
 }

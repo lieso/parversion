@@ -11,11 +11,11 @@ mod node_data;
 mod node_data_structure;
 mod traversal;
 mod utility;
-mod xml;
+mod xml_node;
 mod config;
 mod constants;
 mod basis_node;
-mod graph;
+mod graph_node;
 
 use node::{
     Node,
@@ -28,12 +28,12 @@ use node::{
 use basis_node::{
     BasisNode
 };
-use graph::{
+use graph_node::{
     GraphNode,
     Graph,
     absorb,
 };
-use xml::{Xml};
+use xml_node::{XmlNode};
 use error::{Errors};
 use traversal::{Traversal};
 
@@ -91,8 +91,8 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Graph<Xml> = graph::build_graph(xml.clone());
-    let output_tree: Graph<Xml> = graph::build_graph(xml.clone());
+    let input_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
+    let output_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
 
     std::mem::drop(xml);
 
@@ -101,13 +101,13 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis graph");
 
-    graph::bft(Arc::clone(&basis_graph), &mut |node: Graph<BasisNode>| {
+    graph_node::bft(Arc::clone(&basis_graph), &mut |node: Graph<BasisNode>| {
         let guard = node.read().unwrap();
         log::debug!("hash: {}", guard.hash);
     });
 
 
-    graph::bft(Arc::clone(&output_tree), &mut |node: Graph<Xml>| {
+    graph_node::bft(Arc::clone(&output_tree), &mut |node: Graph<XmlNode>| {
         let guard = node.read().unwrap();
         log::debug!("hash: {}", guard.hash);
     });

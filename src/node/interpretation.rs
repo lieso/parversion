@@ -10,7 +10,7 @@ use crate::node_data_structure::{NodeDataStructure};
 use crate::llm;
 use crate::config::{CONFIG, Config};
 use crate::constants;
-use crate::xml::Xml;
+use crate::xml_node::XmlNode;
 use std::collections::{VecDeque};
 
 pub fn get_root_node(node: Rc<Node>) -> Rc<Node> {
