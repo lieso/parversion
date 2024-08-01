@@ -10,7 +10,7 @@ use crate::basis_node::{BasisNode};
 use crate::constants;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct MutexGraphNode<T> {
+pub struct MutexGraphNode<T: GraphNodeData> {
     pub id: String,
     pub hash: String,
     pub parents: Vec<Arc<Mutex<MutexGraphNode<T>>>>,
@@ -19,7 +19,7 @@ pub struct MutexGraphNode<T> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RwLockGraphNode<T> {
+pub struct RwLockGraphNode<T: GraphNodeData> {
     pub id: String,
     pub hash: String,
     pub parents: Vec<Arc<RwLock<RwLockGraphNode<T>>>>,
@@ -114,10 +114,10 @@ impl MutexGraphNode<BasisNode> {
     }
 }
 
-pub fn subgraph_hash<T>(graph: MutexGraph<T>) -> String {
+pub fn subgraph_hash<T: GraphNodeData>(graph: MutexGraph<T>) -> String {
     let mut visited: HashSet<String> = HashSet::new();
 
-    fn compute<T>(
+    fn compute_hash<T: GraphNodeData>(
         node: MutexGraph<T>,
         visited: &mut HashSet<String>,
     ) -> String {
@@ -135,7 +135,7 @@ pub fn subgraph_hash<T>(graph: MutexGraph<T>) -> String {
         visited.insert(node.id.clone());
 
         for child in node.children.iter() {
-            hasher_items.push(compute(child.clone(), visited));
+            hasher_items.push(compute_hash(child.clone(), visited));
         }
 
         visited.remove(&node.id);
@@ -146,10 +146,10 @@ pub fn subgraph_hash<T>(graph: MutexGraph<T>) -> String {
         format!("{:x}", hasher.finalize())
     }
 
-    compute(graph, &mut visited)
+    compute_hash(graph, &mut visited)
 }
 
-pub fn deep_copy<T: GraphNodeData, U>(graph: MutexGraph<U>, parents: Vec<MutexGraph<T>>) -> MutexGraph<T> where T: GraphNodeData {
+pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(graph: MutexGraph<U>, parents: Vec<MutexGraph<T>>) -> MutexGraph<T> where T: GraphNodeData {
     log::trace!("In deep_copy");
 
     let guard = graph.lock().unwrap();
@@ -170,7 +170,7 @@ pub fn deep_copy<T: GraphNodeData, U>(graph: MutexGraph<U>, parents: Vec<MutexGr
     new_node
 }
 
-pub fn absorb<T: GraphNodeData, U>(recipient: MutexGraph<T>, donor: MutexGraph<U>) {
+pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: MutexGraph<T>, donor: MutexGraph<U>) {
     log::trace!("In absorb");
 
     let recipient_child = {
@@ -201,7 +201,6 @@ pub fn absorb<T: GraphNodeData, U>(recipient: MutexGraph<T>, donor: MutexGraph<U
 
         let typed_donor = deep_copy::<T, U>(donor, vec![recipient.clone()]);
 
-        //typed_donor.lock().unwrap().parents = vec![recipient.clone()];
         recipient.lock().unwrap().children.push(typed_donor.clone());
     }
 }

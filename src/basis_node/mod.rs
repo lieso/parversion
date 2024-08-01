@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::node_data::{NodeData};
 use crate::node_data_structure::{NodeDataStructure};
-use crate::graph_node::{GraphNodeData};
+use crate::graph::{GraphNodeData};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNode {

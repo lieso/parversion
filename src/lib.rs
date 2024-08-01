@@ -15,7 +15,7 @@ mod xml;
 mod config;
 mod constants;
 mod basis_node;
-mod graph_node;
+mod graph;
 
 use node::{
     Node,
@@ -28,7 +28,7 @@ use node::{
 use basis_node::{
     BasisNode
 };
-use graph_node::{
+use graph::{
     MutexGraph,
     MutexGraphNode,
     RwLockGraph,
@@ -92,8 +92,8 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml);
     log::info!("Done preprocessing XML");
 
-    let input_tree: MutexGraph<Xml> = graph_node::build_mutex_graph(xml.clone());
-    let output_tree: RwLockGraph<Xml> = graph_node::build_rwlock_graph(xml.clone());
+    let input_tree: MutexGraph<Xml> = graph::build_mutex_graph(xml.clone());
+    let output_tree: RwLockGraph<Xml> = graph::build_rwlock_graph(xml.clone());
 
     std::mem::drop(xml);
 

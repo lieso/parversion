@@ -10,11 +10,21 @@ use url::Url;
 
 use crate::error::{Errors};
 use crate::constants;
+use crate::graph::{GraphNodeData};
 
 #[derive(Clone, Debug)]
 pub struct Xml {
     pub element: Option<Element>,
     pub text: Option<String>,
+}
+
+impl GraphNodeData for Xml {
+    fn new() -> Self {
+        Xml {
+            element: None,
+            text: None,
+        }
+    }
 }
 
 pub fn xml_to_hash(xml: &Xml) -> String {
