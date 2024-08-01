@@ -58,17 +58,14 @@ impl GraphNode<Xml> {
     }
 }
 
-impl GraphNode<BasisNode> {
-    pub fn from_void() -> Graph<BasisNode> {
+impl<T: GraphNodeData> GraphNode<T> {
+    pub fn from_void() -> Graph<T> {
         Arc::new(RwLock::new(GraphNode {
             id: Uuid::new_v4().to_string(),
             hash: constants::ROOT_NODE_HASH.to_string(),
             parents: Vec::new(),
             children: Vec::new(),
-            data: BasisNode {
-                data: Arc::new(RwLock::new(Vec::new())),
-                structure: Arc::new(RwLock::new(Vec::new())),
-            },
+            data: T::new(),
         }))
     }
 }
