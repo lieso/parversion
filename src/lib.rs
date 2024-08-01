@@ -101,16 +101,12 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis graph");
 
-    graph_node::bft(Arc::clone(&basis_graph), &mut |node: Graph<BasisNode>| {
-        let guard = node.read().unwrap();
-        log::debug!("hash: {}", guard.hash);
-    });
-
-
     graph_node::bft(Arc::clone(&output_tree), &mut |node: Graph<XmlNode>| {
         let guard = node.read().unwrap();
         log::debug!("hash: {}", guard.hash);
     });
+
+    basis_graph.read().unwrap().debug_visualize("basis_graph");
 
 
 

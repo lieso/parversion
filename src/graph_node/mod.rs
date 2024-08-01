@@ -4,6 +4,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
 
+mod debug;
+
 use crate::xml_node::{XmlNode};
 use crate::xml_node;
 use crate::basis_node::{BasisNode};
@@ -20,7 +22,7 @@ pub struct GraphNode<T: GraphNodeData> {
 
 pub type Graph<T> = Arc<RwLock<GraphNode<T>>>;
 
-pub trait GraphNodeData {
+pub trait GraphNodeData: Clone {
     fn new() -> Self;
 }
 
