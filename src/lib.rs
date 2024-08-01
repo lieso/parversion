@@ -2,7 +2,7 @@ use tokio::runtime::Runtime;
 use std::fs::{File};
 use std::process;
 use std::io::{Read};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 mod error;
 mod llm;
@@ -29,9 +29,8 @@ use basis_node::{
     BasisNode
 };
 use graph::{
-    MutexGraph,
-    MutexGraphNode,
-    RwLockGraph,
+    GraphNode,
+    Graph,
     absorb,
 };
 use xml::{Xml};
@@ -92,23 +91,23 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     let xml = utility::preprocess_xml(xml);
     log::info!("Done preprocessing XML");
 
-    let input_tree: MutexGraph<Xml> = graph::build_mutex_graph(xml.clone());
-    let output_tree: RwLockGraph<Xml> = graph::build_rwlock_graph(xml.clone());
+    let input_tree: Graph<Xml> = graph::build_graph(xml.clone());
+    let output_tree: Graph<Xml> = graph::build_graph(xml.clone());
 
     std::mem::drop(xml);
 
-    let basis_graph: MutexGraph<BasisNode> = MutexGraphNode::from_void();
+    let basis_graph: Graph<BasisNode> = GraphNode::from_void();
 
     absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis graph");
 
-    graph::mutex_bft(Arc::clone(&basis_graph), &mut |node: MutexGraph<BasisNode>| {
-        let guard = node.lock().unwrap();
+    graph::bft(Arc::clone(&basis_graph), &mut |node: Graph<BasisNode>| {
+        let guard = node.read().unwrap();
         log::debug!("hash: {}", guard.hash);
     });
 
 
-    graph::rwlock_bft(Arc::clone(&output_tree), &mut |node: RwLockGraph<Xml>| {
+    graph::bft(Arc::clone(&output_tree), &mut |node: Graph<Xml>| {
         let guard = node.read().unwrap();
         log::debug!("hash: {}", guard.hash);
     });

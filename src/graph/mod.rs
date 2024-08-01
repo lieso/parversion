@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
@@ -10,40 +10,30 @@ use crate::basis_node::{BasisNode};
 use crate::constants;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct MutexGraphNode<T: GraphNodeData> {
+pub struct GraphNode<T: GraphNodeData> {
     pub id: String,
     pub hash: String,
-    pub parents: Vec<Arc<Mutex<MutexGraphNode<T>>>>,
-    pub children: Vec<Arc<Mutex<MutexGraphNode<T>>>>,
+    pub parents: Vec<Arc<RwLock<GraphNode<T>>>>,
+    pub children: Vec<Arc<RwLock<GraphNode<T>>>>,
     pub data: T,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RwLockGraphNode<T: GraphNodeData> {
-    pub id: String,
-    pub hash: String,
-    pub parents: Vec<Arc<RwLock<RwLockGraphNode<T>>>>,
-    pub children: Vec<Arc<RwLock<RwLockGraphNode<T>>>>,
-    pub data: T,
-}
-
-pub type MutexGraph<T> = Arc<Mutex<MutexGraphNode<T>>>;
-pub type RwLockGraph<T> = Arc<RwLock<RwLockGraphNode<T>>>;
+pub type Graph<T> = Arc<RwLock<GraphNode<T>>>;
 
 pub trait GraphNodeData {
     fn new() -> Self;
 }
 
-pub fn build_rwlock_graph(xml: String) -> Arc<RwLock<RwLockGraphNode<Xml>>> {
+pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<Xml>>> {
     let mut reader = std::io::Cursor::new(xml);
     let xml = Xml::parse(&mut reader).expect("Could not parse XML");
 
-    RwLockGraphNode::from_xml(&xml, Vec::new())
+    GraphNode::from_xml(&xml, Vec::new())
 }
 
-impl RwLockGraphNode<Xml> {
-    fn from_xml(xml: &Xml, parents: Vec<Arc<RwLock<RwLockGraphNode<Xml>>>>) -> Arc<RwLock<RwLockGraphNode<Xml>>> {
-        let node = Arc::new(RwLock::new(RwLockGraphNode {
+impl GraphNode<Xml> {
+    fn from_xml(xml: &Xml, parents: Vec<Arc<RwLock<GraphNode<Xml>>>>) -> Arc<RwLock<GraphNode<Xml>>> {
+        let node = Arc::new(RwLock::new(GraphNode {
             id: Uuid::new_v4().to_string(),
             hash: xml::xml_to_hash(xml),
             parents,
@@ -52,11 +42,11 @@ impl RwLockGraphNode<Xml> {
         }));
 
         {
-            let children: Vec<Arc<RwLock<RwLockGraphNode<Xml>>>> = xml
+            let children: Vec<Arc<RwLock<GraphNode<Xml>>>> = xml
                 .get_children()
                 .iter()
                 .map(|child| {
-                    RwLockGraphNode::from_xml(child, vec![node.clone()])
+                    GraphNode::from_xml(child, vec![node.clone()])
                 })
                 .collect();
 
@@ -68,60 +58,29 @@ impl RwLockGraphNode<Xml> {
     }
 }
 
-pub fn build_mutex_graph(xml: String) -> Arc<Mutex<MutexGraphNode<Xml>>> {
-    let mut reader = std::io::Cursor::new(xml);
-    let xml = Xml::parse(&mut reader).expect("Could not parse XML");
-
-    MutexGraphNode::from_xml(&xml, Vec::new())
-}
-
-impl MutexGraphNode<Xml> {
-    fn from_xml(xml: &Xml, parents: Vec<Arc<Mutex<MutexGraphNode<Xml>>>>) -> Arc<Mutex<MutexGraphNode<Xml>>> {
-        let node = Arc::new(Mutex::new(MutexGraphNode {
-            id: Uuid::new_v4().to_string(),
-            hash: xml::xml_to_hash(xml),
-            parents,
-            children: Vec::new(),
-            data: xml.without_children(),
-        }));
-
-        let children: Vec<Arc<Mutex<MutexGraphNode<Xml>>>> = xml
-            .get_children()
-            .iter()
-            .map(|child| {
-                MutexGraphNode::from_xml(child, vec![node.clone()])
-            })
-            .collect();
-
-        node.lock().unwrap().children.extend(children);
-
-        node
-    }
-}
-
-impl MutexGraphNode<BasisNode> {
-    pub fn from_void() -> MutexGraph<BasisNode> {
-        Arc::new(Mutex::new(MutexGraphNode {
+impl GraphNode<BasisNode> {
+    pub fn from_void() -> Graph<BasisNode> {
+        Arc::new(RwLock::new(GraphNode {
             id: Uuid::new_v4().to_string(),
             hash: constants::ROOT_NODE_HASH.to_string(),
             parents: Vec::new(),
             children: Vec::new(),
             data: BasisNode {
-                data: Arc::new(Mutex::new(Vec::new())),
-                structure: Arc::new(Mutex::new(Vec::new())),
+                data: Arc::new(RwLock::new(Vec::new())),
+                structure: Arc::new(RwLock::new(Vec::new())),
             },
         }))
     }
 }
 
-pub fn subgraph_hash<T: GraphNodeData>(graph: MutexGraph<T>) -> String {
+pub fn subgraph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
     let mut visited: HashSet<String> = HashSet::new();
 
     fn compute_hash<T: GraphNodeData>(
-        node: MutexGraph<T>,
+        node: Graph<T>,
         visited: &mut HashSet<String>,
     ) -> String {
-        let node = node.lock().unwrap();
+        let node = node.read().unwrap();
 
         if visited.contains(&node.id) {
             return "cycle".to_owned();
@@ -149,12 +108,12 @@ pub fn subgraph_hash<T: GraphNodeData>(graph: MutexGraph<T>) -> String {
     compute_hash(graph, &mut visited)
 }
 
-pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(graph: MutexGraph<U>, parents: Vec<MutexGraph<T>>) -> MutexGraph<T> where T: GraphNodeData {
+pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(graph: Graph<U>, parents: Vec<Graph<T>>) -> Graph<T> where T: GraphNodeData {
     log::trace!("In deep_copy");
 
-    let guard = graph.lock().unwrap();
+    let guard = graph.read().unwrap();
 
-    let new_node = Arc::new(Mutex::new(MutexGraphNode {
+    let new_node = Arc::new(RwLock::new(GraphNode {
         id: guard.id.clone(),
         hash: guard.hash.clone(),
         parents,
@@ -162,25 +121,28 @@ pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(graph: MutexGraph<U>, paren
         data: T::new(),
     }));
 
-    let children: Vec<MutexGraph<T>> = guard.children.iter()
-        .map(|child| deep_copy(child.clone(), vec![new_node.clone()]))
-        .collect();
-    new_node.lock().unwrap().children.extend(children);
+    {
+        let children: Vec<Graph<T>> = guard.children.iter()
+            .map(|child| deep_copy(child.clone(), vec![new_node.clone()]))
+            .collect();
+        let mut node_write_lock = new_node.write().unwrap();
+        node_write_lock.children.extend(children);
+    }
 
     new_node
 }
 
-pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: MutexGraph<T>, donor: MutexGraph<U>) {
+pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Graph<U>) {
     log::trace!("In absorb");
 
     let recipient_child = {
         recipient
-            .lock()
+            .read()
             .unwrap()
             .children
             .iter()
             .find(|item| {
-                item.lock().unwrap().hash == donor.lock().unwrap().hash
+                item.read().unwrap().hash == donor.read().unwrap().hash
             })
             .cloned()
     };
@@ -190,7 +152,7 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: MutexGraph<T>, dono
 
         if subgraph_hash(recipient_child.clone()) != subgraph_hash(donor.clone()) {
             log::trace!("Donor and recipient child have differing subgraph hashes");
-            let donor_children = donor.lock().unwrap().children.clone();
+            let donor_children = donor.read().unwrap().children.clone();
 
             for donor_child in donor_children.iter() {
                 absorb(recipient_child.clone(), donor_child.clone());
@@ -199,31 +161,12 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: MutexGraph<T>, dono
     } else {
         log::trace!("Donor and recipient subgraphs incompatible. Adopting donor node...");
 
-        let typed_donor = deep_copy::<T, U>(donor, vec![recipient.clone()]);
-
-        recipient.lock().unwrap().children.push(typed_donor.clone());
+        let copied = deep_copy::<T, U>(donor, vec![recipient.clone()]);
+        recipient.write().unwrap().children.push(copied.clone());
     }
 }
 
-pub fn mutex_bft<T: GraphNodeData>(graph: MutexGraph<T>, visit: &mut dyn FnMut(MutexGraph<T>)) {
-    let mut visited = HashSet::new();
-    let mut queue = VecDeque::new();
-    queue.push_back(graph);
-
-    while let Some(current) = queue.pop_front() {
-        if !visited.insert(current.lock().unwrap().id.clone()) {
-            continue;
-        }
-
-        visit(Arc::clone(&current));
-
-        for child in current.lock().unwrap().children.iter() {
-            queue.push_back(child.clone());
-        }
-    }
-}
-
-pub fn rwlock_bft<T: GraphNodeData>(graph: RwLockGraph<T>, visit: &mut dyn FnMut(RwLockGraph<T>)) {
+pub fn bft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>)) {
     let mut visited = HashSet::new();
     let mut queue = VecDeque::new();
     queue.push_back(graph);
