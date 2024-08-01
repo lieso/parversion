@@ -204,3 +204,39 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: MutexGraph<T>, dono
         recipient.lock().unwrap().children.push(typed_donor.clone());
     }
 }
+
+pub fn mutex_bft<T: GraphNodeData>(graph: MutexGraph<T>, visit: &mut dyn FnMut(MutexGraph<T>)) {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(graph);
+
+    while let Some(current) = queue.pop_front() {
+        if !visited.insert(current.lock().unwrap().id.clone()) {
+            continue;
+        }
+
+        visit(Arc::clone(&current));
+
+        for child in current.lock().unwrap().children.iter() {
+            queue.push_back(child.clone());
+        }
+    }
+}
+
+pub fn rwlock_bft<T: GraphNodeData>(graph: RwLockGraph<T>, visit: &mut dyn FnMut(RwLockGraph<T>)) {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(graph);
+
+    while let Some(current) = queue.pop_front() {
+        if !visited.insert(current.read().unwrap().id.clone()) {
+            continue;
+        }
+
+        visit(Arc::clone(&current));
+
+        for child in current.read().unwrap().children.iter() {
+            queue.push_back(child.clone());
+        }
+    }
+}

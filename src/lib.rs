@@ -102,6 +102,19 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis graph");
 
+    graph::mutex_bft(Arc::clone(&basis_graph), &mut |node: MutexGraph<BasisNode>| {
+        let guard = node.lock().unwrap();
+        log::debug!("hash: {}", guard.hash);
+    });
+
+
+    graph::rwlock_bft(Arc::clone(&output_tree), &mut |node: RwLockGraph<Xml>| {
+        let guard = node.read().unwrap();
+        log::debug!("hash: {}", guard.hash);
+    });
+
+
+
 
     unimplemented!()
 }
