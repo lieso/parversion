@@ -20,7 +20,6 @@ mod graph_node;
 use node::{
     Node,
     build_tree,
-    prune,
     get_tree_metadata,
     linearize,
     interpret,
@@ -33,6 +32,7 @@ use graph_node::{
     Graph,
     absorb,
     cyclize,
+    prune,
 };
 use xml_node::{XmlNode};
 use error::{Errors};
@@ -106,12 +106,16 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
         let guard = node.read().unwrap();
         log::debug!("hash: {}", guard.hash);
     });
-
     basis_graph.read().unwrap().debug_visualize("basis_graph");
 
     cyclize(Arc::clone(&basis_graph));
     log::info!("Done cyclizing basis graph");
     basis_graph.read().unwrap().debug_visualize("basis_graph_cyclized");
+
+    prune(Arc::clone(&basis_graph));
+    log::info!("Done pruning basis graph");
+    basis_graph.read().unwrap().debug_visualize("basis_graph_pruned");
+
 
 
 

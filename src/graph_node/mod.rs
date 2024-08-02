@@ -235,3 +235,60 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
         &mut HashMap::new(),
     );
 }
+
+pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
+    log::trace!("In prune");
+
+    fn is_twin<T: GraphNodeData>(a: Graph<T>, b: Graph<T>) -> bool {
+        let a_rl = a.read().unwrap();
+        let b_rl = b.read().unwrap();
+        a_rl.id != b_rl.id && a_rl.hash == b_rl.hash
+    }
+
+    bft(Arc::clone(&graph), &mut |parent: Graph<T>| {
+        loop {
+            let children: Vec<Graph<T>>;
+            {
+                let read_lock = parent.read().unwrap();
+                children = read_lock.children.clone();
+            }
+
+            let maybe_twins: Option<(Graph<T>, Graph<T>)> = children
+                .iter()
+                .find_map(|child| {
+                    children
+                        .iter()
+                        .find(|sibling| is_twin(Arc::clone(child), Arc::clone(sibling)))
+                        .map(|sibling| (Arc::clone(child), Arc::clone(sibling)))
+                });
+
+            if let Some(twins) = maybe_twins {
+                log::info!("Found two siblings nodes that are twins");
+                merge_nodes(Arc::clone(&parent), twins);
+            } else {
+                break;
+            }
+        }
+    });
+}
+
+fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {
+    log::trace!("In merge_nodes");
+
+    let keep_node = nodes.0;
+    let discard_node = nodes.1;
+
+    {
+        discard_node.write().unwrap().parents.clear();
+    }
+
+    for child in discard_node.read().unwrap().children.iter() {
+        let mut write_lock = child.write().unwrap();
+        write_lock.parents.retain(|p| p.read().unwrap().id != discard_node.read().unwrap().id);
+        write_lock.parents.push(Arc::clone(&keep_node));
+
+        keep_node.write().unwrap().children.push(Arc::clone(child));
+    }
+
+    parent.write().unwrap().children.retain(|child| child.read().unwrap().id != discard_node.read().unwrap().id);
+}
