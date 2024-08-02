@@ -16,8 +16,6 @@ mod config;
 mod constants;
 mod basis_node;
 mod graph_node;
-
-#[macro_use]
 mod macros;
 
 use node::{
