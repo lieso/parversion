@@ -16,6 +16,8 @@ mod config;
 mod constants;
 mod basis_node;
 mod graph_node;
+
+#[macro_use]
 mod macros;
 
 use node::{
@@ -96,18 +98,11 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     let input_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
     let output_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
 
-    std::mem::drop(xml);
-
     let basis_graph: Graph<BasisNode> = GraphNode::from_void();
 
     absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis graph");
-
-    graph_node::bft(Arc::clone(&output_tree), &mut |node: Graph<XmlNode>| {
-        let guard = node.read().unwrap();
-        log::debug!("hash: {}", guard.hash);
-    });
-    read_lock!(basis_graph).debug_visualize("basis_graph");
+    read_lock!(basis_graph).debug_visualize("basis_graph_absorbed");
 
     cyclize(Arc::clone(&basis_graph));
     log::info!("Done cyclizing basis graph");

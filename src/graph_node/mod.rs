@@ -23,7 +23,8 @@ pub struct GraphNode<T: GraphNodeData> {
 pub type Graph<T> = Arc<RwLock<GraphNode<T>>>;
 
 pub trait GraphNodeData: Clone {
-    fn new() -> Self;
+    fn new(description: String) -> Self;
+    fn describe(&self) -> String;
 }
 
 pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<XmlNode>>> {
@@ -67,7 +68,7 @@ impl<T: GraphNodeData> GraphNode<T> {
             hash: constants::ROOT_NODE_HASH.to_string(),
             parents: Vec::new(),
             children: Vec::new(),
-            data: T::new(),
+            data: T::new("blank".to_string()),
         }))
     }
 }
@@ -117,7 +118,7 @@ pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(graph: Graph<U>, parents: V
         hash: guard.hash.clone(),
         parents,
         children: Vec::new(),
-        data: T::new(),
+        data: T::new(guard.data.describe()),
     }));
 
     {

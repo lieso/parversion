@@ -30,7 +30,7 @@ impl<'a, T: GraphNodeData> Labeller<'a, Graph<T>, (Graph<T>, Graph<T>)> for Grap
     }
 
     fn node_label(&'a self, node: &Graph<T>) -> dot::LabelText<'a> {
-        let label = node.read().unwrap().hash.chars().take(20).collect::<String>();
+        let label = node.read().unwrap().data.describe().chars().take(20).collect::<String>();
         dot::LabelText::label(label)
     }
 }

@@ -9,13 +9,19 @@ use crate::graph_node::{GraphNodeData};
 pub struct BasisNode {
     pub data: Arc<RwLock<Vec<NodeData>>>,
     pub structure: Arc<RwLock<Vec<NodeDataStructure>>>,
+    pub description: String,
 }
 
 impl GraphNodeData for BasisNode {
-    fn new() -> Self {
+    fn new(description: String) -> Self {
         BasisNode {
             data: Arc::new(RwLock::new(Vec::new())),
             structure: Arc::new(RwLock::new(Vec::new())),
+            description,
         }
+    }
+
+    fn describe(&self) -> String {
+        self.description.to_string()
     }
 }

@@ -19,11 +19,15 @@ pub struct XmlNode {
 }
 
 impl GraphNodeData for XmlNode {
-    fn new() -> Self {
+    fn new(_description: String) -> Self {
         XmlNode {
             element: None,
             text: None,
         }
+    }
+
+    fn describe(&self) -> String {
+        self.to_string()
     }
 }
 
@@ -218,7 +222,7 @@ impl XmlNode {
         if let Some(element) = &self.element {
             format!("{}", &element_to_string(&element))
         } else if let Some(text) = &self.text {
-            format!("{}", &text)
+            format!("{}", &text.trim())
         } else {
             format!("{}", "")
         }
