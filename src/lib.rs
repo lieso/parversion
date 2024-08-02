@@ -16,6 +16,7 @@ mod config;
 mod constants;
 mod basis_node;
 mod graph_node;
+mod macros;
 
 use node::{
     Node,
@@ -106,15 +107,15 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
         let guard = node.read().unwrap();
         log::debug!("hash: {}", guard.hash);
     });
-    basis_graph.read().unwrap().debug_visualize("basis_graph");
+    read_lock!(basis_graph).debug_visualize("basis_graph");
 
     cyclize(Arc::clone(&basis_graph));
     log::info!("Done cyclizing basis graph");
-    basis_graph.read().unwrap().debug_visualize("basis_graph_cyclized");
+    read_lock!(basis_graph).debug_visualize("basis_graph_cyclized");
 
     prune(Arc::clone(&basis_graph));
     log::info!("Done pruning basis graph");
-    basis_graph.read().unwrap().debug_visualize("basis_graph_pruned");
+    read_lock!(basis_graph).debug_visualize("basis_graph_pruned");
 
 
 
