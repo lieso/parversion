@@ -3,7 +3,7 @@ use dot::{GraphWalk, Labeller};
 use std::collections::HashSet;
 use std::fs::File;
 
-use super::{GraphNode, Graph, GraphNodeData};
+use super::{GraphNode, Graph, GraphNodeData, bft};
 use crate::macros::*;
 
 impl<T: GraphNodeData> GraphNode<T> {
@@ -17,6 +17,29 @@ impl<T: GraphNodeData> GraphNode<T> {
             .args(&["-Tpng", &dot_path, "-o", &png_path])
             .output()
             .expect("Failed to execute dot command");
+    }
+    
+    pub fn debug_statistics(&self, label: &str) {
+        let mut node_count = 0;
+
+        bft(Arc::new(RwLock::new((*self).clone())), &mut |node: Graph<T>| {
+            node_count = node_count + 1;
+        });
+
+        let block_separator = "=".repeat(60);
+        let statistics = format!(
+            "\n{}
+GRAPH STATISTICS:
+{}
+Node count:     {}
+{}",
+            block_separator,
+            block_separator,
+            node_count,
+            block_separator,
+        );
+
+        log::debug!("{}", statistics);
     }
 }
 

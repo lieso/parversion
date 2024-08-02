@@ -109,7 +109,7 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     prune(Arc::clone(&basis_graph));
     log::info!("Done pruning basis graph");
     read_lock!(basis_graph).debug_visualize("basis_graph_pruned");
-
+    read_lock!(basis_graph).debug_statistics("basis_graph_pruned");
 
 
 
