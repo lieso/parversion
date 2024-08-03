@@ -18,13 +18,6 @@ mod basis_node;
 mod graph_node;
 mod macros;
 
-use node::{
-    Node,
-    build_tree,
-    get_tree_metadata,
-    linearize,
-    interpret,
-};
 use basis_node::{
     BasisNode
 };
@@ -34,6 +27,7 @@ use graph_node::{
     absorb,
     cyclize,
     prune,
+    interpret,
 };
 use xml_node::{XmlNode};
 use error::{Errors};
@@ -109,9 +103,12 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     prune(Arc::clone(&basis_graph));
     log::info!("Done pruning basis graph");
     read_lock!(basis_graph).debug_visualize("basis_graph_pruned");
+
     read_lock!(basis_graph).debug_statistics("basis_graph_pruned");
+    log::info!("Interpreting basis graph...");
 
-
+    interpret(Arc::clone(&basis_graph)).await;
+    log::info!("Done interpreting basis graph.");
 
 
     unimplemented!()

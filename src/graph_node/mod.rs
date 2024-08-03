@@ -3,6 +3,8 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
+use tokio::sync::Semaphore;
+use tokio::task;
 
 mod debug;
 
@@ -10,6 +12,7 @@ use crate::xml_node::{XmlNode};
 use crate::xml_node;
 use crate::basis_node::{BasisNode};
 use crate::constants;
+use crate::macros::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GraphNode<T: GraphNodeData> {
@@ -22,7 +25,7 @@ pub struct GraphNode<T: GraphNodeData> {
 
 pub type Graph<T> = Arc<RwLock<GraphNode<T>>>;
 
-pub trait GraphNodeData: Clone {
+pub trait GraphNodeData: Clone + Send + Sync {
     fn new(description: String) -> Self;
     fn describe(&self) -> String;
 }
@@ -271,6 +274,34 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
             }
         }
     });
+}
+
+pub async fn interpret<T: GraphNodeData + 'static>(graph: Graph<T>) {
+    log::trace!("In interpret");
+
+    let mut nodes: Vec<Graph<T>> = Vec::new();
+
+    bft(Arc::clone(&graph), &mut |node: Graph<T>| {
+        nodes.push(node.clone());
+    });
+
+    let semaphore = Arc::new(Semaphore::new(constants::MAX_CONCURRENCY));
+    let mut handles = vec![];
+
+    for node in nodes.iter() {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        handles.push(task::spawn(analyze(Arc::clone(node), permit)));
+    }
+
+    for handle in handles {
+        handle.await.unwrap();
+    }
+}
+
+async fn analyze<T: GraphNodeData>(graph: Graph<T>, _permit: tokio::sync::OwnedSemaphorePermit) {
+    log::trace!("In analyze");
+    log::trace!("id: {}", read_lock!(graph).id);
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 }
 
 fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {
