@@ -278,7 +278,7 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
     });
 }
 
-pub async fn interpret<T: GraphNodeData + 'static>(graph: Graph<T>) {
+pub async fn interpret<T: GraphNodeData + 'static>(graph: Graph<T>, output_tree: Graph<XmlNode>) {
     log::trace!("In interpret");
 
     let mut nodes: Vec<Graph<T>> = Vec::new();
@@ -292,7 +292,7 @@ pub async fn interpret<T: GraphNodeData + 'static>(graph: Graph<T>) {
 
     for node in nodes.iter() {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
-        handles.push(task::spawn(analyze_structure(Arc::clone(node), permit)));
+        handles.push(task::spawn(analyze_structure(Arc::clone(node), Arc::clone(&output_tree), permit)));
     }
 
     for handle in handles {
