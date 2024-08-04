@@ -278,12 +278,12 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
     });
 }
 
-pub async fn interpret<T: GraphNodeData + 'static>(graph: Graph<T>, output_tree: Graph<XmlNode>) {
+pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
     log::trace!("In interpret");
 
-    let mut nodes: Vec<Graph<T>> = Vec::new();
+    let mut nodes: Vec<Graph<BasisNode>> = Vec::new();
 
-    bft(Arc::clone(&graph), &mut |node: Graph<T>| {
+    bft(Arc::clone(&graph), &mut |node: Graph<BasisNode>| {
         nodes.push(node.clone());
     });
 
