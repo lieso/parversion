@@ -7,12 +7,14 @@ use tokio::sync::Semaphore;
 use tokio::task;
 
 mod debug;
+mod analysis;
 
 use crate::xml_node::{XmlNode};
 use crate::xml_node;
 use crate::basis_node::{BasisNode};
 use crate::constants;
 use crate::macros::*;
+use crate::graph_node::analysis::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GraphNode<T: GraphNodeData> {
@@ -290,18 +292,12 @@ pub async fn interpret<T: GraphNodeData + 'static>(graph: Graph<T>) {
 
     for node in nodes.iter() {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
-        handles.push(task::spawn(analyze(Arc::clone(node), permit)));
+        handles.push(task::spawn(analyze_structure(Arc::clone(node), permit)));
     }
 
     for handle in handles {
         handle.await.unwrap();
     }
-}
-
-async fn analyze<T: GraphNodeData>(graph: Graph<T>, _permit: tokio::sync::OwnedSemaphorePermit) {
-    log::trace!("In analyze");
-    log::trace!("id: {}", read_lock!(graph).id);
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 }
 
 fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {
