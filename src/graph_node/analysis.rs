@@ -19,5 +19,7 @@ pub async fn analyze_structure(
         Arc::clone(&output_tree),
     );
 
+    log::debug!("homologous_nodes: {:?}", homologous_nodes);
+
     unimplemented!()
 }
