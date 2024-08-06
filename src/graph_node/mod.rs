@@ -27,6 +27,12 @@ pub struct GraphNode<T: GraphNodeData> {
 
 pub type Graph<T> = Arc<RwLock<GraphNode<T>>>;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Lineage {
+    cycle: Vec<String>,
+    path: Vec<String>,
+}
+
 pub trait GraphNodeData: Clone + Send + Sync {
     fn new(description: String) -> Self;
     fn describe(&self) -> String;
@@ -299,6 +305,124 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
         handle.await.unwrap();
     }
 }
+
+pub fn get_lineage<T: GraphNodeData>(graph: Graph<T>) -> Lineage {
+    log::trace!("In get_lineage");
+
+    fn get_cycle<T: GraphNodeData>(
+        node: Graph<T>,
+        visited: &mut HashSet<String>,
+        current_path: &mut Vec<String>,
+    ) -> Vec<String> {
+        current_path.push(read_lock!(node).hash.clone());
+
+        if visited.insert(read_lock!(node).id.clone()) {
+            log::info!("Detected cycle");
+            return current_path.iter().cloned().collect();
+        } 
+
+        if read_lock!(node).children.is_empty() {
+            return Vec::new();
+        }
+
+        for child in read_lock!(node).children.iter() {
+            let maybe_cycle = get_cycle(
+                Arc::clone(child),
+                visited,
+                &mut current_path.clone()
+            );
+
+            if !maybe_cycle.is_empty() {
+                return maybe_cycle;
+            }
+        }
+
+        visited.remove(&read_lock!(node).id);
+
+        Vec::new()
+    }
+
+    Lineage {
+        cycle: get_cycle(
+            Arc::clone(&graph),
+            &mut HashSet::new(),
+            &mut Vec::new(),
+        ),
+        path: Vec::new(),
+    }
+}
+
+//pub fn get_lineages<T: GraphNodeData>(graph: Graph<T>) -> &mut Vec<&mut VecDeque<String>> {
+//    let mut visited: HashSet<String> = HashSet::new();
+//    let mut descendants: VecDeque<String> = VecDeque::new();
+//
+//    descendants.push_back(read_lock!(graph).hash.clone());
+//
+//    fn get_path<T: GraphNodeData>(
+//        node: Graph<T>,
+//        descendants: VecDeque<String>,
+//        visited: &mut HashSet<String>,
+//    ) -> VecDeque<String> {
+//        if visited.insert(read_lock!(node).id.clone()) {
+//            log::info!("Detected cycle");
+//            return descendants;
+//        }
+//
+//        descendants.push_back(read_lock!(node).hash.clone());
+//
+//    }
+//
+//    read_lock!(graph).parents.iter().map(|parent| {
+//
+//    })
+//}
+//
+//fn get_lineage<T: GraphNodeData>(
+//    node: Graph<T>,
+//    descendants: &mut VecDeque<String>,
+//    visited: &mut HashSet<String>
+//) -> &mut Vec<&mut VecDeque<String>> {
+//    log::trace!("In get_lineages");
+//
+//    if visited.insert(read_lock!(node).id.clone()) {
+//        log::trace!("Detected cycle");
+//        return &mut vec![descendants];
+//    }
+//
+//    read_lock!(node).parents.iter().map(|parent| {
+//        descendants.push_back(read_lock!(parent).hash.clone());
+//        get_lineage(
+//            Arc::clone(&parent),
+//            &mut descendants.clone(),
+//            &mut visited,
+//        )
+//    }).cloned().collect()
+//}
+
+//pub fn get_lineage<T: GraphNodeData>(graph: Graph<T>) -> VecDeque<Vec<String>> {
+//    log::trace!("In get_lineage");
+//
+//    let mut visited: HashSet<String> = HashSet::new();
+//    let mut lineage = VecDeque::new();
+//    let mut current_node = graph;
+//
+//    loop {
+//        if visited.insert(read_lock!(current_node).id.clone()) {
+//            return lineage;
+//        } else {
+//            lineage.push_back(vec![read_lock!(current_node).hash.clone()]);
+//        }
+//
+//
+//        if read_lock!(current_node).parents.is_empty() {
+//            return lineage;
+//        }
+//
+//        if read_lock!(current_node).parents.len() == 1 {
+//            current_node = read_lock!(current_node).parents.get(0);
+//        }
+//    }
+//}
 
 fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {
     log::trace!("In merge_nodes");
