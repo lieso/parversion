@@ -319,7 +319,35 @@ pub fn find_homologous_nodes(
 ) -> Vec<Graph<XmlNode>> {
     log::trace!("In find_homologous_nodes");
 
-    unimplemented!()
+    let mut homologous_nodes: Vec<Graph<XmlNode>> = Vec::new();
+
+    fn get_lineage(tree_node: Graph<XmlNode>) -> VecDeque<String> {
+        let mut lineage = VecDeque::new();
+        let mut current_node = tree_node;
+
+        loop {
+            lineage.push_front(read_lock!(current_node).hash.clone());
+            
+            let parents = read_lock!(current_node).parents.clone();
+
+            if let Some(parent) = parents.first() {
+                current_node = Arc::clone(parent);
+            } else {
+                break;
+            }
+        }
+
+        lineage
+    }
+
+    bft(Arc::clone(&output_tree), &mut |output_node: Graph<XmlNode>| {
+        let lineage = get_lineage(output_node);
+        log::debug!("lineage: {:?}", lineage);
+
+        true
+    });
+
+    homologous_nodes
 }
 
 fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {
