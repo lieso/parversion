@@ -171,19 +171,21 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Gr
     }
 }
 
-pub fn bft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>)) {
+pub fn bft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>) -> bool) {
     let mut visited = HashSet::new();
     let mut queue = VecDeque::new();
     queue.push_back(graph);
 
     while let Some(current) = queue.pop_front() {
-        if !visited.insert(current.read().unwrap().id.clone()) {
+        if !visited.insert(read_lock!(current).id.clone()) {
             continue;
         }
 
-        visit(Arc::clone(&current));
+        if !visit(Arc::clone(&current)) {
+            break;
+        }
 
-        for child in current.read().unwrap().children.iter() {
+        for child in read_lock!(current).children.iter() {
             queue.push_back(child.clone());
         }
     }
@@ -275,6 +277,8 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
                 break;
             }
         }
+
+        true
     });
 }
 
@@ -285,6 +289,7 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
 
     bft(Arc::clone(&graph), &mut |node: Graph<BasisNode>| {
         nodes.push(node.clone());
+        true
     });
 
     let semaphore = Arc::new(Semaphore::new(constants::MAX_CONCURRENCY));
@@ -292,12 +297,29 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
 
     for node in nodes.iter() {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
-        handles.push(task::spawn(analyze_structure(Arc::clone(node), Arc::clone(&output_tree), permit)));
+        handles.push(
+            task::spawn(
+                analyze_structure(
+                    Arc::clone(&graph),
+                    Arc::clone(node),
+                    Arc::clone(&output_tree),
+                    permit
+                )));
     }
 
     for handle in handles {
         handle.await.unwrap();
     }
+}
+
+pub fn find_homologous_nodes(
+    target_node: Graph<BasisNode>,
+    basis_graph: Graph<BasisNode>,
+    output_tree: Graph<XmlNode>,
+) -> Vec<Graph<XmlNode>> {
+    log::trace!("In find_homologous_nodes");
+
+    unimplemented!()
 }
 
 fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {

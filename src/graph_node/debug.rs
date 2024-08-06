@@ -24,6 +24,7 @@ impl<T: GraphNodeData> GraphNode<T> {
 
         bft(Arc::new(RwLock::new((*self).clone())), &mut |node: Graph<T>| {
             node_count = node_count + 1;
+            true
         });
 
         let block_separator = "=".repeat(60);
