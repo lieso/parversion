@@ -320,9 +320,6 @@ pub fn absorb(recipient: Rc<Node>, donor: Rc<Node>) {
     }
 }
 
-// *** WARNING ***
-// Idiopathic stack overflow error if pushing cloned node references
-// *** WARNING ***
 pub fn find_all_node_xml_by_lineage(
     root: Rc<Node>,
     lineage: VecDeque<String>,

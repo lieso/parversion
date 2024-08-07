@@ -13,5 +13,4 @@ pub const SEEN_BLACKLISTED_ATTRIBUTES: [&str; 5] = [
     "rel", "class", "indent", "title", "n"
 ];
 
-
-pub const MAX_CONCURRENCY: usize = 2;
+pub const MAX_CONCURRENCY: usize = 1;

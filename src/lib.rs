@@ -6,10 +6,8 @@ use std::sync::{Arc, RwLock};
 
 mod error;
 mod llm;
-mod node;
 mod node_data;
 mod node_data_structure;
-mod traversal;
 mod utility;
 mod xml_node;
 mod config;
@@ -31,7 +29,6 @@ use graph_node::{
 };
 use xml_node::{XmlNode};
 use error::{Errors};
-use traversal::{Traversal};
 
 pub fn normalize(text: String) -> Result<String, Errors> {
     log::trace!("In normalize");

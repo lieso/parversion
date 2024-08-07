@@ -4,6 +4,8 @@ use std::sync::{Arc};
 use super::{GraphNode, Graph, GraphNodeData, bft, find_homologous_nodes};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
+use crate::macros::*;
+use crate::config::{CONFIG, Config};
 
 pub async fn analyze_structure(
     target_node: Graph<BasisNode>,
@@ -19,7 +21,16 @@ pub async fn analyze_structure(
         Arc::clone(&output_tree),
     );
 
-    log::debug!("homologous_nodes: {:?}", homologous_nodes);
+    if homologous_nodes.is_empty() {
+        panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
+    }
+
+    let target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
+    log::info!("Using {} examples of target node for analysis", target_node_examples_max_count);
+
+    for node in homologous_nodes.iter() {
+        log::debug!("node: {}", read_lock!(node).data.describe());
+    }
 
     unimplemented!()
 }

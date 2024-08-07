@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use lazy_static::lazy_static;
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 #[derive(Debug, Deserialize)]
 pub struct LlmConfig {
@@ -17,12 +17,17 @@ impl Config {
     pub fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let config_contents = std::fs::read_to_string(path)?;
         let config: Config = toml::from_str(&config_contents)?;
+
+        if config.llm.target_node_examples_max_count < 1 {
+            panic!("It makes no sense for target_node_examples_max_count to be less than 1");
+        }
+
         Ok(config)
     }
 }
 
 lazy_static! {
-    pub static ref CONFIG: Mutex<Config> = Mutex::new(
+    pub static ref CONFIG: RwLock<Config> = RwLock::new(
         Config::load_from_file("settings.toml").expect("Failed to load configuration"),
     );
 }

@@ -342,7 +342,6 @@ pub fn find_homologous_nodes(
 
     fn apply_lineage(basis_graph: Graph<BasisNode>, mut lineage: VecDeque<String>) -> Graph<BasisNode> {
         let binding = read_lock!(basis_graph);
-        log::debug!("*** {} {}", binding.id, binding.hash);
         let mut current_node = binding.children.first().expect("Expected basis graph to contain a child").clone();
 
         while let Some(hash) = lineage.pop_front() {
@@ -365,7 +364,7 @@ pub fn find_homologous_nodes(
         let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
 
         if read_lock!(basis_node).id == read_lock!(target_node).id {
-            homologous_nodes.push(Arc::clone(&output_node));
+            homologous_nodes.push(output_node);
         }
 
         true
