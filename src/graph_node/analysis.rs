@@ -25,12 +25,15 @@ pub async fn analyze_structure(
         panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
     }
 
+    for node in homologous_nodes.iter() {
+        log::debug!("homologous node: {}", read_lock!(node).data.describe());
+    }
+
     let target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
     log::info!("Using {} examples of target node for analysis", target_node_examples_max_count);
 
-    for node in homologous_nodes.iter() {
-        log::debug!("node: {}", read_lock!(node).data.describe());
-    }
+    let homologous_nodes = homologous_nodes[..target_node_examples_max_count].to_vec();
+
 
     unimplemented!()
 }
