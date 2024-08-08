@@ -1,7 +1,14 @@
 use tokio::sync::{OwnedSemaphorePermit};
 use std::sync::{Arc};
 
-use super::{GraphNode, Graph, GraphNodeData, bft, find_homologous_nodes};
+use super::{
+    GraphNode, 
+    Graph, 
+    GraphNodeData, 
+    bft, 
+    find_homologous_nodes,
+    build_xml_with_target_node
+};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
@@ -30,10 +37,23 @@ pub async fn analyze_structure(
     }
 
     let target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
-    log::info!("Using {} examples of target node for analysis", target_node_examples_max_count);
+    log::info!("Using a maximum of {} examples of target node for analysis", target_node_examples_max_count);
 
-    let homologous_nodes = homologous_nodes[..target_node_examples_max_count].to_vec();
+    let snippets: Vec<String> = homologous_nodes[..target_node_examples_max_count]
+        .to_vec()
+        .iter()
+        .map(|item| node_to_snippet(Arc::clone(item), Arc::clone(&output_tree)))
+        .collect();
+    log::debug!("snippets: {:?}", snippets);
 
+    unimplemented!()
+}
+
+fn node_to_snippet(node: Graph<XmlNode>, output_tree: Graph<XmlNode>) -> String {
+    log::trace!("In node_to_snippet");
+
+    let document = build_xml_with_target_node(Arc::clone(&output_tree), Arc::clone(&node));
+    log::debug!("document: {:?}", document);
 
     unimplemented!()
 }

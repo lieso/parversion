@@ -277,6 +277,23 @@ impl XmlNode {
 
         true
     }
+
+    pub fn get_opening_tag(&self) -> String {
+        let element = self.element.clone().unwrap();
+        let mut tag = format!("<{}", element.name);
+
+        for (attr, value) in &element.attributes {
+            tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
+        }
+        tag.push('>');
+
+        tag
+    }
+
+    pub fn get_closing_tag(&self) -> String {
+        let element = self.element.clone().unwrap();
+        format!("</{}>", element.name)
+    }
 }
 
 fn element_to_string(element: &Element) -> String {

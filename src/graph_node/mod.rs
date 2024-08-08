@@ -373,6 +373,104 @@ pub fn find_homologous_nodes(
     homologous_nodes
 }
 
+pub fn build_xml_with_target_node(
+    output_tree: Graph<XmlNode>,
+    target_node: Graph<XmlNode>
+) -> (
+    String, // html before target node
+    String, // target node opening tag
+    String, // target node child content
+    String, // target node closing tag
+    String, // html after target node
+) {
+    log::trace!("In build_xml_with_target_node");
+
+    let mut before_html = String::new();
+    let mut target_opening_html = String::new();
+    let mut target_child_content = String::new();
+    let mut target_closing_html = String::new();
+    let mut after_html = String::new();
+    let mut found_target = false;
+
+    fn recurse(
+        current: Graph<XmlNode>,
+        target: Graph<XmlNode>,
+        found_target: &mut bool,
+        before_html: &mut String,
+        target_opening_html: &mut String,
+        target_child_content: &mut String,
+        target_closing_html: &mut String,
+        after_html: &mut String,
+    ) {
+        let xml_node: &XmlNode = &read_lock!(current).data;
+
+        if xml_node.is_element() {
+            let opening_tag = xml_node.get_opening_tag();
+            let closing_tag = xml_node.get_closing_tag();
+
+            if *found_target {
+                after_html.push_str(&opening_tag);
+            } else if read_lock!(current).id == read_lock!(target).id {
+                *found_target = true;
+                target_opening_html.push_str(&opening_tag);
+            } else {
+                before_html.push_str(&opening_tag);
+            }
+
+            for child in read_lock!(current).children.iter() {
+                recurse(
+                    Arc::clone(&child),
+                    Arc::clone(&target),
+                    found_target,
+                    before_html,
+                    target_opening_html,
+                    target_child_content,
+                    target_closing_html,
+                    after_html,
+                );
+            }
+
+            if *found_target && read_lock!(current).id == read_lock!(target).id {
+                target_closing_html.push_str(&closing_tag);
+            } else if *found_target {
+                after_html.push_str(&closing_tag);
+            } else {
+                before_html.push_str(&closing_tag);
+            }
+        }
+
+        if let Some(text) = &xml_node.text {
+            if *found_target {
+                after_html.push_str(&text.clone());
+            } else if read_lock!(current).id == read_lock!(target).id {
+                *found_target = true;
+                target_child_content.push_str(&text.clone());
+            } else {
+                before_html.push_str(&text.clone());
+            }
+        }
+    }
+
+    recurse(
+        Arc::clone(&output_tree),
+        Arc::clone(&target_node),
+        &mut found_target,
+        &mut before_html,
+        &mut target_opening_html,
+        &mut target_child_content,
+        &mut target_closing_html,
+        &mut after_html
+    );
+
+    (
+        before_html,
+        target_opening_html,
+        target_child_content,
+        target_closing_html,
+        after_html
+    )
+}
+
 fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {
     log::trace!("In merge_nodes");
 
