@@ -44,7 +44,8 @@ pub async fn analyze_structure(
         .iter()
         .map(|item| node_to_snippet(Arc::clone(item), Arc::clone(&output_tree)))
         .collect();
-    log::debug!("snippets: {:?}", snippets);
+
+    log::debug!("snippet: {}", snippets.get(0).unwrap());
 
     unimplemented!()
 }
@@ -53,7 +54,63 @@ fn node_to_snippet(node: Graph<XmlNode>, output_tree: Graph<XmlNode>) -> String 
     log::trace!("In node_to_snippet");
 
     let document = build_xml_with_target_node(Arc::clone(&output_tree), Arc::clone(&node));
-    log::debug!("document: {:?}", document);
+    let context_length = read_lock!(CONFIG).llm.target_node_adjacent_xml_length;
 
-    unimplemented!()
+    if read_lock!(node).data.is_text() {
+        format!(
+            "{}<!--Target node start -->{}<!--Target node end -->{}",
+            take_from_end(&document.0, context_length),
+            document.2,
+            take_from_start(&document.4, context_length),
+        )
+    } else {
+        let after_start_tag = &format!(
+            "{}{}{}",
+            document.2,
+            document.3,
+            document.4
+        );
+
+        format!(
+            "{}<!--Target node start -->{}<!--Target node end -->{}",
+            take_from_end(&document.0, context_length),
+            document.1,
+            take_from_start(after_start_tag, context_length),
+        )
+    }
+}
+
+fn take_from_end(s: &str, amount: usize) -> &str {
+    log::trace!("In take_from_end");
+
+    let len = s.len();
+    if amount >= len {
+        s
+    } else {
+        let start_index = len - amount;
+        let mut adjusted_start = start_index;
+
+        while !s.is_char_boundary(adjusted_start) && adjusted_start < len {
+            adjusted_start += 1;
+        }
+
+        &s[adjusted_start..]
+    }
+}
+
+fn take_from_start(s: &str, amount: usize) -> &str {
+    log::trace!("In take_from_end");
+
+    if amount >= s.len() {
+        s
+    } else {
+        let end_index = amount;
+        let mut adjusted_end = end_index;
+
+        while !s.is_char_boundary(adjusted_end) && adjusted_end > 0 {
+            adjusted_end -= 1;
+        }
+
+        &s[..adjusted_end]
+    }
 }
