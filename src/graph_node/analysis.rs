@@ -37,9 +37,10 @@ pub async fn analyze_structure(
     }
 
     let target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
-    log::info!("Using a maximum of {} examples of target node for analysis", target_node_examples_max_count);
-
-    let snippets: Vec<String> = homologous_nodes[..target_node_examples_max_count]
+    let target_node_examples_count = std::cmp::min(target_node_examples_max_count, homologous_nodes.len());
+    log::info!("Using {} examples of target node for analysis", target_node_examples_count);
+    
+    let snippets: Vec<String> = homologous_nodes[..target_node_examples_count]
         .to_vec()
         .iter()
         .map(|item| node_to_snippet(Arc::clone(item), Arc::clone(&output_tree)))
