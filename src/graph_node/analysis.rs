@@ -16,15 +16,30 @@ use crate::config::{CONFIG, Config};
 
 pub async fn analyze_structure(
     target_node: Graph<BasisNode>,
-    basis_graph: Graph<BasisNode>,
+    basis_root_node: Graph<BasisNode>,
     output_tree: Graph<XmlNode>,
     _permit: OwnedSemaphorePermit
 ) {
     log::trace!("In analyze_structure");
 
+    {
+        let block_separator = "=".repeat(60);
+        log::info!("{}", format!(
+        "\n{}
+ANALYZING NODE:
+{}
+Node:   {}
+{}",
+            block_separator,
+            block_separator,
+            read_lock!(target_node).data.describe(),
+            block_separator,
+        ));
+    }
+
     let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
         Arc::clone(&target_node),
-        Arc::clone(&basis_graph),
+        Arc::clone(&basis_root_node),
         Arc::clone(&output_tree),
     );
 
