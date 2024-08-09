@@ -13,14 +13,15 @@ use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::config::{CONFIG, Config};
+use crate::constants;
 
-pub async fn analyze_structure(
+pub async fn analyze(
     target_node: Graph<BasisNode>,
     basis_root_node: Graph<BasisNode>,
     output_tree: Graph<XmlNode>,
     _permit: OwnedSemaphorePermit
 ) {
-    log::trace!("In analyze_structure");
+    log::trace!("In analyze");
 
     {
         let block_separator = "=".repeat(60);
@@ -37,19 +38,34 @@ Node:   {}
         ));
     }
 
+    // * Basis root node
+    if read_lock!(target_node).hash == constants::ROOT_NODE_HASH {
+        log::info!("Node is root node, probably don't need to do anything here");
+        return;
+    }
+
+
+
+
+
+
     let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
         Arc::clone(&target_node),
         Arc::clone(&basis_root_node),
         Arc::clone(&output_tree),
     );
+    for node in homologous_nodes.iter() {
+        log::debug!("homologous node: {}", read_lock!(node).data.describe());
+    }
 
     if homologous_nodes.is_empty() {
         panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
     }
 
-    for node in homologous_nodes.iter() {
-        log::debug!("homologous node: {}", read_lock!(node).data.describe());
-    }
+
+
+
+
 
     let target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
     let target_node_examples_count = std::cmp::min(target_node_examples_max_count, homologous_nodes.len());
@@ -60,10 +76,65 @@ Node:   {}
         .iter()
         .map(|item| node_to_snippet(Arc::clone(item), Arc::clone(&output_tree)))
         .collect();
-
     log::debug!("snippet: {}", snippets.get(0).unwrap());
 
+
+
+
+
+    analyze_structure(Arc::clone(&target_node), homologous_nodes.clone()).await;
+}
+
+async fn analyze_structure(target_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) {
+    log::trace!("In analyze_structure");
+
+    if analyze_structure_classically(Arc::clone(&target_node), homologous_nodes.clone()) {
+        log::info!("Basis node structure analyzed classically, not proceeding any further...");
+        return;
+    }
+
     unimplemented!()
+}
+
+fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
+    log::trace!("In analyze_structure_classically");
+
+    let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+    let output_parent_node: Option<Graph<XmlNode>> = read_lock!(output_node).parents.first().cloned();
+
+    // * Link elements
+    if read_lock!(output_node).data.get_element_tag_name() == "link" {
+        log::info!("Node represents HTML link element. Not proceeding any further.");
+        return true;
+    }
+
+    // * Meta elements
+    if read_lock!(output_node).data.get_element_tag_name() == "meta" {
+        log::info!("Node represents HTML meta element. Not proceeding any further.");
+        return true;
+    }
+
+    // * Script elements
+    if read_lock!(output_node).data.get_element_tag_name() == "script" {
+        log::info!("Node represents HTML script element. Not proceeding any further.");
+        return true;
+    }
+
+    // Assuming nodes that are the lone child of their parent do not represent
+    // any complex relationships to other nodes
+    if let Some(parent) = output_parent_node {
+        let parent_out_degree = read_lock!(parent).children.len();
+
+        if parent_out_degree < 2 {
+            log::info!("Node parent has out-degree less than two. Not proceeding any further.");
+            return true;
+        }
+    } else {
+        log::info!("Output node is root node. Not proceeding any further.");
+        return true;
+    }
+
+    false
 }
 
 fn node_to_snippet(node: Graph<XmlNode>, output_tree: Graph<XmlNode>) -> String {

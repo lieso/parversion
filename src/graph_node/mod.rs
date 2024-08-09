@@ -299,7 +299,7 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         handles.push(
             task::spawn(
-                analyze_structure(
+                analyze(
                     Arc::clone(node),
                     Arc::clone(&graph),
                     Arc::clone(&output_tree),
