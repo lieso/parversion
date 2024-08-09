@@ -54,18 +54,42 @@ Node:   {}
         Arc::clone(&basis_root_node),
         Arc::clone(&output_tree),
     );
-    for node in homologous_nodes.iter() {
-        log::debug!("homologous node: {}", read_lock!(node).data.describe());
-    }
-
+    //for node in homologous_nodes.iter() {
+    //    log::debug!("homologous node: {}", read_lock!(node).data.describe());
+    //}
     if homologous_nodes.is_empty() {
         panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
     }
 
 
 
+    analyze_structure(
+        Arc::clone(&target_node),
+        homologous_nodes.clone(),
+        Arc::clone(&output_tree),
+    ).await;
+}
 
+async fn analyze_structure(
+    target_node: Graph<BasisNode>, 
+    homologous_nodes: Vec<Graph<XmlNode>>,
+    output_tree: Graph<XmlNode>
+) {
+    log::trace!("In analyze_structure");
 
+    if analyze_structure_classically(Arc::clone(&target_node), homologous_nodes.clone()) {
+        log::info!("Basis node structure analyzed classically, not proceeding any further...");
+        return;
+    }
+
+    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree));
+    log::debug!("snippet: {}", snippets.get(0).unwrap());
+
+    unimplemented!()
+}
+
+fn make_snippets(homologous_nodes: Vec<Graph<XmlNode>>, output_tree: Graph<XmlNode>) -> Vec<String> {
+    log::trace!("In make_snippets");
 
     let target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
     let target_node_examples_count = std::cmp::min(target_node_examples_max_count, homologous_nodes.len());
@@ -76,24 +100,8 @@ Node:   {}
         .iter()
         .map(|item| node_to_snippet(Arc::clone(item), Arc::clone(&output_tree)))
         .collect();
-    log::debug!("snippet: {}", snippets.get(0).unwrap());
 
-
-
-
-
-    analyze_structure(Arc::clone(&target_node), homologous_nodes.clone()).await;
-}
-
-async fn analyze_structure(target_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) {
-    log::trace!("In analyze_structure");
-
-    if analyze_structure_classically(Arc::clone(&target_node), homologous_nodes.clone()) {
-        log::info!("Basis node structure analyzed classically, not proceeding any further...");
-        return;
-    }
-
-    unimplemented!()
+    snippets
 }
 
 fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
