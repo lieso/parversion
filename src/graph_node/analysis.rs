@@ -63,6 +63,8 @@ Node:   {}
 
 
 
+
+
     analyze_structure(
         Arc::clone(&target_node),
         homologous_nodes.clone(),
@@ -139,6 +141,14 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
         }
     } else {
         log::info!("Output node is root node. Not proceeding any further.");
+        return true;
+    }
+
+    // If a basis node is part of a cycle, it represents a recursive relationship
+    // in the underlying data model
+    let parent_count = read_lock!(basis_node).parents.len();
+    if parent_count > 1 {
+        log::info!("Node has more than one parent and is therefore recursive. Not proceeding any further.");
         return true;
     }
 
