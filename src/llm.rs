@@ -23,7 +23,7 @@ where
     Ok(opt.filter(|s| !s.is_empty()))
 }
 
-pub async fn interpret_data_structure(snippets: Vec<String>) -> Vec<NodeDataStructure> {
+pub async fn interpret_data_structure(snippets: Vec<String>) -> NodeDataStructure {
     log::trace!("In interpret_data_structure");
 
     assert!(snippets.len() > 0, "Did not receive any snippets");
@@ -117,15 +117,14 @@ Example(s) of the node to be analyzed:
     log::debug!("json_response: {:?}", json_response);
     let json_response = json_response["choices"].as_array().unwrap();
     let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
-    log::debug!("json_response: {:?}", json_response);
 
     let llm_data_structure_response = serde_json::from_str::<LLMDataStructureResponse>(json_response)
         .expect("Could not parse json response as LLMDataStructureResponse");
-
     log::debug!("llm_data_structure_response: {:?}", llm_data_structure_response);
 
-    //[2024-08-12T01:04:07Z DEBUG parversion::llm] json_response: "{\"next_item_xpath\":\"following-sibling::tr[@class='athing comtr'][1]\",\"parent_node_xpath\":\"preceding-sibling::tr[@class='athing comtr'][1]\",\"root_node_xpath\":\"@indent='0'\"}"
-    //[2024-08-12T01:04:07Z DEBUG parversion::llm] llm_data_structure_response: LLMDataStructureResponse { root_node_xpath: Some("@indent='0'"), parent_node_xpath: Some("preceding-sibling::tr[@class='athing comtr'][1]"), next_item_xpath: Some("following-sibling::tr[@class='athing comtr'][1]") }
-
-    unimplemented!()
+    NodeDataStructure {
+        root_node_xpath: llm_data_structure_response.root_node_xpath,
+        parent_node_xpath: llm_data_structure_response.parent_node_xpath,
+        next_item_xpath: llm_data_structure_response.next_item_xpath,
+   }
 }
