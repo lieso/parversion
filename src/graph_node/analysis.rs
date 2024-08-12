@@ -86,11 +86,14 @@ async fn analyze_structure(
     }
 
     let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree));
-    log::debug!("snippet: {}", snippets.get(0).unwrap());
 
     let structure = interpret_data_structure(snippets).await;
 
-    unimplemented!()
+    {
+        let rl = read_lock!(target_node);
+        let mut wl = write_lock!(rl.data.structure);
+        wl.push(structure);
+    }
 }
 
 fn make_snippets(homologous_nodes: Vec<Graph<XmlNode>>, output_tree: Graph<XmlNode>) -> Vec<String> {
