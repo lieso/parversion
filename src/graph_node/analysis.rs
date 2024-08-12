@@ -14,6 +14,7 @@ use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::config::{CONFIG, Config};
 use crate::constants;
+use crate::llm::{interpret_data_structure};
 
 pub async fn analyze(
     target_node: Graph<BasisNode>,
@@ -87,6 +88,8 @@ async fn analyze_structure(
     let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree));
     log::debug!("snippet: {}", snippets.get(0).unwrap());
 
+    let structure = interpret_data_structure(snippets).await;
+
     unimplemented!()
 }
 
@@ -145,7 +148,7 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
     }
 
     // If a basis node is part of a cycle, it represents a recursive relationship
-    // in the underlying data model
+    // in the underlying data model 
     let parent_count = read_lock!(basis_node).parents.len();
     if parent_count > 1 {
         log::info!("Node has more than one parent and is therefore recursive. Not proceeding any further.");
