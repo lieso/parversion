@@ -1,5 +1,5 @@
 use reqwest::header;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::json;
 use std::env;
 
@@ -7,9 +7,20 @@ use crate::node_data_structure::{NodeDataStructure};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct LLMDataStructureResponse {
+    #[serde(deserialize_with = "empty_string_as_none")]
     root_node_xpath: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_none")]
     parent_node_xpath: Option<String>,
+    #[serde(deserialize_with = "empty_string_as_none")]
     next_item_xpath: Option<String>,
+}
+
+fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    Ok(opt.filter(|s| !s.is_empty()))
 }
 
 pub async fn interpret_data_structure(snippets: Vec<String>) -> Vec<NodeDataStructure> {
