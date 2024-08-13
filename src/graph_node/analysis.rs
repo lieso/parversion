@@ -9,7 +9,7 @@ use super::{
     find_homologous_nodes,
     build_xml_with_target_node
 };
-use crate::xml_node::{XmlNode};
+use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::config::{CONFIG, Config};
@@ -71,6 +71,11 @@ Node:   {}
         homologous_nodes.clone(),
         Arc::clone(&output_tree),
     ).await;
+    analyze_data(
+        Arc::clone(&target_node),
+        homologous_nodes.clone(),
+        Arc::clone(&output_tree),
+    ).await;
 }
 
 async fn analyze_structure(
@@ -94,6 +99,78 @@ async fn analyze_structure(
         let mut wl = write_lock!(rl.data.structure);
         wl.push(structure);
     }
+}
+
+async fn analyze_data(
+    target_node: Graph<BasisNode>, 
+    homologous_nodes: Vec<Graph<XmlNode>>,
+    output_tree: Graph<XmlNode>
+) {
+    log::trace!("In analyze_data");
+
+    if analyze_data_classically(Arc::clone(&target_node), homologous_nodes.clone()) {
+        log::info!("Basis node data analyzed classically, not proceeding any further...");
+        return;
+    }
+
+    let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+
+    if read_lock!(output_node).data.is_text() {
+
+        // if a text child is a child of an <a href that is classified as a action link
+        // it does not contribute to data model
+
+    } else {
+
+        // Assumptions: element attributes do not contribute to data model.
+        // The following are whitelisted:
+        // * href
+        // * title
+        
+        // href attributes are either:
+        // * actions (filtered)
+        // * page links
+
+    }
+
+    unimplemented!()
+}
+
+fn analyze_data_classically(basis_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
+    log::trace!("In analyze_data_classically");
+
+    let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+
+    if read_lock!(output_node).data.is_element() {
+
+        // * Link elements
+        if read_lock!(output_node).data.get_element_tag_name() == "link" {
+            log::info!("Node represents HTML link element. Not proceeding any further.");
+            return true;
+        }
+
+        // * Meta elements
+        if read_lock!(output_node).data.get_element_tag_name() == "meta" {
+            log::info!("Node represents HTML meta element. Not proceeding any further.");
+            return true;
+        }
+
+        // * Script elements
+        if read_lock!(output_node).data.get_element_tag_name() == "script" {
+            log::info!("Node represents HTML script element. Not proceeding any further.");
+            return true;
+        }
+
+        let meaningful_attributes = get_meaningful_attributes(&read_lock!(output_node).data);
+
+        if meaningful_attributes.is_empty() {
+            log::info!("Node represents HTML element without any meaningful attributes. Not proceeding any further.");
+
+            return true;
+        }
+    }
+
+    false
 }
 
 fn make_snippets(homologous_nodes: Vec<Graph<XmlNode>>, output_tree: Graph<XmlNode>) -> Vec<String> {
@@ -138,6 +215,7 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
 
     // Assuming nodes that are the lone child of their parent do not represent
     // any complex relationships to other nodes
+    // NOTE: this will automatically apply to all text nodes in addition to some element nodes
     if let Some(parent) = output_parent_node {
         let parent_out_degree = read_lock!(parent).children.len();
 

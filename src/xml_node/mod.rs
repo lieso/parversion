@@ -7,6 +7,7 @@ use serde::de::{self, Visitor};
 use sha2::{Sha256, Digest};
 use pathetic;
 use url::Url;
+use std::collections::{HashMap};
 
 use crate::error::{Errors};
 use crate::constants;
@@ -29,6 +30,34 @@ impl GraphNodeData for XmlNode {
     fn describe(&self) -> String {
         self.to_string()
     }
+}
+
+pub fn get_meaningful_attributes(xml: &XmlNode) -> HashMap<String, String> {
+    log::trace!("In get_meaningful_attributes");
+
+    assert!(!xml.is_element(), "Expected to receive an element node");
+
+    let mut meaningful_attributes = HashMap::new();
+
+    fn is_meaningful_href(value: &str) -> bool {
+        Url::parse(value).is_ok() ||
+        pathetic::Uri::new(value).is_ok() ||
+        value.starts_with("mailto:") ||
+        value.starts_with("tel:") ||
+        value.starts_with("sms:")
+    }
+
+    for (attribute, value) in xml.element.clone().unwrap().attributes {
+        if attribute == "href" && is_meaningful_href(&value) {
+            meaningful_attributes.insert(attribute.clone(), value.clone());
+        }
+
+        if attribute == "title" {
+            meaningful_attributes.insert(attribute.clone(), value.clone());
+        }
+    }
+
+    meaningful_attributes
 }
 
 pub fn xml_to_hash(xml: &XmlNode) -> String {
