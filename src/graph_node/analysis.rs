@@ -14,7 +14,7 @@ use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::config::{CONFIG, Config};
 use crate::constants;
-use crate::llm::{interpret_data_structure};
+use crate::llm::{interpret_data_structure, interpret_element_data, interpret_text_data};
 
 pub async fn analyze(
     target_node: Graph<BasisNode>,
@@ -45,26 +45,17 @@ Node:   {}
         return;
     }
 
-
-
-
-
-
     let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
         Arc::clone(&target_node),
         Arc::clone(&basis_root_node),
         Arc::clone(&output_tree),
     );
-    //for node in homologous_nodes.iter() {
-    //    log::debug!("homologous node: {}", read_lock!(node).data.describe());
-    //}
+    for node in homologous_nodes.iter() {
+        log::debug!("homologous node: {}", read_lock!(node).data.describe());
+    }
     if homologous_nodes.is_empty() {
         panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
     }
-
-
-
-
 
     analyze_structure(
         Arc::clone(&target_node),
@@ -114,26 +105,31 @@ async fn analyze_data(
     }
 
     let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree));
 
     if read_lock!(output_node).data.is_text() {
+        let interpretation = interpret_text_data(snippets).await;
 
-        // if a text child is a child of an <a href that is classified as a action link
-        // it does not contribute to data model
-
+        {
+            let rl = read_lock!(target_node);
+            let mut wl = write_lock!(rl.data.data);
+            wl.push(interpretation);
+        }
     } else {
 
-        // Assumptions: element attributes do not contribute to data model.
-        // The following are whitelisted:
-        // * href
-        // * title
-        
-        // href attributes are either:
-        // * actions (filtered)
-        // * page links
+        let meaningful_attributes = get_meaningful_attributes(&read_lock!(output_node).data)
+            .keys()
+            .cloned()
+            .collect();
 
+        let interpretation = interpret_element_data(meaningful_attributes, snippets).await;
+
+        {
+            let rl = read_lock!(target_node);
+            let mut wl = write_lock!(rl.data.data);
+            wl.extend(interpretation);
+        }
     }
-
-    unimplemented!()
 }
 
 fn analyze_data_classically(basis_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {

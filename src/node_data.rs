@@ -3,38 +3,32 @@ use serde::{Serialize, Deserialize};
 use crate::xml_node::{XmlNode};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ElementNodeMetadata {
+pub struct ElementData {
     pub attribute: String,
-    pub is_id: bool,
-    pub is_url: bool,
     pub is_page_link: bool,
-    pub is_action_link: bool,
-    pub is_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TextNodeMetadata {
+pub struct TextData {
     pub is_informational: bool,
-    pub is_primary_content: bool,
-    pub is_main_primary_content: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeData {
-    pub element_fields: Option<ElementNodeMetadata>,
-    pub text_fields: Option<TextNodeMetadata>,
+    pub element: Option<ElementData>,
+    pub text: Option<TextData>,
     pub name: String,
 }
 
 impl NodeData {
     pub fn value(&self, xml: &XmlNode) -> String {
-        if let Some(_text_fields) = &self.text_fields {
+        if let Some(_text) = &self.text {
             let value = xml.to_string();
             return String::from(value.trim_matches(|c| c == ' ' || c == '\n'));
         }
 
-        if let Some(element_fields) = &self.element_fields {
-            let value = xml.get_attribute_value(&element_fields.attribute).unwrap();
+        if let Some(element) = &self.element {
+            let value = xml.get_attribute_value(&element.attribute).unwrap();
             return String::from(value.trim_matches(|c| c == ' ' || c == '\n'));
         }
 
