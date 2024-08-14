@@ -23,6 +23,13 @@ struct LLMElementDataResponse {
     is_page_link: Option<bool>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct LLMTextDataResponse {
+    name: String,
+    is_presentational: bool,
+    is_primary_content: bool,
+}
+
 fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
     D: Deserializer<'de>,
@@ -219,7 +226,7 @@ Example(s) of the element node which contain these attributes:
                                 "type": "string"
                             },
                             "is_page_link": {
-                                "type": "string"
+                                "type": "boolean"
                             }
                         },
                         "required": ["attribute", "name"]
@@ -280,5 +287,93 @@ Example {}:
         }
     );
 
-    unimplemented!()
+    let system_prompt = format!(r##"
+Your task is to interpret the meaning of HTML text nodes, provide an appropriate name in snake case that could be used for programmtically representing this type of data, and to provide additional metadata for these text nodes.
+
+At least one example of the text node will be provided along with some surrounding HTML providing necessary context. The target node to be analyzed will be delimited with an HTML comment.
+
+An example of how to perform this task would be to give the name 'comment_text' (name in your JSON response) to a text node when it appears to represent a user-generated comment on a website.
+
+Additionally, provide this metadata in your JSON response:
+1. is_presentational: Indicates if the text primarily serves a visual or structural role without adding meaningful data context. For example, if a text node is used to delineate other HTML nodes, it is presentational, but if a text node contains meaningful natural language meant for people to read, it is not presentational.
+2. is_primary_content: Primary content is the main information or core purpose of a web page, often the reason users visit the site and includes closely-related metadata. Headings, article text would be examples of primary content. Various links to unrelated  or vaguely-related pages would be examples of non-primary content.
+"##);
+    let user_prompt = format!(r##"
+Examples(s) of the text node to be analyzed:
+
+---
+
+{}
+
+---
+"##, examples);
+    log::debug!("user_prompt: {}", user_prompt);
+
+    let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
+    let request_json = json!({
+        "model": "gpt-4o-2024-08-06",
+        "temperature": 0,
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "text_interpretation_response",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "is_presentational": {
+                            "type": "boolean"
+                        },
+                        "is_primary_content": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": ["name", "is_presentational", "is_primary_content"],
+                    "additionalProperties": false
+                }
+            }
+        }
+    });
+    let url = "https://api.openai.com/v1/chat/completions";
+    let authorization = format!("Bearer {}", openai_api_key);
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .json(&request_json)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::AUTHORIZATION, authorization)
+        .send()
+        .await;
+    let response = response.expect("Failed to send request to OpenAI");
+
+    let json_response = response.json::<serde_json::Value>().await.expect("Unable to get JSON from response");
+    log::debug!("json_response: {:?}", json_response);
+    let json_response = json_response["choices"].as_array().unwrap();
+    let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
+
+    let llm_text_data_response = serde_json::from_str::<LLMTextDataResponse>(json_response)
+        .expect("Could not parse JSON response as LLMTextDataResponse");
+    log::debug!("llm_text_data_response: {:?}", llm_text_data_response);
+
+    NodeData {
+        name: llm_text_data_response.name.clone(),
+        element: None,
+        text: Some(TextData {
+            is_presentational: llm_text_data_response.is_presentational.clone(),
+            is_primary_content: llm_text_data_response.is_primary_content.clone(),
+        }),
+    }
 }
