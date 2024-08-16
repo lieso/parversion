@@ -311,7 +311,11 @@ impl XmlNode {
         let element = self.element.clone().unwrap();
         let mut tag = format!("<{}", element.name);
 
-        for (attr, value) in &element.attributes {
+        // We sort attributes here to ensure any hashes we calculate on HTML snippets are deterministic
+        let mut attributes: Vec<(&String, &String)> = element.attributes.iter().collect();
+        attributes.sort_by(|a, b| a.0.cmp(b.0));
+
+        for (attr, value) in attributes {
             tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
         }
         tag.push('>');
