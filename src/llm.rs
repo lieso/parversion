@@ -17,10 +17,15 @@ struct LLMDataStructureResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct LLMElementDataResponse {
+struct LLMElementDataResponseItem {
     attribute: String,
     name: String,
-    is_page_link: Option<bool>,
+    is_page_link: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct LLMElementDataResponse {
+    attributes: Vec<LLMElementDataResponseItem>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -215,22 +220,30 @@ Example(s) of the element node which contain these attributes:
                 "name": "element_interpretation_response",
                 "strict": true,
                 "schema": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "attribute": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "is_page_link": {
-                                "type": "boolean"
+                    "type": "object",
+                    "properties": {
+                        "attributes": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "attribute": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "is_page_link": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": ["attribute", "name", "is_page_link"],
+                                "additionalProperties": false
                             }
-                        },
-                        "required": ["attribute", "name"]
-                    }
+                        }
+                    },
+                    "required": ["attributes"],
+                    "additionalProperties": false
                 }
             }
         }
@@ -252,11 +265,12 @@ Example(s) of the element node which contain these attributes:
     let json_response = json_response["choices"].as_array().unwrap();
     let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
 
-    let llm_element_data_response = serde_json::from_str::<Vec<LLMElementDataResponse>>(json_response)
+    let llm_element_data_response = serde_json::from_str::<LLMElementDataResponse>(json_response)
         .expect("Could not parse JSON response as LLMElementDataResponse");
     log::debug!("llm_element_data_response: {:?}", llm_element_data_response);
 
     llm_element_data_response
+        .attributes
         .iter()
         .map(|response| {
             NodeData {
