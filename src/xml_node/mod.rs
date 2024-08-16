@@ -35,7 +35,7 @@ impl GraphNodeData for XmlNode {
 pub fn get_meaningful_attributes(xml: &XmlNode) -> HashMap<String, String> {
     log::trace!("In get_meaningful_attributes");
 
-    assert!(!xml.is_element(), "Expected to receive an element node");
+    assert!(xml.is_element(), "Expected to receive an element node");
 
     let mut meaningful_attributes = HashMap::new();
 
