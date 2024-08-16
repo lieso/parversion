@@ -65,8 +65,6 @@ Node:   {}
 fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
     log::trace!("In analyze_classically");
 
-    let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
-
     // * Basis root node
     if read_lock!(target_node).hash == constants::ROOT_NODE_HASH {
         log::info!("Node is root node, probably don't need to do anything here");
@@ -76,6 +74,8 @@ fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Grap
             panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
         }
     }
+
+    let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
 
     // * Link elements
     if read_lock!(output_node).data.get_element_tag_name() == "link" {
