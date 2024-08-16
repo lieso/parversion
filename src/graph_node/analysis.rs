@@ -209,6 +209,12 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
         return true;
     }
 
+    // * Head elements
+    if read_lock!(output_node).data.get_element_tag_name() == "head" {
+        log::info!("Node represents HTML script element. Not proceeding any further.");
+        return true;
+    }
+
     // Assuming nodes that are the lone child of their parent do not represent
     // any complex relationships to other nodes
     // NOTE: this will automatically apply to all text nodes in addition to some element nodes
