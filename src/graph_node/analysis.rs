@@ -107,6 +107,18 @@ fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Grap
         return true;
     }
 
+    // * br elements
+    if read_lock!(output_node).data.get_element_tag_name() == "br" {
+        log::info!("Node represents HTML break element. Not proceeding any further.");
+        return true;
+    }
+
+    // * form elements
+    if read_lock!(output_node).data.get_element_tag_name() == "form" {
+        log::info!("Node represents HTML form element. Not proceeding any further.");
+        return true;
+    }
+
     false
 }
 
