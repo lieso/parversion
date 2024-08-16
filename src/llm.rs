@@ -2,6 +2,9 @@ use reqwest::header;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::json;
 use std::env;
+use sha2::{Sha256, Digest};
+use sled::Db;
+use bincode::{serialize, deserialize};
 
 use crate::node_data_structure::{NodeDataStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
@@ -83,6 +86,23 @@ Example(s) of the node to be analyzed:
 "##, examples);
     log::debug!("user_prompt: {}", user_prompt);
 
+    let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
+    if let Some(cached_response) = get_cached_response(hash.clone()) {
+        log::info!("Cache hit!");
+
+        let llm_data_structure_response = serde_json::from_str::<LLMDataStructureResponse>(&cached_response)
+            .expect("Could not parse json response as LLMDataStructureResponse");
+        log::debug!("llm_data_structure_response: {:?}", llm_data_structure_response);
+
+        return NodeDataStructure {
+            root_node_xpath: llm_data_structure_response.root_node_xpath,
+            parent_node_xpath: llm_data_structure_response.parent_node_xpath,
+            next_item_xpath: llm_data_structure_response.next_item_xpath,
+       };
+    } 
+
+    log::info!("Cache miss!");
+
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
         "model": "gpt-4o-2024-08-06",
@@ -137,6 +157,8 @@ Example(s) of the node to be analyzed:
     log::debug!("json_response: {:?}", json_response);
     let json_response = json_response["choices"].as_array().unwrap();
     let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
+
+    set_cached_response(hash.clone(), json_response.to_string());
 
     let llm_data_structure_response = serde_json::from_str::<LLMDataStructureResponse>(json_response)
         .expect("Could not parse json response as LLMDataStructureResponse");
@@ -199,6 +221,32 @@ Example(s) of the element node which contain these attributes:
 ---
 "##, attributes, examples);
     log::debug!("user_prompt: {}", user_prompt);
+
+    let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
+    if let Some(cached_response) = get_cached_response(hash.clone()) {
+        log::info!("Cache hit!");
+
+        let llm_element_data_response = serde_json::from_str::<LLMElementDataResponse>(&cached_response)
+            .expect("Could not parse JSON response as LLMElementDataResponse");
+        log::debug!("llm_element_data_response: {:?}", llm_element_data_response);
+
+        return llm_element_data_response
+            .attributes
+            .iter()
+            .map(|response| {
+                NodeData {
+                    name: response.name.clone(),
+                    element: Some(ElementData {
+                        attribute: response.attribute.clone(),
+                        is_page_link: response.is_page_link.clone(),
+                    }),
+                    text: None,
+                }
+            })
+            .collect();
+    }
+
+    log::info!("Cache miss!");
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
@@ -265,6 +313,8 @@ Example(s) of the element node which contain these attributes:
     let json_response = json_response["choices"].as_array().unwrap();
     let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
 
+    set_cached_response(hash.clone(), json_response.to_string());
+
     let llm_element_data_response = serde_json::from_str::<LLMElementDataResponse>(json_response)
         .expect("Could not parse JSON response as LLMElementDataResponse");
     log::debug!("llm_element_data_response: {:?}", llm_element_data_response);
@@ -277,7 +327,7 @@ Example(s) of the element node which contain these attributes:
                 name: response.name.clone(),
                 element: Some(ElementData {
                     attribute: response.attribute.clone(),
-                    is_page_link: response.is_page_link.clone().unwrap_or(false),
+                    is_page_link: response.is_page_link.clone(),
                 }),
                 text: None,
             }
@@ -322,6 +372,26 @@ Examples(s) of the text node to be analyzed:
 ---
 "##, examples);
     log::debug!("user_prompt: {}", user_prompt);
+
+    let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
+    if let Some(cached_response) = get_cached_response(hash.clone()) {
+        log::info!("Cache hit!");
+
+        let llm_text_data_response = serde_json::from_str::<LLMTextDataResponse>(&cached_response)
+            .expect("Could not parse JSON response as LLMTextDataResponse");
+        log::debug!("llm_text_data_response: {:?}", llm_text_data_response);
+
+        return NodeData {
+            name: llm_text_data_response.name.clone(),
+            element: None,
+            text: Some(TextData {
+                is_presentational: llm_text_data_response.is_presentational.clone(),
+                is_primary_content: llm_text_data_response.is_primary_content.clone(),
+            }),
+        };
+    }
+
+    log::info!("Cache miss!");
 
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
     let request_json = json!({
@@ -378,6 +448,8 @@ Examples(s) of the text node to be analyzed:
     let json_response = json_response["choices"].as_array().unwrap();
     let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
 
+    set_cached_response(hash.clone(), json_response.to_string());
+
     let llm_text_data_response = serde_json::from_str::<LLMTextDataResponse>(json_response)
         .expect("Could not parse JSON response as LLMTextDataResponse");
     log::debug!("llm_text_data_response: {:?}", llm_text_data_response);
@@ -390,4 +462,24 @@ Examples(s) of the text node to be analyzed:
             is_primary_content: llm_text_data_response.is_primary_content.clone(),
         }),
     }
+}
+
+fn get_cached_response(key: String) -> Option<String> {
+    log::debug!("key: {}", key);
+    let db = sled::open("debug/cache").expect("Could not connect to cache");
+    match db.get(key).expect("Could not get value from cache") {
+        Some(data) => Some(deserialize(&data).expect("Could not deserialize data")),
+        None => None,
+    }
+}
+
+fn set_cached_response(key: String, value: String) {
+    let db = sled::open("debug/cache").expect("Could not connect to cache");
+    db.insert(key, serialize(&value).expect("Could not serialize data")).expect("Could not store value in cache");
+}
+
+fn compute_hash(hasher_items: Vec<String>) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(hasher_items.join(""));
+    format!("{:x}", hasher.finalize())
 }
