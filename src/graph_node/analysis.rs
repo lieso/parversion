@@ -39,22 +39,15 @@ Node:   {}
         ));
     }
 
-    // * Basis root node
-    if read_lock!(target_node).hash == constants::ROOT_NODE_HASH {
-        log::info!("Node is root node, probably don't need to do anything here");
-        return;
-    }
-
     let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
         Arc::clone(&target_node),
         Arc::clone(&basis_root_node),
         Arc::clone(&output_tree),
     );
-    for node in homologous_nodes.iter() {
-        log::debug!("homologous node: {}", read_lock!(node).data.describe());
-    }
-    if homologous_nodes.is_empty() {
-        panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
+
+    if analyze_classically(Arc::clone(&target_node), homologous_nodes.clone()) {
+        log::info!("Basis node analyzed classically completely, not proceeding any further...");
+        return;
     }
 
     analyze_structure(
@@ -67,6 +60,54 @@ Node:   {}
         homologous_nodes.clone(),
         Arc::clone(&output_tree),
     ).await;
+}
+
+fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
+    log::trace!("In analyze_classically");
+
+    let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+
+    // * Basis root node
+    if read_lock!(target_node).hash == constants::ROOT_NODE_HASH {
+        log::info!("Node is root node, probably don't need to do anything here");
+        return true;
+    } else {
+        if homologous_nodes.is_empty() {
+            panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
+        }
+    }
+
+    // * Link elements
+    if read_lock!(output_node).data.get_element_tag_name() == "link" {
+        log::info!("Node represents HTML link element. Not proceeding any further.");
+        return true;
+    }
+
+    // * Meta elements
+    if read_lock!(output_node).data.get_element_tag_name() == "meta" {
+        log::info!("Node represents HTML meta element. Not proceeding any further.");
+        return true;
+    }
+
+    // * Script elements
+    if read_lock!(output_node).data.get_element_tag_name() == "script" {
+        log::info!("Node represents HTML script element. Not proceeding any further.");
+        return true;
+    }
+
+    // * Head elements
+    if read_lock!(output_node).data.get_element_tag_name() == "head" {
+        log::info!("Node represents HTML head element. Not proceeding any further.");
+        return true;
+    }
+
+    // * Body elements
+    if read_lock!(output_node).data.get_element_tag_name() == "body" {
+        log::info!("Node represents HTML body element. Not proceeding any further.");
+        return true;
+    }
+
+    false
 }
 
 async fn analyze_structure(
@@ -138,25 +179,6 @@ fn analyze_data_classically(basis_node: Graph<BasisNode>, homologous_nodes: Vec<
     let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
 
     if read_lock!(output_node).data.is_element() {
-
-        // * Link elements
-        if read_lock!(output_node).data.get_element_tag_name() == "link" {
-            log::info!("Node represents HTML link element. Not proceeding any further.");
-            return true;
-        }
-
-        // * Meta elements
-        if read_lock!(output_node).data.get_element_tag_name() == "meta" {
-            log::info!("Node represents HTML meta element. Not proceeding any further.");
-            return true;
-        }
-
-        // * Script elements
-        if read_lock!(output_node).data.get_element_tag_name() == "script" {
-            log::info!("Node represents HTML script element. Not proceeding any further.");
-            return true;
-        }
-
         let meaningful_attributes = get_meaningful_attributes(&read_lock!(output_node).data);
 
         if meaningful_attributes.is_empty() {
@@ -190,30 +212,6 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
 
     let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
     let output_parent_node: Option<Graph<XmlNode>> = read_lock!(output_node).parents.first().cloned();
-
-    // * Link elements
-    if read_lock!(output_node).data.get_element_tag_name() == "link" {
-        log::info!("Node represents HTML link element. Not proceeding any further.");
-        return true;
-    }
-
-    // * Meta elements
-    if read_lock!(output_node).data.get_element_tag_name() == "meta" {
-        log::info!("Node represents HTML meta element. Not proceeding any further.");
-        return true;
-    }
-
-    // * Script elements
-    if read_lock!(output_node).data.get_element_tag_name() == "script" {
-        log::info!("Node represents HTML script element. Not proceeding any further.");
-        return true;
-    }
-
-    // * Head elements
-    if read_lock!(output_node).data.get_element_tag_name() == "head" {
-        log::info!("Node represents HTML script element. Not proceeding any further.");
-        return true;
-    }
 
     // Assuming nodes that are the lone child of their parent do not represent
     // any complex relationships to other nodes
