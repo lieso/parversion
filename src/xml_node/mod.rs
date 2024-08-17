@@ -345,21 +345,6 @@ fn element_to_string(element: &Element) -> String {
      serialized_xml
 }
 
-pub fn get_opening_tag(element: &Element) -> String {
-    let mut tag = format!("<{}", element.name);
-
-    for (attr, value) in &element.attributes {
-        tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
-    }
-    tag.push('>');
-
-    tag
-}
-
-pub fn get_closing_tag(element: &Element) -> String {
-    format!("</{}>", element.name)
-}
-
 fn url_to_hash_parts(url: &str) -> Vec<String> {
     // This is how I'm checking if a URL is absolute...
     // pathetic is a library for dealing with relative URLs
