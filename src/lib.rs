@@ -15,6 +15,7 @@ mod constants;
 mod basis_node;
 mod graph_node;
 mod macros;
+mod traversal;
 
 use basis_node::{
     BasisNode
@@ -29,6 +30,7 @@ use graph_node::{
 };
 use xml_node::{XmlNode};
 use error::{Errors};
+use traversal::{Traversal};
 
 pub fn normalize(text: String) -> Result<String, Errors> {
     log::trace!("In normalize");
@@ -106,45 +108,7 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     interpret(Arc::clone(&basis_graph), Arc::clone(&output_tree)).await;
     log::info!("Done interpreting basis graph.");
 
-
-    unimplemented!()
+    Traversal::from_tree(Arc::clone(&output_tree))
+        .with_basis(Arc::clone(&basis_graph))
+        .harvest()
 }
-
-//pub async fn normalize_xml(xml_string: &str) -> Result<String, Errors> {
-//    log::trace!("In normalize_xml");
-//
-//    let xml = utility::preprocess_xml(xml_string);
-//    log::info!("Done preprocessing XML");
-//
-//    let input_tree: Rc<Node> = build_tree(xml.clone());
-//    let output_tree: Rc<Node> = deep_copy(&input_tree);
-//
-//    let basis_graph: Rc<Node> = Node::from_void();
-//
-//    absorb(Rc::clone(&basis_graph), Rc::clone(&input_tree));
-//    log::info!("Done absorbing input tree into basis graph");
-//
-//    linearize(Rc::clone(&basis_graph));
-//    log::info!("Done linearizing basis graph");
-//
-//    prune(Rc::clone(&basis_graph));
-//    log::info!("Done pruning basis graph");
-//
-//    basis_graph.debug_visualize("basis_graph_pruned");
-//    basis_graph.debug_statistics("basis_graph_pruned");
-//
-//    let metadata = get_tree_metadata(Rc::clone(&basis_graph)).await;
-//    log::debug!("metadata: {:?}", metadata);
-//
-//    interpret(Rc::clone(&basis_graph), Rc::clone(&output_tree)).await;
-//    log::info!("Done interpreting basis graph");
-//
-//    panic!("abort");
-//    
-//    log::info!("Harvesting output tree...");
-//
-//    Traversal::from_tree(output_tree)
-//        .with_basis(basis_graph)
-//        .with_metadata(metadata)
-//        .harvest()
-//}

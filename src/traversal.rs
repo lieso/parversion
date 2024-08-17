@@ -1,205 +1,33 @@
+use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
-use std::rc::{Rc};
 
-use crate::node::*;
+use crate::graph_node::{Graph};
+use crate::xml_node::{XmlNode};
+use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ColorPalette {
-    pub one: String,
-    pub two: String,
-    pub three: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Traversal {
-    pub output_tree: Rc<Node>,
-    pub basis_tree: Option<Rc<Node>>,
-    pub metadata: Option<TreeMetadata>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContentMetadata {
-    pub is_id: bool,
-    pub is_url: bool,
-    pub is_page_link: bool,
-    pub is_action_link: bool,
-    pub is_primary_content: bool,
-    pub is_main_primary_content: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContentValue {
-    pub meta: ContentMetadata,
-    pub name: String,
-    pub value: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Content {
-    pub id: String,
-    pub values: Vec<ContentValue>,
-    pub children: Vec<Content>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Output {
-    pub data: Content,
-    pub metadata: Option<TreeMetadata>,
-}
-
-#[derive(Debug)]
-pub enum OutputFormats {
-    JSON,
-    //XML,
-    //CSV
-}
-
-const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
-
-impl Content {
-    pub fn remove_empty(&mut self) {
-        self.children.iter_mut().for_each(|child| child.remove_empty());
-        self.children.retain(|child| !child.is_empty());
-    }
-
-    fn is_empty(&self) -> bool {
-        self.values.is_empty() && self.children.is_empty()
-    }
-}
-
-fn process_node(
-    content_node: &Rc<Node>,
-    basis_tree: &Rc<Node>,
-    content: &mut Content
-) {
-    let lineage = content_node.get_lineage();
-    let basis_node = search_basis_tree_by_lineage(Rc::clone(basis_tree), lineage.clone()).unwrap();
-
-    for node_data in basis_node.data.borrow().iter() {
-        if content_node.xml.is_text() && !node_data.text_fields.clone().unwrap().is_informational {
-            log::info!("Ignoring non-informational text node");
-            continue;
-        }
-
-        let content_value = ContentValue {
-            name: node_data.name.clone(),
-            value: node_data.value(&content_node.xml),
-            meta: ContentMetadata {
-                is_id: node_data.element_fields.clone().map_or(false, |fields| fields.is_id),
-                is_url: node_data.element_fields.clone().map_or(false, |fields| fields.is_url),
-                is_page_link: node_data.element_fields.clone().map_or(false, |fields| fields.is_page_link),
-                is_action_link: node_data.element_fields.clone().map_or(false, |fields| fields.is_action_link),
-                is_primary_content: node_data.element_fields.clone().map_or(
-                    node_data.text_fields.clone().map_or(false, |fields| fields.is_primary_content),
-                    |fields| fields.is_primary_content
-                ),
-                is_main_primary_content: node_data.text_fields.clone().map_or(false, |fields| fields.is_main_primary_content),
-            },
-        };
-
-        content.values.push(content_value);
-    }
+    pub output_tree: Graph<XmlNode>,
+    pub basis_graph: Option<Graph<BasisNode>>,
 }
 
 impl Traversal {
-    pub fn from_tree(tree: Rc<Node>) -> Self {
+    pub fn from_tree(output_tree: Graph<XmlNode>) -> Self {
         Traversal {
-            output_tree: tree,
-            basis_tree: None,
-            metadata: None,
+            output_tree: output_tree,
+            basis_graph: None,
         }
     }
 
-    pub fn with_basis(mut self, tree: Rc<Node>) -> Self {
-        self.basis_tree = Some(Rc::clone(&tree));
-        
-        self
-    }
-
-    pub fn with_metadata(mut self, metadata: TreeMetadata) -> Self {
-        self.metadata = Some(metadata);
+    pub fn with_basis(mut self, graph: Graph<BasisNode>) -> Self {
+        self.basis_graph = Some(Arc::clone(&graph));
 
         self
     }
 
     pub fn harvest(self) -> Result<String, Errors> {
-        let mut content = Content {
-            id: self.output_tree.id.clone(),
-            values: Vec::new(),
-            children: Vec::new(),
-        };
-
-        fn recurse(
-            mut content_node: Rc<Node>,
-            basis_tree: Rc<Node>,
-            content: &mut Content,
-        ) {
-            if content_node.is_linear_tail() {
-                panic!("Did not expect to encounter node in linear tail");
-            }
-
-            if content_node.is_linear_head() {
-                log::info!("Content node is head of linear sequence of nodes");
-
-                while content_node.is_linear() {
-                    process_node(&content_node, &basis_tree, content);
-
-                    content_node = {
-                        let next_node = content_node.children.borrow().first().expect("Linear content node has no children").clone();
-                        next_node.clone()
-                    };
-                }
-
-                process_node(&content_node, &basis_tree, content);
-            } else {
-                log::info!("Content node is non-linear");
-
-                process_node(&content_node, &basis_tree, content);
-            }
-
-            for child in content_node.children.borrow().iter() {
-                let mut child_content = Content {
-                    id: child.id.clone(),
-                    values: Vec::new(),
-                    children: Vec::new(),
-                };
-
-                recurse(
-                    child.clone(),
-                    basis_tree.clone(),
-                    &mut child_content,
-                );
-
-                content.children.push(child_content);
-            }
-        }
-
-        recurse(
-            self.output_tree.clone(),
-            self.basis_tree.clone().unwrap(),
-            &mut content,
-        );
-
-        log::info!("Removing empty objects from content...");
-        content.remove_empty();
-
-        let output = Output {
-           data: content,
-           metadata: self.metadata,
-        };
-
-        let output_format = DEFAULT_OUTPUT_FORMAT;
-        log::debug!("output_format: {:?}", output_format);
-
-        match output_format {
-            OutputFormats::JSON => {
-                log::info!("Harvesting tree as JSON");
-
-                let serialized = serde_json::to_string(&output).expect("Could not serialize output to JSON");
-
-                Ok(serialized)
-            },
-        }
+        unimplemented!()
     }
+
 }
