@@ -222,12 +222,17 @@ fn make_snippets(homologous_nodes: Vec<Graph<XmlNode>>, output_tree: Graph<XmlNo
 fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
     log::trace!("In analyze_structure_classically");
 
-    let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
-    let output_parent_node: Option<Graph<XmlNode>> = read_lock!(output_node).parents.first().cloned();
+    let exemplary_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+    let output_parent_node: Option<Graph<XmlNode>> = read_lock!(exemplary_node).parents.first().cloned();
+
+    // Text nodes do not represent complex relationships
+    if read_lock!(exemplary_node).data.is_text() {
+        log::info!("Node is a text node. Not proceeding any further.");
+        return true;
+    }
 
     // Assuming nodes that are the lone child of their parent do not represent
     // any complex relationships to other nodes
-    // NOTE: this will automatically apply to all text nodes in addition to some element nodes
     if let Some(parent) = output_parent_node {
         let parent_out_degree = read_lock!(parent).children.len();
 
