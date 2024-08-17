@@ -22,7 +22,7 @@ impl<T: GraphNodeData> GraphNode<T> {
     pub fn debug_statistics(&self, label: &str) {
         let mut node_count = 0;
 
-        bft(Arc::new(RwLock::new((*self).clone())), &mut |node: Graph<T>| {
+        bft(Arc::new(RwLock::new((*self).clone())), &mut |_node: Graph<T>| {
             node_count = node_count + 1;
             true
         });
@@ -32,10 +32,12 @@ impl<T: GraphNodeData> GraphNode<T> {
             "\n{}
 GRAPH STATISTICS:
 {}
+Label:          {}
 Node count:     {}
 {}",
             block_separator,
             block_separator,
+            label,
             node_count,
             block_separator,
         );

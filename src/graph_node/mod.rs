@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
@@ -360,7 +360,7 @@ pub fn find_homologous_nodes(
     }
 
     bft(Arc::clone(&output_tree), &mut |output_node: Graph<XmlNode>| {
-        let mut lineage = get_lineage(output_node.clone());
+        let lineage = get_lineage(output_node.clone());
         let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
 
         if read_lock!(basis_node).id == read_lock!(target_node).id {

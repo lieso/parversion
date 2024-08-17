@@ -2,17 +2,15 @@ use tokio::sync::{OwnedSemaphorePermit};
 use std::sync::{Arc};
 
 use super::{
-    GraphNode, 
     Graph, 
     GraphNodeData, 
-    bft, 
     find_homologous_nodes,
     build_xml_with_target_node
 };
 use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
-use crate::config::{CONFIG, Config};
+use crate::config::{CONFIG};
 use crate::constants;
 use crate::llm::{interpret_data_structure, interpret_element_data, interpret_text_data};
 
@@ -185,7 +183,7 @@ async fn analyze_data(
     }
 }
 
-fn analyze_data_classically(basis_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
+fn analyze_data_classically(_basis_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
     log::trace!("In analyze_data_classically");
 
     let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();

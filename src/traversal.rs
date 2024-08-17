@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 
 use crate::graph_node::{Graph};

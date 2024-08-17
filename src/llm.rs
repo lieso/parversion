@@ -3,7 +3,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::json;
 use std::env;
 use sha2::{Sha256, Digest};
-use sled::Db;
 use bincode::{serialize, deserialize};
 
 use crate::node_data_structure::{NodeDataStructure};
@@ -465,7 +464,6 @@ Examples(s) of the text node to be analyzed:
 }
 
 fn get_cached_response(key: String) -> Option<String> {
-    log::debug!("key: {}", key);
     let db = sled::open("debug/cache").expect("Could not connect to cache");
     match db.get(key).expect("Could not get value from cache") {
         Some(data) => Some(deserialize(&data).expect("Could not deserialize data")),

@@ -81,7 +81,7 @@ pub fn xml_to_hash(xml: &XmlNode) -> String {
         }
 
         if attribute == "class" {
-            for class in value.split_whitespace() {
+            for _class in value.split_whitespace() {
                 //hasher_items.push("CLASS:".to_owned() + &class);
                 hasher_items.push("CLASS".to_owned());
             }
@@ -176,13 +176,6 @@ impl XmlNode {
             self.clone()
         }
     }
-
-    pub fn from_void() -> XmlNode {
-        XmlNode {
-            element: None,
-            text: None,
-        }
-    }
 }
 
 impl XmlNode {
@@ -192,14 +185,6 @@ impl XmlNode {
         }
 
         "".to_string()
-    }
-
-    pub fn get_attributes(&self) -> Vec<String> {
-        if let Some(element) = &self.element {
-            return element.attributes.keys().cloned().collect();
-        }
-
-        Vec::new()
     }
 
     pub fn get_attribute_value(&self, name: &str) -> Option<String> {
@@ -256,14 +241,6 @@ impl XmlNode {
         } else {
             format!("{}", "")
         }
-    }
-
-    pub fn to_hash(&self) -> String {
-        let mut hasher = Sha256::new();
-
-        hasher.update(self.to_string());
-
-        format!("{:x}", hasher.finalize())
     }
 
     pub fn _is_equal(&self, xml: XmlNode) -> bool {
