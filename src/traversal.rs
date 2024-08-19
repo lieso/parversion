@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 
-use crate::graph_node::{Graph};
+use crate::graph_node::{Graph, get_lineage, apply_lineage};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
@@ -74,6 +74,11 @@ fn process_node(
     basis_graph: Graph<BasisNode>,
     content: &mut Content,
 ) {
+    let lineage = get_lineage(Arc::clone(&output_node));
+    let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
+
+    log::debug!("id: {}", read_lock!(basis_node).id);
+
     unimplemented!()
 }
 

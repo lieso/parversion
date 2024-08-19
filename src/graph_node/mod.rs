@@ -329,6 +329,44 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
     }
 }
 
+pub fn get_lineage(tree_node: Graph<XmlNode>) -> VecDeque<String> {
+    let mut lineage = VecDeque::new();
+    let mut current_node = tree_node;
+
+    loop {
+        lineage.push_front(read_lock!(current_node).hash.clone());
+        
+        let parents = read_lock!(current_node).parents.clone();
+
+        if let Some(parent) = parents.first() {
+            current_node = Arc::clone(parent);
+        } else {
+            break;
+        }
+    }
+
+    lineage
+}
+
+pub fn apply_lineage(basis_graph: Graph<BasisNode>, mut lineage: VecDeque<String>) -> Graph<BasisNode> {
+    let binding = read_lock!(basis_graph);
+    let mut current_node = binding.children.first().expect("Expected basis graph to contain a child").clone();
+
+    while let Some(hash) = lineage.pop_front() {
+        let node = read_lock!(current_node)
+            .children
+            .iter()
+            .find(|child| read_lock!(child).hash == hash)
+            .cloned();
+
+        if let Some(node) = node {
+            current_node = Arc::clone(&node);
+        }
+    }
+
+    current_node.clone()
+}
+
 pub fn find_homologous_nodes(
     target_node: Graph<BasisNode>,
     basis_graph: Graph<BasisNode>,
@@ -338,43 +376,6 @@ pub fn find_homologous_nodes(
 
     let mut homologous_nodes: Vec<Graph<XmlNode>> = Vec::new();
 
-    fn get_lineage(tree_node: Graph<XmlNode>) -> VecDeque<String> {
-        let mut lineage = VecDeque::new();
-        let mut current_node = tree_node;
-
-        loop {
-            lineage.push_front(read_lock!(current_node).hash.clone());
-            
-            let parents = read_lock!(current_node).parents.clone();
-
-            if let Some(parent) = parents.first() {
-                current_node = Arc::clone(parent);
-            } else {
-                break;
-            }
-        }
-
-        lineage
-    }
-
-    fn apply_lineage(basis_graph: Graph<BasisNode>, mut lineage: VecDeque<String>) -> Graph<BasisNode> {
-        let binding = read_lock!(basis_graph);
-        let mut current_node = binding.children.first().expect("Expected basis graph to contain a child").clone();
-
-        while let Some(hash) = lineage.pop_front() {
-            let node = read_lock!(current_node)
-                .children
-                .iter()
-                .find(|child| read_lock!(child).hash == hash)
-                .cloned();
-
-            if let Some(node) = node {
-                current_node = Arc::clone(&node);
-            }
-        }
-
-        current_node.clone()
-    }
 
     bft(Arc::clone(&output_tree), &mut |output_node: Graph<XmlNode>| {
         let lineage = get_lineage(output_node.clone());
