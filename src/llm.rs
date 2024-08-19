@@ -193,11 +193,25 @@ Example {}:
     );
 
     let system_prompt = format!(r##"
-Your task is to interpret the meaning of HTML element attributes, provide an appropriate name in snake case for these attributes, and to provide additional metadata for these attributes.
+Your task is to interpret the meaning of HTML element attributes, provide an appropriate generic name in snake case for these types of attributes, and to provide additional metadata for these attributes. The attribute may have a variety of possible values so you should attempt to generalize as much as possible across all examples provided.
 
 At least one example of the element node will be provided along with some surrounding HTML providing necessary context. The target node to be analyzed will be delimited with an HTML comment.
 
-An example of how to perform this task would be to give the name 'profile_url' (name in JSON response) to an href (attribute in JSON response) when it appears to be a link to the profile of a user account.
+An example of how to perform this task would be to give the name 'profile_url' (name in JSON response) to an href (attribute in JSON response) when it appears to be a link to the profile of a user account. Each item in your JSON array response must correspond to one HTML attribute; so if two attributes are provided, there should only be two items in the JSON array response. When providing the interpretation for a particular attribute (key 'attribute' in JSON response), only supply the attribute name. An example of a JSON response when two attributes are provided for interpretation:
+{{
+    attributes: [
+        {{
+            attribute: "href",
+            name: "profile_url",
+            is_page_link: true
+        }},
+        {{
+            attribute: "title",
+            name: "timestamp",
+            is_page_link: false
+        }}
+    ]
+}}
 
 Additionally, for any href attributes, provide the following metadata:
 1. is_page_link: Does the href value likely point to a new page or does it perform some sort of action or mutation? 
