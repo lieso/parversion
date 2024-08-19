@@ -76,6 +76,23 @@ impl<T: GraphNodeData> GraphNode<T> {
             data: T::new("blank".to_string()),
         }))
     }
+
+    pub fn is_linear(&self) -> bool {
+        self.children.len() == 1 && self.parents.len() == 1
+    }
+
+    pub fn is_linear_head(&self) -> bool {
+        if self.is_linear() {
+            let parent = self.parents.first().unwrap();
+            return !read_lock!(parent).is_linear();
+        }
+
+        false
+    }
+
+    pub fn is_linear_tail(&self) -> bool {
+        self.is_linear() && !self.is_linear_head()
+    }
 }
 
 pub fn subgraph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
