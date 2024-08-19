@@ -95,7 +95,7 @@ impl<T: GraphNodeData> GraphNode<T> {
     }
 }
 
-pub fn subgraph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
+pub fn graph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
     let mut visited: HashSet<String> = HashSet::new();
 
     fn compute_hash<T: GraphNodeData>(
@@ -172,7 +172,7 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Gr
     if let Some(recipient_child) = recipient_child {
         log::trace!("Donor and recipient node have the same hash");
 
-        if subgraph_hash(recipient_child.clone()) != subgraph_hash(donor.clone()) {
+        if graph_hash(recipient_child.clone()) != graph_hash(donor.clone()) {
             log::trace!("Donor and recipient child have differing subgraph hashes");
             let donor_children = donor.read().unwrap().children.clone();
 
@@ -375,7 +375,6 @@ pub fn find_homologous_nodes(
     log::trace!("In find_homologous_nodes");
 
     let mut homologous_nodes: Vec<Graph<XmlNode>> = Vec::new();
-
 
     bft(Arc::clone(&output_tree), &mut |output_node: Graph<XmlNode>| {
         let lineage = get_lineage(output_node.clone());
