@@ -6,6 +6,8 @@ use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
 use crate::macros::*;
+use crate::node_data::{NodeData};
+use crate::node_data_structure::{NodeDataStructure};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Traversal {
@@ -74,12 +76,41 @@ fn process_node(
     basis_graph: Graph<BasisNode>,
     content: &mut Content,
 ) {
+    let output_node_xml: XmlNode = read_lock!(output_node).data.clone();
     let lineage = get_lineage(Arc::clone(&output_node));
     let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
+    let data = read_lock!(basis_node).data.data.clone();
+    let structures = read_lock!(basis_node).data.structure.clone();
 
-    log::debug!("id: {}", read_lock!(basis_node).id);
+    for node_data in read_lock!(data).iter() {
+        if let Some(text_data) = &node_data.text {
+            if text_data.is_presentational {
+                log::info!("Discarding presentational text node data");
+                continue;
+            }
+        }
 
-    unimplemented!()
+        if let Some(element_data) = &node_data.element {
+            if element_data.attribute == "href" && !element_data.is_page_link {
+                log::info!("Discarding href action link...");
+                continue;
+            }
+        }
+
+        let content_value = ContentValue {
+            name: node_data.name.clone(),
+            value: node_data.value(&output_node_xml),
+            meta: ContentValueMetadata {
+                is_primary_content: node_data.clone().text.map_or(false, |text| text.is_primary_content)
+            },
+        };
+
+        content.values.push(content_value);
+    }
+
+    for structure in read_lock!(structures).iter() {
+
+    }
 }
 
 impl Traversal {

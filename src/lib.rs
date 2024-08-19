@@ -107,6 +107,7 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     log::info!("Interpreting basis graph...");
     interpret(Arc::clone(&basis_graph), Arc::clone(&output_tree)).await;
     log::info!("Done interpreting basis graph.");
+    read_lock!(basis_graph).debug_visualize("basis_graph_interpreted");
 
     Traversal::from_tree(Arc::clone(&output_tree))
         .with_basis(Arc::clone(&basis_graph))
