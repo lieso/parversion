@@ -69,10 +69,13 @@ An example of an implicit relationship is when a list of element nodes represent
 Determine if any of the following relationships apply to the element node I will provide you. It's possible for multiple relationships to apply to a single element and you should anticipate the possibility that none may apply to the node:
 
 1. Does the element represent a recursive relationship to other elements? If so, please provide the following:
-   • root_node_xpath: Provide a generic XPath expression that would test if elements of this type are root nodes. 
-   • parent_node_xpath: Provide generic XPath expression that would select the element node's parent if it is not a root node.
+   • root_node_xpath: Provide a complete and generic XPath expression relative to the element node that would test if elements of this type are root nodes. 
+   • parent_node_xpath: Provide complete and generic XPath expression that would select the element node's parent if it is not a root node.
 2. Does the element represent an item in a meaningful list? If so, please provide the following:
-   • next_item_xpath: Provide generic XPath expression that would select the next item in the list.
+   • next_item_xpath: Provide complete and generic XPath expression that would select the next item in the list.
+
+Ensure that each XPath expression is a full query relative to the element node, including any intermediate nodes. Do not overfit to the examples provided, you must ensure the XPath expression is generic, reusable and can be applied to similar nodes.
+
 "##);
     let user_prompt = format!(r##"
 Example(s) of the node to be analyzed:
