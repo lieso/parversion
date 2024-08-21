@@ -83,7 +83,7 @@ Example(s) of the node to be analyzed:
 
 ---
 "##, examples);
-    log::debug!("user_prompt: {}", user_prompt);
+    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
     if let Some(cached_response) = get_cached_response(hash.clone()) {
@@ -233,7 +233,7 @@ Example(s) of the element node which contain these attributes:
 
 ---
 "##, attributes, examples);
-    log::debug!("user_prompt: {}", user_prompt);
+    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
     if let Some(cached_response) = get_cached_response(hash.clone()) {
@@ -384,7 +384,7 @@ Examples(s) of the text node to be analyzed:
 
 ---
 "##, examples);
-    log::debug!("user_prompt: {}", user_prompt);
+    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
     if let Some(cached_response) = get_cached_response(hash.clone()) {
