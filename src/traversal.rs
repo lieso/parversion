@@ -71,6 +71,12 @@ impl Content {
     }
 }
 
+fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) -> Option<Graph<XmlNode>> {
+    log::trace!("In evaluate_relative_xpath");
+
+    unimplemented!()
+}
+
 fn process_node(
     output_node: Graph<XmlNode>,
     basis_graph: Graph<BasisNode>,
@@ -79,9 +85,8 @@ fn process_node(
     let output_node_xml: XmlNode = read_lock!(output_node).data.clone();
     let lineage = get_lineage(Arc::clone(&output_node));
     let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
-    let data = read_lock!(basis_node).data.data.clone();
-    let structures = read_lock!(basis_node).data.structure.clone();
 
+    let data = read_lock!(basis_node).data.data.clone();
     for node_data in read_lock!(data).iter() {
         if let Some(text_data) = &node_data.text {
             if text_data.is_presentational {
@@ -108,8 +113,13 @@ fn process_node(
         content.values.push(content_value);
     }
 
+    let structures = read_lock!(basis_node).data.structure.clone();
     for structure in read_lock!(structures).iter() {
+        if let Some(root_node_xpath) = structure.root_node_xpath.clone() {
+            let parent_node_xpath = structure.parent_node_xpath.clone().unwrap();
 
+            let root_node = evaluate_relative_xpath(Arc::clone(&output_node), root_node_xpath);
+        }
     }
 }
 

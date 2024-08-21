@@ -71,8 +71,7 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
                 let attr_name = &*attr.name.local.trim();
                 let attr_value = escape_xml(&*attr.value.trim());
 
-                xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(),
- attr_value));
+                xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
             }
 
             xhtml.push_str(">\n");
