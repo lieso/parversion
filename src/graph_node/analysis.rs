@@ -132,7 +132,7 @@ async fn analyze_structure(
         return;
     }
 
-    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree));
+    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree), true);
 
     let structure = interpret_data_structure(snippets).await;
 
@@ -156,7 +156,7 @@ async fn analyze_data(
     }
 
     let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
-    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree));
+    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree), false);
 
     if read_lock!(output_node).data.is_text() {
         let interpretation = interpret_text_data(snippets).await;
@@ -201,10 +201,11 @@ fn analyze_data_classically(_basis_node: Graph<BasisNode>, homologous_nodes: Vec
     false
 }
 
-fn make_snippets(homologous_nodes: Vec<Graph<XmlNode>>, output_tree: Graph<XmlNode>) -> Vec<String> {
+fn make_snippets(homologous_nodes: Vec<Graph<XmlNode>>, output_tree: Graph<XmlNode>, extend: bool) -> Vec<String> {
     log::trace!("In make_snippets");
 
-    let target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
+    let mut target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
+    if extend { target_node_examples_max_count = target_node_examples_max_count + 5 };
     let target_node_examples_count = std::cmp::min(target_node_examples_max_count, homologous_nodes.len());
     log::info!("Using {} examples of target node for analysis", target_node_examples_count);
     
@@ -222,6 +223,12 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
 
     let exemplary_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
     let output_parent_node: Option<Graph<XmlNode>> = read_lock!(exemplary_node).parents.first().cloned();
+
+    // It's unlikely that there are complex relationships for nodes that only appear a couple times in a document
+    if homologous_nodes.len() < 3 {
+        log::info!("Homologous node count is less than three. Not proceeding any further.");
+        return true;
+    }
 
     // Text nodes do not represent complex relationships
     if read_lock!(exemplary_node).data.is_text() {

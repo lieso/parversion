@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 
-use crate::graph_node::{Graph, get_lineage, apply_lineage};
+use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
@@ -74,7 +74,13 @@ impl Content {
 fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) -> Option<Graph<XmlNode>> {
     log::trace!("In evaluate_relative_xpath");
 
-    unimplemented!()
+    log::debug!("*****************************************************************************************************");
+    log::debug!("node: {}", read_lock!(tree_node).data.describe());
+    log::debug!("relative_xpath: {}", relative_xpath);
+
+    let mut current_nodes: Vec<Graph<XmlNode>> = vec![tree_node.clone()];
+
+    Some(Arc::clone(&tree_node))
 }
 
 fn process_node(

@@ -74,7 +74,7 @@ Determine if any of the following relationships apply to the element node I will
 2. Does the element represent an item in a meaningful list? If so, please provide the following:
    • next_item_xpath: Provide complete and generic XPath expression that would select the next item in the list.
 
-Ensure that each XPath expression is a full query relative to the element node, including any intermediate nodes. Do not overfit to the examples provided, you must ensure the XPath expression is generic, reusable and can be applied to similar nodes.
+Ensure that each XPath expression specifies the traversal direction. Do not overfit to the examples provided, you must ensure the XPath expression is generic, reusable and can be applied to similar nodes.
 
 "##);
     let user_prompt = format!(r##"
