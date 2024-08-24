@@ -71,14 +71,66 @@ impl Content {
     }
 }
 
+#[derive(Debug)]
+struct XPathStep {
+    axis: Option<String>,
+    node_test: Option<String>,
+    predicates: Vec<String>,
+}
+
+fn parse_xpath(expression: &str) -> Vec<XPathStep> {
+    let mut steps = Vec::new();
+
+    let parts: Vec<&str> = expression.split('/').filter(|s| !s.is_empty()).collect();
+
+    for part in parts {
+        let (axis, remainder) = if let Some(index) = part.find("::") {
+            (Some(part[..index].to_string()), &part[index + 2..])
+        } else {
+            (None, part)
+        };
+
+        let (node_test, predicates) = if let Some(index) = remainder.find('[') {
+            (Some(remainder[..index].to_string()), &remainder[index..])
+        } else {
+            (Some(remainder.to_string()), "")
+        };
+
+        let mut predicates_vec = Vec::new();
+
+        let mut predicate = predicates;
+        while let Some(start) = predicate.find('[') {
+            if let Some(end) = predicate.find(']') {
+                predicates_vec.push(predicate[start + 1..end].to_string());
+                predicate = &predicate[end + 1..];
+            } else {
+                break;
+            }
+        }
+
+        steps.push(XPathStep {
+            axis,
+            node_test,
+            predicates: predicates_vec,
+        });
+    }
+
+    steps
+}
+
 fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) -> Option<Graph<XmlNode>> {
     log::trace!("In evaluate_relative_xpath");
 
-    log::debug!("*****************************************************************************************************");
     log::debug!("node: {}", read_lock!(tree_node).data.describe());
     log::debug!("relative_xpath: {}", relative_xpath);
 
     let mut current_nodes: Vec<Graph<XmlNode>> = vec![tree_node.clone()];
+
+    let steps = parse_xpath(&relative_xpath);
+
+    for (i, step) in steps.iter().enumerate() {
+        log::debug!("Step {}: {:?}", i + 1, step);
+    }
 
     Some(Arc::clone(&tree_node))
 }
