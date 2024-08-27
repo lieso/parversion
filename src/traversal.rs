@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 
-use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
+use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
@@ -71,6 +71,25 @@ impl Content {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*********************************************************************
+  ---------------------------------------
+  Stopgap 
+  ---------------------------------------
+*********************************************************************/
+
 #[derive(Debug)]
 struct XPathStep {
     axis: Option<String>,
@@ -124,16 +143,73 @@ fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) ->
     log::debug!("node: {}", read_lock!(tree_node).data.describe());
     log::debug!("relative_xpath: {}", relative_xpath);
 
-    let mut current_nodes: Vec<Graph<XmlNode>> = vec![tree_node.clone()];
+    let mut current_node: Graph<XmlNode> = Arc::clone(&tree_node);
+    let mut found_target = false;
 
     let steps = parse_xpath(&relative_xpath);
 
     for (i, step) in steps.iter().enumerate() {
         log::debug!("Step {}: {:?}", i + 1, step);
+        found_target = false;
+
+        if let Some(node_test) = &step.node_test {
+
+            if node_test.starts_with('@') {
+
+                let key_value = &node_test[1..];
+                let parts: Vec<&str> = key_value.split('=').collect();
+
+                if parts.get(0).is_none() || parts.get(1).is_none() {
+                    continue;
+                }
+
+                let key = parts[0];
+                let value = parts[1].trim_matches('\'');
+
+                bft(Arc::clone(&current_node), &mut |node: Graph<XmlNode>| {
+
+                    let xml = read_lock!(node).data.clone();
+                    
+                    if let Some(xml_value) = xml.get_attribute_value(key) {
+
+                        if xml_value == value {
+                            current_node = Arc::clone(&node);
+                            found_target = true;
+                            return false;
+                        }
+                    }
+
+                    true
+                });
+            }
+        }
     }
 
-    Some(Arc::clone(&tree_node))
+    if found_target {
+       return Some(Arc::clone(&current_node));
+    }
+
+    None
 }
+
+/*********************************************************************
+*********************************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 fn process_node(
     output_node: Graph<XmlNode>,
@@ -174,9 +250,30 @@ fn process_node(
     let structures = read_lock!(basis_node).data.structure.clone();
     for structure in read_lock!(structures).iter() {
         if let Some(root_node_xpath) = structure.root_node_xpath.clone() {
-            let parent_node_xpath = structure.parent_node_xpath.clone().unwrap();
+            if let Some(root_node) = evaluate_relative_xpath(Arc::clone(&output_node), root_node_xpath) {
 
-            let root_node = evaluate_relative_xpath(Arc::clone(&output_node), root_node_xpath);
+                let meta = ContentMetadataRecursive {
+                    is_root: true,
+                    parent_id: None,
+                };
+
+                content.meta.recursive = Some(meta);
+
+            } else {
+                let parent_node_xpath = structure.parent_node_xpath.clone().unwrap();
+
+                if let Some(parent_node) = evaluate_relative_xpath(Arc::clone(&output_node), parent_node_xpath) {
+
+                    let meta = ContentMetadataRecursive {
+                        is_root: false,
+                        parent_id: Some(read_lock!(parent_node).id.clone()),
+                    };
+
+                    content.meta.recursive = Some(meta);
+
+                }
+            }
+
         }
     }
 }
