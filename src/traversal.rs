@@ -141,6 +141,7 @@ fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) ->
     log::trace!("In evaluate_relative_xpath");
 
     log::debug!("node: {}", read_lock!(tree_node).data.describe());
+    log::debug!("node id: {}", read_lock!(tree_node).id);
     log::debug!("relative_xpath: {}", relative_xpath);
 
     let mut current_node: Graph<XmlNode> = Arc::clone(&tree_node);
@@ -150,9 +151,33 @@ fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) ->
 
     for (i, step) in steps.iter().enumerate() {
         log::debug!("Step {}: {:?}", i + 1, step);
-        found_target = false;
+
+        if let Some(axis) = &step.axis {
+            found_target = false;
+
+            if axis == "preceding-sibling" {
+                let parent;
+                {
+                    let rl = read_lock!(current_node);
+                    parent = rl.parents.get(0).unwrap().clone();
+                }
+                let parent_children = &read_lock!(parent).children;
+
+                for i in 0..parent_children.len() {
+                    if read_lock!(parent_children[i]).id == read_lock!(current_node).id {
+                        let preceding_sibling = &parent_children[i - 1];
+
+                        current_node = Arc::clone(&preceding_sibling);
+                        found_target = true;
+                        break;
+                    }
+                }
+            }
+        }
+
 
         if let Some(node_test) = &step.node_test {
+            found_target = false;
 
             if node_test.starts_with('@') {
 
@@ -181,6 +206,9 @@ fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) ->
 
                     true
                 });
+            } else {
+                // TODO
+                found_target = true;
             }
         }
     }
