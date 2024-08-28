@@ -132,7 +132,26 @@ async fn analyze_structure(
         return;
     }
 
-    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree), true);
+    let target_node_examples_count = read_lock!(CONFIG)
+        .llm
+        .data_structure_interpretation
+        .target_node_examples_max_count
+        .clone();
+    let target_node_examples_count = std::cmp::min(
+        target_node_examples_count,
+        homologous_nodes.len()
+    );
+    let target_node_adjacent_xml_length = read_lock!(CONFIG)
+        .llm
+        .data_structure_interpretation
+        .target_node_adjacent_xml_length
+        .clone();
+    let snippets = make_snippets(
+        homologous_nodes.clone(),
+        Arc::clone(&output_tree),
+        target_node_examples_count,
+        target_node_adjacent_xml_length
+    );
 
     let structure = interpret_data_structure(snippets).await;
 
@@ -156,7 +175,16 @@ async fn analyze_data(
     }
 
     let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
-    let snippets = make_snippets(homologous_nodes.clone(), Arc::clone(&output_tree), false);
+
+    let target_node_examples_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
+    let target_node_examples_count = std::cmp::min(target_node_examples_count, homologous_nodes.len());
+    let target_node_adjacent_xml_length = read_lock!(CONFIG).llm.target_node_adjacent_xml_length;
+    let snippets = make_snippets(
+        homologous_nodes.clone(),
+        Arc::clone(&output_tree),
+        target_node_examples_count,
+        target_node_adjacent_xml_length
+    );
 
     if read_lock!(output_node).data.is_text() {
         let interpretation = interpret_text_data(snippets).await;
@@ -201,18 +229,19 @@ fn analyze_data_classically(_basis_node: Graph<BasisNode>, homologous_nodes: Vec
     false
 }
 
-fn make_snippets(homologous_nodes: Vec<Graph<XmlNode>>, output_tree: Graph<XmlNode>, extend: bool) -> Vec<String> {
+fn make_snippets(
+    homologous_nodes: Vec<Graph<XmlNode>>,
+    output_tree: Graph<XmlNode>,
+    target_node_examples_count: usize,
+    target_node_adjacent_xml_length: usize,
+) -> Vec<String> {
     log::trace!("In make_snippets");
-
-    let mut target_node_examples_max_count = read_lock!(CONFIG).llm.target_node_examples_max_count.clone();
-    if extend { target_node_examples_max_count = target_node_examples_max_count + 5 };
-    let target_node_examples_count = std::cmp::min(target_node_examples_max_count, homologous_nodes.len());
     log::info!("Using {} examples of target node for analysis", target_node_examples_count);
     
     let snippets: Vec<String> = homologous_nodes[..target_node_examples_count]
         .to_vec()
         .iter()
-        .map(|item| node_to_snippet(Arc::clone(item), Arc::clone(&output_tree)))
+        .map(|item| node_to_snippet(Arc::clone(item), Arc::clone(&output_tree), target_node_adjacent_xml_length))
         .collect();
 
     snippets
@@ -261,11 +290,14 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
     false
 }
 
-fn node_to_snippet(node: Graph<XmlNode>, output_tree: Graph<XmlNode>) -> String {
+fn node_to_snippet(
+    node: Graph<XmlNode>,
+    output_tree: Graph<XmlNode>,
+    context_length: usize,
+) -> String {
     log::trace!("In node_to_snippet");
 
     let document = build_xml_with_target_node(Arc::clone(&output_tree), Arc::clone(&node));
-    let context_length = read_lock!(CONFIG).llm.target_node_adjacent_xml_length;
 
     if read_lock!(node).data.is_text() {
         format!(

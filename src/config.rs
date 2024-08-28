@@ -3,9 +3,16 @@ use lazy_static::lazy_static;
 use std::sync::RwLock;
 
 #[derive(Debug, Deserialize)]
+pub struct LlmConfigDataStructureInterpretation {
+    pub target_node_adjacent_xml_length: usize,
+    pub target_node_examples_max_count: usize,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct LlmConfig {
     pub target_node_adjacent_xml_length: usize,
     pub target_node_examples_max_count: usize,
+    pub data_structure_interpretation: LlmConfigDataStructureInterpretation,
 }
 
 #[derive(Debug, Deserialize)]
