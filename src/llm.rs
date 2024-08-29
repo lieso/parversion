@@ -11,9 +11,10 @@ use crate::node_data::{NodeData, ElementData, TextData};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct LLMDataStructureResponse {
     #[serde(deserialize_with = "empty_string_as_none")]
-    root_node_xpath: Option<String>,
+    recursive_attribute: Option<String>,
+    root_node_attribute_values: Option<Vec<String>>,
     #[serde(deserialize_with = "empty_string_as_none")]
-    parent_node_xpath: Option<String>,
+    parent_node_attribute_value: Option<String>,
     #[serde(deserialize_with = "empty_string_as_none")]
     next_item_xpath: Option<String>,
 }
@@ -69,13 +70,11 @@ An example of an implicit relationship is when a list of element nodes represent
 Determine if any of the following relationships apply to the element node I will provide you. It's possible for multiple relationships to apply to a single element and you should anticipate the possibility that none may apply to the node:
 
 1. Does the element represent a recursive relationship to other elements? If so, please provide the following:
-   • root_node_xpath: Provide a complete and generic XPath expression relative to the element node that would test if elements of this type are root nodes. 
-   • parent_node_xpath: Provide complete and generic XPath expression that would select the element node's parent if it is not a root node.
+   • recursive_attribute: Provide XPath expression that selects the attribute that provides information about its recursive relationship to other such elements.
+   • root_node_attribute_values: Provide possible values for recursive attributes that would signify that elements like this are root nodes.
+   • parent_node_attribute_value: Provide an awk expression that would compute what the value of a recursive attribute would be for the parent node of a particular element if it is not a root node.
 2. Does the element represent an item in a meaningful list? If so, please provide the following:
    • next_item_xpath: Provide complete and generic XPath expression that would select the next item in the list.
-
-Ensure that each XPath expression specifies the traversal direction. Do not overfit to the examples provided, you must ensure the XPath expression is generic, reusable and can be applied to similar nodes.
-
 "##);
     let user_prompt = format!(r##"
 Example(s) of the node to be analyzed:
@@ -97,8 +96,9 @@ Example(s) of the node to be analyzed:
         log::debug!("llm_data_structure_response: {:?}", llm_data_structure_response);
 
         return NodeDataStructure {
-            root_node_xpath: llm_data_structure_response.root_node_xpath,
-            parent_node_xpath: llm_data_structure_response.parent_node_xpath,
+            recursive_attribute: llm_data_structure_response.recursive_attribute,
+            root_node_attribute_values: llm_data_structure_response.root_node_attribute_values,
+            parent_node_attribute_value: llm_data_structure_response.parent_node_attribute_value,
             next_item_xpath: llm_data_structure_response.next_item_xpath,
        };
     } 
@@ -127,17 +127,23 @@ Example(s) of the node to be analyzed:
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "root_node_xpath": {
+                        "recursive_attribute": {
                             "type": "string"
                         },
-                        "parent_node_xpath": {
+                        "root_node_attribute_values": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "parent_node_attribute_value": {
                             "type": "string"
                         },
                         "next_item_xpath": {
                             "type": "string"
                         }
                     },
-                    "required": ["root_node_xpath", "parent_node_xpath", "next_item_xpath"],
+                    "required": ["recursive_attribute", "root_node_attribute_values", "parent_node_attribute_value", "next_item_xpath"],
                     "additionalProperties": false
                 }
             }
@@ -167,8 +173,9 @@ Example(s) of the node to be analyzed:
     log::debug!("llm_data_structure_response: {:?}", llm_data_structure_response);
 
     NodeDataStructure {
-        root_node_xpath: llm_data_structure_response.root_node_xpath,
-        parent_node_xpath: llm_data_structure_response.parent_node_xpath,
+        recursive_attribute: llm_data_structure_response.recursive_attribute,
+        root_node_attribute_values: llm_data_structure_response.root_node_attribute_values,
+        parent_node_attribute_value: llm_data_structure_response.parent_node_attribute_value,
         next_item_xpath: llm_data_structure_response.next_item_xpath,
    }
 }

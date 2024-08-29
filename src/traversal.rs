@@ -277,32 +277,38 @@ fn process_node(
 
     let structures = read_lock!(basis_node).data.structure.clone();
     for structure in read_lock!(structures).iter() {
-        if let Some(root_node_xpath) = structure.root_node_xpath.clone() {
-            if let Some(root_node) = evaluate_relative_xpath(Arc::clone(&output_node), root_node_xpath) {
 
-                let meta = ContentMetadataRecursive {
-                    is_root: true,
-                    parent_id: None,
-                };
 
-                content.meta.recursive = Some(meta);
 
-            } else {
-                let parent_node_xpath = structure.parent_node_xpath.clone().unwrap();
+        //if let Some(root_node_xpath) = structure.root_node_xpath.clone() {
+        //    if let Some(root_node) = evaluate_relative_xpath(Arc::clone(&output_node), root_node_xpath) {
 
-                if let Some(parent_node) = evaluate_relative_xpath(Arc::clone(&output_node), parent_node_xpath) {
+        //        let meta = ContentMetadataRecursive {
+        //            is_root: true,
+        //            parent_id: None,
+        //        };
 
-                    let meta = ContentMetadataRecursive {
-                        is_root: false,
-                        parent_id: Some(read_lock!(parent_node).id.clone()),
-                    };
+        //        content.meta.recursive = Some(meta);
 
-                    content.meta.recursive = Some(meta);
+        //    } else {
+        //        let parent_node_xpath = structure.parent_node_xpath.clone().unwrap();
 
-                }
-            }
+        //        if let Some(parent_node) = evaluate_relative_xpath(Arc::clone(&output_node), parent_node_xpath) {
 
-        }
+        //            let meta = ContentMetadataRecursive {
+        //                is_root: false,
+        //                parent_id: Some(read_lock!(parent_node).id.clone()),
+        //            };
+
+        //            content.meta.recursive = Some(meta);
+
+        //        }
+        //    }
+
+        //}
+
+
+
     }
 }
 
