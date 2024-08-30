@@ -278,6 +278,46 @@ fn process_node(
     let structures = read_lock!(basis_node).data.structure.clone();
     for structure in read_lock!(structures).iter() {
 
+        if let Some(recursive_attribute) = &structure.recursive_attribute {
+            let root_node_attribute_values = &structure.root_node_attribute_values.clone().unwrap();
+            let parent_node_attribute_value = &structure.parent_node_attribute_value.clone().unwrap();
+
+            if recursive_attribute.starts_with('@') {
+
+                let attribute = &recursive_attribute[1..];
+
+                bft(Arc::clone(&output_node), &mut |node: Graph<XmlNode>| {
+
+                    let xml = read_lock!(node).data.clone();
+
+                    if let Some(xml_value) = xml.get_attribute_value(attribute) {
+
+                        if root_node_attribute_values.contains(&xml_value) {
+                            log::info!("Detected root node");
+
+                            let meta = ContentMetadataRecursive {
+                                is_root: true,
+                                parent_id: None,
+                            };
+                            
+                            content.meta.recursive = Some(meta);
+                        } else {
+                            log::info!("Detected recursive non-root node");
+
+                        }
+
+
+                        return false;
+                    }
+
+                    true
+                });
+
+            }
+
+
+        }
+
 
 
         //if let Some(root_node_xpath) = structure.root_node_xpath.clone() {
