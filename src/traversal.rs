@@ -1,5 +1,8 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
+use std::process::{Command, Stdio};
+use std::io::Write;
+use regex::Regex;
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
 use crate::xml_node::{XmlNode};
@@ -77,161 +80,13 @@ impl Content {
 
 
 
+fn sanitize_awk_expression(input: &str) -> Option<String> {
+    let re = Regex::new(r"^awk\s*'([^']*)'$").expect("Failed to create regex");
 
-
-
-
-
-
-
-/*********************************************************************
-  ---------------------------------------
-  Stopgap 
-  ---------------------------------------
-*********************************************************************/
-
-#[derive(Debug)]
-struct XPathStep {
-    axis: Option<String>,
-    node_test: Option<String>,
-    predicates: Vec<String>,
+    re.captures(input).and_then(|caps| {
+        caps.get(1).map(|matched_text| matched_text.as_str().to_string())
+    })
 }
-
-fn parse_xpath(expression: &str) -> Vec<XPathStep> {
-    let mut steps = Vec::new();
-
-    let parts: Vec<&str> = expression.split('/').filter(|s| !s.is_empty()).collect();
-
-    for part in parts {
-        let (axis, remainder) = if let Some(index) = part.find("::") {
-            (Some(part[..index].to_string()), &part[index + 2..])
-        } else {
-            (None, part)
-        };
-
-        let (node_test, predicates) = if let Some(index) = remainder.find('[') {
-            (Some(remainder[..index].to_string()), &remainder[index..])
-        } else {
-            (Some(remainder.to_string()), "")
-        };
-
-        let mut predicates_vec = Vec::new();
-
-        let mut predicate = predicates;
-        while let Some(start) = predicate.find('[') {
-            if let Some(end) = predicate.find(']') {
-                predicates_vec.push(predicate[start + 1..end].to_string());
-                predicate = &predicate[end + 1..];
-            } else {
-                break;
-            }
-        }
-
-        steps.push(XPathStep {
-            axis,
-            node_test,
-            predicates: predicates_vec,
-        });
-    }
-
-    steps
-}
-
-fn evaluate_relative_xpath(tree_node: Graph<XmlNode>, relative_xpath: String) -> Option<Graph<XmlNode>> {
-    log::trace!("In evaluate_relative_xpath");
-
-    log::debug!("node: {}", read_lock!(tree_node).data.describe());
-    log::debug!("node id: {}", read_lock!(tree_node).id);
-    log::debug!("relative_xpath: {}", relative_xpath);
-
-    let mut current_node: Graph<XmlNode> = Arc::clone(&tree_node);
-    let mut found_target = false;
-
-    let steps = parse_xpath(&relative_xpath);
-
-    for (i, step) in steps.iter().enumerate() {
-        log::debug!("Step {}: {:?}", i + 1, step);
-
-        if let Some(axis) = &step.axis {
-            found_target = false;
-
-            if axis == "preceding-sibling" {
-                let parent;
-                {
-                    let rl = read_lock!(current_node);
-                    parent = rl.parents.get(0).unwrap().clone();
-                }
-                let parent_children = &read_lock!(parent).children;
-
-                for i in 0..parent_children.len() {
-                    if read_lock!(parent_children[i]).id == read_lock!(current_node).id {
-                        let preceding_sibling = &parent_children[i - 1];
-
-                        current_node = Arc::clone(&preceding_sibling);
-                        found_target = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-
-        if let Some(node_test) = &step.node_test {
-            found_target = false;
-
-            if node_test.starts_with('@') {
-
-                let key_value = &node_test[1..];
-                let parts: Vec<&str> = key_value.split('=').collect();
-
-                if parts.get(0).is_none() || parts.get(1).is_none() {
-                    continue;
-                }
-
-                let key = parts[0];
-                let value = parts[1].trim_matches('\'');
-
-                bft(Arc::clone(&current_node), &mut |node: Graph<XmlNode>| {
-
-                    let xml = read_lock!(node).data.clone();
-                    
-                    if let Some(xml_value) = xml.get_attribute_value(key) {
-
-                        if xml_value == value {
-                            current_node = Arc::clone(&node);
-                            found_target = true;
-                            return false;
-                        }
-                    }
-
-                    true
-                });
-            } else {
-                // TODO
-                found_target = true;
-            }
-        }
-    }
-
-    if found_target {
-       return Some(Arc::clone(&current_node));
-    }
-
-    None
-}
-
-/*********************************************************************
-*********************************************************************/
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -278,12 +133,20 @@ fn process_node(
     let structures = read_lock!(basis_node).data.structure.clone();
     for structure in read_lock!(structures).iter() {
 
+
+
+
+
+
+
+
+
+
+
+
         if let Some(recursive_attribute) = &structure.recursive_attribute {
-            let root_node_attribute_values = &structure.root_node_attribute_values.clone().unwrap();
-            let parent_node_attribute_value = &structure.parent_node_attribute_value.clone().unwrap();
 
             if recursive_attribute.starts_with('@') {
-
                 let attribute = &recursive_attribute[1..];
 
                 bft(Arc::clone(&output_node), &mut |node: Graph<XmlNode>| {
@@ -291,6 +154,7 @@ fn process_node(
                     let xml = read_lock!(node).data.clone();
 
                     if let Some(xml_value) = xml.get_attribute_value(attribute) {
+                        let root_node_attribute_values = &structure.root_node_attribute_values.clone().unwrap();
 
                         if root_node_attribute_values.contains(&xml_value) {
                             log::info!("Detected root node");
@@ -303,6 +167,112 @@ fn process_node(
                             content.meta.recursive = Some(meta);
                         } else {
                             log::info!("Detected recursive non-root node");
+                            let parent_node_attribute_value = &structure.parent_node_attribute_value.clone().unwrap();
+
+                            log::debug!("parent_node_attribute_value: {}", parent_node_attribute_value);
+                            
+                            let awk_expression = sanitize_awk_expression(&parent_node_attribute_value).unwrap();
+
+                            log::debug!("awk_expression: {}", awk_expression);
+
+                            let mut process = Command::new("awk")
+                                .arg(awk_expression)
+                                .stdin(Stdio::piped())
+                                .stdout(Stdio::piped())
+                                .spawn()
+                                .expect("Failed to spawn awk process");
+
+                            let input_data = format!("\"{}\"", xml_value);
+
+                            if let Some(mut stdin) = process.stdin.take() {
+                                stdin.write_all(input_data.as_bytes()).expect("Failed to write to stdin");
+                            }
+
+                            let output = process
+                                .wait_with_output()
+                                .expect("Failed to read awk output");
+
+                            if output.status.success() {
+                                let parent_node_recursive_attribute_value = String::from_utf8_lossy(&output.stdout);
+                                log::debug!("parent_node_recursive_attribute_value: {}", parent_node_recursive_attribute_value);
+
+
+
+
+                                let rl = read_lock!(output_node);
+                                let output_node_parent = rl.parents.get(0).unwrap();
+
+
+                                let mut siblings: Vec<Graph<XmlNode>> = Vec::new();
+                                for sibling in read_lock!(output_node_parent).children.iter() {
+                                    if read_lock!(sibling).id == read_lock!(output_node).id {
+                                        break;
+                                    }
+
+                                    siblings.push(Arc::clone(&sibling));
+                                }
+
+                                siblings.reverse();
+
+
+
+
+                                let mut found_target = false;
+                                for sibling in siblings.iter() {
+
+                                    if found_target {
+                                        break;
+                                    }
+
+                                    log::debug!("sibling: {}", read_lock!(sibling).data.describe());
+
+
+                                    bft(Arc::clone(&sibling), &mut |inner_node: Graph<XmlNode>| {
+
+                                        let inner_xml = read_lock!(inner_node).data.clone();
+
+                                        if !inner_xml.is_element() {
+                                            return true;
+                                        }
+
+                                        if let Some(inner_xml_value) = inner_xml.get_attribute_value(attribute) {
+                                            if inner_xml_value.to_string().trim() == parent_node_recursive_attribute_value.to_string().trim() {
+
+
+                                                let meta = ContentMetadataRecursive {
+                                                    is_root: false,
+                                                    parent_id: Some(read_lock!(sibling).id.clone()),
+                                                };
+
+                                                content.meta.recursive = Some(meta);
+
+                                                
+                                                found_target = true;
+
+                                                return false;
+                                            }
+                                        }
+
+                                        true
+                                    });
+
+                                }
+
+                                
+
+
+
+
+
+
+
+
+                            } else {
+
+                            }
+
+
+
 
                         }
 
@@ -320,32 +290,17 @@ fn process_node(
 
 
 
-        //if let Some(root_node_xpath) = structure.root_node_xpath.clone() {
-        //    if let Some(root_node) = evaluate_relative_xpath(Arc::clone(&output_node), root_node_xpath) {
 
-        //        let meta = ContentMetadataRecursive {
-        //            is_root: true,
-        //            parent_id: None,
-        //        };
 
-        //        content.meta.recursive = Some(meta);
 
-        //    } else {
-        //        let parent_node_xpath = structure.parent_node_xpath.clone().unwrap();
 
-        //        if let Some(parent_node) = evaluate_relative_xpath(Arc::clone(&output_node), parent_node_xpath) {
 
-        //            let meta = ContentMetadataRecursive {
-        //                is_root: false,
-        //                parent_id: Some(read_lock!(parent_node).id.clone()),
-        //            };
 
-        //            content.meta.recursive = Some(meta);
 
-        //        }
-        //    }
 
-        //}
+
+
+
 
 
 
