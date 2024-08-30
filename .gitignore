@@ -11,6 +11,3 @@ debug/*
 # Trees
 trees/*
 !trees/.gitkeep
-
-src/database/hash_to_node_data/
-src/database/tree_metadata/
