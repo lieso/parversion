@@ -205,9 +205,13 @@ Example {}:
     let system_prompt = format!(r##"
 Your task is to interpret the meaning of HTML element attributes, provide an appropriate generic name in snake case for these types of attributes, and to provide additional metadata for these attributes. The attribute may have a variety of possible values so you should attempt to generalize as much as possible across all examples provided.
 
-At least one example of the element node will be provided along with some surrounding HTML providing necessary context. The target node to be analyzed will be delimited with an HTML comment.
+At least one example of the element node will be provided along with some surrounding HTML providing necessary context. The target node to be analyzed will be delimited with an HTML comment. Only analyze target nodes marked by HTML comments; all HTML surrounding the target node is meant to be provide context to guide you in coming up with an interpretation.
 
-An example of how to perform this task would be to give the name 'profile_url' (name in JSON response) to an href (attribute in JSON response) when it appears to be a link to the profile of a user account. Each item in your JSON array response must correspond to one HTML attribute; so if two attributes are provided, there should only be two items in the JSON array response. When providing the interpretation for a particular attribute (key 'attribute' in JSON response), only supply the attribute name. An example of a JSON response when two attributes are provided for interpretation:
+An example of how to perform this task would be to give the name 'profile_url' (name in JSON response) to an href (attribute in JSON response) when it appears to be a link to the profile of a user account.
+
+You must provide only one interpretation for each attribute that represents that best fit across all examples that will be provided.
+
+When providing the interpretation for a particular attribute (key 'attribute' in JSON response), only supply the attribute name. An example of a JSON response when two attributes are provided for interpretation:
 {{
     attributes: [
         {{

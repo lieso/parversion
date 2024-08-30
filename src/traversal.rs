@@ -171,107 +171,106 @@ fn process_node(
 
                             log::debug!("parent_node_attribute_value: {}", parent_node_attribute_value);
                             
-                            let awk_expression = sanitize_awk_expression(&parent_node_attribute_value).unwrap();
+                            if let Some(awk_expression) = sanitize_awk_expression(&parent_node_attribute_value) {
+                                log::debug!("awk_expression: {}", awk_expression);
 
-                            log::debug!("awk_expression: {}", awk_expression);
+                                let mut process = Command::new("awk")
+                                    .arg(awk_expression)
+                                    .stdin(Stdio::piped())
+                                    .stdout(Stdio::piped())
+                                    .spawn()
+                                    .expect("Failed to spawn awk process");
 
-                            let mut process = Command::new("awk")
-                                .arg(awk_expression)
-                                .stdin(Stdio::piped())
-                                .stdout(Stdio::piped())
-                                .spawn()
-                                .expect("Failed to spawn awk process");
+                                let input_data = format!("\"{}\"", xml_value);
 
-                            let input_data = format!("\"{}\"", xml_value);
-
-                            if let Some(mut stdin) = process.stdin.take() {
-                                stdin.write_all(input_data.as_bytes()).expect("Failed to write to stdin");
-                            }
-
-                            let output = process
-                                .wait_with_output()
-                                .expect("Failed to read awk output");
-
-                            if output.status.success() {
-                                let parent_node_recursive_attribute_value = String::from_utf8_lossy(&output.stdout);
-                                log::debug!("parent_node_recursive_attribute_value: {}", parent_node_recursive_attribute_value);
-
-
-
-
-                                let rl = read_lock!(output_node);
-                                let output_node_parent = rl.parents.get(0).unwrap();
-
-
-                                let mut siblings: Vec<Graph<XmlNode>> = Vec::new();
-                                for sibling in read_lock!(output_node_parent).children.iter() {
-                                    if read_lock!(sibling).id == read_lock!(output_node).id {
-                                        break;
-                                    }
-
-                                    siblings.push(Arc::clone(&sibling));
+                                if let Some(mut stdin) = process.stdin.take() {
+                                    stdin.write_all(input_data.as_bytes()).expect("Failed to write to stdin");
                                 }
 
-                                siblings.reverse();
+                                let output = process
+                                    .wait_with_output()
+                                    .expect("Failed to read awk output");
+
+                                if output.status.success() {
+                                    let parent_node_recursive_attribute_value = String::from_utf8_lossy(&output.stdout);
+                                    log::debug!("parent_node_recursive_attribute_value: {}", parent_node_recursive_attribute_value);
 
 
 
 
-                                let mut found_target = false;
-                                for sibling in siblings.iter() {
-
-                                    if found_target {
-                                        break;
-                                    }
-
-                                    log::debug!("sibling: {}", read_lock!(sibling).data.describe());
+                                    let rl = read_lock!(output_node);
+                                    let output_node_parent = rl.parents.get(0).unwrap();
 
 
-                                    bft(Arc::clone(&sibling), &mut |inner_node: Graph<XmlNode>| {
-
-                                        let inner_xml = read_lock!(inner_node).data.clone();
-
-                                        if !inner_xml.is_element() {
-                                            return true;
+                                    let mut siblings: Vec<Graph<XmlNode>> = Vec::new();
+                                    for sibling in read_lock!(output_node_parent).children.iter() {
+                                        if read_lock!(sibling).id == read_lock!(output_node).id {
+                                            break;
                                         }
 
-                                        if let Some(inner_xml_value) = inner_xml.get_attribute_value(attribute) {
-                                            if inner_xml_value.to_string().trim() == parent_node_recursive_attribute_value.to_string().trim() {
+                                        siblings.push(Arc::clone(&sibling));
+                                    }
+
+                                    siblings.reverse();
 
 
-                                                let meta = ContentMetadataRecursive {
-                                                    is_root: false,
-                                                    parent_id: Some(read_lock!(sibling).id.clone()),
-                                                };
 
-                                                content.meta.recursive = Some(meta);
 
-                                                
-                                                found_target = true;
+                                    let mut found_target = false;
+                                    for sibling in siblings.iter() {
 
-                                                return false;
+                                        if found_target {
+                                            break;
+                                        }
+
+                                        log::debug!("sibling: {}", read_lock!(sibling).data.describe());
+
+
+                                        bft(Arc::clone(&sibling), &mut |inner_node: Graph<XmlNode>| {
+
+                                            let inner_xml = read_lock!(inner_node).data.clone();
+
+                                            if !inner_xml.is_element() {
+                                                return true;
                                             }
-                                        }
 
-                                        true
-                                    });
+                                            if let Some(inner_xml_value) = inner_xml.get_attribute_value(attribute) {
+                                                if inner_xml_value.to_string().trim() == parent_node_recursive_attribute_value.to_string().trim() {
+
+
+                                                    let meta = ContentMetadataRecursive {
+                                                        is_root: false,
+                                                        parent_id: Some(read_lock!(sibling).id.clone()),
+                                                    };
+
+                                                    content.meta.recursive = Some(meta);
+
+                                                    
+                                                    found_target = true;
+
+                                                    return false;
+                                                }
+                                            }
+
+                                            true
+                                        });
+
+                                    }
+
+                                    
+
+
+
+
+
+
+
+
+                                } else {
 
                                 }
 
-                                
-
-
-
-
-
-
-
-
-                            } else {
-
                             }
-
-
 
 
                         }
