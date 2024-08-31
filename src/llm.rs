@@ -20,15 +20,10 @@ struct LLMDataStructureResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct LLMElementDataResponseItem {
-    attribute: String,
-    name: String,
-    is_page_link: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 struct LLMElementDataResponse {
-    attributes: Vec<LLMElementDataResponseItem>,
+    name: String,
+    #[serde(default)]
+    is_page_link: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -180,58 +175,26 @@ Example(s) of the node to be analyzed:
    }
 }
 
-pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>) -> Vec<NodeData> {
-    log::trace!("In interpret_element_data");
-
-    assert!(snippets.len() > 0, "Did not receive any snippets");
-
-    let examples = snippets.iter().enumerate().fold(
-        String::new(),
-        |mut acc, (index, snippet)| {
-            acc.push_str(&format!(r##"
-Example {}:
-{}
-"##, index + 1, snippet));
-            acc
-        }
-    );
-    let attributes = meaningful_attributes.iter().fold(
-        String::new(),
-        |acc, attr| {
-            format!("{}\n{}", acc, attr)
-        }
-    );
+async fn interpret_title(examples: String) -> NodeData {
+    log::trace!("In interpret_title");
 
     let system_prompt = format!(r##"
-Your task is to interpret the meaning of HTML element attributes, provide an appropriate generic name in snake case for these types of attributes, and to provide additional metadata for these attributes. The attribute may have a variety of possible values so you should attempt to generalize as much as possible across all examples provided.
+Your task is to interpret the meaning of HTML title attributes and provide an appropriate generic name in snake case for these attributes. The attribute may have a variety of possible values so you should attempt to generalize as much as possible across all examples provided.
 
-At least one example of the element node will be provided along with some surrounding HTML providing necessary context. The target node to be analyzed will be delimited with an HTML comment. Only analyze target nodes marked by HTML comments; all HTML surrounding the target node is meant to be provide context to guide you in coming up with an interpretation.
+The title attribute to be interpreted will be found in an HTML element delimited with an HTML comment like so:
+<!--Target node start --><div title="Example"><!--Target node end --></div>
 
-An example of how to perform this task would be to give the name 'profile_url' (name in JSON response) to an href (attribute in JSON response) when it appears to be a link to the profile of a user account.
+At least one example of the target node will be provided, along with some surrounding HTML providing necessary context for you to interpret the meaning and purpose of the HTML target title. When multiple examples of a target node each containing a title are provided, treat the title contained within each target node as being the "same" and generalize as much as possible across its values with respect to the surrounding HTML.
 
-You must provide only one interpretation for each attribute that represents that best fit across all examples that will be provided.
+An example of how to perform this task would be to give the name 'timestamp' to titles when all examples of it appear to be a timestamp.
 
-When providing the interpretation for a particular attribute (key 'attribute' in JSON response), only supply the attribute name. An example of a JSON response when two attributes are provided for interpretation:
-{{
-    attributes: [
-        {{
-            attribute: "href",
-            name: "profile_url",
-            is_page_link: true
-        }},
-        {{
-            attribute: "title",
-            name: "timestamp",
-            is_page_link: false
-        }}
-    ]
-}}
+Provide the following information in your response:
+• name: A generic name in snake case that could be used to represent title values programmatically.
 
-Additionally, for any href attributes, provide the following metadata:
-1. is_page_link: Does the href value likely point to a new page or does it perform some sort of action or mutation? 
+---
 "##);
     let user_prompt = format!(r##"
-Interpret these attributes:
+Example(s) of the element node:
 
 ---
 
@@ -239,38 +202,25 @@ Interpret these attributes:
 
 ---
 
-Example(s) of the element node which contain these attributes:
-
----
-
-{}
-
----
-"##, attributes, examples);
+"##, examples);
     log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
     if let Some(cached_response) = get_cached_response(hash.clone()) {
         log::info!("Cache hit!");
 
-        let llm_element_data_response = serde_json::from_str::<LLMElementDataResponse>(&cached_response)
+        let response = serde_json::from_str::<LLMElementDataResponse>(&cached_response)
             .expect("Could not parse JSON response as LLMElementDataResponse");
-        log::debug!("llm_element_data_response: {:?}", llm_element_data_response);
+        log::debug!("llm_element_data_response: {:?}", response);
 
-        return llm_element_data_response
-            .attributes
-            .iter()
-            .map(|response| {
-                NodeData {
-                    name: response.name.clone(),
-                    element: Some(ElementData {
-                        attribute: response.attribute.clone(),
-                        is_page_link: response.is_page_link.clone(),
-                    }),
-                    text: None,
-                }
-            })
-            .collect();
+        return NodeData {
+            name: response.name.clone(),
+            element: Some(ElementData {
+                attribute: "title".to_string(),
+                is_page_link: false
+            }),
+            text: None,
+        };
     }
 
     log::info!("Cache miss!");
@@ -292,36 +242,20 @@ Example(s) of the element node which contain these attributes:
         "response_format": {
             "type": "json_schema",
             "json_schema": {
-                "name": "element_interpretation_response",
+                "name": "title_interpretation_response",
                 "strict": true,
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "attributes": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "attribute": {
-                                        "type": "string"
-                                    },
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "is_page_link": {
-                                        "type": "boolean"
-                                    }
-                                },
-                                "required": ["attribute", "name", "is_page_link"],
-                                "additionalProperties": false
-                            }
+                        "name": {
+                            "type": "string"
                         }
                     },
-                    "required": ["attributes"],
+                    "required": ["name"],
                     "additionalProperties": false
-                }
-            }
-        }
+                },
+            },
+        },
     });
     let url = "https://api.openai.com/v1/chat/completions";
     let authorization = format!("Bearer {}", openai_api_key);
@@ -342,24 +276,167 @@ Example(s) of the element node which contain these attributes:
 
     set_cached_response(hash.clone(), json_response.to_string());
 
-    let llm_element_data_response = serde_json::from_str::<LLMElementDataResponse>(json_response)
+    let response = serde_json::from_str::<LLMElementDataResponse>(json_response)
         .expect("Could not parse JSON response as LLMElementDataResponse");
-    log::debug!("llm_element_data_response: {:?}", llm_element_data_response);
+    log::debug!("llm_element_data_response: {:?}", response);
 
-    llm_element_data_response
-        .attributes
-        .iter()
-        .map(|response| {
-            NodeData {
-                name: response.name.clone(),
-                element: Some(ElementData {
-                    attribute: response.attribute.clone(),
-                    is_page_link: response.is_page_link.clone(),
-                }),
-                text: None,
+    NodeData {
+        name: response.name.clone(),
+        element: Some(ElementData {
+            attribute: "title".to_string(),
+            is_page_link: false
+        }),
+        text: None,
+    }
+}
+
+async fn interpret_href(examples: String) -> NodeData {
+    log::trace!("In interpret_href");
+
+    let system_prompt = format!(r##"
+Your task is to interpret the meaning of HTML href attributes, provide an appropriate generic name in snake case for these attributes, and to provide additional metadata for these attributes. The attribute may have a variety of possible values so you should attempt to generalize as much as possible across all examples provided.
+
+The href attribute to be interpreted will be found in an HTML element delimited with an HTML comment like so:
+<!--Target node start --><a href="https://www.example.com"><!--Target node end --></a>
+
+At least one example of the target node will be provided, along with some surrounding HTML providing necessary context for you to interpret the meaning and purpose of the HTML target href. When multiple examples of a target node each containing an href are provided, treat the href contained within each target node as being the "same" and generalize as much as possible across its values with respect to the surrounding HTML.
+
+An example of how to perform this task would be to give the name 'profile_url' to an href when all examples of it appear to be a link to the profile page of a user account.
+
+Provide the following information in your response:
+• name: A generic name in snake case that could be used to represent href values programmatically.
+• is_page_link: Indicate whether these href(s) likely just point to a new page or if they are for performing some sort of action or mutation. An example of a page link is a link to a another page in a website where more content is consumed such as visiting an 'about' page from the landing page. Action/mutation href likely require a login and change something about the state of an item on the website.
+
+---
+"##);
+    let user_prompt = format!(r##"
+Example(s) of the element node:
+
+---
+
+{}
+
+---
+
+"##, examples);
+    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
+
+    let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
+    if let Some(cached_response) = get_cached_response(hash.clone()) {
+        log::info!("Cache hit!");
+
+        let response = serde_json::from_str::<LLMElementDataResponse>(&cached_response)
+            .expect("Could not parse JSON response as LLMElementDataResponse");
+        log::debug!("llm_element_data_response: {:?}", response);
+
+        return NodeData {
+            name: response.name.clone(),
+            element: Some(ElementData {
+                attribute: "href".to_string(),
+                is_page_link: response.is_page_link.clone(),
+            }),
+            text: None,
+        };
+    }
+
+    log::info!("Cache miss!");
+
+    let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
+    let request_json = json!({
+        "model": "gpt-4o-2024-08-06",
+        "temperature": 0,
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
             }
-        })
-        .collect()
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "href_interpretation_response",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "is_page_link": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": ["name", "is_page_link"],
+                    "additionalProperties": false
+                },
+            },
+        },
+    });
+    let url = "https://api.openai.com/v1/chat/completions";
+    let authorization = format!("Bearer {}", openai_api_key);
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .json(&request_json)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::AUTHORIZATION, authorization)
+        .send()
+        .await;
+    let response = response.expect("Failed to send request to OpenAI");
+
+    let json_response = response.json::<serde_json::Value>().await.expect("Unable to get JSON from response");
+    log::debug!("json_response: {:?}", json_response);
+    let json_response = json_response["choices"].as_array().unwrap();
+    let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
+
+    set_cached_response(hash.clone(), json_response.to_string());
+
+    let response = serde_json::from_str::<LLMElementDataResponse>(json_response)
+        .expect("Could not parse JSON response as LLMElementDataResponse");
+    log::debug!("llm_element_data_response: {:?}", response);
+
+    NodeData {
+        name: response.name.clone(),
+        element: Some(ElementData {
+            attribute: "href".to_string(),
+            is_page_link: response.is_page_link.clone(),
+        }),
+        text: None,
+    }
+}
+
+pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>) -> Vec<NodeData> {
+    log::trace!("In interpret_element_data");
+
+    assert!(snippets.len() > 0, "Did not receive any snippets");
+
+    let examples = snippets.iter().enumerate().fold(
+        String::new(),
+        |mut acc, (index, snippet)| {
+            acc.push_str(&format!(r##"
+Example {}:
+{}
+"##, index + 1, snippet));
+            acc
+        }
+    );
+
+    let futures = meaningful_attributes.iter().map(|attribute| {
+        let examples_clone = examples.clone();
+        async move {
+            match attribute.as_str() {
+                "href" => interpret_href(examples_clone).await,
+                "title" => interpret_title(examples_clone).await,
+                _ => panic!("Unexpected attribute: {}", attribute),
+            }
+        }
+    });
+
+    futures::future::join_all(futures).await
 }
 
 pub async fn interpret_text_data(snippets: Vec<String>) -> NodeData {
