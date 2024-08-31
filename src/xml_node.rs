@@ -40,11 +40,13 @@ pub fn get_meaningful_attributes(xml: &XmlNode) -> HashMap<String, String> {
     let mut meaningful_attributes = HashMap::new();
 
     fn is_meaningful_href(value: &str) -> bool {
-        Url::parse(value).is_ok() ||
-        pathetic::Uri::new(value).is_ok() ||
-        value.starts_with("mailto:") ||
-        value.starts_with("tel:") ||
-        value.starts_with("sms:")
+        !value.trim_start().to_lowercase().starts_with("javascript:") && (
+            Url::parse(value).is_ok() ||
+            pathetic::Uri::new(value).is_ok() ||
+            value.starts_with("mailto:") ||
+            value.starts_with("tel:") ||
+            value.starts_with("sms:")
+        )
     }
 
     for (attribute, value) in xml.element.clone().unwrap().attributes {
