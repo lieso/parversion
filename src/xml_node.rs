@@ -40,7 +40,8 @@ pub fn get_meaningful_attributes(xml: &XmlNode) -> HashMap<String, String> {
     let mut meaningful_attributes = HashMap::new();
 
     fn is_meaningful_href(value: &str) -> bool {
-        !value.trim_start().to_lowercase().starts_with("javascript:") && (
+        !value.trim_start().to_lowercase().starts_with("javascript:") && 
+        !value.trim_start().starts_with("#") && (
             Url::parse(value).is_ok() ||
             pathetic::Uri::new(value).is_ok() ||
             value.starts_with("mailto:") ||
