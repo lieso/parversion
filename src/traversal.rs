@@ -110,6 +110,27 @@ fn process_node(
                 log::info!("Discarding presentational text node data");
                 continue;
             }
+
+            // If a text node has a parent which is an element with an href that is interpreted to be an "action" link, we discard it
+            // These text nodes only describe the action link
+            // e.g. <a href="reply?id=123">reply</a>
+            let rl = read_lock!(output_node);
+            let output_node_parent = rl.parents.get(0).unwrap();
+            let output_node_parent_lineage = get_lineage(Arc::clone(&output_node));
+            let output_node_parent_basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), output_node_parent_lineage);
+            let output_node_parent_basis_node_data = read_lock!(output_node_parent_basis_node).data.data.clone();
+            let is_parent_action = read_lock!(output_node_parent_basis_node_data).iter().any(|item| {
+                if let Some(element_data) = &item.element {
+                    return element_data.attribute == "href" && !element_data.is_page_link;
+                }
+
+                false
+            });
+
+            if is_parent_action {
+                log::info!("Discard text node whose parent is an action href");
+                continue;
+            }
         }
 
         if let Some(element_data) = &node_data.element {
