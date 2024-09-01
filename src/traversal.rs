@@ -99,6 +99,23 @@ fn process_node(
     basis_graph: Graph<BasisNode>,
     content: &mut Content,
 ) {
+    log::trace!("In process_node");
+
+    {
+        let block_separator = "=".repeat(60);
+        log::info!("{}", format!(
+        "\n{}
+PROCESSING NODE:
+{}
+Node:   {}
+{}",
+            block_separator,
+            block_separator,
+            read_lock!(output_node).data.describe(),
+            block_separator,
+        ));
+    }
+
     let output_node_xml: XmlNode = read_lock!(output_node).data.clone();
     let lineage = get_lineage(Arc::clone(&output_node));
     let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
