@@ -22,6 +22,7 @@ pub struct Traversal {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentValueMetadata {
     pub is_primary_content: bool,
+    pub is_url: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -206,12 +207,19 @@ Node:   {}
             name: node_data.name.clone(),
             value: node_data.value(&output_node_xml),
             meta: ContentValueMetadata {
-                is_primary_content: node_data.clone().text.map_or(false, |text| text.is_primary_content)
+                is_primary_content: node_data.clone().text.map_or(false, |text| text.is_primary_content),
+                is_url: node_data.element.clone().map_or(false, |element| {
+                    element.attribute == "href"
+                })
             },
         };
 
         content.values.push(content_value);
     }
+
+
+
+
 
     let structures = read_lock!(basis_node).data.structure.clone();
     for structure in read_lock!(structures).iter() {
@@ -371,22 +379,6 @@ Node:   {}
 
 
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     }
 }
