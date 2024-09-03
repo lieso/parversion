@@ -3,6 +3,7 @@ use serde::{Serialize, Deserialize};
 use std::process::{Command, Stdio};
 use std::io::Write;
 use regex::Regex;
+use std::collections::{VecDeque};
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
 use crate::xml_node::{XmlNode};
@@ -33,11 +34,13 @@ pub struct ContentValue {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentMetadataRecursive {
     pub is_root: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentMetadata {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub recursive: Option<ContentMetadataRecursive>,
 }
 
@@ -46,6 +49,8 @@ pub struct Content {
     pub id: String,
     pub meta: ContentMetadata,
     pub values: Vec<ContentValue>,
+    pub inner_content: Vec<Content>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Content>,
 }
 
@@ -65,16 +70,50 @@ const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
 
 impl Content {
     pub fn remove_empty(&mut self) {
+        self.inner_content.iter_mut().for_each(|child| child.remove_empty());
         self.children.iter_mut().for_each(|child| child.remove_empty());
-        self.children.retain(|child| !child.is_empty());
+        self.inner_content.retain(|child| !child.is_empty());
     }
 
     fn is_empty(&self) -> bool {
-        self.values.is_empty() && self.children.is_empty()
+        self.values.is_empty() && self.inner_content.is_empty()
     }
 }
 
+fn organize_content(root: &mut Content, content: &Content) {
+    content.inner_content.iter().for_each(|child| organize_content(root, &child));
 
+    if let Some(recursive) = &content.meta.recursive {
+        if let Some(parent_id) = &recursive.parent_id {
+            let mut found_parent = false;
+            let mut found_content = false;
+            let mut queue = VecDeque::new();
+            queue.push_back(root);
+
+            while let Some(current) = queue.pop_front() {
+                if &current.id == parent_id {
+                    found_parent = true;
+                    current.children.push(content.clone());
+                }
+
+                if let Some(position) = current.inner_content.iter().position(|item| {
+                    item.id == content.id
+                }) {
+                    found_content = true;
+                    current.inner_content.remove(position);
+                }
+
+                if found_parent && found_content {
+                    break;
+                }
+
+                for child in &mut current.inner_content {
+                    queue.push_back(child);
+                }
+            }
+        }
+    }
+}
 
 
 
@@ -225,7 +264,9 @@ Node:   {}
                                     .spawn()
                                     .expect("Failed to spawn awk process");
 
-                                let input_data = format!("\"{}\"", xml_value);
+                                let input_data = format!("{}", xml_value);
+
+                                log::debug!("input_data: {}", input_data);
 
                                 if let Some(mut stdin) = process.stdin.take() {
                                     stdin.write_all(input_data.as_bytes()).expect("Failed to write to stdin");
@@ -371,6 +412,7 @@ impl Traversal {
                 recursive: None,
             },
             values: Vec::new(),
+            inner_content: Vec::new(),
             children: Vec::new(),
         };
 
@@ -409,6 +451,7 @@ impl Traversal {
                         recursive: None,
                     },
                     values: Vec::new(),
+                    inner_content: Vec::new(),
                     children: Vec::new(),
                 };
 
@@ -418,7 +461,7 @@ impl Traversal {
                     &mut child_content,
                 );
 
-                output_content.children.push(child_content);
+                output_content.inner_content.push(child_content);
             }
         }
 
@@ -427,6 +470,10 @@ impl Traversal {
             Arc::clone(&self.basis_graph.unwrap()),
             &mut content,
         );
+
+        log::info!("Organising...");
+        let content_copy = content.clone();
+        organize_content(&mut content, &content_copy);
 
         log::info!("Removing empty objects from content...");
         content.remove_empty();
