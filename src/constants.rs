@@ -9,4 +9,4 @@ pub const UNSEEN_BLACKLISTED_ATTRIBUTES: [&str; 12] = [
     "aria-hidden", "size",
 ];
 
-pub const MAX_CONCURRENCY: usize = 1;
+pub const MAX_CONCURRENCY: usize = 5;

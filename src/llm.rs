@@ -4,9 +4,17 @@ use serde_json::json;
 use std::env;
 use sha2::{Sha256, Digest};
 use bincode::{serialize, deserialize};
+use std::sync::{Arc, OnceLock};
 
 use crate::node_data_structure::{NodeDataStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
+
+static DB: OnceLock<Arc<sled::Db>> = OnceLock::new();
+
+fn init_cache() -> Arc<sled::Db> {
+    let db = sled::open("debug/cache").expect("Could not open cache");
+    Arc::new(db)
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct LLMDataStructureResponse {
@@ -569,7 +577,7 @@ Examples(s) of the text node to be analyzed:
 }
 
 fn get_cached_response(key: String) -> Option<String> {
-    let db = sled::open("debug/cache").expect("Could not connect to cache");
+    let db = DB.get_or_init(init_cache);
     match db.get(key).expect("Could not get value from cache") {
         Some(data) => Some(deserialize(&data).expect("Could not deserialize data")),
         None => None,
@@ -577,7 +585,7 @@ fn get_cached_response(key: String) -> Option<String> {
 }
 
 fn set_cached_response(key: String, value: String) {
-    let db = sled::open("debug/cache").expect("Could not connect to cache");
+    let db = DB.get_or_init(init_cache);
     db.insert(key, serialize(&value).expect("Could not serialize data")).expect("Could not store value in cache");
 }
 
