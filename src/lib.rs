@@ -32,7 +32,10 @@ use xml_node::{XmlNode};
 use error::{Errors};
 use traversal::{Traversal};
 
-pub fn normalize(text: String) -> Result<String, Errors> {
+pub fn normalize(
+    text: String,
+    input_basis_graph: Option<Graph<BasisNode>>
+) -> Result<String, Errors> {
     log::trace!("In normalize");
 
     if text.trim().is_empty() {
@@ -44,7 +47,7 @@ pub fn normalize(text: String) -> Result<String, Errors> {
         if utility::is_valid_xml(&text) {
             log::info!("Document is valid XML");
 
-            let result = normalize_xml(&text).await?;
+            let result = normalize_xml(&text, input_basis_graph).await?;
 
             return Ok(result);
         }
@@ -52,7 +55,7 @@ pub fn normalize(text: String) -> Result<String, Errors> {
         if let Some(xml) = utility::string_to_xml(&text) {
             log::info!("Managed to convert string to XML");
 
-            let result = normalize_xml(&xml).await?;
+            let result = normalize_xml(&xml, input_basis_graph).await?;
 
             return Ok(result);
         }
@@ -77,10 +80,13 @@ pub fn normalize_file(file_name: &str) -> Result<String, Errors> {
         process::exit(1);
     });
 
-    normalize(document)
+    normalize(document, None)
 }
 
-pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
+pub async fn normalize_xml(
+    xml: &str,
+    input_basis_graph: Option<Graph<BasisNode>>
+) -> Result<String, Errors> {
     log::trace!("In normalize_xml");
 
     let xml = utility::preprocess_xml(xml);
@@ -89,7 +95,10 @@ pub async fn normalize_xml(xml: &str) -> Result<String, Errors> {
     let input_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
     let output_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
 
-    let basis_graph: Graph<BasisNode> = GraphNode::from_void();
+    let basis_graph: Graph<BasisNode> = match input_basis_graph {
+        Some(graph) => graph,
+        None => GraphNode::from_void(),
+    };
 
     absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
     log::info!("Done absorbing input tree into basis graph");

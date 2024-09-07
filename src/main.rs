@@ -59,7 +59,7 @@ fn main() {
         }
         None => {
             log::info!("File not provided");
-            parversion::normalize(document)
+            parversion::normalize(document, None)
         }
     };
 
