@@ -1,4 +1,5 @@
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Serializer, Deserialize};
+use serde_json::{json, to_string_pretty, Result as SerdeResult};
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
@@ -16,7 +17,7 @@ use crate::constants;
 use crate::macros::*;
 use crate::graph_node::analysis::*;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct GraphNode<T: GraphNodeData> {
     pub id: String,
     pub hash: String,
@@ -37,6 +38,42 @@ pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<XmlNode>>> {
     let xml = XmlNode::parse(&mut reader).expect("Could not parse XML");
 
     GraphNode::from_xml(&xml, Vec::new())
+}
+
+impl<T: GraphNodeData> GraphNode<T> {
+    pub fn serialize(&self) -> SerdeResult<String> {
+        let mut visited = HashSet::new();
+        let json_value = self.serialize_node(&mut visited)?;
+        to_string_pretty(&json_value)
+    }
+
+    fn serialize_node(&self, visited: &mut HashSet<String>) -> SerdeResult<serde_json::Value> {
+        if visited.contains(&self.id) {
+            return Ok(json!({"id": self.id, "hash": self.hash }));
+        }
+
+        visited.insert(self.id.clone());
+
+        let parents_json: SerdeResult<Vec<_>> = self
+            .parents
+            .iter()
+            .map(|parent| read_lock!(parent).serialize_node(visited))
+            .collect();
+
+        let children_json: SerdeResult<Vec<_>> = self
+            .children
+            .iter()
+            .map(|child| read_lock!(child).serialize_node(visited))
+            .collect();
+
+        Ok(json!({
+            "id": self.id,
+            "hash": self.hash,
+            "data": self.data.describe(),
+            "parents": parents_json?,
+            "children": children_json?,
+        }))
+    }
 }
 
 impl GraphNode<XmlNode> {

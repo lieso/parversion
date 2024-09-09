@@ -13,7 +13,7 @@ use crate::macros::*;
 use crate::node_data::{NodeData};
 use crate::node_data_structure::{NodeDataStructure};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Traversal {
     pub output_tree: Graph<XmlNode>,
     pub basis_graph: Option<Graph<BasisNode>>,
@@ -57,6 +57,7 @@ pub struct Content {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Output {
+    pub basis_graph: String,
     pub data: Content,
 }
 
@@ -64,7 +65,8 @@ pub struct Output {
 pub enum OutputFormats {
     JSON,
     //XML,
-    //CSV
+    //CSV,
+    //HTML
 }
 
 const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
@@ -459,7 +461,7 @@ impl Traversal {
 
         recurse(
             Arc::clone(&self.output_tree),
-            Arc::clone(&self.basis_graph.unwrap()),
+            Arc::clone(&self.basis_graph.clone().unwrap()),
             &mut content,
         );
 
@@ -470,7 +472,11 @@ impl Traversal {
         log::info!("Removing empty objects from content...");
         content.remove_empty();
 
+        let serialized_basis_graph = read_lock!(self.basis_graph.unwrap()).serialize()
+            .expect("Could not serialize basis graph");
+
         let output = Output {
+            basis_graph: serialized_basis_graph,
             data: content,
         };
 
