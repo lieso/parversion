@@ -52,7 +52,7 @@ fn main() {
              .help("Provide file as document for processing"))
         .get_matches();
 
-    let result = match matches.value_of("file") {
+    let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
             parversion::normalize_file(file_name)
@@ -63,8 +63,13 @@ fn main() {
         }
     };
 
-    if let Ok(result) = result {
-        println!("{}", result);
+    if let Ok(normalize_result) = normalize_result {
+        let serialized = parversion::serialize(
+            normalize_result.harvest, 
+            parversion::HarvestFormats::JSON
+        ).expect("Unable to serialize result");
+
+        println!("{}", serialized);
     } else {
         println!("An error occurred while processing document");
     }

@@ -56,20 +56,9 @@ pub struct Content {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Output {
-    pub basis_graph: String,
+pub struct Harvest {
     pub data: Content,
 }
-
-#[derive(Debug)]
-pub enum OutputFormats {
-    JSON,
-    //XML,
-    //CSV,
-    //HTML
-}
-
-const DEFAULT_OUTPUT_FORMAT: OutputFormats = OutputFormats::JSON;
 
 impl Content {
     pub fn remove_empty(&mut self) {
@@ -399,7 +388,7 @@ impl Traversal {
         self
     }
 
-    pub fn harvest(self) -> Result<String, Errors> {
+    pub fn harvest(self) -> Result<Harvest, Errors> {
         let mut content = Content {
             id: read_lock!(self.output_tree).id.clone(),
             meta: ContentMetadata {
@@ -472,25 +461,8 @@ impl Traversal {
         log::info!("Removing empty objects from content...");
         content.remove_empty();
 
-        let serialized_basis_graph = read_lock!(self.basis_graph.unwrap()).serialize()
-            .expect("Could not serialize basis graph");
-
-        let output = Output {
-            basis_graph: serialized_basis_graph,
+        Ok(Harvest {
             data: content,
-        };
-
-        let output_format = DEFAULT_OUTPUT_FORMAT;
-        log::debug!("output_format: {:?}", output_format);
-
-        match output_format {
-            OutputFormats::JSON => {
-                log::info!("Harvesting tree as JSON");
-
-                let serialized = serde_json::to_string(&output).expect("Could not serialize output to JSON");
-
-                Ok(serialized)
-            },
-        }
+        })
     }
 }

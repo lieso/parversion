@@ -30,12 +30,25 @@ use graph_node::{
 };
 use xml_node::{XmlNode};
 use error::{Errors};
-use traversal::{Traversal};
+use traversal::{Traversal, Harvest};
+
+#[derive(Debug)]
+pub enum HarvestFormats {
+    JSON,
+    //XML,
+    //CSV,
+    //HTML
+}
+
+pub struct NormalizeResult {
+    pub basis_graph: Graph<BasisNode>,
+    pub harvest: Harvest,
+}
 
 pub fn normalize(
     text: String,
     input_basis_graph: Option<Graph<BasisNode>>
-) -> Result<String, Errors> {
+) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize");
 
     if text.trim().is_empty() {
@@ -64,7 +77,7 @@ pub fn normalize(
     });
 }
 
-pub fn normalize_file(file_name: &str) -> Result<String, Errors> {
+pub fn normalize_file(file_name: &str) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
 
@@ -86,7 +99,7 @@ pub fn normalize_file(file_name: &str) -> Result<String, Errors> {
 pub async fn normalize_xml(
     xml: &str,
     input_basis_graph: Option<Graph<BasisNode>>
-) -> Result<String, Errors> {
+) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_xml");
 
     let xml = utility::preprocess_xml(xml);
@@ -118,7 +131,24 @@ pub async fn normalize_xml(
     log::info!("Done interpreting basis graph.");
     read_lock!(basis_graph).debug_visualize("basis_graph_interpreted");
 
-    Traversal::from_tree(Arc::clone(&output_tree))
+    let harvest = Traversal::from_tree(Arc::clone(&output_tree))
         .with_basis(Arc::clone(&basis_graph))
-        .harvest()
+        .harvest()?;
+
+    Ok(NormalizeResult {
+        basis_graph: basis_graph,
+        harvest: harvest,
+    })
+}
+
+pub fn serialize(harvest: Harvest, format: HarvestFormats) -> Result<String, Errors> {
+    match format {
+        HarvestFormats::JSON => {
+            log::info!("Serializing harvest as JSON");
+
+            let serialized = serde_json::to_string(&harvest).expect("Could not serialize output to JSON");
+
+            Ok(serialized)
+        },
+    }
 }
