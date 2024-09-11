@@ -25,13 +25,12 @@ mod graph_node;
 mod macros;
 mod traversal;
 
-use basis_node::{
-    BasisNode
-};
+pub use graph_node::GraphNodeData;
+pub use graph_node::GraphNode;
+pub use graph_node::Graph;
+pub use basis_node::BasisNode;
+
 use graph_node::{
-    GraphNode,
-    GraphNodeData,
-    Graph,
     absorb,
     cyclize,
     prune,
@@ -54,11 +53,11 @@ pub struct NormalizeResult {
     pub harvest: Harvest,
 }
 
-pub fn normalize(
+pub fn normalize_text(
     text: String,
     input_basis_graph: Option<Graph<BasisNode>>
 ) -> Result<NormalizeResult, Errors> {
-    log::trace!("In normalize");
+    log::trace!("In normalize_text");
 
     if text.trim().is_empty() {
         log::info!("Document not provided, aborting...");
@@ -102,7 +101,7 @@ pub fn normalize_file(file_name: &str) -> Result<NormalizeResult, Errors> {
         process::exit(1);
     });
 
-    normalize(document, None)
+    normalize_text(document, None)
 }
 
 pub async fn normalize_xml(
