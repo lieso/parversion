@@ -37,6 +37,18 @@ Node:   {}
         ));
     }
 
+    {
+        // When a basis graph has already been populated with interpreted nodes on a previous
+        // iteration, we are obviously unlikely to find this node again in the current output tree
+        // For now, let's check if the basis node has data on it and ignore such nodes
+        let basis_node = &read_lock!(target_node).data;
+
+        if !read_lock!(basis_node.data).is_empty() || !read_lock!(basis_node.structure).is_empty() {
+            log::info!("Basis node has already been interpreted, not proceeding any further.");
+            return;
+        }
+    }
+
     let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
         Arc::clone(&target_node),
         Arc::clone(&basis_root_node),
