@@ -81,7 +81,8 @@ fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Grap
         return true;
     } else {
         if homologous_nodes.is_empty() {
-            panic!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
+            log::warn!("There cannot be zero homologous nodes for any basis node with respect to output tree.");
+            return true;
         }
     }
 
