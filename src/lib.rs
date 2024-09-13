@@ -85,7 +85,10 @@ pub fn normalize_text(
     });
 }
 
-pub fn normalize_file(file_name: &str) -> Result<NormalizeResult, Errors> {
+pub fn normalize_file(
+    file_name: &str,
+    input_basis_graph: Option<Graph<BasisNode>>
+) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
 
@@ -101,7 +104,7 @@ pub fn normalize_file(file_name: &str) -> Result<NormalizeResult, Errors> {
         process::exit(1);
     });
 
-    normalize_text(document, None)
+    normalize_text(document, input_basis_graph)
 }
 
 pub async fn normalize_xml(

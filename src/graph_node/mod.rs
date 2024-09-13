@@ -1,5 +1,4 @@
-use serde::{Serialize, Serializer, Deserialize};
-use serde_json::{json, to_string_pretty, Result as SerdeResult};
+use serde::{Serialize, Deserialize};
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;

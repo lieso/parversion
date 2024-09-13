@@ -10,8 +10,6 @@ use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
 use crate::macros::*;
-use crate::node_data::{NodeData};
-use crate::node_data_structure::{NodeDataStructure};
 
 #[derive(Clone, Debug)]
 pub struct Traversal {

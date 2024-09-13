@@ -336,7 +336,7 @@ fn url_to_hash_parts(url: &str) -> Vec<String> {
 
     let mut output = Vec::new();
 
-    let path = parsed_url.path_segments().collect::<Vec<_>>().join("/");
+    let _path = parsed_url.path_segments().collect::<Vec<_>>().join("/");
     //output.push(path);
 
     if let Some(query) = parsed_url.query() {
