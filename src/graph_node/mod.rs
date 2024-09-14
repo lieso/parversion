@@ -215,6 +215,9 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
         node: Graph<T>,
         visited: &mut HashMap<String, Graph<T>>
     ) {
+        log::trace!("In dfs");
+        log::debug!("node: {}", read_lock!(node).data.describe());
+
         let node_id = read_lock!(node).id.clone();
         let node_hash = read_lock!(node).hash.clone();
 
