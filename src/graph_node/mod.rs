@@ -215,32 +215,86 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
         node: Graph<T>,
         visited: &mut HashMap<String, Graph<T>>
     ) {
-        let node_id = node.read().unwrap().id.clone();
-        let node_hash = node.read().unwrap().hash.clone();
+        let node_id = read_lock!(node).id.clone();
+        let node_hash = read_lock!(node).hash.clone();
 
         if let Some(first_occurrence) = visited.get(&node_hash) {
             log::info!("Detected cycle");
 
-            for parent in node.read().unwrap().parents.iter() {
-                let mut write_lock = parent.write().unwrap();
-                write_lock.children.retain(|child| child.read().unwrap().id != node_id);
+            let parents = {
+                let read_lock = read_lock!(node);
+                read_lock.parents.clone()
+            };
+
+            for parent in parents.iter() {
+                let children_to_retain: Vec<_> = {
+                    let read_lock = read_lock!(parent);
+                    read_lock.children
+                        .iter()
+                        .filter(|child| {
+                            let child_read = read_lock!(child);
+                            child_read.id != node_id
+                        })
+                        .cloned()
+                        .collect()
+                };
+
+                let mut write_lock = write_lock!(parent);
+                write_lock.children = children_to_retain;
                 write_lock.children.push(first_occurrence.clone());
             }
 
-            let children = node.write().unwrap().children.drain(..).collect::<Vec<_>>();
-            for child in children {
-                let mut write_lock = child.write().unwrap();
-                write_lock.parents.retain(|parent| parent.read().unwrap().id != node_id);
-                write_lock.parents.push(first_occurrence.clone());
 
-                first_occurrence.write().unwrap().children.push(child.clone());
+
+
+
+
+
+            let children = {
+                let read_lock = read_lock!(node);
+                read_lock.children.clone()
+            };
+            for child in children.iter() {
+                let child_clone = child.clone();
+
+                let parents_to_retain: Vec<_> = {
+                    let read_lock = read_lock!(child);
+                    read_lock.parents
+                        .iter()
+                        .filter(|parent| {
+                            let parent_read = read_lock!(parent);
+                            parent_read.id != node_id
+                        })
+                        .cloned()
+                        .collect()
+                };
+
+                {
+                    let mut write_lock = write_lock!(child);
+                    write_lock.parents = parents_to_retain;
+                    write_lock.parents.push(first_occurrence.clone());
+                }
+
+                {
+                    let mut write_lock = write_lock!(first_occurrence);
+                    write_lock.children.push(child_clone);
+                }
             }
+
+            //{
+            //    let mut write_lock = write_lock!(node);
+            //    write_lock.children = Vec::new();
+            //}
+
+
+
+
         } else {
             visited.insert(node_hash.clone(), Arc::clone(&node));
 
             let children: Vec<Graph<T>>;
             {
-                let read_lock = node.read().unwrap();
+                let read_lock = read_lock!(node);
                 children = read_lock.children.clone();
             }
 
