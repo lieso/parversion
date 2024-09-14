@@ -495,16 +495,41 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
     let discard_node = nodes.1;
 
     {
-        discard_node.write().unwrap().parents.clear();
+        write_lock!(discard_node).parents.clear();
     }
 
-    for child in discard_node.read().unwrap().children.iter() {
-        let mut write_lock = child.write().unwrap();
-        write_lock.parents.retain(|p| p.read().unwrap().id != discard_node.read().unwrap().id);
+    let discard_children: Vec<_> = {
+        let discard_read_guard = read_lock!(discard_node);
+        discard_read_guard.children.clone()
+    };
+
+    for child in discard_children {
+        let mut write_lock = write_lock!(child);
+
+        write_lock.parents.retain(|parent| {
+            read_lock!(parent).id != read_lock!(discard_node).id
+        });
         write_lock.parents.push(Arc::clone(&keep_node));
 
-        keep_node.write().unwrap().children.push(Arc::clone(child));
+        write_lock!(keep_node).children.push(Arc::clone(&child));
     }
 
-    parent.write().unwrap().children.retain(|child| child.read().unwrap().id != discard_node.read().unwrap().id);
+    let discard_node_id = {
+        let discard_read = read_lock!(discard_node);
+        discard_read.id.clone()
+    };
+
+    let children_to_retain: Vec<_> = {
+        let parent_read = read_lock!(parent);
+        parent_read.children
+            .iter()
+            .filter(|child| {
+                let child_read = read_lock!(child);
+                child_read.id != discard_node_id
+            })
+            .cloned()
+            .collect()
+    };
+
+    write_lock!(parent).children = children_to_retain;
 }
