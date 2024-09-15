@@ -215,9 +215,6 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
         node: Graph<T>,
         visited: &mut HashMap<String, Graph<T>>
     ) {
-        log::trace!("In dfs");
-        log::debug!("node: {}", read_lock!(node).data.describe());
-
         let node_id = read_lock!(node).id.clone();
         let node_hash = read_lock!(node).hash.clone();
 
@@ -246,12 +243,6 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
                 write_lock.children = children_to_retain;
                 write_lock.children.push(first_occurrence.clone());
             }
-
-
-
-
-
-
 
             let children = {
                 let read_lock = read_lock!(node);
@@ -284,14 +275,11 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
                 }
             }
 
-            //{
-            //    let mut write_lock = write_lock!(node);
-            //    write_lock.children = Vec::new();
-            //}
-
-
-
-
+            {
+                let mut write_lock = write_lock!(node);
+                write_lock.parents = Vec::new();
+                write_lock.children = Vec::new();
+            }
         } else {
             visited.insert(node_hash.clone(), Arc::clone(&node));
 
@@ -302,10 +290,12 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
             }
 
             for child in children.iter() {
-                dfs(
-                    child.clone(),
-                    visited,
-                );
+                if !visited.contains_key(&read_lock!(child).hash) {
+                    dfs(
+                        child.clone(),
+                        visited,
+                    );
+                }
             }
 
             visited.remove(&node_hash);
