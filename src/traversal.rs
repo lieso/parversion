@@ -100,6 +100,10 @@ fn organize_content(root: &mut Content, content: &Content) {
                 for child in &mut current.inner_content {
                     queue.push_back(child);
                 }
+
+                for child in &mut current.children {
+                    queue.push_back(child);
+                }
             }
         }
     }
