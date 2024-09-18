@@ -6,7 +6,7 @@ use log::LevelFilter;
 use env_logger::Builder;
 use std::fs::File;
 
-use parversion::{GraphNode, BasisNode, Graph};
+use parversion::{BasisGraph};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -33,7 +33,7 @@ fn init_logging() -> Builder {
     builder
 }
 
-fn load_basis_graph(file_name: &str) -> Result<Graph<BasisNode>, &str> {
+fn load_basis_graph(file_name: &str) -> Result<BasisGraph, &str> {
     let mut file = match File::open(file_name) {
         Ok(file) => file,
         Err(_e) => return Err("Could not open file"),
@@ -42,7 +42,7 @@ fn load_basis_graph(file_name: &str) -> Result<Graph<BasisNode>, &str> {
     let mut serialized = String::new();
     let _ = file.read_to_string(&mut serialized).map_err(|_e| "Could not read file to string");
 
-    GraphNode::deserialize(&serialized).map_err(|_e| "Could not deserialize basis graph")
+    serde_json::from_str::<BasisGraph>(&serialized).map_err(|_e| "Could not deserialize basis graph")
 }
 
 fn main() {
@@ -72,7 +72,7 @@ fn main() {
              .help("Provide basis graph "))
         .get_matches();
 
-    let basis_graph: Option<Graph<BasisNode>> = match matches.value_of("basis") {
+    let basis_graph: Option<BasisGraph> = match matches.value_of("basis") {
         Some(file_name) => {
             log::debug!("basis graph file name: {}", file_name);
             let basis_graph = load_basis_graph(file_name).expect("Could not load basis graph from filesystem");

@@ -10,11 +10,12 @@ use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
 use crate::macros::*;
+use crate::basis_graph::{BasisGraph};
 
 #[derive(Clone, Debug)]
 pub struct Traversal {
     pub output_tree: Graph<XmlNode>,
-    pub basis_graph: Option<Graph<BasisNode>>,
+    pub basis_graph: Option<BasisGraph>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -384,8 +385,8 @@ impl Traversal {
         }
     }
 
-    pub fn with_basis(mut self, graph: Graph<BasisNode>) -> Self {
-        self.basis_graph = Some(Arc::clone(&graph));
+    pub fn with_basis(mut self, graph: BasisGraph) -> Self {
+        self.basis_graph = Some(graph);
 
         self
     }
@@ -452,7 +453,7 @@ impl Traversal {
 
         recurse(
             Arc::clone(&self.output_tree),
-            Arc::clone(&self.basis_graph.clone().unwrap()),
+            Arc::clone(&self.basis_graph.clone().unwrap().root),
             &mut content,
         );
 

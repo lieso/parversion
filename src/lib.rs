@@ -24,17 +24,21 @@ mod basis_node;
 mod graph_node;
 mod macros;
 mod traversal;
+mod basis_graph;
 
 pub use graph_node::GraphNodeData;
 pub use graph_node::GraphNode;
 pub use graph_node::Graph;
 pub use basis_node::BasisNode;
+pub use basis_graph::BasisGraph;
 
 use graph_node::{
     absorb,
     cyclize,
     prune,
     interpret,
+    graph_hash,
+    deep_copy
 };
 use xml_node::{XmlNode};
 use error::{Errors};
@@ -49,13 +53,13 @@ pub enum HarvestFormats {
 }
 
 pub struct NormalizeResult {
-    pub basis_graph: Graph<BasisNode>,
+    pub basis_graph: BasisGraph,
     pub harvest: Harvest,
 }
 
 pub fn normalize_text(
     text: String,
-    input_basis_graph: Option<Graph<BasisNode>>
+    input_basis_graph: Option<BasisGraph>
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_text");
 
@@ -87,7 +91,7 @@ pub fn normalize_text(
 
 pub fn normalize_file(
     file_name: &str,
-    input_basis_graph: Option<Graph<BasisNode>>
+    input_basis_graph: Option<BasisGraph>
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
@@ -109,41 +113,67 @@ pub fn normalize_file(
 
 pub async fn normalize_xml(
     xml: &str,
-    input_basis_graph: Option<Graph<BasisNode>>
+    input_basis_graph: Option<BasisGraph>
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_xml");
 
     let xml = utility::preprocess_xml(xml);
     log::info!("Done preprocessing XML");
 
-    let input_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
+    let input_graph: Graph<XmlNode> = graph_node::build_graph(xml.clone());
     let output_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
 
-    let basis_graph: Graph<BasisNode> = match input_basis_graph {
-        Some(graph) => graph,
-        None => GraphNode::from_void(),
+    cyclize(Arc::clone(&input_graph));
+    log::info!("Done cyclizing input graph");
+
+    prune(Arc::clone(&input_graph));
+    log::info!("Done pruning input graph");
+
+    let subgraph_hash = graph_hash(Arc::clone(&input_graph));
+
+    let basis_graph = if let Some(previous_basis_graph) = input_basis_graph {
+        let basis_root: Graph<BasisNode> = previous_basis_graph.root;
+        let mut subgraph_hashes = previous_basis_graph.subgraph_hashes;
+
+        if !subgraph_hashes.contains(&subgraph_hash) {
+            absorb(Arc::clone(&basis_root), Arc::clone(&input_graph));
+
+            subgraph_hashes.push(subgraph_hash);
+
+            log::info!("Interpreting basis graph...");
+            interpret(Arc::clone(&basis_root), Arc::clone(&output_tree)).await;
+            log::info!("Done interpreting basis graph.");
+        }
+
+        BasisGraph {
+            root: basis_root,
+            subgraph_hashes: subgraph_hashes,
+        }
+    } else {
+        let copy: Graph<BasisNode> = deep_copy(
+            Arc::clone(&input_graph),
+            vec![GraphNode::from_void()]
+        );
+        let new_root: Graph<BasisNode> = GraphNode::from_void();
+        {
+            write_lock!(new_root).children.push(Arc::clone(&copy));
+        }
+        read_lock!(new_root).debug_visualize("new_root");
+
+        log::info!("Interpreting basis graph...");
+        interpret(Arc::clone(&new_root), Arc::clone(&output_tree)).await;
+        log::info!("Done interpreting basis graph.");
+
+        BasisGraph {
+            root: new_root,
+            subgraph_hashes: vec![subgraph_hash]
+        }
     };
 
-    absorb(Arc::clone(&basis_graph), Arc::clone(&input_tree));
-    log::info!("Done absorbing input tree into basis graph");
-    read_lock!(basis_graph).debug_visualize("basis_graph_absorbed");
-
-    cyclize(Arc::clone(&basis_graph));
-    log::info!("Done cyclizing basis graph");
-    read_lock!(basis_graph).debug_visualize("basis_graph_cyclized");
-
-    prune(Arc::clone(&basis_graph));
-    log::info!("Done pruning basis graph");
-    read_lock!(basis_graph).debug_visualize("basis_graph_pruned");
-    read_lock!(basis_graph).debug_statistics("basis_graph_pruned");
-
-    log::info!("Interpreting basis graph...");
-    interpret(Arc::clone(&basis_graph), Arc::clone(&output_tree)).await;
-    log::info!("Done interpreting basis graph.");
-    read_lock!(basis_graph).debug_visualize("basis_graph_interpreted");
+    read_lock!(basis_graph.root).debug_visualize("basis_graph_interpreted");
 
     let harvest = Traversal::from_tree(Arc::clone(&output_tree))
-        .with_basis(Arc::clone(&basis_graph))
+        .with_basis(basis_graph.clone())
         .harvest()?;
 
     Ok(NormalizeResult {
