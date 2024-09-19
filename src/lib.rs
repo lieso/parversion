@@ -130,12 +130,19 @@ pub async fn normalize_xml(
     log::info!("Done pruning input graph");
 
     let subgraph_hash = graph_hash(Arc::clone(&input_graph));
+    log::debug!("subgraph_hash: {}", subgraph_hash);
 
     let basis_graph = if let Some(previous_basis_graph) = input_basis_graph {
+        log::info!("Received a basis graph as input");
+
         let basis_root: Graph<BasisNode> = previous_basis_graph.root;
         let mut subgraph_hashes = previous_basis_graph.subgraph_hashes;
 
+        log::info!("previous subgraph hashes: {:?}", previous_basis_graph.subgraph_hashes);
+
         if !subgraph_hashes.contains(&subgraph_hash) {
+            log::info!("Input graph is not a subgraph of basis graph");
+
             absorb(Arc::clone(&basis_root), Arc::clone(&input_graph));
 
             subgraph_hashes.push(subgraph_hash);
@@ -150,6 +157,8 @@ pub async fn normalize_xml(
             subgraph_hashes: subgraph_hashes,
         }
     } else {
+        log::info!("Did not receive a basis graph as input");
+
         let copy: Graph<BasisNode> = deep_copy(
             Arc::clone(&input_graph),
             vec![GraphNode::from_void()]
