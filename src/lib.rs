@@ -138,7 +138,7 @@ pub async fn normalize_xml(
         let basis_root: Graph<BasisNode> = previous_basis_graph.root;
         let mut subgraph_hashes = previous_basis_graph.subgraph_hashes;
 
-        log::info!("previous subgraph hashes: {:?}", previous_basis_graph.subgraph_hashes);
+        log::info!("previous subgraph hashes: {:?}", subgraph_hashes);
 
         if !subgraph_hashes.contains(&subgraph_hash) {
             log::info!("Input graph is not a subgraph of basis graph");
