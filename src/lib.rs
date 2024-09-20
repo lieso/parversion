@@ -129,6 +129,8 @@ pub async fn normalize_xml(
     prune(Arc::clone(&input_graph));
     log::info!("Done pruning input graph");
 
+    read_lock!(input_graph).debug_statistics("pruned_input_graph");
+
     let subgraph_hash = graph_hash(Arc::clone(&input_graph));
     log::debug!("subgraph_hash: {}", subgraph_hash);
 
