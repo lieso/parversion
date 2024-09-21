@@ -147,8 +147,6 @@ pub async fn normalize_xml(
     let subgraph_hash = graph_hash(Arc::clone(&input_graph));
     log::debug!("subgraph_hash: {}", subgraph_hash);
 
-    panic!("test");
-
     let basis_graph = if let Some(previous_basis_graph) = input_basis_graph {
         log::info!("Received a basis graph as input");
 
