@@ -290,12 +290,10 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
             }
 
             for child in children.iter() {
-                if !visited.contains_key(&read_lock!(child).hash) {
-                    dfs(
-                        child.clone(),
-                        visited,
-                    );
-                }
+                dfs(
+                    child.clone(),
+                    visited,
+                );
             }
 
             visited.remove(&node_hash);
@@ -559,6 +557,36 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
         write_lock.parents.push(Arc::clone(&keep_node));
 
         write_lock!(keep_node).children.push(Arc::clone(&child));
+
+
+
+
+
+        // Removing duplicate parents in child's parent list
+        let mut new_parents = Vec::new();
+        for parent in &write_lock.parents {
+            if !new_parents.iter().any(|existing| Arc::ptr_eq(existing, parent)) {
+                new_parents.push(Arc::clone(parent));
+            }
+        }
+        write_lock.parents = new_parents;
+
+
+
+        // Removing duplicate children in keep_node's children list
+        {
+             let mut keep_node_write = write_lock!(keep_node);
+             let mut new_children = Vec::new();
+             for child in &keep_node_write.children {
+                 if !new_children.iter().any(|existing| Arc::ptr_eq(existing, child)) {
+                     new_children.push(Arc::clone(child));
+                 }
+             }
+             keep_node_write.children = new_children;
+         }
+
+
+
     }
 
     let discard_node_id = {
