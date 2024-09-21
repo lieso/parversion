@@ -176,7 +176,9 @@ pub async fn normalize_xml(
 
         let copy: Graph<BasisNode> = deep_copy(
             Arc::clone(&input_graph),
-            vec![GraphNode::from_void()]
+            vec![GraphNode::from_void()],
+            &mut HashSet::new(),
+            &mut HashMap::new()
         );
         let new_root: Graph<BasisNode> = GraphNode::from_void();
         {

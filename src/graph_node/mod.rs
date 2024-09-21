@@ -130,10 +130,19 @@ pub fn graph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
     compute_hash(graph, &mut visited)
 }
 
-pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(graph: Graph<U>, parents: Vec<Graph<T>>) -> Graph<T> where T: GraphNodeData {
+pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(
+    graph: Graph<U>,
+    parents: Vec<Graph<T>>,
+    visited: &mut HashSet<String>,
+    copies: &mut HashMap<String, Graph<T>>
+) -> Graph<T> where T: GraphNodeData {
     log::trace!("In deep_copy");
 
-    let guard = graph.read().unwrap();
+    let guard = read_lock!(graph);
+
+    if let Some(copy) = copies.get(&guard.id) {
+        return copy.clone();
+    }
 
     let new_node = Arc::new(RwLock::new(GraphNode {
         id: guard.id.clone(),
@@ -143,12 +152,27 @@ pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(graph: Graph<U>, parents: V
         data: T::new(guard.data.describe()),
     }));
 
+    copies.insert(guard.id.clone(), new_node.clone());
+    visited.insert(guard.id.clone());
+
     {
         let children: Vec<Graph<T>> = guard.children.iter()
-            .map(|child| deep_copy(child.clone(), vec![new_node.clone()]))
-            .collect();
-        let mut node_write_lock = new_node.write().unwrap();
-        node_write_lock.children.extend(children);
+            .filter_map(|child| {
+                if !visited.contains(&read_lock!(child).id) {
+                    Some(deep_copy(
+                            child.clone(),
+                            vec![new_node.clone()],
+                            visited,
+                            copies
+                    ))
+                } else {
+                    None
+                }
+            })
+        .collect();
+
+        let mut write_lock = write_lock!(new_node);
+        write_lock.children.extend(children);
     }
 
     new_node
@@ -183,7 +207,12 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Gr
     } else {
         log::trace!("Donor and recipient subgraphs incompatible. Adopting donor node...");
 
-        let copied = deep_copy::<T, U>(donor, vec![recipient.clone()]);
+        let copied = deep_copy::<T, U>(
+            donor,
+            vec![recipient.clone()],
+            &mut HashSet::new(),
+            &mut HashMap::new()
+        );
         recipient.write().unwrap().children.push(copied.clone());
     }
 }
@@ -560,7 +589,8 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
 
 
 
-
+        // ***********************************************************
+        // TODO: prevent duplicates from being added in first place
 
         // Removing duplicate parents in child's parent list
         let mut new_parents = Vec::new();
@@ -570,8 +600,6 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
             }
         }
         write_lock.parents = new_parents;
-
-
 
         // Removing duplicate children in keep_node's children list
         {
@@ -585,7 +613,7 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
              keep_node_write.children = new_children;
          }
 
-
+        // ***********************************************************
 
     }
 
