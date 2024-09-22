@@ -98,7 +98,9 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     let mut root = Element::parse(xml_string.as_bytes()).expect("Unable to parse XML");
 
     fn remove_attributes(element: &mut Element) {
-        element.attributes.retain(|attr, _| !constants::UNSEEN_BLACKLISTED_ATTRIBUTES.contains(&attr.as_str()));
+        element.attributes.retain(|attr, _| {
+            !constants::UNSEEN_BLACKLISTED_ATTRIBUTES.contains(&attr.as_str())
+        });
 
         for child in &mut element.children {
             if let xmltree::XMLNode::Element(ref mut el) = child {
@@ -107,6 +109,23 @@ pub fn preprocess_xml(xml_string: &str) -> String {
         }
     }
 
+    fn remove_elements(element: &mut Element) {
+        element.children.retain(|child| {
+            if let xmltree::XMLNode::Element(ref el) = child {
+                !constants::UNSEEN_BLACKLISTED_ELEMENTS.contains(&el.name.as_str())
+            } else {
+                true
+            }
+        });
+
+        for child in &mut element.children {
+            if let xmltree::XMLNode::Element(ref mut el) = child {
+                remove_elements(el);
+            }
+        }
+    }
+
+    remove_elements(&mut root);
     remove_attributes(&mut root);
 
     let mut buffer = Cursor::new(Vec::new());

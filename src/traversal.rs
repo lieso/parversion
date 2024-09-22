@@ -310,8 +310,6 @@ Node:   {}
                                             break;
                                         }
 
-                                        log::debug!("sibling: {}", read_lock!(sibling).data.describe());
-
 
                                         bft(Arc::clone(&sibling), &mut |inner_node: Graph<XmlNode>| {
 
