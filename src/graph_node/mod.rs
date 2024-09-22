@@ -158,16 +158,12 @@ pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(
     {
         let children: Vec<Graph<T>> = guard.children.iter()
             .filter_map(|child| {
-                if !visited.contains(&read_lock!(child).id) {
-                    Some(deep_copy(
-                            child.clone(),
-                            vec![new_node.clone()],
-                            visited,
-                            copies
-                    ))
-                } else {
-                    None
-                }
+                Some(deep_copy(
+                        child.clone(),
+                        vec![new_node.clone()],
+                        visited,
+                        copies
+                ))
             })
         .collect();
 
