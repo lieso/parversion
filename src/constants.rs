@@ -9,7 +9,7 @@ pub const UNSEEN_BLACKLISTED_ATTRIBUTES: [&str; 14] = [
     "aria-hidden", "size", "op", "lang"
 ];
 
-pub const UNSEEN_BLACKLISTED_ELEMENTS: [&str; 3] = [
+pub const UNSEEN_BLACKLISTED_ELEMENTS: [&str; 4] = [
     "script", "meta", "link", "iframe"
 ];
 

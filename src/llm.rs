@@ -32,6 +32,8 @@ struct LLMElementDataResponse {
     name: String,
     #[serde(default)]
     is_page_link: bool,
+    is_peripheral_content: bool,
+    is_advertisement: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -39,6 +41,8 @@ struct LLMTextDataResponse {
     name: String,
     is_presentational: bool,
     is_primary_content: bool,
+    is_peripheral_content: bool,
+    is_advertisement: bool,
 }
 
 fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
@@ -198,6 +202,8 @@ An example of how to perform this task would be to give the name 'timestamp' to 
 
 Provide the following information in your response:
 • name: A generic name in snake case that could be used to represent title values programmatically.
+3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
+4. is_advertisement: Indicates if the value is an advertisement.
 
 ---
 "##);
@@ -225,7 +231,9 @@ Example(s) of the element node:
             name: response.name.clone(),
             element: Some(ElementData {
                 attribute: "title".to_string(),
-                is_page_link: false
+                is_page_link: false,
+                is_peripheral_content: response.is_peripheral_content.clone(),
+                is_advertisement: response.is_advertisement.clone(),
             }),
             text: None,
         };
@@ -257,9 +265,15 @@ Example(s) of the element node:
                     "properties": {
                         "name": {
                             "type": "string"
+                        },
+                        "is_peripheral_content": {
+                            "type": "boolean"
+                        },
+                        "is_advertisement": {
+                            "type": "boolean"
                         }
                     },
-                    "required": ["name"],
+                    "required": ["name", "is_peripheral_content", "is_advertisement"],
                     "additionalProperties": false
                 },
             },
@@ -292,7 +306,9 @@ Example(s) of the element node:
         name: response.name.clone(),
         element: Some(ElementData {
             attribute: "title".to_string(),
-            is_page_link: false
+            is_page_link: false,
+            is_peripheral_content: response.is_peripheral_content.clone(),
+            is_advertisement: response.is_advertisement.clone(),
         }),
         text: None,
     }
@@ -312,8 +328,10 @@ At least one example of the target node will be provided, along with some surrou
 An example of how to perform this task would be to give the name 'profile_url' to an href when all examples of it appear to be a link to the profile page of a user account.
 
 Provide the following information in your response:
-• name: A generic name in snake case that could be used to represent href values programmatically.
-• is_page_link: Indicate whether these href(s) likely just point to a new page or if they are for performing some sort of action or mutation. An example of a page link is a link to a another page in a website where more content is consumed such as visiting an 'about' page from the landing page. Action/mutation href likely require a login and change something about the state of an item on the website.
+1. name: A generic name in snake case that could be used to represent href values programmatically.
+2. is_page_link: Indicate whether these href(s) likely just point to a new page or if they are for performing some sort of action or mutation. An example of a page link is a link to a another page in a website where more content is consumed such as visiting an 'about' page from the landing page. Action/mutation href likely require a login and change something about the state of an item on the website.
+3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
+4. is_advertisement: Indicates if the value is an advertisement.
 
 ---
 "##);
@@ -342,6 +360,8 @@ Example(s) of the element node:
             element: Some(ElementData {
                 attribute: "href".to_string(),
                 is_page_link: response.is_page_link.clone(),
+                is_peripheral_content: response.is_peripheral_content.clone(),
+                is_advertisement: response.is_advertisement.clone(),
             }),
             text: None,
         };
@@ -376,9 +396,15 @@ Example(s) of the element node:
                         },
                         "is_page_link": {
                             "type": "boolean"
+                        },
+                        "is_peripheral_content": {
+                            "type": "boolean"
+                        },
+                        "is_advertisement": {
+                            "type": "boolean"
                         }
                     },
-                    "required": ["name", "is_page_link"],
+                    "required": ["name", "is_page_link", "is_peripheral_content", "is_advertisement"],
                     "additionalProperties": false
                 },
             },
@@ -412,6 +438,8 @@ Example(s) of the element node:
         element: Some(ElementData {
             attribute: "href".to_string(),
             is_page_link: response.is_page_link.clone(),
+            is_peripheral_content: response.is_peripheral_content.clone(),
+            is_advertisement: response.is_advertisement.clone(),
         }),
         text: None,
     }
@@ -473,6 +501,8 @@ An example of how to perform this task would be to give the name 'comment_text' 
 Additionally, provide this metadata in your JSON response:
 1. is_presentational: Indicates if the text primarily serves a visual or structural role without adding meaningful data context. For example, if a text node is used to delineate other HTML nodes, it is presentational, but if a text node contains meaningful natural language meant for people to read, it is not presentational.
 2. is_primary_content: Primary content is the main information or core purpose of a web page, often the reason users visit the site and includes closely-related metadata. Headings, article text would be examples of primary content. Various links to unrelated  or vaguely-related pages would be examples of non-primary content.
+3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
+4. is_advertisement: Indicates if the text is an advertisement.
 "##);
     let user_prompt = format!(r##"
 Examples(s) of the text node to be analyzed:
@@ -499,6 +529,8 @@ Examples(s) of the text node to be analyzed:
             text: Some(TextData {
                 is_presentational: llm_text_data_response.is_presentational.clone(),
                 is_primary_content: llm_text_data_response.is_primary_content.clone(),
+                is_peripheral_content: llm_text_data_response.is_peripheral_content.clone(),
+                is_advertisement: llm_text_data_response.is_advertisement.clone(),
             }),
         };
     }
@@ -535,9 +567,15 @@ Examples(s) of the text node to be analyzed:
                         },
                         "is_primary_content": {
                             "type": "boolean"
+                        },
+                        "is_peripheral_content": {
+                            "type": "boolean"
+                        },
+                        "is_advertisement": {
+                            "type": "boolean"
                         }
                     },
-                    "required": ["name", "is_presentational", "is_primary_content"],
+                    "required": ["name", "is_presentational", "is_primary_content", "is_peripheral_content", "is_advertisement"],
                     "additionalProperties": false
                 }
             }
@@ -572,6 +610,8 @@ Examples(s) of the text node to be analyzed:
         text: Some(TextData {
             is_presentational: llm_text_data_response.is_presentational.clone(),
             is_primary_content: llm_text_data_response.is_primary_content.clone(),
+            is_peripheral_content: llm_text_data_response.is_peripheral_content.clone(),
+            is_advertisement: llm_text_data_response.is_advertisement.clone(),
         }),
     }
 }

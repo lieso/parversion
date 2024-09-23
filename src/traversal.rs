@@ -56,7 +56,8 @@ pub struct Content {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Harvest {
-    pub data: Content,
+    pub content: Content,
+    pub related_content: Content,
 }
 
 impl Content {
@@ -132,6 +133,7 @@ fn process_node(
     output_node: Graph<XmlNode>,
     basis_graph: Graph<BasisNode>,
     content: &mut Content,
+    related_content: &mut Content,
 ) {
     log::trace!("In process_node");
 
@@ -178,6 +180,8 @@ Node:   {}
             return;
         }
     }
+    
+
 
 
 
@@ -191,24 +195,45 @@ Node:   {}
         }
 
         if let Some(element_data) = &node_data.element {
-            if element_data.attribute == "href" && !element_data.is_page_link {
-                log::info!("Discarding href action link...");
-                continue;
+            if element_data.attribute == "href" {
+                if !element_data.is_page_link {
+                    log::info!("Discarding href action link...");
+                    continue;
+                }
             }
+        }
+
+        let is_advertisement = {
+            node_data.clone().text.map_or(false, |text| text.is_advertisement) ||
+            node_data.clone().element.map_or(false, |element| element.is_advertisement)
+        };
+        if is_advertisement {
+            log::info!("Discarding advertisement");
+            continue;
         }
 
         let content_value = ContentValue {
             name: node_data.name.clone(),
             value: node_data.value(&output_node_xml),
             meta: ContentValueMetadata {
-                is_primary_content: node_data.clone().text.map_or(false, |text| text.is_primary_content),
+                is_primary_content: node_data.text.clone().map_or(false, |text| text.is_primary_content),
                 is_url: node_data.element.clone().map_or(false, |element| {
                     element.attribute == "href"
                 })
             },
         };
 
-        content.values.push(content_value);
+        let is_peripheral = {
+            node_data.clone().text.map_or(false, |text| text.is_peripheral_content) ||
+            node_data.clone().element.map_or(false, |element| element.is_peripheral_content)
+        };
+        log::debug!("is_peripheral: {}", is_peripheral);
+
+        if is_peripheral {
+            related_content.values.push(content_value);
+        } else {
+            content.values.push(content_value);
+        }
     }
 
 
@@ -249,7 +274,8 @@ Node:   {}
                                 parent_id: None,
                             };
                             
-                            content.meta.recursive = Some(meta);
+                            content.meta.recursive = Some(meta.clone());
+                            related_content.meta.recursive = Some(meta.clone());
                         } else {
                             log::info!("Detected recursive non-root node");
                             let parent_node_attribute_value = &structure.parent_node_attribute_value.clone().unwrap();
@@ -328,7 +354,8 @@ Node:   {}
                                                         parent_id: Some(read_lock!(sibling).id.clone()),
                                                     };
 
-                                                    content.meta.recursive = Some(meta);
+                                                    content.meta.recursive = Some(meta.clone());
+                                                    related_content.meta.recursive = Some(meta.clone());
 
                                                     
                                                     found_target = true;
@@ -399,11 +426,21 @@ impl Traversal {
             inner_content: Vec::new(),
             children: Vec::new(),
         };
+        let mut related_content = Content {
+            id: read_lock!(self.output_tree).id.clone(),
+            meta: ContentMetadata {
+                recursive: None,
+            },
+            values: Vec::new(),
+            inner_content: Vec::new(),
+            children: Vec::new(),
+        };
 
         fn recurse(
             mut output_node: Graph<XmlNode>,
             basis_graph: Graph<BasisNode>,
             output_content: &mut Content,
+            output_related_content: &mut Content,
         ) {
             if read_lock!(output_node).is_linear_tail() {
                 panic!("Did not expect to encounter node in linear tail");
@@ -413,7 +450,7 @@ impl Traversal {
                 log::info!("Output node is head of linear sequence of nodes");
 
                 while read_lock!(output_node).is_linear() {
-                    process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content);
+                    process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
 
                     output_node = {
                         let next_node = read_lock!(output_node).children.first().expect("Linear output node has no children").clone();
@@ -421,15 +458,24 @@ impl Traversal {
                     };
                 }
 
-                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content);
+                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
             } else {
                 log::info!("Output node is non-linear");
 
-                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content);
+                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
             }
 
             for child in read_lock!(output_node).children.iter() {
                 let mut child_content = Content {
+                    id: read_lock!(child).id.clone(),
+                    meta: ContentMetadata {
+                        recursive: None,
+                    },
+                    values: Vec::new(),
+                    inner_content: Vec::new(),
+                    children: Vec::new(),
+                };
+                let mut child_related_content = Content {
                     id: read_lock!(child).id.clone(),
                     meta: ContentMetadata {
                         recursive: None,
@@ -443,9 +489,11 @@ impl Traversal {
                     Arc::clone(child),
                     Arc::clone(&basis_graph),
                     &mut child_content,
+                    &mut child_related_content,
                 );
 
                 output_content.inner_content.push(child_content);
+                output_related_content.inner_content.push(child_related_content);
             }
         }
 
@@ -453,17 +501,26 @@ impl Traversal {
             Arc::clone(&self.output_tree),
             Arc::clone(&self.basis_graph.clone().unwrap().root),
             &mut content,
+            &mut related_content,
         );
 
-        log::info!("Organising...");
+        log::info!("Organising content...");
         let content_copy = content.clone();
         organize_content(&mut content, &content_copy);
+
+        log::info!("Organising related content...");
+        let related_content_copy = related_content.clone();
+        organize_content(&mut related_content, &related_content_copy);
 
         log::info!("Removing empty objects from content...");
         content.remove_empty();
 
+        log::info!("Removing empty objects from related content...");
+        related_content.remove_empty();
+
         Ok(Harvest {
-            data: content,
+            content: content,
+            related_content: related_content,
         })
     }
 }
