@@ -10,7 +10,7 @@ pub const UNSEEN_BLACKLISTED_ATTRIBUTES: [&str; 14] = [
 ];
 
 pub const UNSEEN_BLACKLISTED_ELEMENTS: [&str; 3] = [
-    "script", "meta", "link"
+    "script", "meta", "link", "iframe"
 ];
 
 pub const MAX_CONCURRENCY: usize = 5;

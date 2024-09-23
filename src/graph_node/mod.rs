@@ -342,11 +342,7 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
 
     bft(Arc::clone(&graph), &mut |parent: Graph<T>| {
         loop {
-            let children: Vec<Graph<T>>;
-            {
-                let read_lock = parent.read().unwrap();
-                children = read_lock.children.clone();
-            }
+            let children: Vec<Graph<T>> = read_lock!(parent).children.clone();
 
             let maybe_twins: Option<(Graph<T>, Graph<T>)> = children
                 .iter()
