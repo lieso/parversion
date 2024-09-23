@@ -9,8 +9,8 @@ pub const UNSEEN_BLACKLISTED_ATTRIBUTES: [&str; 14] = [
     "aria-hidden", "size", "op", "lang"
 ];
 
-pub const UNSEEN_BLACKLISTED_ELEMENTS: [&str; 5] = [
-    "script", "meta", "link", "iframe", "svg"
+pub const UNSEEN_BLACKLISTED_ELEMENTS: [&str; 6] = [
+    "script", "meta", "link", "iframe", "svg", "style"
 ];
 
 pub const MAX_CONCURRENCY: usize = 5;

@@ -134,5 +134,7 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     let buf = buffer.into_inner();
     let as_string = from_utf8(&buf).expect("Found invalid UTF-8");
 
+    log::debug!("preprocessed_xml: {}", as_string);
+
     return as_string.to_string();
 }
