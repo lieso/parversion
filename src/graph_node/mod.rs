@@ -564,6 +564,11 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
         write_lock!(discard_node).parents.clear();
     }
 
+    let discard_node_id = {
+        let discard_read = read_lock!(discard_node);
+        discard_read.id.clone()
+    };
+
     let discard_children: Vec<_> = {
         let discard_read_guard = read_lock!(discard_node);
         discard_read_guard.children.clone()
@@ -573,7 +578,7 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
         let mut write_lock = write_lock!(child);
 
         write_lock.parents.retain(|parent| {
-            read_lock!(parent).id != read_lock!(discard_node).id
+            read_lock!(parent).id != discard_node_id
         });
         write_lock.parents.push(Arc::clone(&keep_node));
 
