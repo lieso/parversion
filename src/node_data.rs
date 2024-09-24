@@ -13,6 +13,7 @@ pub struct ElementData {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TextData {
     pub is_presentational: bool,
+    pub is_title: bool,
     pub is_primary_content: bool,
     pub is_peripheral_content: bool,
     pub is_advertisement: bool,

@@ -43,6 +43,7 @@ struct LLMTextDataResponse {
     is_primary_content: bool,
     is_peripheral_content: bool,
     is_advertisement: bool,
+    is_title: bool,
 }
 
 fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
@@ -503,6 +504,7 @@ Additionally, provide this metadata in your JSON response:
 2. is_primary_content: Primary content is the main information or core purpose of a web page, often the reason users visit the site and includes closely-related metadata. Headings, article text would be examples of primary content. Various links to unrelated  or vaguely-related pages would be examples of non-primary content.
 3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
 4. is_advertisement: Indicates if the text is an advertisement.
+5. is_title: Despite how it currently gets rendered based on the HTML, does this text node fulfill the typical purpose of titles or headings? Is this text node a prominent focal point that draws the user's attention?
 "##);
     let user_prompt = format!(r##"
 Examples(s) of the text node to be analyzed:
@@ -531,6 +533,7 @@ Examples(s) of the text node to be analyzed:
                 is_primary_content: llm_text_data_response.is_primary_content.clone(),
                 is_peripheral_content: llm_text_data_response.is_peripheral_content.clone(),
                 is_advertisement: llm_text_data_response.is_advertisement.clone(),
+                is_title: llm_text_data_response.is_title.clone(),
             }),
         };
     }
@@ -573,9 +576,12 @@ Examples(s) of the text node to be analyzed:
                         },
                         "is_advertisement": {
                             "type": "boolean"
+                        },
+                        "is_title": {
+                            "type": "boolean"
                         }
                     },
-                    "required": ["name", "is_presentational", "is_primary_content", "is_peripheral_content", "is_advertisement"],
+                    "required": ["name", "is_presentational", "is_primary_content", "is_peripheral_content", "is_advertisement", "is_title"],
                     "additionalProperties": false
                 }
             }
@@ -612,6 +618,7 @@ Examples(s) of the text node to be analyzed:
             is_primary_content: llm_text_data_response.is_primary_content.clone(),
             is_peripheral_content: llm_text_data_response.is_peripheral_content.clone(),
             is_advertisement: llm_text_data_response.is_advertisement.clone(),
+            is_title: llm_text_data_response.is_title.clone(),
         }),
     }
 }

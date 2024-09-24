@@ -20,6 +20,7 @@ pub struct Traversal {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentValueMetadata {
+    pub is_title: bool,
     pub is_primary_content: bool,
     pub is_url: bool,
 }
@@ -216,6 +217,7 @@ Node:   {}
             name: node_data.name.clone(),
             value: node_data.value(&output_node_xml),
             meta: ContentValueMetadata {
+                is_title: node_data.text.clone().map_or(false, |text| text.is_title),
                 is_primary_content: node_data.text.clone().map_or(false, |text| text.is_primary_content),
                 is_url: node_data.element.clone().map_or(false, |element| {
                     element.attribute == "href"
