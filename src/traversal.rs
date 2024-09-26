@@ -4,6 +4,7 @@ use std::process::{Command, Stdio};
 use std::io::Write;
 use regex::Regex;
 use std::collections::{VecDeque};
+use uuid::Uuid;
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
 use crate::xml_node::{XmlNode};
@@ -70,6 +71,38 @@ impl Content {
 
     fn is_empty(&self) -> bool {
         self.values.is_empty() && self.inner_content.is_empty()
+    }
+
+    pub fn merge_content(&mut self) {
+        log::trace!("In merge_content");
+
+        self.inner_content.iter_mut().for_each(|child| child.merge_content());
+        self.children.iter_mut().for_each(|child| child.merge_content());
+
+        let merged_values: Vec<ContentValue> = self
+            .inner_content
+            .iter_mut()
+            .filter(|child| {
+                child.inner_content.is_empty() && child.meta.recursive.is_none()
+            })
+            .flat_map(|content| content.values.drain(..))
+            .collect();
+
+        self.inner_content.retain(|content| !content.inner_content.is_empty() || content.meta.recursive.is_some());
+
+        if !merged_values.is_empty() {
+            let merged_content = Content {
+                id: Uuid::new_v4().to_string(),
+                meta: ContentMetadata {
+                    recursive: None,
+                },
+                values: merged_values,
+                inner_content: Vec::new(),
+                children: Vec::new(),
+            };
+
+            self.inner_content.insert(0, merged_content);
+        }
     }
 }
 
@@ -294,7 +327,7 @@ Node:   {}
                                     .spawn()
                                     .expect("Failed to spawn awk process");
 
-                                let input_data = format!("{}", xml_value);
+                                let input_data = format!("\"{}\"", xml_value);
 
                                 log::debug!("input_data: {}", input_data);
 
@@ -519,6 +552,12 @@ impl Traversal {
 
         log::info!("Removing empty objects from related content...");
         related_content.remove_empty();
+
+        log::info!("Merging related content...");
+        related_content.merge_content();
+
+        log::info!("Merging content...");
+        content.merge_content();
 
         Ok(Harvest {
             content: content,
