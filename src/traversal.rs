@@ -145,6 +145,20 @@ fn organize_content(root: &mut Content, content: &Content) {
     }
 }
 
+fn postprocess_content(content: &mut Content) {
+    log::trace!("In postprocess_content");
+
+    log::info!("Organising content...");
+    let content_copy = content.clone();
+    organize_content(content, &content_copy);
+
+    log::info!("Removing empty objects from content...");
+    content.remove_empty();
+
+    log::info!("Merging content...");
+    content.merge_content();
+}
+
 
 
 
@@ -539,25 +553,8 @@ impl Traversal {
             &mut related_content,
         );
 
-        log::info!("Organising content...");
-        let content_copy = content.clone();
-        organize_content(&mut content, &content_copy);
-
-        log::info!("Organising related content...");
-        let related_content_copy = related_content.clone();
-        organize_content(&mut related_content, &related_content_copy);
-
-        log::info!("Removing empty objects from content...");
-        content.remove_empty();
-
-        log::info!("Removing empty objects from related content...");
-        related_content.remove_empty();
-
-        log::info!("Merging related content...");
-        related_content.merge_content();
-
-        log::info!("Merging content...");
-        content.merge_content();
+        postprocess_content(&mut content);
+        postprocess_content(&mut related_content);
 
         Ok(Harvest {
             content: content,
