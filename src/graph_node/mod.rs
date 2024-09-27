@@ -256,17 +256,16 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
                     let read_lock = read_lock!(parent);
                     read_lock.children
                         .iter()
-                        .filter(|child| {
-                            let child_read = read_lock!(child);
-                            child_read.id != node_id
-                        })
+                        .filter(|child| read_lock!(child).id != node_id)
                         .cloned()
                         .collect()
                 };
 
                 let mut write_lock = write_lock!(parent);
                 write_lock.children = children_to_retain;
-                write_lock.children.push(first_occurrence.clone());
+                if !write_lock.children.iter().any(|c| Arc::ptr_eq(c, first_occurrence)) {
+                    write_lock.children.push(first_occurrence.clone());
+                }
             }
 
             let children = {
@@ -280,10 +279,7 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
                     let read_lock = read_lock!(child);
                     read_lock.parents
                         .iter()
-                        .filter(|parent| {
-                            let parent_read = read_lock!(parent);
-                            parent_read.id != node_id
-                        })
+                        .filter(|parent| read_lock!(parent).id != node_id)
                         .cloned()
                         .collect()
                 };
@@ -291,12 +287,16 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
                 {
                     let mut write_lock = write_lock!(child);
                     write_lock.parents = parents_to_retain;
-                    write_lock.parents.push(first_occurrence.clone());
+                    if !write_lock.parents.iter().any(|p| Arc::ptr_eq(p, first_occurrence)) {
+                        write_lock.parents.push(first_occurrence.clone());
+                    }
                 }
 
                 {
                     let mut write_lock = write_lock!(first_occurrence);
-                    write_lock.children.push(child_clone);
+                    if !write_lock.children.iter().any(|c| Arc::ptr_eq(c, &child_clone)) {
+                        write_lock.children.push(child_clone);
+                    }
                 }
             }
 
@@ -580,26 +580,6 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
                 keep_node_write.children.push(Arc::clone(&child));
             }
         }
-
-
-
-        // ***********************************************************
-        // TODO: prevent duplicates from being added in first place
-
-        // Removing duplicate children in keep_node's children list
-        {
-             let mut keep_node_write = write_lock!(keep_node);
-             let mut new_children = Vec::new();
-             for child in &keep_node_write.children {
-                 if !new_children.iter().any(|existing| Arc::ptr_eq(existing, child)) {
-                     new_children.push(Arc::clone(child));
-                 }
-             }
-             keep_node_write.children = new_children;
-         }
-
-        // ***********************************************************
-
     }
 
     let children_to_retain: Vec<_> = {
