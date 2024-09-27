@@ -127,18 +127,6 @@ pub async fn normalize_xml(
     log::info!("Done cyclizing input graph");
 
     prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
     log::info!("Done pruning input graph");
 
     read_lock!(input_graph).debug_statistics("pruned_input_graph");

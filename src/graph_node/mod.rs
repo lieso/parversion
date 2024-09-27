@@ -337,10 +337,19 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
     fn is_twin<T: GraphNodeData>(a: Graph<T>, b: Graph<T>) -> bool {
         let a_rl = a.read().unwrap();
         let b_rl = b.read().unwrap();
+
         a_rl.id != b_rl.id && a_rl.hash == b_rl.hash
     }
 
-    bft(Arc::clone(&graph), &mut |parent: Graph<T>| {
+    let mut visited = HashSet::new();
+    let mut queue = VecDeque::new();
+    queue.push_back(graph);
+
+    while let Some(parent) = queue.pop_front() {
+        if !visited.insert(read_lock!(parent).id.clone()) {
+            continue;
+        }
+
         loop {
             let children: Vec<Graph<T>> = read_lock!(parent).children.clone();
 
@@ -356,13 +365,16 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
             if let Some(twins) = maybe_twins {
                 log::info!("Found two siblings nodes that are twins");
                 merge_nodes(Arc::clone(&parent), twins);
+                visited = HashSet::new(); // why?
             } else {
                 break;
             }
         }
 
-        true
-    });
+        for child in read_lock!(parent).children.iter() {
+            queue.push_back(child.clone());
+        }
+    }
 }
 
 pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
@@ -566,19 +578,17 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
     let discard_children: Vec<_> = read_lock!(discard_node).children.clone();
 
     for child in discard_children {
-        {
-            let mut child_write = write_lock!(child);
+        let mut child_write = write_lock!(child);
 
-            child_write.parents.retain(|p| !Arc::ptr_eq(p, &discard_node));
+        child_write.parents.retain(|p| !Arc::ptr_eq(p, &discard_node));
 
-            if !child_write.parents.iter().any(|p| Arc::ptr_eq(p, &keep_node)) {
-                child_write.parents.push(Arc::clone(&keep_node));
-            }
-            
-            let mut keep_node_write = write_lock!(keep_node);
-            if !keep_node_write.children.iter().any(|c| Arc::ptr_eq(c, &child)) {
-                keep_node_write.children.push(Arc::clone(&child));
-            }
+        if !child_write.parents.iter().any(|p| Arc::ptr_eq(p, &keep_node)) {
+            child_write.parents.push(Arc::clone(&keep_node));
+        }
+        
+        let mut keep_node_write = write_lock!(keep_node);
+        if !keep_node_write.children.iter().any(|c| Arc::ptr_eq(c, &child)) {
+            keep_node_write.children.push(Arc::clone(&child));
         }
     }
 
