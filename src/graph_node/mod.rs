@@ -560,43 +560,31 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
     let keep_node = nodes.0;
     let discard_node = nodes.1;
 
-    {
-        write_lock!(discard_node).parents.clear();
-    }
+    write_lock!(discard_node).parents.clear();
 
-    let discard_node_id = {
-        let discard_read = read_lock!(discard_node);
-        discard_read.id.clone()
-    };
-
-    let discard_children: Vec<_> = {
-        let discard_read_guard = read_lock!(discard_node);
-        discard_read_guard.children.clone()
-    };
+    let discard_node_id = read_lock!(discard_node).id.clone();
+    let discard_children: Vec<_> = read_lock!(discard_node).children.clone();
 
     for child in discard_children {
-        let mut write_lock = write_lock!(child);
+        {
+            let mut child_write = write_lock!(child);
 
-        write_lock.parents.retain(|parent| {
-            read_lock!(parent).id != discard_node_id
-        });
-        write_lock.parents.push(Arc::clone(&keep_node));
+            child_write.parents.retain(|p| !Arc::ptr_eq(p, &discard_node));
 
-        write_lock!(keep_node).children.push(Arc::clone(&child));
+            if !child_write.parents.iter().any(|p| Arc::ptr_eq(p, &keep_node)) {
+                child_write.parents.push(Arc::clone(&keep_node));
+            }
+            
+            let mut keep_node_write = write_lock!(keep_node);
+            if !keep_node_write.children.iter().any(|c| Arc::ptr_eq(c, &child)) {
+                keep_node_write.children.push(Arc::clone(&child));
+            }
+        }
 
 
 
         // ***********************************************************
         // TODO: prevent duplicates from being added in first place
-
-        // Removing duplicate parents in child's parent list
-        let mut new_parents = Vec::new();
-        for parent in &write_lock.parents {
-            if !new_parents.iter().any(|existing| Arc::ptr_eq(existing, parent)) {
-                new_parents.push(Arc::clone(parent));
-            }
-        }
-        write_lock.parents = new_parents;
 
         // Removing duplicate children in keep_node's children list
         {
@@ -614,19 +602,11 @@ fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) 
 
     }
 
-    let discard_node_id = {
-        let discard_read = read_lock!(discard_node);
-        discard_read.id.clone()
-    };
-
     let children_to_retain: Vec<_> = {
         let parent_read = read_lock!(parent);
         parent_read.children
             .iter()
-            .filter(|child| {
-                let child_read = read_lock!(child);
-                child_read.id != discard_node_id
-            })
+            .filter(|child| read_lock!(child).id != discard_node_id)
             .cloned()
             .collect()
     };
