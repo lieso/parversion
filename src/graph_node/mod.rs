@@ -178,13 +178,11 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Gr
     log::trace!("In absorb");
 
     let recipient_child = {
-        recipient
-            .read()
-            .unwrap()
+        read_lock!(recipient)
             .children
             .iter()
             .find(|item| {
-                item.read().unwrap().hash == donor.read().unwrap().hash
+                read_lock!(item).hash == read_lock!(donor).hash
             })
             .cloned()
     };
@@ -192,12 +190,12 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Gr
     if let Some(recipient_child) = recipient_child {
         log::trace!("Donor and recipient node have the same hash");
 
-        if graph_hash(recipient_child.clone()) != graph_hash(donor.clone()) {
+        if graph_hash(Arc::clone(&recipient_child)) != graph_hash(Arc::clone(&donor)) {
             log::trace!("Donor and recipient child have differing subgraph hashes");
-            let donor_children = donor.read().unwrap().children.clone();
+            let donor_children = read_lock!(donor).children.clone();
 
             for donor_child in donor_children.iter() {
-                absorb(recipient_child.clone(), donor_child.clone());
+                absorb(Arc::clone(&recipient_child), Arc::clone(&donor_child));
             }
         }
     } else {
@@ -205,11 +203,11 @@ pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Gr
 
         let copied = deep_copy::<T, U>(
             donor,
-            vec![recipient.clone()],
+            vec![Arc::clone(&recipient)],
             &mut HashSet::new(),
             &mut HashMap::new()
         );
-        recipient.write().unwrap().children.push(copied.clone());
+        write_lock!(recipient).children.push(copied.clone());
     }
 }
 
