@@ -1,17 +1,15 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
-use std::process::{Command, Stdio};
-use std::io::Write;
-use regex::Regex;
 use std::collections::{VecDeque};
 use uuid::Uuid;
 
-use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
+use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::error::{Errors};
 use crate::macros::*;
 use crate::basis_graph::{BasisGraph};
+use crate::node_data_structure::{apply_structure};
 
 #[derive(Clone, Debug)]
 pub struct Traversal {
@@ -159,24 +157,6 @@ fn postprocess_content(content: &mut Content) {
     content.merge_content();
 }
 
-
-
-
-
-fn sanitize_awk_expression(input: &str) -> Option<String> {
-    let re = Regex::new(r"^awk\s*'([^']*)'$").expect("Failed to create regex");
-
-    re.captures(input).and_then(|caps| {
-        caps.get(1).map(|matched_text| matched_text.as_str().to_string())
-    })
-}
-
-
-
-
-
-
-
 fn process_node(
     output_node: Graph<XmlNode>,
     basis_graph: Graph<BasisNode>,
@@ -285,169 +265,15 @@ Node:   {}
         }
     }
 
-
-
-
-
     let structures = read_lock!(basis_node).data.structure.clone();
     for structure in read_lock!(structures).iter() {
-
-
-
-
-
-
-
-
-
-
-
-
-        if let Some(recursive_attribute) = &structure.recursive_attribute {
-
-            if recursive_attribute.starts_with('@') {
-                let attribute = &recursive_attribute[1..];
-
-                bft(Arc::clone(&output_node), &mut |node: Graph<XmlNode>| {
-
-                    let xml = read_lock!(node).data.clone();
-
-                    if let Some(xml_value) = xml.get_attribute_value(attribute) {
-                        let root_node_attribute_values = &structure.root_node_attribute_values.clone().unwrap();
-
-                        if root_node_attribute_values.contains(&xml_value) {
-                            log::info!("Detected root node");
-
-                            let meta = ContentMetadataRecursive {
-                                is_root: true,
-                                parent_id: None,
-                            };
-                            
-                            content.meta.recursive = Some(meta.clone());
-                            related_content.meta.recursive = Some(meta.clone());
-                        } else {
-                            log::info!("Detected recursive non-root node");
-                            let parent_node_attribute_value = &structure.parent_node_attribute_value.clone().unwrap();
-
-                            log::debug!("parent_node_attribute_value: {}", parent_node_attribute_value);
-                            
-                            if let Some(awk_expression) = sanitize_awk_expression(&parent_node_attribute_value) {
-                                log::debug!("awk_expression: {}", awk_expression);
-
-                                let mut process = Command::new("awk")
-                                    .arg(awk_expression)
-                                    .stdin(Stdio::piped())
-                                    .stdout(Stdio::piped())
-                                    .spawn()
-                                    .expect("Failed to spawn awk process");
-
-                                let input_data = format!("\"{}\"", xml_value);
-
-                                log::debug!("input_data: {}", input_data);
-
-                                if let Some(mut stdin) = process.stdin.take() {
-                                    stdin.write_all(input_data.as_bytes()).expect("Failed to write to stdin");
-                                }
-
-                                let output = process
-                                    .wait_with_output()
-                                    .expect("Failed to read awk output");
-
-                                if output.status.success() {
-                                    let parent_node_recursive_attribute_value = String::from_utf8_lossy(&output.stdout);
-                                    log::debug!("parent_node_recursive_attribute_value: {}", parent_node_recursive_attribute_value);
-
-
-
-
-                                    let rl = read_lock!(output_node);
-                                    let output_node_parent = rl.parents.get(0).unwrap();
-
-
-                                    let mut siblings: Vec<Graph<XmlNode>> = Vec::new();
-                                    for sibling in read_lock!(output_node_parent).children.iter() {
-                                        if read_lock!(sibling).id == read_lock!(output_node).id {
-                                            break;
-                                        }
-
-                                        siblings.push(Arc::clone(&sibling));
-                                    }
-
-                                    siblings.reverse();
-
-
-
-
-                                    let mut found_target = false;
-                                    for sibling in siblings.iter() {
-
-                                        if found_target {
-                                            break;
-                                        }
-
-
-                                        bft(Arc::clone(&sibling), &mut |inner_node: Graph<XmlNode>| {
-
-                                            let inner_xml = read_lock!(inner_node).data.clone();
-
-                                            if !inner_xml.is_element() {
-                                                return true;
-                                            }
-
-                                            if let Some(inner_xml_value) = inner_xml.get_attribute_value(attribute) {
-                                                if inner_xml_value.to_string().trim() == parent_node_recursive_attribute_value.to_string().trim() {
-
-
-                                                    let meta = ContentMetadataRecursive {
-                                                        is_root: false,
-                                                        parent_id: Some(read_lock!(sibling).id.clone()),
-                                                    };
-
-                                                    content.meta.recursive = Some(meta.clone());
-                                                    related_content.meta.recursive = Some(meta.clone());
-
-                                                    
-                                                    found_target = true;
-
-                                                    return false;
-                                                }
-                                            }
-
-                                            true
-                                        });
-
-                                    }
-
-                                    
-
-
-
-
-
-
-
-
-                                } else {
-
-                                }
-
-                            }
-
-
-                        }
-
-
-                        return false;
-                    }
-
-                    true
-                });
-
-            }
-
-
-        }
-
+        let meta = apply_structure(
+            structure.clone(),
+            Arc::clone(&output_node),
+        );
+
+        content.meta = meta.clone();
+        related_content.meta = meta.clone();
     }
 }
 
