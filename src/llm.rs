@@ -23,8 +23,8 @@ struct LLMDataStructureResponse {
     root_node_attribute_values: Option<Vec<String>>,
     #[serde(deserialize_with = "empty_string_as_none")]
     parent_node_attribute_value: Option<String>,
-    #[serde(deserialize_with = "empty_string_as_none")]
-    next_item_xpath: Option<String>,
+    is_related_to_sibling: Option<bool>,
+    is_list_item: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -81,8 +81,9 @@ Determine if any of the following relationships apply to the element node I will
    • recursive_attribute: Provide XPath expression that selects the attribute that provides information about its recursive relationship to other such elements.
    • root_node_attribute_values: Provide possible values for recursive attributes that would signify that elements like this are root nodes.
    • parent_node_attribute_value: Provide an awk expression that would compute what the value of a recursive attribute would be for the parent node of a particular element if it is not a root node.
-2. Does the element represent an item in a meaningful list? If so, please provide the following:
-   • next_item_xpath: Provide complete and generic XPath expression that would select the next item in the list.
+2. Does the element represent a linear or direct relationship to other elements? If so, please provide the following: 
+   • is_related_to_sibling: Does the element relate to the element's subsequent sibling node in that they both represent the same type of content?
+   • is_list_item: Does the element represent an item in a larger list of items of closely-related content?
 "##);
     let user_prompt = format!(r##"
 Example(s) of the node to be analyzed:
@@ -107,7 +108,8 @@ Example(s) of the node to be analyzed:
             recursive_attribute: llm_data_structure_response.recursive_attribute,
             root_node_attribute_values: llm_data_structure_response.root_node_attribute_values,
             parent_node_attribute_value: llm_data_structure_response.parent_node_attribute_value,
-            next_item_xpath: llm_data_structure_response.next_item_xpath,
+            is_related_to_sibling: llm_data_structure_response.is_related_to_sibling,
+            is_list_item: llm_data_structure_response.is_list_item,
        };
     } 
 
@@ -147,11 +149,14 @@ Example(s) of the node to be analyzed:
                         "parent_node_attribute_value": {
                             "type": "string"
                         },
-                        "next_item_xpath": {
-                            "type": "string"
+                        "is_related_to_sibling": {
+                            "type": "boolean"
+                        },
+                        "is_list_item": {
+                            "type": "boolean"
                         }
                     },
-                    "required": ["recursive_attribute", "root_node_attribute_values", "parent_node_attribute_value", "next_item_xpath"],
+                    "required": ["recursive_attribute", "root_node_attribute_values", "parent_node_attribute_value", "is_related_to_sibling", "is_list_item"],
                     "additionalProperties": false
                 }
             }
@@ -184,7 +189,8 @@ Example(s) of the node to be analyzed:
         recursive_attribute: llm_data_structure_response.recursive_attribute,
         root_node_attribute_values: llm_data_structure_response.root_node_attribute_values,
         parent_node_attribute_value: llm_data_structure_response.parent_node_attribute_value,
-        next_item_xpath: llm_data_structure_response.next_item_xpath,
+        is_related_to_sibling: llm_data_structure_response.is_related_to_sibling,
+        is_list_item: llm_data_structure_response.is_list_item,
    }
 }
 

@@ -7,14 +7,15 @@ use std::io::Write;
 use crate::graph_node::{Graph, bft};
 use crate::xml_node::{XmlNode};
 use crate::macros::*;
-use crate::traversal::{ContentMetadataRecursive, ContentMetadata};
+use crate::content::{ContentMetadataRecursive, ContentMetadata};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeDataStructure {
     pub recursive_attribute: Option<String>,
     pub root_node_attribute_values: Option<Vec<String>>,
     pub parent_node_attribute_value: Option<String>,
-    pub next_item_xpath: Option<String>,
+    pub is_related_to_sibling: Option<bool>,
+    pub is_list_item: Option<bool>,
 }
 
 pub fn apply_structure(
@@ -43,6 +44,8 @@ pub fn apply_structure(
             Arc::clone(&output_node),
         );
     }
+
+    
 
     meta
 }
@@ -107,7 +110,6 @@ fn apply_recursive_structure(
 
             true
         });
-
     } else {
         log::warn!("Unexpected recursive attribute: {}", recursive_attribute);
     }

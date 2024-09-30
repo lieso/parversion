@@ -23,14 +23,21 @@ mod constants;
 mod basis_node;
 mod graph_node;
 mod macros;
-mod traversal;
 mod basis_graph;
+mod harvest;
+mod content;
 
 pub use graph_node::GraphNodeData;
 pub use graph_node::GraphNode;
 pub use graph_node::Graph;
 pub use basis_node::BasisNode;
 pub use basis_graph::BasisGraph;
+pub use content::{
+    Content,
+    ContentMetadata,
+    ContentValue,
+    ContentValueMetadata,
+};
 
 use graph_node::{
     absorb,
@@ -43,7 +50,7 @@ use graph_node::{
 };
 use xml_node::{XmlNode};
 use error::{Errors};
-use traversal::{Traversal, Harvest};
+use harvest::{harvest, Harvest};
 
 #[derive(Debug)]
 pub enum HarvestFormats {
@@ -196,11 +203,9 @@ pub async fn normalize_xml(
         }
     };
 
-    read_lock!(basis_graph.root).debug_visualize("basis_graph_interpreted");
-
-    let harvest = Traversal::from_tree(Arc::clone(&output_tree))
-        .with_basis(basis_graph.clone())
-        .harvest()?;
+    log::info!("Harvesting output tree..");
+    let harvest = harvest(Arc::clone(&output_tree), basis_graph.clone());
+    log::info!("Done harvesting output tree.");
 
     Ok(NormalizeResult {
         basis_graph: basis_graph,
