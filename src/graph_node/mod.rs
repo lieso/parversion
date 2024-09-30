@@ -39,6 +39,56 @@ pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<XmlNode>>> {
     GraphNode::from_xml(&xml, Vec::new())
 }
 
+pub fn to_xml_string(graph: Graph<XmlNode>) -> String {
+    let mut visited: HashSet<String> = HashSet::new();
+    let mut xml = String::new();
+
+    fn recurse(
+        node: Graph<XmlNode>,
+        xml: &mut String,
+        visited: &mut HashSet<String>,
+    ) {
+        let xml_node: &XmlNode = &read_lock!(node).data;
+
+        if visited.contains(&read_lock!(node).id) {
+            return;
+        }
+
+        if xml_node.is_element() {
+            let opening_tag = xml_node.get_opening_tag();
+            let closing_tag = xml_node.get_closing_tag();
+
+            xml.push_str(&opening_tag);
+
+            visited.insert(read_lock!(node).id.clone());
+
+            for child in read_lock!(node).children.iter() {
+                recurse(
+                    Arc::clone(&child),
+                    xml,
+                    visited,
+                );
+            }
+
+            visited.remove(&read_lock!(node).id);
+
+            xml.push_str(&closing_tag);
+        }
+
+        if let Some(text) = &xml_node.text {
+            xml.push_str(&text.clone());
+        }
+    }
+
+    recurse(
+        Arc::clone(&graph),
+        &mut xml,
+        &mut visited
+    );
+
+    xml
+}
+
 impl GraphNode<XmlNode> {
     fn from_xml(xml: &XmlNode, parents: Vec<Graph<XmlNode>>) -> Graph<XmlNode> {
         let node = Arc::new(RwLock::new(GraphNode {
@@ -329,10 +379,10 @@ pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
     );
 }
 
-pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
+pub fn prune(graph: Graph<XmlNode>) {
     log::trace!("In prune");
 
-    fn is_twin<T: GraphNodeData>(a: Graph<T>, b: Graph<T>) -> bool {
+    fn is_twin(a: Graph<XmlNode>, b: Graph<XmlNode>) -> bool {
         let a_rl = a.read().unwrap();
         let b_rl = b.read().unwrap();
 
@@ -348,10 +398,29 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
             continue;
         }
 
-        loop {
-            let children: Vec<Graph<T>> = read_lock!(parent).children.clone();
+        {
+            let children_to_retain: Vec<_> = {
+                let parent_read = read_lock!(parent);
+                parent_read.children
+                    .iter()
+                    .filter(|child| {
+                        if read_lock!(child).data.is_element() {
+                            return !read_lock!(child).children.is_empty();
+                        }
 
-            let maybe_twins: Option<(Graph<T>, Graph<T>)> = children
+                        true
+                    })
+                    .cloned()
+                    .collect()
+            };
+
+            write_lock!(parent).children = children_to_retain;
+        }
+
+        loop {
+            let children: Vec<Graph<XmlNode>> = read_lock!(parent).children.clone();
+
+            let maybe_twins: Option<(Graph<XmlNode>, Graph<XmlNode>)> = children
                 .iter()
                 .find_map(|child| {
                     children
@@ -363,7 +432,7 @@ pub fn prune<T: GraphNodeData>(graph: Graph<T>) {
             if let Some(twins) = maybe_twins {
                 log::info!("Found two siblings nodes that are twins");
                 merge_nodes(Arc::clone(&parent), twins);
-                visited = HashSet::new(); // why?
+                //visited = HashSet::new(); // why?
             } else {
                 break;
             }

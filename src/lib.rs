@@ -38,7 +38,8 @@ use graph_node::{
     prune,
     interpret,
     graph_hash,
-    deep_copy
+    deep_copy,
+    to_xml_string
 };
 use xml_node::{XmlNode};
 use error::{Errors};
@@ -127,6 +128,14 @@ pub async fn normalize_xml(
     log::info!("Done cyclizing input graph");
 
     prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
+    prune(Arc::clone(&input_graph));
     log::info!("Done pruning input graph");
 
     read_lock!(input_graph).debug_statistics("pruned_input_graph");
@@ -134,6 +143,9 @@ pub async fn normalize_xml(
 
     let subgraph_hash = graph_hash(Arc::clone(&input_graph));
     log::debug!("subgraph_hash: {}", subgraph_hash);
+
+    let pruned_input: String = to_xml_string(Arc::clone(&input_graph));
+    log::debug!("pruned_input: {}", pruned_input);
 
     let basis_graph = if let Some(previous_basis_graph) = input_basis_graph {
         log::info!("Received a basis graph as input");
