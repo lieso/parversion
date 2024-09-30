@@ -64,7 +64,12 @@ impl Content {
     pub fn remove_empty(&mut self) {
         self.inner_content.iter_mut().for_each(|child| child.remove_empty());
         self.children.iter_mut().for_each(|child| child.remove_empty());
+
         self.inner_content.retain(|child| !child.is_empty());
+
+        if self.values.is_empty() && self.inner_content.len() == 1 && self.inner_content[0].values.is_empty() {
+            self.inner_content = self.inner_content[0].inner_content.clone();
+        }
     }
 
     fn is_empty(&self) -> bool {
