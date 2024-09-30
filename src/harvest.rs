@@ -7,11 +7,10 @@ use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::basis_graph::{BasisGraph};
 use crate::node_data_structure::{apply_structure};
+use crate::node_data::{apply_data};
 use crate::content::{
     Content,
-    ContentValue,
     ContentMetadata,
-    ContentValueMetadata,
     postprocess_content
 };
 
@@ -44,9 +43,11 @@ Node:   {}
         ));
     }
 
-    let output_node_xml: XmlNode = read_lock!(output_node).data.clone();
+
     let lineage = get_lineage(Arc::clone(&output_node));
     let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
+
+
 
 
 
@@ -72,6 +73,8 @@ Node:   {}
             return;
         }
     }
+
+
     
 
 
@@ -79,53 +82,18 @@ Node:   {}
 
     let data = read_lock!(basis_node).data.data.clone();
     for node_data in read_lock!(data).iter() {
-        if let Some(text_data) = &node_data.text {
-            if text_data.is_presentational {
-                log::info!("Discarding presentational text node data");
-                continue;
+        if let Some(content_value) = apply_data(node_data.clone(), Arc::clone(&output_node)) {
+            let is_peripheral = {
+                node_data.clone().text.map_or(false, |text| text.is_peripheral_content) ||
+                node_data.clone().element.map_or(false, |element| element.is_peripheral_content)
+            };
+            log::debug!("is_peripheral: {}", is_peripheral);
+
+            if is_peripheral {
+                related_content.values.push(content_value);
+            } else {
+                content.values.push(content_value);
             }
-        }
-
-        if let Some(element_data) = &node_data.element {
-            if element_data.attribute == "href" {
-                if !element_data.is_page_link {
-                    log::info!("Discarding href action link...");
-                    continue;
-                }
-            }
-        }
-
-        let is_advertisement = {
-            node_data.clone().text.map_or(false, |text| text.is_advertisement) ||
-            node_data.clone().element.map_or(false, |element| element.is_advertisement)
-        };
-        if is_advertisement {
-            log::info!("Discarding advertisement");
-            continue;
-        }
-
-        let content_value = ContentValue {
-            name: node_data.name.clone(),
-            value: node_data.value(&output_node_xml),
-            meta: ContentValueMetadata {
-                is_title: node_data.text.clone().map_or(false, |text| text.is_title),
-                is_primary_content: node_data.text.clone().map_or(false, |text| text.is_primary_content),
-                is_url: node_data.element.clone().map_or(false, |element| {
-                    element.attribute == "href"
-                })
-            },
-        };
-
-        let is_peripheral = {
-            node_data.clone().text.map_or(false, |text| text.is_peripheral_content) ||
-            node_data.clone().element.map_or(false, |element| element.is_peripheral_content)
-        };
-        log::debug!("is_peripheral: {}", is_peripheral);
-
-        if is_peripheral {
-            related_content.values.push(content_value);
-        } else {
-            content.values.push(content_value);
         }
     }
 
