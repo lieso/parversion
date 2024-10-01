@@ -6,7 +6,7 @@ pub const ROOT_NODE_HASH: &str = "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d4
 pub const UNSEEN_BLACKLISTED_ATTRIBUTES: [&str; 14] = [
     "style", "bgcolor", "border", "cellpadding", "cellspacing",
     "width", "height", "rows", "cols", "wrap",
-    "aria-hidden", "size", "op", "lang"
+    "aria-hidden", "size", "op", "lang", "colspan"
 ];
 
 pub const UNSEEN_BLACKLISTED_ELEMENTS: [&str; 7] = [
