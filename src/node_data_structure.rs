@@ -14,8 +14,6 @@ pub struct NodeDataStructure {
     pub recursive_attribute: Option<String>,
     pub root_node_attribute_values: Option<Vec<String>>,
     pub parent_node_attribute_value: Option<String>,
-    pub is_related_to_sibling: Option<bool>,
-    pub is_list_item: Option<bool>,
 }
 
 pub fn apply_structure(

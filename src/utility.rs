@@ -128,19 +128,19 @@ pub fn preprocess_xml(xml_string: &str) -> String {
         }
     }
 
-    fn convert_element_names(element: &mut Element) {
+    fn _convert_element_names(element: &mut Element) {
         if !constants::SEEN_WHITELISTED_ELEMENTS.contains(&element.name.as_str()) {
             element.name = "div".to_string();
         }
 
         for child in &mut element.children {
             if let xmltree::XMLNode::Element(ref mut el) = child {
-                convert_element_names(el);
+                _convert_element_names(el);
             }
         }
     }
 
-    fn merge_nested_divs(element: &mut Element) {
+    fn _merge_nested_divs(element: &mut Element) {
         if element.name == "div" && element.attributes.is_empty() {
             if let [xmltree::XMLNode::Element(ref mut child_element)] = element.children.as_mut_slice()
             {
@@ -153,7 +153,7 @@ pub fn preprocess_xml(xml_string: &str) -> String {
 
         for child in &mut element.children {
             if let xmltree::XMLNode::Element(ref mut el) = child {
-                merge_nested_divs(el);
+                _merge_nested_divs(el);
             }
         }
     }
