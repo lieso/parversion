@@ -97,6 +97,8 @@ fn escape_xml(data: &str) -> String {
 pub fn preprocess_xml(xml_string: &str) -> String {
     let mut root = Element::parse(xml_string.as_bytes()).expect("Unable to parse XML");
 
+    log::debug!("unprocessed xml: {}", xml_string);
+
     fn remove_attributes(element: &mut Element) {
         element.attributes.retain(|attr, value| {
             !constants::UNSEEN_BLACKLISTED_ATTRIBUTES.contains(&attr.as_str()) &&
@@ -158,8 +160,8 @@ pub fn preprocess_xml(xml_string: &str) -> String {
 
     remove_elements(&mut root);
     remove_attributes(&mut root);
-    convert_element_names(&mut root);
-    merge_nested_divs(&mut root);
+    //convert_element_names(&mut root);
+    //merge_nested_divs(&mut root);
 
     let mut buffer = Cursor::new(Vec::new());
     root.write(&mut buffer).expect("Could not write root");

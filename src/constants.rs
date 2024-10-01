@@ -14,7 +14,7 @@ pub const UNSEEN_BLACKLISTED_ELEMENTS: &[&str] = &[
 ];
 
 pub const SEEN_WHITELISTED_ELEMENTS: &[&str] = &[
-    "html", "body", "a", "img"
+    "html", "head", "body", "a", "img"
 ];
 
 pub const MAX_CONCURRENCY: usize = 1;

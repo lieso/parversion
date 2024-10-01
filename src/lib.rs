@@ -131,6 +131,8 @@ pub async fn normalize_xml(
     let input_graph: Graph<XmlNode> = graph_node::build_graph(xml.clone());
     let output_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
 
+    read_lock!(input_graph).debug_visualize("input_graph");
+
     cyclize(Arc::clone(&input_graph));
     log::info!("Done cyclizing input graph");
 
