@@ -57,7 +57,9 @@ impl<'a, T: GraphNodeData> Labeller<'a, Graph<T>, (Graph<T>, Graph<T>)> for Grap
     }
 
     fn node_label(&'a self, node: &Graph<T>) -> dot::LabelText<'a> {
-        let label = read_lock!(node).data.describe().chars().take(20).collect::<String>();
+        let description = read_lock!(node).data.describe().chars().take(20).collect::<String>();
+        let hash = read_lock!(node).hash.chars().take(20).collect::<String>();
+        let label = format!("{}\n{}", description, hash);
         dot::LabelText::label(label)
     }
 }

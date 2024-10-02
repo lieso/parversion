@@ -17,4 +17,4 @@ pub const SEEN_WHITELISTED_ELEMENTS: &[&str] = &[
     "html", "head", "body", "a", "img"
 ];
 
-pub const MAX_CONCURRENCY: usize = 5;
+pub const MAX_CONCURRENCY: usize = 1;

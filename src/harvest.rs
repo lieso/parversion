@@ -45,67 +45,67 @@ Node:   {}
 
 
     let lineage = get_lineage(Arc::clone(&output_node));
-    let basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), lineage);
+
+    if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph), lineage) {
 
 
 
 
+        // If a node has a parent which is an element with an href that is interpreted to be an "action" link, we discard it
+        // These nodes only describe the action link
+        // e.g. <a href="reply?id=123">reply</a>
+        let rl = read_lock!(output_node);
+        if let Some(output_node_parent) = rl.parents.get(0) {
+            let output_node_parent_lineage = get_lineage(Arc::clone(&output_node_parent));
+            let output_node_parent_basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), output_node_parent_lineage).unwrap();
+            let output_node_parent_basis_node_data = read_lock!(output_node_parent_basis_node).data.data.clone();
+            let is_parent_action = read_lock!(output_node_parent_basis_node_data).iter().any(|item| {
+                if let Some(element_data) = &item.element {
+                    return element_data.attribute == "href" && !element_data.is_page_link;
+                }
 
+                false
+            });
 
-    // If a node has a parent which is an element with an href that is interpreted to be an "action" link, we discard it
-    // These nodes only describe the action link
-    // e.g. <a href="reply?id=123">reply</a>
-    let rl = read_lock!(output_node);
-    if let Some(output_node_parent) = rl.parents.get(0) {
-        let output_node_parent_lineage = get_lineage(Arc::clone(&output_node_parent));
-        let output_node_parent_basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), output_node_parent_lineage);
-        let output_node_parent_basis_node_data = read_lock!(output_node_parent_basis_node).data.data.clone();
-        let is_parent_action = read_lock!(output_node_parent_basis_node_data).iter().any(|item| {
-            if let Some(element_data) = &item.element {
-                return element_data.attribute == "href" && !element_data.is_page_link;
-            }
-
-            false
-        });
-
-        if is_parent_action {
-            log::info!("Discarding node data whose parent is an action href");
-            return;
-        }
-    }
-
-
-    
-
-
-
-
-    let data = read_lock!(basis_node).data.data.clone();
-    for node_data in read_lock!(data).iter() {
-        if let Some(content_value) = apply_data(node_data.clone(), Arc::clone(&output_node)) {
-            let is_peripheral = {
-                node_data.clone().text.map_or(false, |text| text.is_peripheral_content) ||
-                node_data.clone().element.map_or(false, |element| element.is_peripheral_content)
-            };
-            log::debug!("is_peripheral: {}", is_peripheral);
-
-            if is_peripheral {
-                related_content.values.push(content_value);
-            } else {
-                content.values.push(content_value);
+            if is_parent_action {
+                log::info!("Discarding node data whose parent is an action href");
+                return;
             }
         }
-    }
 
-    let structures = read_lock!(basis_node).data.structure.clone();
-    for structure in read_lock!(structures).iter() {
-        let meta = apply_structure(
-            structure.clone(),
-            Arc::clone(&output_node),
-        );
 
-        content.meta = meta.clone();
-        related_content.meta = meta.clone();
+        
+
+
+
+
+        let data = read_lock!(basis_node).data.data.clone();
+        for node_data in read_lock!(data).iter() {
+            if let Some(content_value) = apply_data(node_data.clone(), Arc::clone(&output_node)) {
+                let is_peripheral = {
+                    node_data.clone().text.map_or(false, |text| text.is_peripheral_content) ||
+                    node_data.clone().element.map_or(false, |element| element.is_peripheral_content)
+                };
+                log::debug!("is_peripheral: {}", is_peripheral);
+
+                if is_peripheral {
+                    related_content.values.push(content_value);
+                } else {
+                    content.values.push(content_value);
+                }
+            }
+        }
+
+        let structures = read_lock!(basis_node).data.structure.clone();
+        for structure in read_lock!(structures).iter() {
+            let meta = apply_structure(
+                structure.clone(),
+                Arc::clone(&output_node),
+            );
+
+            content.meta = meta.clone();
+            related_content.meta = meta.clone();
+        }
     }
 }
 
