@@ -132,6 +132,7 @@ pub fn harvest(
         values: Vec::new(),
         inner_content: Vec::new(),
         children: Vec::new(),
+        lists: Vec::new(),
     };
     let mut related_content = Content {
         id: read_lock!(output_tree).id.clone(),
@@ -142,6 +143,7 @@ pub fn harvest(
         values: Vec::new(),
         inner_content: Vec::new(),
         children: Vec::new(),
+        lists: Vec::new(),
     };
 
     fn recurse(
@@ -183,6 +185,7 @@ pub fn harvest(
                 values: Vec::new(),
                 inner_content: Vec::new(),
                 children: Vec::new(),
+                lists: Vec::new(),
             };
             let mut child_related_content = Content {
                 id: read_lock!(child).id.clone(),
@@ -193,6 +196,7 @@ pub fn harvest(
                 values: Vec::new(),
                 inner_content: Vec::new(),
                 children: Vec::new(),
+                lists: Vec::new(),
             };
 
             recurse(

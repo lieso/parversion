@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::collections::{VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,14 +44,19 @@ pub struct Content {
     pub inner_content: Vec<Content>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Content>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub lists: Vec<Vec<Content>>,
 }
 
 pub fn postprocess_content(content: &mut Content) {
     log::trace!("In postprocess_content");
 
-    log::info!("Organising content...");
+    log::info!("Organising recursive content...");
     let content_copy = content.clone();
-    organize_content(content, &content_copy);
+    organize_recursive_content(content, &content_copy);
+
+    log::info!("Organising enumerative content...");
+    organize_enumerative_content(content);
 
     log::info!("Removing empty objects from content...");
     content.remove_empty();
@@ -60,8 +65,55 @@ pub fn postprocess_content(content: &mut Content) {
     content.merge_content();
 }
 
-fn organize_content(root: &mut Content, content: &Content) {
-    content.inner_content.iter().for_each(|child| organize_content(root, &child));
+fn organize_enumerative_content(content: &mut Content) {
+    content.inner_content.iter_mut().for_each(|child| organize_enumerative_content(child));
+
+    let mut content_map: HashMap<String, &Content> = content
+        .inner_content
+        .iter()
+        .map(|item| (item.id.clone(), item))
+        .collect();
+    let mut listed_item_ids = HashSet::new();
+
+    for item in &content.inner_content {
+        if listed_item_ids.contains(&item.id) {
+            continue;
+        }
+
+        let mut current_list = Vec::new();
+        let mut current_item = item;
+
+        while let Some(meta) = &current_item.meta.enumerative {
+            let item_id = current_item.id.clone();
+
+            if !listed_item_ids.contains(&item_id) {
+                current_list.push(current_item.clone());
+                listed_item_ids.insert(item_id.clone());
+            }
+
+
+            match &meta.next_id {
+                Some(next_id) => {
+                    if let Some(next_item) = content_map.get(next_id) {
+                        current_item = next_item;
+                    } else {
+                        break;
+                    }
+                },
+                None => break,
+            }
+        }
+
+        if !current_list.is_empty() {
+            content.lists.push(current_list);
+        }
+    }
+
+    content.inner_content.retain(|item| !listed_item_ids.contains(&item.id));
+}
+
+fn organize_recursive_content(root: &mut Content, content: &Content) {
+    content.inner_content.iter().for_each(|child| organize_recursive_content(root, &child));
 
     if let Some(recursive) = &content.meta.recursive {
         if let Some(parent_id) = &recursive.parent_id {
@@ -110,6 +162,10 @@ impl Content {
         self.inner_content.iter_mut().for_each(|child| child.remove_empty());
         self.children.iter_mut().for_each(|child| child.remove_empty());
 
+        for list in self.lists.iter_mut() {
+            list.iter_mut().for_each(|child| child.remove_empty());
+        }
+
         self.inner_content.retain(|child| !child.is_empty());
 
         if self.values.is_empty() && self.inner_content.len() == 1 && self.inner_content[0].values.is_empty() {
@@ -148,6 +204,7 @@ impl Content {
                 values: merged_values,
                 inner_content: Vec::new(),
                 children: Vec::new(),
+                lists: Vec::new(),
             };
 
             self.inner_content.insert(0, merged_content);
