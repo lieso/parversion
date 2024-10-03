@@ -24,9 +24,16 @@ pub struct ContentMetadataRecursive {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ContentMetadataEnumerative {
+    pub next_id: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recursive: Option<ContentMetadataRecursive>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enumerative: Option<ContentMetadataEnumerative>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -92,6 +99,12 @@ fn organize_content(root: &mut Content, content: &Content) {
     }
 }
 
+impl ContentMetadata {
+    pub fn is_empty(&self) -> bool {
+        self.recursive.is_none() && self.enumerative.is_none()
+    }
+}
+
 impl Content {
     pub fn remove_empty(&mut self) {
         self.inner_content.iter_mut().for_each(|child| child.remove_empty());
@@ -118,18 +131,19 @@ impl Content {
             .inner_content
             .iter_mut()
             .filter(|child| {
-                child.inner_content.is_empty() && child.meta.recursive.is_none()
+                child.inner_content.is_empty() && child.meta.is_empty()
             })
             .flat_map(|content| content.values.drain(..))
             .collect();
 
-        self.inner_content.retain(|content| !content.inner_content.is_empty() || content.meta.recursive.is_some());
+        self.inner_content.retain(|content| !content.inner_content.is_empty() || !content.meta.is_empty());
 
         if !merged_values.is_empty() {
             let merged_content = Content {
                 id: Uuid::new_v4().to_string(),
                 meta: ContentMetadata {
                     recursive: None,
+                    enumerative: None,
                 },
                 values: merged_values,
                 inner_content: Vec::new(),

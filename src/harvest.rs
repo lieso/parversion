@@ -101,10 +101,18 @@ Node:   {}
             let meta = apply_structure(
                 structure.clone(),
                 Arc::clone(&output_node),
+                Arc::clone(&basis_graph),
             );
 
-            content.meta = meta.clone();
-            related_content.meta = meta.clone();
+            if let Some(recursive) = meta.recursive {
+                content.meta.recursive = Some(recursive.clone());
+                related_content.meta.recursive = Some(recursive.clone());
+            }
+
+            if let Some(enumerative) = meta.enumerative {
+                content.meta.enumerative = Some(enumerative.clone());
+                related_content.meta.enumerative = Some(enumerative.clone());
+            }
         }
     }
 }
@@ -119,6 +127,7 @@ pub fn harvest(
         id: read_lock!(output_tree).id.clone(),
         meta: ContentMetadata {
             recursive: None,
+            enumerative: None,
         },
         values: Vec::new(),
         inner_content: Vec::new(),
@@ -128,6 +137,7 @@ pub fn harvest(
         id: read_lock!(output_tree).id.clone(),
         meta: ContentMetadata {
             recursive: None,
+            enumerative: None,
         },
         values: Vec::new(),
         inner_content: Vec::new(),
@@ -168,6 +178,7 @@ pub fn harvest(
                 id: read_lock!(child).id.clone(),
                 meta: ContentMetadata {
                     recursive: None,
+                    enumerative: None,
                 },
                 values: Vec::new(),
                 inner_content: Vec::new(),
@@ -177,6 +188,7 @@ pub fn harvest(
                 id: read_lock!(child).id.clone(),
                 meta: ContentMetadata {
                     recursive: None,
+                    enumerative: None,
                 },
                 values: Vec::new(),
                 inner_content: Vec::new(),

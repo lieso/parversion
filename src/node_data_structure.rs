@@ -4,10 +4,15 @@ use std::process::{Command, Stdio};
 use regex::Regex;
 use std::io::Write;
 
-use crate::graph_node::{Graph, bft};
+use crate::graph_node::{Graph, bft, get_lineage, apply_lineage};
 use crate::xml_node::{XmlNode};
+use crate::basis_node::{BasisNode};
 use crate::macros::*;
-use crate::content::{ContentMetadataRecursive, ContentMetadata};
+use crate::content::{
+    ContentMetadataRecursive,
+    ContentMetadataEnumerative,
+    ContentMetadata
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RecursiveStructure {
@@ -30,11 +35,13 @@ pub struct NodeDataStructure {
 pub fn apply_structure(
     structure: NodeDataStructure,
     output_node: Graph<XmlNode>,
+    basis_graph: Graph<BasisNode>,
 ) -> ContentMetadata {
     log::trace!("In apply_structure");
 
     let mut meta = ContentMetadata {
         recursive: None,
+        enumerative: None,
     };
 
     if let Some(recursive_structure) = structure.recursive {
@@ -54,6 +61,43 @@ pub fn apply_structure(
                 Arc::clone(&output_node),
             );
         }
+    }
+
+    if let Some(enumerative_structure) = structure.enumerative {
+        let intrinsic_component_ids = enumerative_structure.intrinsic_component_ids;
+
+        let rl = read_lock!(output_node);
+        let output_node_parent = rl.parents.first().cloned().unwrap();
+        let output_node_parent_children = &read_lock!(output_node_parent).children;
+
+        let mut found_current_node = false;
+
+        let next_node = output_node_parent_children.iter().find(|node| {
+            if found_current_node {
+                let lineage = get_lineage(Arc::clone(&node));
+                if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph), lineage) {
+                    return &read_lock!(basis_node).id == intrinsic_component_ids.first().unwrap();
+                }
+            } else {
+                if rl.id == read_lock!(node).id {
+                    found_current_node = true;
+                }
+            }
+
+            false
+        });
+
+        let next_id: Option<String> = if let Some(next_node) = next_node {
+            Some(read_lock!(next_node).id.clone())
+        } else {
+            None
+        };
+
+        let content_metadata_enumerative = ContentMetadataEnumerative {
+            next_id,
+        };
+
+        meta.enumerative = Some(content_metadata_enumerative);
     }
 
     meta
