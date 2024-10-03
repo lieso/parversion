@@ -10,10 +10,21 @@ use crate::macros::*;
 use crate::content::{ContentMetadataRecursive, ContentMetadata};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NodeDataStructure {
+pub struct RecursiveStructure {
     pub recursive_attribute: Option<String>,
     pub root_node_attribute_values: Option<Vec<String>>,
     pub parent_node_attribute_value: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct EnumerativeStructure {
+    pub intrinsic_component_ids: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeDataStructure {
+    pub recursive: Option<RecursiveStructure>,
+    pub enumerative: Option<EnumerativeStructure>,
 }
 
 pub fn apply_structure(
@@ -26,24 +37,24 @@ pub fn apply_structure(
         recursive: None,
     };
 
-    if let (
-        Some(recursive_attribute),
-        Some(root_node_attribute_values),
-        Some(parent_node_attribute_value)
-    ) = (
-        structure.recursive_attribute,
-        structure.root_node_attribute_values,
-        structure.parent_node_attribute_value
-    ) {
-        meta.recursive = apply_recursive_structure(
-            recursive_attribute,
-            root_node_attribute_values,
-            parent_node_attribute_value,
-            Arc::clone(&output_node),
-        );
+    if let Some(recursive_structure) = structure.recursive {
+        if let (
+            Some(recursive_attribute),
+            Some(root_node_attribute_values),
+            Some(parent_node_attribute_value)
+        ) = (
+            recursive_structure.recursive_attribute,
+            recursive_structure.root_node_attribute_values,
+            recursive_structure.parent_node_attribute_value
+        ) {
+            meta.recursive = apply_recursive_structure(
+                recursive_attribute,
+                root_node_attribute_values,
+                parent_node_attribute_value,
+                Arc::clone(&output_node),
+            );
+        }
     }
-
-    
 
     meta
 }

@@ -9,6 +9,7 @@ use super::{
 };
 use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
+use crate::node_data_structure::{NodeDataStructure, EnumerativeStructure};
 use crate::macros::*;
 use crate::config::{CONFIG};
 use crate::constants;
@@ -166,12 +167,16 @@ async fn analyze_structure(
         target_node_adjacent_xml_length
     );
 
-    let structure = interpret_data_structure(snippets).await;
+    let recursive_structure = interpret_data_structure(snippets).await;
+    let node_data_structure = NodeDataStructure {
+        recursive: Some(recursive_structure),
+        enumerative: None,
+    };
 
     {
         let rl = read_lock!(target_node);
         let mut wl = write_lock!(rl.data.structure);
-        wl.push(structure);
+        wl.push(node_data_structure);
     }
 }
 
@@ -266,6 +271,34 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
     let exemplary_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
     let output_parent_node: Option<Graph<XmlNode>> = read_lock!(exemplary_node).parents.first().cloned();
 
+    if let Some(ref exemplary_parent) = output_parent_node {
+        if homologous_nodes.len() > 1 {
+
+            // Do all homologous nodes have the same parent?
+            let are_siblings = homologous_nodes.iter().fold(true, |acc, node| {
+                let parent = read_lock!(node).parents.first().cloned();
+                let parent = parent.unwrap();
+
+                acc && read_lock!(exemplary_parent).id == read_lock!(parent).id
+            });
+
+            // If all homologous nodes have the same parent, that means this node represents a list of items of some kind
+            if are_siblings {
+                let enumerative_structure = EnumerativeStructure {
+                    intrinsic_component_ids: vec![read_lock!(basis_node).id.clone()]
+                };
+                let node_data_structure = NodeDataStructure {
+                    recursive: None,
+                    enumerative: Some(enumerative_structure),
+                };
+
+                let binding = read_lock!(basis_node);
+                let mut write_lock = write_lock!(binding.data.structure);
+                write_lock.push(node_data_structure);
+            }
+        }
+    }
+
     // It's unlikely that there are complex relationships for nodes that only appear a couple times in a document
     if homologous_nodes.len() < 3 {
         log::info!("Homologous node count is less than three. Not proceeding any further.");
@@ -280,7 +313,7 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
 
     // Assuming nodes that are the lone child of their parent do not represent
     // any complex relationships to other nodes
-    if let Some(parent) = output_parent_node {
+    if let Some(ref parent) = output_parent_node {
         let parent_out_degree = read_lock!(parent).children.len();
 
         if parent_out_degree < 2 {

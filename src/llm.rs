@@ -6,7 +6,7 @@ use sha2::{Sha256, Digest};
 use bincode::{serialize, deserialize};
 use std::sync::{Arc, OnceLock};
 
-use crate::node_data_structure::{NodeDataStructure};
+use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
 
 static DB: OnceLock<Arc<sled::Db>> = OnceLock::new();
@@ -52,7 +52,7 @@ where
     Ok(opt.filter(|s| !s.is_empty()))
 }
 
-pub async fn interpret_data_structure(snippets: Vec<String>) -> NodeDataStructure {
+pub async fn interpret_data_structure(snippets: Vec<String>) -> RecursiveStructure {
     log::trace!("In interpret_data_structure");
 
     assert!(snippets.len() > 0, "Did not receive any snippets");
@@ -99,7 +99,7 @@ Example(s) of the node to be analyzed:
             .expect("Could not parse json response as LLMDataStructureResponse");
         log::debug!("llm_data_structure_response: {:?}", llm_data_structure_response);
 
-        return NodeDataStructure {
+        return RecursiveStructure {
             recursive_attribute: llm_data_structure_response.recursive_attribute,
             root_node_attribute_values: llm_data_structure_response.root_node_attribute_values,
             parent_node_attribute_value: llm_data_structure_response.parent_node_attribute_value,
@@ -172,7 +172,7 @@ Example(s) of the node to be analyzed:
         .expect("Could not parse json response as LLMDataStructureResponse");
     log::debug!("llm_data_structure_response: {:?}", llm_data_structure_response);
 
-    NodeDataStructure {
+    RecursiveStructure {
         recursive_attribute: llm_data_structure_response.recursive_attribute,
         root_node_attribute_values: llm_data_structure_response.root_node_attribute_values,
         parent_node_attribute_value: llm_data_structure_response.parent_node_attribute_value,
