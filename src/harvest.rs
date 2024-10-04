@@ -128,6 +128,7 @@ pub fn harvest(
         meta: ContentMetadata {
             recursive: None,
             enumerative: None,
+            associative: None,
         },
         values: Vec::new(),
         inner_content: Vec::new(),
@@ -139,6 +140,7 @@ pub fn harvest(
         meta: ContentMetadata {
             recursive: None,
             enumerative: None,
+            associative: None,
         },
         values: Vec::new(),
         inner_content: Vec::new(),
@@ -181,6 +183,7 @@ pub fn harvest(
                 meta: ContentMetadata {
                     recursive: None,
                     enumerative: None,
+                    associative: None,
                 },
                 values: Vec::new(),
                 inner_content: Vec::new(),
@@ -192,6 +195,7 @@ pub fn harvest(
                 meta: ContentMetadata {
                     recursive: None,
                     enumerative: None,
+                    associative: None,
                 },
                 values: Vec::new(),
                 inner_content: Vec::new(),

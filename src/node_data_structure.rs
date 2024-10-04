@@ -27,9 +27,15 @@ pub struct EnumerativeStructure {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AssociativeStructure {
+    pub associated_basis_ids: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeDataStructure {
     pub recursive: Option<RecursiveStructure>,
     pub enumerative: Option<EnumerativeStructure>,
+    pub associative: Option<AssociativeStructure>,
 }
 
 pub fn apply_structure(
@@ -42,6 +48,7 @@ pub fn apply_structure(
     let mut meta = ContentMetadata {
         recursive: None,
         enumerative: None,
+        associative: None,
     };
 
     if let Some(recursive_structure) = structure.recursive {

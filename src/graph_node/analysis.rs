@@ -30,10 +30,12 @@ pub async fn analyze(
 ANALYZING NODE:
 {}
 Node:   {}
+Hash:   {}
 {}",
             block_separator,
             block_separator,
             read_lock!(target_node).data.describe(),
+            read_lock!(target_node).hash,
             block_separator,
         ));
     }
@@ -171,6 +173,7 @@ async fn analyze_structure(
     let node_data_structure = NodeDataStructure {
         recursive: Some(recursive_structure),
         enumerative: None,
+        associative: None,
     };
 
     {
@@ -273,23 +276,32 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
 
     if let Some(ref exemplary_parent) = output_parent_node {
         if homologous_nodes.len() > 1 {
+            log::info!("Homologous node count is greater than one.");
+            log::debug!("exemplary_parent: {}, {}", read_lock!(exemplary_parent).id.clone(), read_lock!(exemplary_parent).data.describe());
 
             // Do all homologous nodes have the same parent?
             let are_siblings = homologous_nodes.iter().fold(true, |acc, node| {
+                log::debug!("node: {}", read_lock!(node).data.describe());
                 let parent = read_lock!(node).parents.first().cloned();
                 let parent = parent.unwrap();
+                log::debug!("parent: {}", read_lock!(parent).data.describe());
+                log::debug!("parent id: {}", read_lock!(parent).id);
 
                 acc && read_lock!(exemplary_parent).id == read_lock!(parent).id
             });
+            log::debug!("are_siblings: {}", are_siblings);
 
             // If all homologous nodes have the same parent, that means this node represents a list of items of some kind
             if are_siblings {
+                log::info!("Identified enumerative content");
+
                 let enumerative_structure = EnumerativeStructure {
                     intrinsic_component_ids: vec![read_lock!(basis_node).id.clone()]
                 };
                 let node_data_structure = NodeDataStructure {
                     recursive: None,
                     enumerative: Some(enumerative_structure),
+                    associative: None,
                 };
 
                 let binding = read_lock!(basis_node);
@@ -297,12 +309,6 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
                 write_lock.push(node_data_structure);
             }
         }
-    }
-
-    // It's unlikely that there are complex relationships for nodes that only appear a couple times in a document
-    if homologous_nodes.len() < 3 {
-        log::info!("Homologous node count is less than three. Not proceeding any further.");
-        return true;
     }
 
     // Text nodes do not represent complex relationships

@@ -29,11 +29,18 @@ pub struct ContentMetadataEnumerative {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ContentMetadataAssociative {
+    pub associated_content_ids: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recursive: Option<ContentMetadataRecursive>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enumerative: Option<ContentMetadataEnumerative>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub associative: Option<ContentMetadataAssociative>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -68,7 +75,7 @@ pub fn postprocess_content(content: &mut Content) {
 fn organize_enumerative_content(content: &mut Content) {
     content.inner_content.iter_mut().for_each(|child| organize_enumerative_content(child));
 
-    let mut content_map: HashMap<String, &Content> = content
+    let content_map: HashMap<String, &Content> = content
         .inner_content
         .iter()
         .map(|item| (item.id.clone(), item))
@@ -200,6 +207,7 @@ impl Content {
                 meta: ContentMetadata {
                     recursive: None,
                     enumerative: None,
+                    associative: None,
                 },
                 values: merged_values,
                 inner_content: Vec::new(),
