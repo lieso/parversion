@@ -75,6 +75,58 @@ Hash:   {}
     ).await;
 }
 
+pub async fn analyze_associations(
+    target_node: Graph<BasisNode>,
+    basis_root_node: Graph<BasisNode>,
+    output_tree: Graph<XmlNode>,
+    _permit: OwnedSemaphorePermit
+) {
+    log::trace!("In analyze_associations");
+
+
+
+
+
+
+
+    log::debug!("basis node: {}", read_lock!(target_node).data.describe());
+
+    {
+        let binding = read_lock!(target_node);
+
+        // TODO: what if more than one parent?
+        if binding.parents.len() == 1 {
+            let target_node_parent: Graph<BasisNode> = binding.parents.first().unwrap().clone();
+
+            let target_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent)
+                .children
+                .iter()
+                .filter(|child| {
+                    read_lock!(child).id != binding.id
+                })
+                .cloned()
+                .collect();
+
+            for sibling in target_node_siblings.iter() {
+                log::debug!("sibling: {}", read_lock!(sibling).data.describe());
+            }
+
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+    
+}
+
 fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
     log::trace!("In analyze_classically");
 
@@ -277,15 +329,11 @@ fn analyze_structure_classically(basis_node: Graph<BasisNode>, homologous_nodes:
     if let Some(ref exemplary_parent) = output_parent_node {
         if homologous_nodes.len() > 1 {
             log::info!("Homologous node count is greater than one.");
-            log::debug!("exemplary_parent: {}, {}", read_lock!(exemplary_parent).id.clone(), read_lock!(exemplary_parent).data.describe());
 
             // Do all homologous nodes have the same parent?
             let are_siblings = homologous_nodes.iter().fold(true, |acc, node| {
-                log::debug!("node: {}", read_lock!(node).data.describe());
                 let parent = read_lock!(node).parents.first().cloned();
                 let parent = parent.unwrap();
-                log::debug!("parent: {}", read_lock!(parent).data.describe());
-                log::debug!("parent id: {}", read_lock!(parent).id);
 
                 acc && read_lock!(exemplary_parent).id == read_lock!(parent).id
             });

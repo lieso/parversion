@@ -468,14 +468,39 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
 
     let mut nodes: Vec<Graph<BasisNode>> = Vec::new();
 
-    // dft instead of bft to reduce probability of unneccessary interpretation
-    // given that associations occur among siblings
-    dft(Arc::clone(&graph), &mut |node: Graph<BasisNode>| {
+    let mut parents_visited: HashSet<String> = HashSet::new();
+    let mut first_siblings: Vec<Graph<BasisNode>> = Vec::new();
+
+    bft(Arc::clone(&graph), &mut |node: Graph<BasisNode>| {
         nodes.push(node.clone());
+
+        if parents_visited.insert(read_lock!(node).id.clone()) {
+            let children = &read_lock!(node).children;
+            if let Some(first_child) = children.first() {
+                first_siblings.push(first_child.clone());
+            }
+        }
+
         true
     });
 
     let semaphore = Arc::new(Semaphore::new(constants::MAX_CONCURRENCY));
+
+    async fn handle_tasks(handles: Vec<task::JoinHandle<()>>) {
+        for handle in handles {
+            match handle.await {
+                Ok(()) => { /* Analyze succeeded, continue */ }
+                Err(e) => {
+                    if e.is_cancelled() {
+                        panic!("A task was cancelled unexpectedly");
+                    } else {
+                        log::error!("Task encountered an error: {:?}", e);
+                        panic!("Analysis failed, aborting");
+                    }
+                }
+            }
+        }
+    }
 
     let handles: Vec<_> = nodes.iter().map(|node| {
         let semaphore = semaphore.clone();
@@ -489,19 +514,21 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
         })
     }).collect();
 
-    for handle in handles {
-        match handle.await {
-            Ok(()) => { /* Analyze succeeded, continue */ }
-            Err(e) => {
-                if e.is_cancelled() {
-                    panic!("A task was cancelled unexpectedly");
-                } else {
-                    log::error!("Task encountered an error: {:?}", e);
-                    panic!("Analysis failed, aborting");
-                }
-            }
-        }
-    }
+    handle_tasks(handles).await;
+
+    let handles: Vec<_> = first_siblings.iter().map(|node| {
+        let semaphore = semaphore.clone();
+        let node = Arc::clone(node);
+        let graph = Arc::clone(&graph);
+        let output_tree = Arc::clone(&output_tree);
+
+        task::spawn(async move {
+            let permit = semaphore.acquire_owned().await.unwrap();
+            analyze_associations(node, graph, output_tree, permit).await
+        })
+    }).collect();
+
+    handle_tasks(handles).await;
 }
 
 pub fn get_lineage(tree_node: Graph<XmlNode>) -> VecDeque<String> {
