@@ -5,7 +5,10 @@ use super::{
     Graph, 
     GraphNodeData, 
     find_homologous_nodes,
-    build_xml_with_target_node
+    build_xml_with_target_node,
+    apply_lineage,
+    get_lineage,
+    bft
 };
 use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
@@ -14,6 +17,8 @@ use crate::macros::*;
 use crate::config::{CONFIG};
 use crate::constants;
 use crate::llm::{interpret_data_structure, interpret_element_data, interpret_text_data};
+use crate::harvest::{harvest, Harvest};
+use crate::basis_graph::BasisGraph;
 
 pub async fn analyze(
     target_node: Graph<BasisNode>,
@@ -106,7 +111,7 @@ pub async fn analyze_associations(
         if binding.parents.len() == 1 {
             let target_node_parent: Graph<BasisNode> = binding.parents.first().unwrap().clone();
 
-            let basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent)
+            let mut basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent)
                 .children
                 .iter()
                 .filter(|child| {
@@ -120,13 +125,42 @@ pub async fn analyze_associations(
                 return;
             }
 
+            basis_node_siblings.push(Arc::clone(&basis_node));
 
 
             log::info!("Going to infer sibling associations for basis node: {}", binding.data.describe());
 
+            let mut harvests: Vec<Harvest> = Vec::new();
+
             for sibling in basis_node_siblings.iter() {
                 log::debug!("sibling: {}", read_lock!(sibling).data.describe());
+
+                let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
+                    Arc::clone(&sibling),
+                    Arc::clone(&basis_root_node),
+                    Arc::clone(&output_tree),
+                );
+
+                let exemplary_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+
+                let basis_graph = BasisGraph {
+                    root: Arc::clone(&basis_root_node),
+                    subgraph_hashes: vec![],
+                };
+
+            
+                let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
+                
+                harvests.push(harvest);
+
             }
+
+
+            log::debug!("=====================================================================================================");
+            for harvest in harvests.iter() {
+                log::debug!("harvest: {:?}", harvest);
+            }
+            log::debug!("=====================================================================================================");
 
 
 

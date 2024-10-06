@@ -205,6 +205,8 @@ pub async fn normalize_xml(
         }
     };
 
+    panic!("abort");
+
     log::info!("Harvesting output tree..");
     let harvest = harvest(Arc::clone(&output_tree), basis_graph.clone());
     log::info!("Done harvesting output tree.");
