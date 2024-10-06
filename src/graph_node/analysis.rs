@@ -76,29 +76,37 @@ Hash:   {}
 }
 
 pub async fn analyze_associations(
-    target_node: Graph<BasisNode>,
+    basis_node: Graph<BasisNode>,
     basis_root_node: Graph<BasisNode>,
     output_tree: Graph<XmlNode>,
     _permit: OwnedSemaphorePermit
 ) {
     log::trace!("In analyze_associations");
 
+    //if analyze_associations_classically(
+    //    Arc::clone(&basis_node),
+    //    Arc::clone(&basis_root_node),
+    //    Arc::clone(&output_tree)
+    //) {
+    //    log::info!("Basis node associations determined classically, not proceeding any further");
+    //    return;
+    //}
 
 
 
 
 
 
-    log::debug!("basis node: {}", read_lock!(target_node).data.describe());
+    log::debug!("basis node: {}", read_lock!(basis_node).data.describe());
 
     {
-        let binding = read_lock!(target_node);
+        let binding = read_lock!(basis_node);
 
         // TODO: what if more than one parent?
         if binding.parents.len() == 1 {
             let target_node_parent: Graph<BasisNode> = binding.parents.first().unwrap().clone();
 
-            let target_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent)
+            let basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent)
                 .children
                 .iter()
                 .filter(|child| {
@@ -107,9 +115,26 @@ pub async fn analyze_associations(
                 .cloned()
                 .collect();
 
-            for sibling in target_node_siblings.iter() {
+            if basis_node_siblings.is_empty() {
+                log::info!("Basis node does not have siblings");
+                return;
+            }
+
+
+
+            log::info!("Going to infer sibling associations for basis node: {}", binding.data.describe());
+
+            for sibling in basis_node_siblings.iter() {
                 log::debug!("sibling: {}", read_lock!(sibling).data.describe());
             }
+
+
+
+
+
+
+
+
 
         }
     }
@@ -119,13 +144,9 @@ pub async fn analyze_associations(
 
 
 
-
-
-
-
-
     
 }
+
 
 fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
     log::trace!("In analyze_classically");
