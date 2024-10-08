@@ -1,5 +1,6 @@
 use tokio::sync::{OwnedSemaphorePermit};
 use std::sync::{Arc};
+use std::collections::HashSet;
 
 use super::{
     Graph, 
@@ -8,7 +9,8 @@ use super::{
     build_xml_with_target_node,
     apply_lineage,
     get_lineage,
-    bft
+    bft,
+    graph_hash
 };
 use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
@@ -19,6 +21,7 @@ use crate::constants;
 use crate::llm::{interpret_data_structure, interpret_element_data, interpret_text_data};
 use crate::harvest::{harvest, Harvest};
 use crate::basis_graph::BasisGraph;
+use crate::{serialize, HarvestFormats};
 
 pub async fn analyze(
     target_node: Graph<BasisNode>,
@@ -141,26 +144,39 @@ pub async fn analyze_associations(
                     Arc::clone(&output_tree),
                 );
 
-                let exemplary_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+                let mut unique_hashes = HashSet::new();
 
-                let basis_graph = BasisGraph {
-                    root: Arc::clone(&basis_root_node),
-                    subgraph_hashes: vec![],
-                };
+                let exemplary_nodes: Vec<Graph<XmlNode>> = homologous_nodes
+                    .into_iter()
+                    .filter(|node| {
+                        let hash = graph_hash(Arc::clone(&node));
+                        unique_hashes.insert(hash)
+                    })
+                    .collect();
 
-            
-                let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
+                for exemplary_node in exemplary_nodes.iter() {
+                    let basis_graph = BasisGraph {
+                        root: Arc::clone(&basis_root_node),
+                        subgraph_hashes: vec![],
+                    };
+
                 
-                harvests.push(harvest);
+                    let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
+                    
+                    harvests.push(harvest);
+                }
 
             }
 
 
-            log::debug!("=====================================================================================================");
+
+
+
+
             for harvest in harvests.iter() {
-                log::debug!("harvest: {:?}", harvest);
+                let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
+                log::debug!("harvest: {}", serialized);
             }
-            log::debug!("=====================================================================================================");
 
 
 
