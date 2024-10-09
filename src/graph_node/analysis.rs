@@ -171,11 +171,18 @@ pub async fn analyze_associations(
 
 
 
+            let mut harvests: Vec<Harvest> = harvests.iter().cloned().filter(|item| {
+                !(item.content.values.is_empty() && item.content.inner_content.is_empty())
+            }).collect();
 
+            if harvests.len() > 1 {
 
-            for harvest in harvests.iter() {
-                let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
-                log::debug!("harvest: {}", serialized);
+                log::debug!("basis_node: {}", binding.data.describe());
+                for harvest in harvests.iter() {
+                    let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
+                    log::debug!("harvest: {}", serialized);
+                }
+
             }
 
 
