@@ -102,7 +102,7 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     fn remove_attributes(element: &mut Element) {
         element.attributes.retain(|attr, value| {
             !constants::UNSEEN_BLACKLISTED_ATTRIBUTES.contains(&attr.as_str()) &&
-            value.as_str().len() < 100
+            value.as_str().len() < 500
         });
 
         for child in &mut element.children {
