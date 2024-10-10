@@ -169,6 +169,10 @@ pub async fn analyze_associations(
             }
 
 
+            fn truncate(s: &str) -> &str {
+                s.char_indices().nth(2000).map_or(s, |(idx, _)| &s[..idx])
+            }
+
 
 
             let mut harvests: Vec<Harvest> = harvests.iter().cloned().filter(|item| {
@@ -180,7 +184,7 @@ pub async fn analyze_associations(
                 log::debug!("basis_node: {}", binding.data.describe());
                 for harvest in harvests.iter() {
                     let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
-                    log::debug!("harvest: {}", serialized);
+                    log::debug!("harvest: {}", truncate(&serialized));
                 }
 
             }

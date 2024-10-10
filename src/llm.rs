@@ -44,12 +44,122 @@ struct LLMTextDataResponse {
     is_title: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct LLMAssociationsResponse {
+    data: Vec<Vec<String>>,
+}
+
 fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let opt = Option::<String>::deserialize(deserializer)?;
     Ok(opt.filter(|s| !s.is_empty()))
+}
+
+pub async fn interpret_associations(snippets: Vec<String>) {
+    log::trace!("In interpret_associations");
+
+    assert!(snippets.len() > 0, "Did not receive any snippets");
+
+    let examples = snippets.iter().enumerate().fold(
+        String::new(),
+        |mut acc, (index, snippet)| {
+            acc.push_str(&format!(r##"
+Snippet ID: {}
+Snippet content:
+{}
+
+"##, index + 1, snippet));
+            acc
+        }
+    );
+
+    let system_prompt = format!(r##"
+Your task it to group snippets of code based on the similarity of their values.
+"##);
+    let user_prompt = format!(r##"
+---
+
+{}
+
+---
+"##, examples);
+    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
+
+    let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
+    if let Some(cached_response) = get_cached_response(hash.clone()) {
+        log::info!("Cache hit!");
+
+        let llm_associations_response = serde_json::from_str::<LLMAssociationsResponse>(&cached_response)
+            .expect("Could not parse json response as LLMAssociationsResponse");
+        log::debug!("llm_associations_response: {:?}", llm_associations_response);
+
+        return;
+    }
+
+    log::info!("Cache miss!");
+
+    let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
+    let request_json = json!({
+        "model": "gpt-4o-2024-08-06",
+        "temperature": 0,
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "similarity_response",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "data": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "required": ["data"],
+                    "additionalProperties": false
+                }
+            }
+        }
+    });
+    let url = "https://api.openai.com/v1/chat/completions";
+    let authorization = format!("Bearer {}", openai_api_key);
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .json(&request_json)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::AUTHORIZATION, authorization)
+        .send()
+        .await;
+    let response = response.expect("Failed to send request to OpenAI");
+
+    let json_response = response.json::<serde_json::Value>().await.expect("Unable to get JSON from response");
+    log::debug!("json_response: {:?}", json_response);
+    let json_response = json_response["choices"].as_array().unwrap();
+    let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
+
+    set_cached_response(hash.clone(), json_response.to_string());
+
+    let llm_associations_response = serde_json::from_str::<LLMAssociationsResponse>(json_response)
+        .expect("Could not parse json response as LLMAssociationsResponse");
+    log::debug!("llm_associations_response: {:?}", llm_associations_response);
 }
 
 pub async fn interpret_data_structure(snippets: Vec<String>) -> RecursiveStructure {
