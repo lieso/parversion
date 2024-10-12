@@ -10,7 +10,8 @@ use super::{
     apply_lineage,
     get_lineage,
     bft,
-    graph_hash
+    graph_hash,
+    get_depth
 };
 use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
@@ -103,98 +104,88 @@ pub async fn analyze_associations(
     log::debug!("basis node: {}", read_lock!(basis_node).data.describe());
     log::debug!("basis node hash: {}", read_lock!(basis_node).hash);
 
-    {
-        let binding = read_lock!(basis_node);
 
-        if binding.parents.len() == 1 {
-            let target_node_parent: Graph<BasisNode> = binding.parents.first().unwrap().clone();
 
-            let mut basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent).children.clone();
+    let target_node_parent: Graph<BasisNode> = read_lock!(basis_node).parents.first().unwrap().clone();
+    let basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent).children.clone();
 
-            let basis_node_siblings: Vec<Graph<BasisNode>> = basis_node_siblings
-                .iter()
-                .filter(|item| {
-                    read_lock!(item).parents.len() == 1
-                })
-                .cloned()
-                .collect();
-
-            if basis_node_siblings.len() < 2 {
-                log::info!("Basis node does not have siblings");
-                return;
-            }
+    if basis_node_siblings.len() < 2 {
+        log::info!("Basis node does not have siblings");
+        return;
+    }
 
 
 
-            log::info!("Going to infer sibling associations for basis node: {}", binding.data.describe());
+    for sibling in basis_node_siblings.iter() {
+        log::debug!("sibling: {}", read_lock!(sibling).data.describe());
 
-            let mut harvests: Vec<(Harvest, String)> = Vec::new();
+        let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
+            Arc::clone(&sibling),
+            Arc::clone(&basis_root_node),
+            Arc::clone(&output_tree),
+        );
 
-            for sibling in basis_node_siblings.iter() {
-                log::debug!("sibling: {}", read_lock!(sibling).data.describe());
+        let depths: Vec<usize> = homologous_nodes.iter()
+            .map(|node| {
+                let depth = get_depth(Arc::clone(&node));
+                log::debug!("depth: {}", depth);
+                depth
+            })
+        .collect();
 
-                let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
-                    Arc::clone(&sibling),
-                    Arc::clone(&basis_root_node),
-                    Arc::clone(&output_tree),
-                );
+        let max_depth = depths.iter().copied().max().unwrap_or(0);
+        log::debug!("maximum depth: {}", max_depth);
 
-                let mut unique_hashes = HashSet::new();
+        let deepest_nodes: Vec<Graph<XmlNode>> = homologous_nodes.iter()
+            .filter(|node| {
+                let depth = get_depth(Arc::clone(node));
+                depth == max_depth
+            })
+            .cloned()
+            .collect();
 
-                let exemplary_nodes: Vec<(Graph<XmlNode>, String)> = homologous_nodes
-                    .into_iter()
-                    .filter_map(|node| {
-                        let hash = graph_hash(Arc::clone(&node));
-                        if unique_hashes.insert(hash.clone()) {
-                            Some((node, hash))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
 
-                for (exemplary_node, hash) in exemplary_nodes.iter() {
-                    let basis_graph = BasisGraph {
-                        root: Arc::clone(&basis_root_node),
-                        subgraph_hashes: vec![],
-                    };
 
-                
-                    let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
-                    
-                    harvests.push((harvest, hash.clone()));
+        let mut unique_hashes = HashSet::new();
+
+        let exemplary_nodes: Vec<(Graph<XmlNode>, String)> = deepest_nodes
+            .into_iter()
+            .filter_map(|node| {
+                let hash = graph_hash(Arc::clone(&node));
+                if unique_hashes.insert(hash.clone()) {
+                    Some((node, hash))
+                } else {
+                    None
                 }
-
-            }
-
-
-            fn truncate(s: &str) -> &str {
-                s.char_indices().nth(2000).map_or(s, |(idx, _)| &s[..idx])
-            }
-
-
-
-            let mut harvests: Vec<(Harvest, String)> = harvests.iter().cloned().filter(|(item, hash)| {
-                !(item.content.values.is_empty() && item.content.inner_content.is_empty())
             }).collect();
 
+        for (exemplary_node, hash) in exemplary_nodes.iter() {
+            let basis_graph = BasisGraph {
+                root: Arc::clone(&basis_root_node),
+                subgraph_hashes: vec![],
+            };
 
+            let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
 
-            if harvests.len() > 1 {
-                for (harvest, hash) in harvests.iter() {
-                    let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
+            if !(harvest.content.values.is_empty() && harvest.content.inner_content.is_empty()) {
 
-                    if serialized.len() < 2000 {
-                        snippets.push((hash.clone(), serialized));
-                    }
-                }
+                let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
+                snippets.push((hash.clone(), serialized))
+
             }
 
-
-
-
         }
+
+
+
     }
+
+
+
+
+
+
+
 
 
 

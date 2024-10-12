@@ -32,6 +32,26 @@ pub trait GraphNodeData: Clone + Send + Sync + std::fmt::Debug + Serialize + for
     fn describe(&self) -> String;
 }
 
+pub fn get_depth(node: Graph<XmlNode>) -> usize {
+    log::trace!("In get_depth");
+
+    let mut depth = 0;
+
+    let mut current = node;
+
+    loop {
+        let parent_nodes = current.read().unwrap().parents.clone();
+        if parent_nodes.is_empty() {
+            break;
+        }
+
+        current = Arc::clone(&parent_nodes[0]);
+        depth += 1;
+    }
+
+    depth
+}
+
 pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<XmlNode>>> {
     let mut reader = std::io::Cursor::new(xml);
     let xml = XmlNode::parse(&mut reader).expect("Could not parse XML");

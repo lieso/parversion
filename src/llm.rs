@@ -76,7 +76,8 @@ Snippet content:
     );
 
     let system_prompt = format!(r##"
-Your task it to group snippets of code based on the similarity of their values.
+Your task is to group snippets of code based on the likely meaning and semantic similarity of their values. Focus on identifying snippets that refer to the same type of content or have related meanings. Consider values like URLs, titles, timestamps, and other metadata to find similarities beyond structural format.
+
 "##);
     let user_prompt = format!(r##"
 ---
