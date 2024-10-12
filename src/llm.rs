@@ -57,20 +57,20 @@ where
     Ok(opt.filter(|s| !s.is_empty()))
 }
 
-pub async fn interpret_associations(snippets: Vec<String>) {
+pub async fn interpret_associations(snippets: Vec<(String, String)>) {
     log::trace!("In interpret_associations");
 
     assert!(snippets.len() > 0, "Did not receive any snippets");
 
     let examples = snippets.iter().enumerate().fold(
         String::new(),
-        |mut acc, (index, snippet)| {
+        |mut acc, (_index, snippet)| {
             acc.push_str(&format!(r##"
 Snippet ID: {}
 Snippet content:
 {}
 
-"##, index + 1, snippet));
+"##, snippet.0, snippet.1));
             acc
         }
     );

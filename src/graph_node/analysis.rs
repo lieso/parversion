@@ -18,7 +18,12 @@ use crate::node_data_structure::{NodeDataStructure, EnumerativeStructure};
 use crate::macros::*;
 use crate::config::{CONFIG};
 use crate::constants;
-use crate::llm::{interpret_data_structure, interpret_element_data, interpret_text_data};
+use crate::llm::{
+    interpret_data_structure,
+    interpret_element_data,
+    interpret_text_data,
+    interpret_associations
+};
 use crate::harvest::{harvest, Harvest};
 use crate::basis_graph::BasisGraph;
 use crate::{serialize, HarvestFormats};
@@ -91,49 +96,39 @@ pub async fn analyze_associations(
 ) {
     log::trace!("In analyze_associations");
 
-    //if analyze_associations_classically(
-    //    Arc::clone(&basis_node),
-    //    Arc::clone(&basis_root_node),
-    //    Arc::clone(&output_tree)
-    //) {
-    //    log::info!("Basis node associations determined classically, not proceeding any further");
-    //    return;
-    //}
 
-
-
-
+    let mut snippets: Vec<(String, String)> = Vec::new();
 
 
     log::debug!("basis node: {}", read_lock!(basis_node).data.describe());
+    log::debug!("basis node hash: {}", read_lock!(basis_node).hash);
 
     {
         let binding = read_lock!(basis_node);
 
-        // TODO: what if more than one parent?
         if binding.parents.len() == 1 {
             let target_node_parent: Graph<BasisNode> = binding.parents.first().unwrap().clone();
 
-            let mut basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent)
-                .children
+            let mut basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent).children.clone();
+
+            let basis_node_siblings: Vec<Graph<BasisNode>> = basis_node_siblings
                 .iter()
-                .filter(|child| {
-                    read_lock!(child).id != binding.id
+                .filter(|item| {
+                    read_lock!(item).parents.len() == 1
                 })
                 .cloned()
                 .collect();
 
-            if basis_node_siblings.is_empty() {
+            if basis_node_siblings.len() < 2 {
                 log::info!("Basis node does not have siblings");
                 return;
             }
 
-            basis_node_siblings.push(Arc::clone(&basis_node));
 
 
             log::info!("Going to infer sibling associations for basis node: {}", binding.data.describe());
 
-            let mut harvests: Vec<Harvest> = Vec::new();
+            let mut harvests: Vec<(Harvest, String)> = Vec::new();
 
             for sibling in basis_node_siblings.iter() {
                 log::debug!("sibling: {}", read_lock!(sibling).data.describe());
@@ -146,15 +141,19 @@ pub async fn analyze_associations(
 
                 let mut unique_hashes = HashSet::new();
 
-                let exemplary_nodes: Vec<Graph<XmlNode>> = homologous_nodes
+                let exemplary_nodes: Vec<(Graph<XmlNode>, String)> = homologous_nodes
                     .into_iter()
-                    .filter(|node| {
+                    .filter_map(|node| {
                         let hash = graph_hash(Arc::clone(&node));
-                        unique_hashes.insert(hash)
+                        if unique_hashes.insert(hash.clone()) {
+                            Some((node, hash))
+                        } else {
+                            None
+                        }
                     })
                     .collect();
 
-                for exemplary_node in exemplary_nodes.iter() {
+                for (exemplary_node, hash) in exemplary_nodes.iter() {
                     let basis_graph = BasisGraph {
                         root: Arc::clone(&basis_root_node),
                         subgraph_hashes: vec![],
@@ -163,7 +162,7 @@ pub async fn analyze_associations(
                 
                     let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
                     
-                    harvests.push(harvest);
+                    harvests.push((harvest, hash.clone()));
                 }
 
             }
@@ -175,24 +174,21 @@ pub async fn analyze_associations(
 
 
 
-            let mut harvests: Vec<Harvest> = harvests.iter().cloned().filter(|item| {
+            let mut harvests: Vec<(Harvest, String)> = harvests.iter().cloned().filter(|(item, hash)| {
                 !(item.content.values.is_empty() && item.content.inner_content.is_empty())
             }).collect();
 
+
+
             if harvests.len() > 1 {
-
-                log::debug!("basis_node: {}", binding.data.describe());
-                for harvest in harvests.iter() {
+                for (harvest, hash) in harvests.iter() {
                     let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
-                    log::debug!("harvest: {}", truncate(&serialized));
+
+                    if serialized.len() < 2000 {
+                        snippets.push((hash.clone(), serialized));
+                    }
                 }
-
             }
-
-
-
-
-
 
 
 
@@ -202,6 +198,19 @@ pub async fn analyze_associations(
 
 
 
+    if snippets.len() > 1 {
+        for (hash, snippet) in snippets.iter() {
+            log::debug!("-------------");
+            log::debug!("hash: {}", hash);
+            log::debug!("snippet: {}", snippet);
+        }
+
+        let interpretation = interpret_associations(snippets).await;
+
+        log::debug!("*****************************************************************************************************");
+        log::debug!("interpretation: {:?}", interpretation);
+
+    }
 
 
 
