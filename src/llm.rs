@@ -66,7 +66,7 @@ pub async fn interpret_associations(snippets: Vec<(String, String)>) {
         String::new(),
         |mut acc, (_index, snippet)| {
             acc.push_str(&format!(r##"
-Snippet ID: {}
+Snippet Type ID: {}
 Snippet content:
 {}
 
@@ -76,7 +76,11 @@ Snippet content:
     );
 
     let system_prompt = format!(r##"
-Your task is to group snippets of code based on the likely meaning and semantic similarity of their values. Focus on identifying snippets that refer to the same type of content or have related meanings. Consider values like URLs, titles, timestamps, and other metadata to find similarities beyond structural format.
+Your task is to match snippet type IDs to other snippet type IDs based on whether their content is related. Look for specific references or recurring themes, such as names, URLs, or keywords, that might signify a relationship between different snippets.
+
+Potentially, several examples of a snippet of a particular type will be provided. One example of a snippet of one type might be related to just one example of another snippet of another type. In this case, provide a single group of both type IDs.
+
+Provide your response as an array of arrays, where each array contains the snippet type IDs that are semantically or contextually related.
 
 "##);
     let user_prompt = format!(r##"

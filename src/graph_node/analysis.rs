@@ -1,6 +1,6 @@
 use tokio::sync::{OwnedSemaphorePermit};
 use std::sync::{Arc};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use super::{
     Graph, 
@@ -146,16 +146,19 @@ pub async fn analyze_associations(
 
 
 
-        let mut unique_hashes = HashSet::new();
+        let mut hash_counter = HashMap::new();
 
         let exemplary_nodes: Vec<(Graph<XmlNode>, String)> = deepest_nodes
             .into_iter()
             .filter_map(|node| {
                 let hash = graph_hash(Arc::clone(&node));
-                if unique_hashes.insert(hash.clone()) {
-                    Some((node, hash))
-                } else {
+                let current_count = hash_counter.get(&hash).unwrap_or(&0);
+
+                if current_count > &3 {
                     None
+                } else {
+                    hash_counter.insert(hash.clone(), current_count + 1);
+                    Some((node, hash))
                 }
             }).collect();
 
