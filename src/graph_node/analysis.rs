@@ -15,7 +15,11 @@ use super::{
 };
 use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
-use crate::node_data_structure::{NodeDataStructure, EnumerativeStructure};
+use crate::node_data_structure::{
+    NodeDataStructure,
+    EnumerativeStructure,
+    AssociativeStructure
+};
 use crate::macros::*;
 use crate::config::{CONFIG};
 use crate::constants;
@@ -96,29 +100,19 @@ pub async fn analyze_associations(
     _permit: OwnedSemaphorePermit
 ) {
     log::trace!("In analyze_associations");
-
-
-    let mut snippets: Vec<(String, String)> = Vec::new();
-
-
     log::debug!("basis node: {}", read_lock!(basis_node).data.describe());
     log::debug!("basis node hash: {}", read_lock!(basis_node).hash);
 
-
-
+    let mut snippets: Vec<(String, String)> = Vec::new();
     let target_node_parent: Graph<BasisNode> = read_lock!(basis_node).parents.first().unwrap().clone();
-    let basis_node_siblings: Vec<Graph<BasisNode>> = read_lock!(target_node_parent).children.clone();
+    let children: Vec<Graph<BasisNode>> = read_lock!(target_node_parent).children.clone();
 
-    if basis_node_siblings.len() < 2 {
+    if children.len() < 2 {
         log::info!("Basis node does not have siblings");
         return;
     }
 
-
-
-    for sibling in basis_node_siblings.iter() {
-        log::debug!("sibling: {}", read_lock!(sibling).data.describe());
-
+    for sibling in children.iter() {
         let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
             Arc::clone(&sibling),
             Arc::clone(&basis_root_node),
@@ -128,14 +122,10 @@ pub async fn analyze_associations(
         let depths: Vec<usize> = homologous_nodes.iter()
             .map(|node| {
                 let depth = get_depth(Arc::clone(&node));
-                log::debug!("depth: {}", depth);
                 depth
             })
         .collect();
-
         let max_depth = depths.iter().copied().max().unwrap_or(0);
-        log::debug!("maximum depth: {}", max_depth);
-
         let deepest_nodes: Vec<Graph<XmlNode>> = homologous_nodes.iter()
             .filter(|node| {
                 let depth = get_depth(Arc::clone(node));
@@ -144,10 +134,7 @@ pub async fn analyze_associations(
             .cloned()
             .collect();
 
-
-
         let mut hash_counter = HashMap::new();
-
         let exemplary_nodes: Vec<(Graph<XmlNode>, String)> = deepest_nodes
             .into_iter()
             .filter_map(|node| {
@@ -171,44 +158,43 @@ pub async fn analyze_associations(
             let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
 
             if !(harvest.content.values.is_empty() && harvest.content.inner_content.is_empty()) {
-
                 let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
-                snippets.push((hash.clone(), serialized))
-
+                
+                if serialized.len() < 3000 {
+                    snippets.push((hash.clone(), serialized))
+                }
             }
-
         }
-
-
-
     }
 
-
-
-
-
-
-
-
-
-
-    if snippets.len() > 1 {
-        for (hash, snippet) in snippets.iter() {
-            log::debug!("-------------");
-            log::debug!("hash: {}", hash);
-            log::debug!("snippet: {}", snippet);
-        }
-
-        let interpretation = interpret_associations(snippets).await;
-
-        log::debug!("*****************************************************************************************************");
-        log::debug!("interpretation: {:?}", interpretation);
-
+    if snippets.len() < 2 {
+        log::info!("Did not receive enough snippets. Aborting...");
+        return;
     }
 
+    let interpretation = interpret_associations(snippets).await;
+    log::debug!("interpretation: {:?}", interpretation);
 
+    if interpretation.is_empty() {
+        log::info!("Snippets interpreted to be completely unrelated");
+        return;
+    }
 
-    
+    let associations = AssociativeStructure {
+        subgraph_ids: interpretation,
+    };
+
+    let node_data_structure = NodeDataStructure {
+        recursive: None,
+        enumerative: None,
+        associative: Some(associations),
+    };
+
+    for child in children.iter() {
+        let read_lock = read_lock!(child);
+        let mut write_lock = write_lock!(read_lock.data.structure);
+        write_lock.push(node_data_structure.clone());
+    }
 }
 
 

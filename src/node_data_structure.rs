@@ -28,7 +28,7 @@ pub struct EnumerativeStructure {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AssociativeStructure {
-    pub associated_basis_ids: Vec<String>,
+    pub subgraph_ids: Vec<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

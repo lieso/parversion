@@ -5,6 +5,7 @@ use std::env;
 use sha2::{Sha256, Digest};
 use bincode::{serialize, deserialize};
 use std::sync::{Arc, OnceLock};
+use std::collections::{HashSet};
 
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
@@ -57,7 +58,24 @@ where
     Ok(opt.filter(|s| !s.is_empty()))
 }
 
-pub async fn interpret_associations(snippets: Vec<(String, String)>) {
+fn postprocess_associations(response: LLMAssociationsResponse) -> Vec<Vec<String>> {
+    response   
+        .data
+        .into_iter()
+        .filter_map(|inner_vec| {
+            let unique_items: HashSet<String> = inner_vec.into_iter().collect();
+            let unique_vec: Vec<String> = unique_items.into_iter().collect();
+
+            if unique_vec.len() > 1 {
+                Some(unique_vec)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {
     log::trace!("In interpret_associations");
 
     assert!(snippets.len() > 0, "Did not receive any snippets");
@@ -81,7 +99,6 @@ Your task is to match snippet type IDs to other snippet type IDs based on whethe
 Potentially, several examples of a snippet of a particular type will be provided. One example of a snippet of one type might be related to just one example of another snippet of another type. In this case, provide a single group of both type IDs.
 
 Provide your response as an array of arrays, where each array contains the snippet type IDs that are semantically or contextually related.
-
 "##);
     let user_prompt = format!(r##"
 ---
@@ -100,7 +117,7 @@ Provide your response as an array of arrays, where each array contains the snipp
             .expect("Could not parse json response as LLMAssociationsResponse");
         log::debug!("llm_associations_response: {:?}", llm_associations_response);
 
-        return;
+        return postprocess_associations(llm_associations_response);
     }
 
     log::info!("Cache miss!");
@@ -165,6 +182,9 @@ Provide your response as an array of arrays, where each array contains the snipp
     let llm_associations_response = serde_json::from_str::<LLMAssociationsResponse>(json_response)
         .expect("Could not parse json response as LLMAssociationsResponse");
     log::debug!("llm_associations_response: {:?}", llm_associations_response);
+
+    // Prompting here is fragile, so we do some manual cleanup
+    postprocess_associations(llm_associations_response)
 }
 
 pub async fn interpret_data_structure(snippets: Vec<String>) -> RecursiveStructure {
