@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 
-use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
+use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, graph_hash};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
@@ -11,6 +11,7 @@ use crate::node_data::{apply_data};
 use crate::content::{
     Content,
     ContentMetadata,
+    ContentMetadataAssociative,
     postprocess_content
 };
 
@@ -98,20 +99,52 @@ Node:   {}
 
         let structures = read_lock!(basis_node).data.structure.clone();
         for structure in read_lock!(structures).iter() {
-            let meta = apply_structure(
-                structure.clone(),
-                Arc::clone(&output_node),
-                Arc::clone(&basis_graph),
-            );
+            if let Some(associative) = structure.associative.clone() {
 
-            if let Some(recursive) = meta.recursive {
-                content.meta.recursive = Some(recursive.clone());
-                related_content.meta.recursive = Some(recursive.clone());
-            }
 
-            if let Some(enumerative) = meta.enumerative {
-                content.meta.enumerative = Some(enumerative.clone());
-                related_content.meta.enumerative = Some(enumerative.clone());
+                let subgraph_hash = graph_hash(Arc::clone(&output_node));
+
+                let mut associated_subgraphs = Vec::new();
+
+                for group in associative.subgraph_ids {
+
+                    if group.contains(&subgraph_hash) {
+
+                        let filtered: Vec<String> = group
+                            .into_iter()
+                            .filter(|s| s != &subgraph_hash)
+                            .collect();
+
+                        associated_subgraphs.extend(filtered);
+                    }
+
+                }
+
+                content.meta.associative = Some(ContentMetadataAssociative {
+                    subgraph: subgraph_hash,
+                    associated_subgraphs: associated_subgraphs,
+                });
+
+
+
+
+
+            } else {
+                let meta = apply_structure(
+                    structure.clone(),
+                    Arc::clone(&output_node),
+                    Arc::clone(&basis_graph),
+                );
+
+                if let Some(recursive) = meta.recursive {
+                    content.meta.recursive = Some(recursive.clone());
+                    related_content.meta.recursive = Some(recursive.clone());
+                }
+
+                if let Some(enumerative) = meta.enumerative {
+                    content.meta.enumerative = Some(enumerative.clone());
+                    related_content.meta.enumerative = Some(enumerative.clone());
+                }
             }
         }
     }

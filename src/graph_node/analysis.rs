@@ -197,7 +197,6 @@ pub async fn analyze_associations(
     }
 }
 
-
 fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Graph<XmlNode>>) -> bool {
     log::trace!("In analyze_classically");
 

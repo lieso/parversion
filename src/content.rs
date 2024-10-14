@@ -30,7 +30,8 @@ pub struct ContentMetadataEnumerative {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentMetadataAssociative {
-    pub associated_content_ids: Vec<String>,
+    pub subgraph: String,
+    pub associated_subgraphs: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
