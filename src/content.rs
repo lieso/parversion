@@ -63,14 +63,42 @@ pub fn postprocess_content(content: &mut Content) {
     let content_copy = content.clone();
     organize_recursive_content(content, &content_copy);
 
-    log::info!("Organising enumerative content...");
-    organize_enumerative_content(content);
+    log::info!("Organising associative content...");
+    organize_associative_content(content);
+
+    //log::info!("Organising enumerative content...");
+    //organize_enumerative_content(content);
 
     log::info!("Removing empty objects from content...");
     content.remove_empty();
 
     log::info!("Merging content...");
     content.merge_content();
+}
+
+fn organize_associative_content(content: &mut Content) {
+    content.inner_content.iter_mut().for_each(|child| organize_associative_content(child));
+
+    let mut extended_indices = HashSet::new();
+    let inner_content_clone = content.inner_content.clone();
+
+    for (i, inner_content_a) in content.inner_content.iter_mut().enumerate() {
+        if let Some(associative_a) = &inner_content_a.meta.associative {
+            for (j, inner_content_b) in inner_content_clone.iter().enumerate().skip(i + 1) {
+                if extended_indices.contains(&(i, j)) || extended_indices.contains(&(j, i)) {
+                    continue;
+                }
+
+                if let Some(associative_b) = &inner_content_b.meta.associative {
+                    if associative_a.associated_subgraphs.contains(&associative_b.subgraph) {
+                        inner_content_a.inner_content.extend(inner_content_b.inner_content.clone());
+                        extended_indices.insert((i, j));
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn organize_enumerative_content(content: &mut Content) {
@@ -98,7 +126,6 @@ fn organize_enumerative_content(content: &mut Content) {
                 current_list.push(current_item.clone());
                 listed_item_ids.insert(item_id.clone());
             }
-
 
             match &meta.next_id {
                 Some(next_id) => {

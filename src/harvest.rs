@@ -120,10 +120,13 @@ Node:   {}
 
                 }
 
-                content.meta.associative = Some(ContentMetadataAssociative {
-                    subgraph: subgraph_hash,
-                    associated_subgraphs: associated_subgraphs,
-                });
+
+                if !associated_subgraphs.is_empty() {
+                    content.meta.associative = Some(ContentMetadataAssociative {
+                        subgraph: subgraph_hash,
+                        associated_subgraphs: associated_subgraphs,
+                    });
+                }
 
 
 
