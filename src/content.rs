@@ -91,6 +91,23 @@ pub fn postprocess_content(content: &mut Content) {
 
     log::info!("Merging content...");
     content.merge_content();
+
+    log::info!("Clearing data structure meta...");
+    clear_data_structure_meta(content);
+}
+
+fn clear_data_structure_meta(content: &mut Content) {
+    content.inner_content.iter_mut().for_each(|child| clear_data_structure_meta(child));
+    content.children.iter_mut().for_each(|child| clear_data_structure_meta(child));
+    content.lists.iter_mut().for_each(|list| {
+        list.iter_mut().for_each(|child| clear_data_structure_meta(child));
+    });
+
+    content.meta = ContentMetadata {
+        recursive: None,
+        enumerative: None,
+        associative: None,
+    };
 }
 
 fn organize_associative_content(content: &mut Content) {
