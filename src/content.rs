@@ -56,6 +56,23 @@ pub struct Content {
     pub lists: Vec<Vec<Content>>,
 }
 
+impl Default for Content {
+    fn default() -> Self {
+        Content {
+            id: Uuid::new_v4().to_string(),
+            meta: ContentMetadata {
+                recursive: None,
+                enumerative: None,
+                associative: None,
+            },
+            values: Vec::new(),
+            inner_content: Vec::new(),
+            children: Vec::new(),
+            lists: Vec::new(),
+        }
+    }
+}
+
 pub fn postprocess_content(content: &mut Content) {
     log::trace!("In postprocess_content");
 
@@ -66,8 +83,8 @@ pub fn postprocess_content(content: &mut Content) {
     log::info!("Organising associative content...");
     organize_associative_content(content);
 
-    //log::info!("Organising enumerative content...");
-    //organize_enumerative_content(content);
+    log::info!("Organising enumerative content...");
+    organize_enumerative_content(content);
 
     log::info!("Removing empty objects from content...");
     content.remove_empty();
@@ -80,25 +97,31 @@ fn organize_associative_content(content: &mut Content) {
     content.inner_content.iter_mut().for_each(|child| organize_associative_content(child));
 
     let mut extended_indices = HashSet::new();
-    let inner_content_clone = content.inner_content.clone();
 
-    for (i, inner_content_a) in content.inner_content.iter_mut().enumerate() {
-        if let Some(associative_a) = &inner_content_a.meta.associative {
-            for (j, inner_content_b) in inner_content_clone.iter().enumerate().skip(i + 1) {
+    let mut i = 0;
+    while i < content.inner_content.len() {
+        if let Some(associative_a) = &content.inner_content[i].meta.associative {
+            let mut j = i + 1;
+            while j < content.inner_content.len() {
                 if extended_indices.contains(&(i, j)) || extended_indices.contains(&(j, i)) {
+                    j += 1;
                     continue;
                 }
 
-                if let Some(associative_b) = &inner_content_b.meta.associative {
+                if let Some(associative_b) = &content.inner_content[j].meta.associative {
                     if associative_a.associated_subgraphs.contains(&associative_b.subgraph) {
-                        inner_content_a.inner_content.extend(inner_content_b.inner_content.clone());
+                        let inner_content_b = std::mem::take(&mut content.inner_content[j]);
+                        content.inner_content[i].inner_content.extend(inner_content_b.inner_content);
                         extended_indices.insert((i, j));
                         break;
                     }
                 }
+                j += 1;
             }
         }
+        i += 1;
     }
+
 }
 
 fn organize_enumerative_content(content: &mut Content) {
