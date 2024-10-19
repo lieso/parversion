@@ -11,7 +11,8 @@ use super::{
     get_lineage,
     bft,
     graph_hash,
-    get_depth
+    get_depth,
+    to_xml_string
 };
 use crate::xml_node::{XmlNode, get_meaningful_attributes};
 use crate::basis_node::{BasisNode};
@@ -112,19 +113,16 @@ pub async fn analyze_associations(
         return;
     }
 
-    for sibling in children.iter() {
+    for child in children.iter() {
         let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
-            Arc::clone(&sibling),
+            Arc::clone(&child),
             Arc::clone(&basis_root_node),
             Arc::clone(&output_tree),
         );
 
         let depths: Vec<usize> = homologous_nodes.iter()
-            .map(|node| {
-                let depth = get_depth(Arc::clone(&node));
-                depth
-            })
-        .collect();
+            .map(|node| get_depth(Arc::clone(&node)))
+            .collect();
         let max_depth = depths.iter().copied().max().unwrap_or(0);
         let deepest_nodes: Vec<Graph<XmlNode>> = homologous_nodes.iter()
             .filter(|node| {
@@ -150,19 +148,10 @@ pub async fn analyze_associations(
             }).collect();
 
         for (exemplary_node, hash) in exemplary_nodes.iter() {
-            let basis_graph = BasisGraph {
-                root: Arc::clone(&basis_root_node),
-                subgraph_hashes: vec![],
-            };
+            let xml_string = to_xml_string(Arc::clone(&exemplary_node));
 
-            let harvest = harvest(Arc::clone(&exemplary_node), basis_graph.clone());
-
-            if !(harvest.content.values.is_empty() && harvest.content.inner_content.is_empty()) {
-                let serialized = serialize(harvest.clone(), HarvestFormats::JSON).expect("Unable to serialize result");
-                
-                if serialized.len() < 3000 {
-                    snippets.push((hash.clone(), serialized))
-                }
+            if xml_string.len() < 3000 {
+                snippets.push((hash.clone(), xml_string));
             }
         }
     }
