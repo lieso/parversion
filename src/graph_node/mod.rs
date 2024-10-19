@@ -489,7 +489,7 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
     let mut nodes: Vec<Graph<BasisNode>> = Vec::new();
 
     let mut parents_visited: HashSet<String> = HashSet::new();
-    let mut first_siblings: Vec<Graph<BasisNode>> = Vec::new();
+    let mut spanning_sample_children: Vec<Graph<BasisNode>> = Vec::new();
 
     bft(Arc::clone(&graph), &mut |node: Graph<BasisNode>| {
         nodes.push(node.clone());
@@ -497,7 +497,7 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
         if parents_visited.insert(read_lock!(node).id.clone()) {
             let children = &read_lock!(node).children;
             if let Some(first_child) = children.first() {
-                first_siblings.push(first_child.clone());
+                spanning_sample_children.push(first_child.clone());
             }
         }
 
@@ -522,6 +522,8 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
         }
     }
 
+    // Interpreting attributes, text nodes and node data structures
+
     let handles: Vec<_> = nodes.iter().map(|node| {
         let semaphore = semaphore.clone();
         let node = Arc::clone(node);
@@ -536,7 +538,9 @@ pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
 
     handle_tasks(handles).await;
 
-    let handles: Vec<_> = first_siblings.iter().map(|node| {
+    // Interpreting associative content
+
+    let handles: Vec<_> = spanning_sample_children.iter().map(|node| {
         let semaphore = semaphore.clone();
         let node = Arc::clone(node);
         let graph = Arc::clone(&graph);
