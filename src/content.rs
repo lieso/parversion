@@ -162,6 +162,10 @@ fn organize_enumerative_content(content: &mut Content) {
         while let Some(meta) = &current_item.meta.enumerative {
             let item_id = current_item.id.clone();
 
+            if current_item.meta.recursive.is_some() {
+                break;
+            }
+
             if !listed_item_ids.contains(&item_id) {
                 current_list.push(current_item.clone());
                 listed_item_ids.insert(item_id.clone());

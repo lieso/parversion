@@ -228,7 +228,7 @@ fn find_parent_node(output_node: Graph<XmlNode>, attribute: String, attribute_va
 fn evaluate_awk_expression(expression: String, input_data: String) -> Option<String> {
     log::trace!("In evaluate_awk_expression");
 
-    let input_data = format!("\"{}\"", input_data);
+    let input_data = format!("{}", input_data);
 
     if let Some(awk_expression) = sanitize_awk_expression(&expression) {
         log::debug!("awk_expression: {}", awk_expression);

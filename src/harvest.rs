@@ -190,24 +190,8 @@ pub fn harvest(
         output_content: &mut Content,
         output_related_content: &mut Content,
     ) {
-        if read_lock!(output_node).is_linear_tail() {
-            log::info!("Output node is part of linear tail");
-
-            while read_lock!(output_node).is_linear() {
-                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
-
-                output_node = {
-                    let next_node = read_lock!(output_node).children.first().expect("Linear output node has no children").clone();
-                    next_node.clone()
-                };
-            }
-
-            process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
-
-        }
-
-        if read_lock!(output_node).is_linear_head() {
-            log::info!("Output node is head of linear sequence of nodes");
+        if read_lock!(output_node).is_linear() {
+            log::info!("Output node is linear");
 
             while read_lock!(output_node).is_linear() {
                 process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
