@@ -1,5 +1,6 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
+use uuid::Uuid;
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, graph_hash};
 use crate::xml_node::{XmlNode};
@@ -159,30 +160,10 @@ pub fn harvest(
 ) -> Harvest {
     log::trace!("In harvest");
 
-    let mut content = Content {
-        id: read_lock!(output_tree).id.clone(),
-        meta: ContentMetadata {
-            recursive: None,
-            enumerative: None,
-            associative: None,
-        },
-        values: Vec::new(),
-        inner_content: Vec::new(),
-        children: Vec::new(),
-        lists: Vec::new(),
-    };
-    let mut related_content = Content {
-        id: read_lock!(output_tree).id.clone(),
-        meta: ContentMetadata {
-            recursive: None,
-            enumerative: None,
-            associative: None,
-        },
-        values: Vec::new(),
-        inner_content: Vec::new(),
-        children: Vec::new(),
-        lists: Vec::new(),
-    };
+    let mut content = Content::default();
+    content.id = read_lock!(output_tree).id.clone();
+    let mut related_content = Content::default();
+    related_content.id = read_lock!(output_tree).id.clone();
 
     fn recurse(
         mut output_node: Graph<XmlNode>,
@@ -210,30 +191,10 @@ pub fn harvest(
         }
 
         for child in read_lock!(output_node).children.iter() {
-            let mut child_content = Content {
-                id: read_lock!(child).id.clone(),
-                meta: ContentMetadata {
-                    recursive: None,
-                    enumerative: None,
-                    associative: None,
-                },
-                values: Vec::new(),
-                inner_content: Vec::new(),
-                children: Vec::new(),
-                lists: Vec::new(),
-            };
-            let mut child_related_content = Content {
-                id: read_lock!(child).id.clone(),
-                meta: ContentMetadata {
-                    recursive: None,
-                    enumerative: None,
-                    associative: None,
-                },
-                values: Vec::new(),
-                inner_content: Vec::new(),
-                children: Vec::new(),
-                lists: Vec::new(),
-            };
+            let mut child_content = Content::default();
+            child_content.id = read_lock!(child).id.clone();
+            let mut child_related_content = Content::default();
+            child_related_content.id = read_lock!(child).id.clone();
 
             recurse(
                 Arc::clone(child),
