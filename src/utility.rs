@@ -128,40 +128,8 @@ pub fn preprocess_xml(xml_string: &str) -> String {
         }
     }
 
-    fn _convert_element_names(element: &mut Element) {
-        if !constants::SEEN_WHITELISTED_ELEMENTS.contains(&element.name.as_str()) {
-            element.name = "div".to_string();
-        }
-
-        for child in &mut element.children {
-            if let xmltree::XMLNode::Element(ref mut el) = child {
-                _convert_element_names(el);
-            }
-        }
-    }
-
-    fn _merge_nested_divs(element: &mut Element) {
-        if element.name == "div" && element.attributes.is_empty() {
-            if let [xmltree::XMLNode::Element(ref mut child_element)] = element.children.as_mut_slice()
-            {
-                if child_element.name == "div" && child_element.attributes.is_empty() {
-                    let children = std::mem::take(&mut child_element.children);
-                    element.children = children;
-                }
-            }
-        }
-
-        for child in &mut element.children {
-            if let xmltree::XMLNode::Element(ref mut el) = child {
-                _merge_nested_divs(el);
-            }
-        }
-    }
-
     remove_elements(&mut root);
     remove_attributes(&mut root);
-    //convert_element_names(&mut root);
-    //merge_nested_divs(&mut root);
 
     let mut buffer = Cursor::new(Vec::new());
     root.write(&mut buffer).expect("Could not write root");

@@ -301,25 +301,6 @@ pub fn bft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>) ->
     }
 }
 
-pub fn dft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>) -> bool) {
-    let mut visited = HashSet::new();
-    let mut stack = vec![graph];
-
-    while let Some(current) = stack.pop() {
-        if !visited.insert(read_lock!(current).id.clone()) {
-            continue;
-        }
-
-        if !visit(Arc::clone(&current)) {
-            break;
-        }
-
-        for child in read_lock!(current).children.iter().rev() {
-            stack.push(child.clone());
-        }
-    }
-}
-
 pub fn cyclize<T: GraphNodeData>(graph: Graph<T>) {
     log::trace!("In cyclize");
 

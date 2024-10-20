@@ -13,8 +13,4 @@ pub const UNSEEN_BLACKLISTED_ELEMENTS: &[&str] = &[
     "script", "meta", "link", "iframe", "svg", "style", "noscript"
 ];
 
-pub const SEEN_WHITELISTED_ELEMENTS: &[&str] = &[
-    "html", "head", "body", "a", "img"
-];
-
 pub const MAX_CONCURRENCY: usize = 1;

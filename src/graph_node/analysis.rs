@@ -1,15 +1,12 @@
 use tokio::sync::{OwnedSemaphorePermit};
 use std::sync::{Arc};
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap};
 
 use super::{
     Graph, 
     GraphNodeData, 
     find_homologous_nodes,
     build_xml_with_target_node,
-    apply_lineage,
-    get_lineage,
-    bft,
     graph_hash,
     get_depth,
     to_xml_string
@@ -30,9 +27,6 @@ use crate::llm::{
     interpret_text_data,
     interpret_associations
 };
-use crate::harvest::{harvest, Harvest};
-use crate::basis_graph::BasisGraph;
-use crate::{serialize, HarvestFormats};
 
 pub async fn analyze(
     target_node: Graph<BasisNode>,
