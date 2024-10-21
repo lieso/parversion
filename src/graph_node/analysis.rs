@@ -95,8 +95,6 @@ pub async fn analyze_associations(
     _permit: OwnedSemaphorePermit
 ) {
     log::trace!("In analyze_associations");
-    log::debug!("basis node: {}", read_lock!(basis_node).data.describe());
-    log::debug!("basis node hash: {}", read_lock!(basis_node).hash);
 
     let mut snippets: Vec<(String, String)> = Vec::new();
     let target_node_parent: Graph<BasisNode> = read_lock!(basis_node).parents.first().unwrap().clone();
@@ -119,10 +117,7 @@ pub async fn analyze_associations(
             .collect();
         let max_depth = depths.iter().copied().max().unwrap_or(0);
         let deepest_nodes: Vec<Graph<XmlNode>> = homologous_nodes.iter()
-            .filter(|node| {
-                let depth = get_depth(Arc::clone(node));
-                depth == max_depth
-            })
+            .filter(|node| get_depth(Arc::clone(node))  == max_depth)
             .cloned()
             .collect();
 
@@ -156,7 +151,6 @@ pub async fn analyze_associations(
     }
 
     let interpretation = interpret_associations(snippets).await;
-    log::debug!("interpretation: {:?}", interpretation);
 
     if interpretation.is_empty() {
         log::info!("Snippets interpreted to be completely unrelated");
@@ -285,7 +279,6 @@ async fn analyze_data(
             wl.push(interpretation);
         }
     } else {
-
         let meaningful_attributes = get_meaningful_attributes(&read_lock!(output_node).data)
             .keys()
             .cloned()
