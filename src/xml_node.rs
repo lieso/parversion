@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::{Cursor, Read};
+use std::io::{Cursor, Read, Write};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use xmltree::{Element, XMLNode};
 use xmltree::EmitterConfig;
@@ -310,19 +310,35 @@ impl XmlNode {
 }
 
 fn element_to_string(element: &Element) -> String {
-     let mut config = EmitterConfig::new();
-     config.write_document_declaration = false;
+    let mut output = Vec::new();
 
-     let mut cursor = Cursor::new(Vec::new());
+    fn write_element<W: Write>(element: &Element, writer: &mut W) -> std::io::Result<()> {
+        write!(writer, "<{}", element.name)?;
 
-     element.write_with_config(&mut cursor, config).unwrap();
+        if element.children.is_empty() { 
+            write!(writer, "/>")?;
+        } else {
+            write!(writer, ">")?;
 
-     let serialized_xml = String::from_utf8(cursor.into_inner()).unwrap();
+            for child in &element.children {
+                if let XMLNode::Element(child_element) = child {
+                    write_element(child_element, writer)?;
+                }
 
-     // TODO
-     let serialized_xml = serialized_xml.replace(" xmlns=\"http://www.w3.org/1999/xhtml\"", "");
+                if let XMLNode::Text(child_text) = child {
+                    write!(writer, "{}", child_text)?;
+                }
+            }
 
-     serialized_xml
+            write!(writer, "</{}>", element.name)?;
+        }
+
+        Ok(())
+    }
+
+    write_element(&element, &mut output).unwrap();
+
+    String::from_utf8(output).unwrap()
 }
 
 fn url_to_hash_parts(url: &str) -> Vec<String> {
