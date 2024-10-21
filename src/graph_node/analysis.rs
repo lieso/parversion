@@ -195,46 +195,10 @@ fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Grap
     }
 
     let output_node: Graph<XmlNode> = homologous_nodes.first().unwrap().clone();
+    let tag_name = read_lock!(output_node).data.get_element_tag_name();
 
-    // * Link elements
-    if read_lock!(output_node).data.get_element_tag_name() == "link" {
-        log::info!("Node represents HTML link element. Not proceeding any further.");
-        return true;
-    }
-
-    // * Meta elements
-    if read_lock!(output_node).data.get_element_tag_name() == "meta" {
-        log::info!("Node represents HTML meta element. Not proceeding any further.");
-        return true;
-    }
-
-    // * Script elements
-    if read_lock!(output_node).data.get_element_tag_name() == "script" {
-        log::info!("Node represents HTML script element. Not proceeding any further.");
-        return true;
-    }
-
-    // * Head elements
-    if read_lock!(output_node).data.get_element_tag_name() == "head" {
-        log::info!("Node represents HTML head element. Not proceeding any further.");
-        return true;
-    }
-
-    // * Body elements
-    if read_lock!(output_node).data.get_element_tag_name() == "body" {
-        log::info!("Node represents HTML body element. Not proceeding any further.");
-        return true;
-    }
-
-    // * br elements
-    if read_lock!(output_node).data.get_element_tag_name() == "br" {
-        log::info!("Node represents HTML break element. Not proceeding any further.");
-        return true;
-    }
-
-    // * form elements
-    if read_lock!(output_node).data.get_element_tag_name() == "form" {
-        log::info!("Node represents HTML form element. Not proceeding any further.");
+    if constants::SEEN_BLACKLISTED_ELEMENTS.contains(&tag_name.as_str()) {
+        log::info!("Node with tag name: {} has been blacklisted from interpretation. Not proceeding any further.", tag_name);
         return true;
     }
 
