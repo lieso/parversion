@@ -5,9 +5,14 @@ use std::fs::File;
 
 use super::{GraphNode, Graph, GraphNodeData, bft};
 use crate::macros::*;
+use crate::environment;
 
 impl<T: GraphNodeData> GraphNode<T> {
     pub fn debug_visualize(&self, label: &str) {
+        if !environment::is_local() {
+            return;
+        }
+
         let dot_path = format!("./debug/{}.dot", label);
         let png_path = format!("./debug/{}.png", label);
         let mut file = File::create(dot_path.clone()).expect("Unable to create file");
@@ -20,6 +25,10 @@ impl<T: GraphNodeData> GraphNode<T> {
     }
     
     pub fn debug_statistics(&self, label: &str) {
+        if !environment::is_local() {
+            return;
+        }
+
         let mut node_count = 0;
 
         bft(Arc::new(RwLock::new((*self).clone())), &mut |_node: Graph<T>| {

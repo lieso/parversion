@@ -26,6 +26,7 @@ mod macros;
 mod basis_graph;
 mod harvest;
 mod content;
+mod environment;
 
 pub use graph_node::GraphNodeData;
 pub use graph_node::GraphNode;

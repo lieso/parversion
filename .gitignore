@@ -7,3 +7,6 @@ resources/*
 # Debug
 debug/*
 !debug/.gitkeep
+
+# Environment variables
+.env
