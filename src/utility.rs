@@ -1,11 +1,13 @@
 use xmltree::Element;
-use std::io::Cursor;
+use std::io::{Write, Cursor};
+use std::fs::File;
 use std::str::from_utf8;
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 
 use crate::constants;
+use crate::environment;
 
 pub fn is_valid_xml(xml_string: &str) -> bool {
     match Element::parse(xml_string.as_bytes()) {
@@ -31,8 +33,6 @@ pub fn string_to_xml(data: &str) -> Option<String> {
     if xhtml.trim().is_empty() {
         return None;
     }
-
-    log::debug!("{}", xhtml);
 
     Some(xhtml)
 }
@@ -97,8 +97,6 @@ fn escape_xml(data: &str) -> String {
 pub fn preprocess_xml(xml_string: &str) -> String {
     let mut root = Element::parse(xml_string.as_bytes()).expect("Unable to parse XML");
 
-    log::debug!("unprocessed xml: {}", xml_string);
-
     fn remove_attributes(element: &mut Element) {
         element.attributes.retain(|attr, value| {
             !constants::UNSEEN_BLACKLISTED_ATTRIBUTES.contains(&attr.as_str()) &&
@@ -135,9 +133,15 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     root.write(&mut buffer).expect("Could not write root");
 
     let buf = buffer.into_inner();
-    let as_string = from_utf8(&buf).expect("Found invalid UTF-8");
+    let as_string = from_utf8(&buf).expect("Found invalid UTF-8").to_string();
 
-    log::debug!("preprocessed_xml: {}", as_string);
+    if environment::is_local() {
+        let mut file = File::create("./debug/unprocessed.xml").expect("Could not create file");
+        file.write_all(xml_string.as_bytes()).expect("Could not write to file");
 
-    return as_string.to_string();
+        let mut file = File::create("./debug/preprocessed.xml").expect("Could not create file");
+        file.write_all(as_string.as_bytes()).expect("Could not write to file");
+    }
+
+    return as_string
 }

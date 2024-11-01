@@ -83,8 +83,8 @@ pub fn postprocess_content(content: &mut Content) {
     log::info!("Organising associative content...");
     organize_associative_content(content);
 
-    log::info!("Organising enumerative content...");
-    organize_enumerative_content(content);
+    //log::info!("Organising enumerative content...");
+    //organize_enumerative_content(content);
 
     log::info!("Removing empty objects from content...");
     content.remove_empty();
