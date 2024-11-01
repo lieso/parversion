@@ -7,7 +7,3 @@ resources/*
 # Debug
 debug/*
 !debug/.gitkeep
-
-# Trees
-trees/*
-!trees/.gitkeep
