@@ -1,6 +1,5 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
-use uuid::Uuid;
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, graph_hash};
 use crate::xml_node::{XmlNode};
@@ -11,15 +10,35 @@ use crate::node_data_structure::{apply_structure};
 use crate::node_data::{apply_data};
 use crate::content::{
     Content,
-    ContentMetadata,
     ContentMetadataAssociative,
     postprocess_content
 };
+use crate::error::{Errors};
+
+#[derive(Debug)]
+pub enum HarvestFormats {
+    JSON,
+    //XML,
+    //CSV,
+    //HTML
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Harvest {
     pub content: Content,
     pub related_content: Content,
+}
+
+pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<String, Errors> {
+    match format {
+        HarvestFormats::JSON => {
+            log::info!("Serializing harvest as JSON");
+
+            let serialized = serde_json::to_string(&harvest).expect("Could not serialize output to JSON");
+
+            Ok(serialized)
+        },
+    }
 }
 
 fn process_node(

@@ -1,15 +1,8 @@
 use tokio::runtime::Runtime;
-use serde_json::{
-    json,
-    to_string_pretty,
-    Result as SerdeResult,
-    Value as JsonValue,
-    from_str
-};
 use std::fs::{File};
 use std::process;
 use std::io::{Read};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc};
 use std::collections::{HashSet, HashMap};
 
 mod error;
@@ -24,9 +17,9 @@ mod basis_node;
 mod graph_node;
 mod macros;
 mod basis_graph;
-mod harvest;
 mod content;
 mod environment;
+mod harvest;
 
 pub use graph_node::GraphNodeData;
 pub use graph_node::GraphNode;
@@ -39,6 +32,7 @@ pub use content::{
     ContentValue,
     ContentValueMetadata,
 };
+pub use harvest::{Harvest, HarvestFormats, serialize_harvest};
 
 use graph_node::{
     absorb,
@@ -51,15 +45,7 @@ use graph_node::{
 };
 use xml_node::{XmlNode};
 use error::{Errors};
-use harvest::{harvest, Harvest};
-
-#[derive(Debug)]
-pub enum HarvestFormats {
-    JSON,
-    //XML,
-    //CSV,
-    //HTML
-}
+use harvest::{harvest};
 
 pub struct NormalizeResult {
     pub basis_graph: BasisGraph,
@@ -215,102 +201,4 @@ pub async fn normalize_xml(
         basis_graph: basis_graph,
         harvest: harvest,
     })
-}
-
-impl<T: GraphNodeData> GraphNode<T> {
-    pub fn serialize(&self) -> SerdeResult<String> {
-        let mut visited = HashSet::new();
-        let json_value = self.serialize_node(&mut visited)?;
-        to_string_pretty(&json_value)
-    }
-
-    pub fn deserialize(json_str: &str) -> SerdeResult<Graph<T>> {
-        let json_value: JsonValue = from_str(json_str)?;
-        let mut visited = HashMap::new();
-        Self::deserialize_node(&json_value, &mut visited)
-    }
-
-    fn deserialize_node(
-        json_value: &JsonValue,
-        visited: &mut HashMap<String, Graph<T>>,
-    ) -> SerdeResult<Graph<T>> {
-        let id = json_value["id"].as_str().unwrap().to_string();
-
-        if let Some(existing_node) = visited.get(&id) {
-            return Ok(Arc::clone(existing_node));
-        }
-
-        let data: T = serde_json::from_value(json_value["data"].clone())?;
-
-        let temp_node = Arc::new(RwLock::new(GraphNode {
-            id: id.clone(),
-            hash: json_value["hash"].as_str().unwrap().to_string(),
-            data,
-            parents: Vec::new(),
-            children: Vec::new(),
-        }));
-        visited.insert(id.clone(), Arc::clone(&temp_node));
-
-        let default_parents = vec![];
-        let parents_json = json_value["parents"].as_array().unwrap_or(&default_parents);
-        let parents: SerdeResult<Vec<_>> = parents_json
-            .iter()
-            .map(|parent_json| Self::deserialize_node(parent_json, visited))
-            .collect();
-
-        let default_children = vec![];
-        let children_json = json_value["children"].as_array().unwrap_or(&default_children);
-        let children: SerdeResult<Vec<_>> = children_json
-            .iter()
-            .map(|child_json| Self::deserialize_node(child_json, visited))
-            .collect();
-
-        {
-            let mut node = temp_node.write().unwrap();
-            node.parents = parents?;
-            node.children = children?;
-        }
-
-        Ok(temp_node)
-    }
-
-    fn serialize_node(&self, visited: &mut HashSet<String>) -> SerdeResult<serde_json::Value> {
-        if visited.contains(&self.id) {
-            return Ok(json!({"id": self.id, "hash": self.hash }));
-        }
-
-        visited.insert(self.id.clone());
-
-        let parents_json: SerdeResult<Vec<_>> = self
-            .parents
-            .iter()
-            .map(|parent| read_lock!(parent).serialize_node(visited))
-            .collect();
-
-        let children_json: SerdeResult<Vec<_>> = self
-            .children
-            .iter()
-            .map(|child| read_lock!(child).serialize_node(visited))
-            .collect();
-
-        Ok(json!({
-            "id": self.id,
-            "hash": self.hash,
-            "data": self.data,
-            "parents": parents_json?,
-            "children": children_json?,
-        }))
-    }
-}
-
-pub fn serialize(harvest: Harvest, format: HarvestFormats) -> Result<String, Errors> {
-    match format {
-        HarvestFormats::JSON => {
-            log::info!("Serializing harvest as JSON");
-
-            let serialized = serde_json::to_string(&harvest).expect("Could not serialize output to JSON");
-
-            Ok(serialized)
-        },
-    }
 }

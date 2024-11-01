@@ -1,8 +1,7 @@
 use std::fmt;
-use std::io::{Cursor, Read, Write};
+use std::io::{Read, Write};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use xmltree::{Element, XMLNode};
-use xmltree::EmitterConfig;
 use serde::de::{self, Visitor};
 use sha2::{Sha256, Digest};
 use pathetic;
