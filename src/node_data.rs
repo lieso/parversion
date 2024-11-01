@@ -53,7 +53,7 @@ pub fn apply_data(
         }
     }
 
-    // Discarding advertisments
+    // Discarding advertisements
     let is_advertisement = {
         node_data.clone().text.map_or(false, |text| text.is_advertisement) ||
         node_data.clone().element.map_or(false, |element| element.is_advertisement)

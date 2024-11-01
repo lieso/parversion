@@ -38,11 +38,10 @@ use graph_node::{
     absorb,
     cyclize,
     prune,
-    interpret,
+    analyze_nodes,
     graph_hash,
-    deep_copy,
-    to_xml_string
 };
+use basis_graph::{build_basis_graph, analyze_graph};
 use xml_node::{XmlNode};
 use error::{Errors};
 use harvest::{harvest};
@@ -118,79 +117,41 @@ pub async fn normalize_xml(
     let input_graph: Graph<XmlNode> = graph_node::build_graph(xml.clone());
     let output_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
 
-    read_lock!(input_graph).debug_visualize("input_graph");
-
     cyclize(Arc::clone(&input_graph));
     log::info!("Done cyclizing input graph");
 
     prune(Arc::clone(&input_graph));
     log::info!("Done pruning input graph");
 
-    read_lock!(input_graph).debug_statistics("pruned_input_graph");
-    read_lock!(input_graph).debug_visualize("pruned_input_graph");
+    let input_graph_copy: Graph<XmlNode> = deep_copy(
+        Arc::clone(&input_graph),
+        vec![GraphNode::from_void()],
+        &mut HashSet::new(),
+        &mut HashMap::new()
+    );
 
-    let subgraph_hash = graph_hash(Arc::clone(&input_graph));
-    log::debug!("subgraph_hash: {}", subgraph_hash);
-
-    let pruned_input: String = to_xml_string(Arc::clone(&input_graph));
-
-    if environment::is_local() {
-        let mut file = File::create("./debug/pruned_input.xml").expect("Could not create file");
-        file.write_all(pruned_input.as_bytes()).expect("Could not write to file");
-    }
-
-    let basis_graph = if let Some(previous_basis_graph) = input_basis_graph {
+    let basis_graph: BasisGraph = if let Some(previous_basis_graph) = input_basis_graph {
         log::info!("Received a basis graph as input");
 
-        let basis_root: Graph<BasisNode> = previous_basis_graph.root;
-        let mut subgraph_hashes = previous_basis_graph.subgraph_hashes;
-
-        log::info!("previous subgraph hashes: {:?}", subgraph_hashes);
-
-        if !subgraph_hashes.contains(&subgraph_hash) {
+        if !previous_basis_graph.contains_subgraph(Arc::clone(&input_graph)) {
             log::info!("Input graph is not a subgraph of basis graph");
-
-            absorb(Arc::clone(&basis_root), Arc::clone(&input_graph));
-
-            subgraph_hashes.push(subgraph_hash);
-
-            log::info!("Interpreting basis graph...");
-            interpret(Arc::clone(&basis_root), Arc::clone(&output_tree)).await;
-            log::info!("Done interpreting basis graph.");
+            absorb(Arc::clone(&previous_basis_graph.root), Arc::clone(&input_graph));
         }
 
-        BasisGraph {
-            root: basis_root,
-            subgraph_hashes: subgraph_hashes,
-        }
+        previous_basis_graph
     } else {
         log::info!("Did not receive a basis graph as input");
+        build_basis_graph(Arc::clone(&input_graph))
+    }
 
-        let copy: Graph<BasisNode> = deep_copy(
-            Arc::clone(&input_graph),
-            vec![GraphNode::from_void()],
-            &mut HashSet::new(),
-            &mut HashMap::new()
-        );
-        let new_root: Graph<BasisNode> = GraphNode::from_void();
-        {
-            write_lock!(new_root).children.push(Arc::clone(&copy));
-        }
-        read_lock!(new_root).debug_visualize("new_root");
+    log::info!("Performing network analysis...");
+    analyze_graph(basis_graph, Arc::clone(&input_graph_copy));
 
-        log::info!("Interpreting basis graph...");
-        interpret(Arc::clone(&new_root), Arc::clone(&output_tree)).await;
-        log::info!("Done interpreting basis graph.");
-
-        BasisGraph {
-            root: new_root,
-            subgraph_hashes: vec![subgraph_hash]
-        }
-    };
+    log::info!("Performing node analysis...");
+    analyze_nodes(basis_graph, Arc::clone(&output_tree));
 
     log::info!("Harvesting output tree..");
     let harvest = harvest(Arc::clone(&output_tree), basis_graph.clone());
-    log::info!("Done harvesting output tree.");
 
     Ok(NormalizeResult {
         basis_graph: basis_graph,

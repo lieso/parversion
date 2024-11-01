@@ -619,7 +619,7 @@ Example {}:
     );
 
     let system_prompt = format!(r##"
-Your task is to interpret the meaning of HTML text nodes, provide an appropriate name in snake case that could be used for programmtically representing this type of data, and to provide additional metadata for these text nodes.
+Your task is to interpret the meaning of HTML text nodes, provide an appropriate name in snake case that could be used for programmatically representing this type of data, and to provide additional metadata for these text nodes.
 
 At least one example of the text node will be provided along with some surrounding HTML providing necessary context. The target node to be analyzed will be delimited with an HTML comment.
 

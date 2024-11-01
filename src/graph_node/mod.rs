@@ -557,8 +557,8 @@ pub fn prune(graph: Graph<XmlNode>) {
     }
 }
 
-pub async fn interpret(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
-    log::trace!("In interpret");
+pub async fn analyze_nodes(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
+    log::trace!("In analyze_nodes");
 
     let mut nodes: Vec<Graph<BasisNode>> = Vec::new();
 
