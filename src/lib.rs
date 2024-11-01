@@ -1,7 +1,7 @@
 use tokio::runtime::Runtime;
-use std::fs::{File};
 use std::process;
-use std::io::{Read};
+use std::io::{Read, Write};
+use std::fs::File;
 use std::sync::{Arc};
 use std::collections::{HashSet, HashMap};
 
@@ -124,25 +124,20 @@ pub async fn normalize_xml(
     log::info!("Done cyclizing input graph");
 
     prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
-    prune(Arc::clone(&input_graph));
     log::info!("Done pruning input graph");
 
     read_lock!(input_graph).debug_statistics("pruned_input_graph");
     read_lock!(input_graph).debug_visualize("pruned_input_graph");
 
-
     let subgraph_hash = graph_hash(Arc::clone(&input_graph));
     log::debug!("subgraph_hash: {}", subgraph_hash);
 
     let pruned_input: String = to_xml_string(Arc::clone(&input_graph));
-    log::debug!("pruned_input: {}", pruned_input);
+
+    if environment::is_local() {
+        let mut file = File::create("./debug/pruned_input.xml").expect("Could not create file");
+        file.write_all(pruned_input.as_bytes()).expect("Could not write to file");
+    }
 
     let basis_graph = if let Some(previous_basis_graph) = input_basis_graph {
         log::info!("Received a basis graph as input");
