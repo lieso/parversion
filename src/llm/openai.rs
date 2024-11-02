@@ -50,29 +50,96 @@ struct LLMAssociationsResponse {
     data: Vec<Vec<String>>,
 }
 
-fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let opt = Option::<String>::deserialize(deserializer)?;
-    Ok(opt.filter(|s| !s.is_empty()))
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct LLMSummaryResponse {
+    core_purpose: String,
 }
 
-fn postprocess_associations(response: LLMAssociationsResponse) -> Vec<Vec<String>> {
-    response   
-        .data
-        .into_iter()
-        .filter_map(|inner_vec| {
-            let unique_items: HashSet<String> = inner_vec.into_iter().collect();
-            let unique_vec: Vec<String> = unique_items.into_iter().collect();
+pub async fn summarize_core_purpose(xml: String) -> String {
+    log::trace!("In summarize_core_purpose");
 
-            if unique_vec.len() > 1 {
-                Some(unique_vec)
-            } else {
-                None
+    let system_prompt = format!(r##"
+Your task is to summarize the core purpose of an HTML snippet.
+"##);
+    let user_prompt = format!(r##"
+Snippet:
+---
+
+{}
+
+---
+"##, xml);
+    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
+
+    let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
+    if let Some(cached_response) = get_cached_response(hash.clone()) {
+        log::info!("Cache hit!");
+
+        let llm_summary_response = serde_json::from_str::<LLMSummaryResponse>(&cached_response)
+            .expect("Could not parse JSON response as LLMSummaryResponse");
+        log::debug!("llm_summary_response: {:?}", llm_summary_response);
+
+        return llm_summary_response.core_purpose;
+    }
+
+    log::info!("Cache miss!");
+
+    let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
+    let request_json = json!({
+        "model": "gpt-4o-2024-08-06",
+        "temperature": 0,
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
             }
-        })
-        .collect()
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "similarity_response",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "core_purpose": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["core_purpose"],
+                    "additionalProperties": false
+                }
+            }
+        }
+    });
+    let url = "https://api.openai.com/v1/chat/completions";
+    let authorization = format!("Bearer {}", openai_api_key);
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .json(&request_json)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::AUTHORIZATION, authorization)
+        .send()
+        .await;
+    let response = response.expect("Failed to send request to OpenAI");
+
+    let json_response = response.json::<serde_json::Value>().await.expect("Unable to get JSON from response");
+    log::debug!("json_response: {:?}", json_response);
+    let json_response = json_response["choices"].as_array().unwrap();
+    let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
+
+    set_cached_response(hash.clone(), json_response.to_string());
+
+    let llm_summary_response = serde_json::from_str::<LLMSummaryResponse>(json_response)
+        .expect("Could not parse JSON response as LLMSummaryResponse");
+    log::debug!("llm_summary_response: {:?}", llm_summary_response);
+
+    llm_summary_response.core_purpose
 }
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {
@@ -767,3 +834,29 @@ fn compute_hash(hasher_items: Vec<String>) -> String {
     hasher.update(hasher_items.join(""));
     format!("{:x}", hasher.finalize())
 }
+
+fn empty_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    Ok(opt.filter(|s| !s.is_empty()))
+}
+
+fn postprocess_associations(response: LLMAssociationsResponse) -> Vec<Vec<String>> {
+    response   
+        .data
+        .into_iter()
+        .filter_map(|inner_vec| {
+            let unique_items: HashSet<String> = inner_vec.into_iter().collect();
+            let unique_vec: Vec<String> = unique_items.into_iter().collect();
+
+            if unique_vec.len() > 1 {
+                Some(unique_vec)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+

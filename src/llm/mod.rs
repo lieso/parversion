@@ -18,3 +18,7 @@ pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets
 pub async fn interpret_text_data(snippets: Vec<String>) -> NodeData {
     openai::interpret_text_data(snippets).await
 }
+
+pub async fn summarize_core_purpose(xml: String) -> String {
+    openai::summarize_core_purpose(xml).await
+}

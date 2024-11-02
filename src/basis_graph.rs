@@ -23,6 +23,7 @@ use crate::graph_node::{
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::xml_node::{XmlNode};
+use crate::llm::{summarize_core_purpose};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subgraph {
@@ -80,12 +81,11 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
         file.write_all(pruned_input.as_bytes()).expect("Could not write to file");
     }
 
-
-
-
     let subgraph_hash = graph_hash(Arc::clone(&input_graph));
     log::debug!("subgraph_hash: {}", subgraph_hash);
 
+    let core_purpose = summarize_core_purpose(pruned_input).await;
+    log::debug!("core_purpose: {}", core_purpose);
 
 
 

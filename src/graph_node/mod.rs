@@ -293,6 +293,50 @@ pub fn graph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
     compute_hash(graph, &mut visited)
 }
 
+pub fn deep_copy_single<T: GraphNodeData>(
+    graph: Graph<T>,
+    parents: Vec<Graph<T>>,
+    visited: &mut HashSet<String>,
+    copies: &mut HashMap<String, Graph<T>>
+) -> Graph<T> where T: GraphNodeData {
+    log::trace!("In deep_copy");
+
+    let guard = read_lock!(graph);
+
+    if let Some(copy) = copies.get(&guard.id) {
+        return copy.clone();
+    }
+
+    let new_node = Arc::new(RwLock::new(GraphNode {
+        id: guard.id.clone(),
+        hash: guard.hash.clone(),
+        parents,
+        children: Vec::new(),
+        data: guard.data.clone(),
+    }));
+
+    copies.insert(guard.id.clone(), new_node.clone());
+    visited.insert(guard.id.clone());
+
+    {
+        let children: Vec<Graph<T>> = guard.children.iter()
+            .map(|child| {
+                deep_copy_single(
+                    child.clone(),
+                    vec![new_node.clone()],
+                    visited,
+                    copies
+                )
+            })
+            .collect();
+
+        let mut write_lock = write_lock!(new_node);
+        write_lock.children.extend(children);
+    }
+
+    new_node
+}
+
 pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(
     graph: Graph<U>,
     parents: Vec<Graph<T>>,

@@ -39,7 +39,7 @@ use graph_node::{
     cyclize,
     prune,
     analyze_nodes,
-    deep_copy
+    deep_copy_single
 };
 use basis_graph::{build_basis_graph, analyze_graph};
 use xml_node::{XmlNode};
@@ -123,7 +123,7 @@ pub async fn normalize_xml(
     prune(Arc::clone(&input_graph));
     log::info!("Done pruning input graph");
 
-    let input_graph_copy: Graph<XmlNode> = deep_copy(
+    let input_graph_copy: Graph<XmlNode> = deep_copy_single(
         Arc::clone(&input_graph),
         vec![GraphNode::from_void()],
         &mut HashSet::new(),
