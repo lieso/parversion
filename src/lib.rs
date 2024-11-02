@@ -1,6 +1,6 @@
 use tokio::runtime::Runtime;
 use std::process;
-use std::io::{Read, Write};
+use std::io::{Read};
 use std::fs::File;
 use std::sync::{Arc};
 use std::collections::{HashSet, HashMap};
@@ -39,7 +39,7 @@ use graph_node::{
     cyclize,
     prune,
     analyze_nodes,
-    graph_hash,
+    deep_copy
 };
 use basis_graph::{build_basis_graph, analyze_graph};
 use xml_node::{XmlNode};
@@ -130,7 +130,7 @@ pub async fn normalize_xml(
         &mut HashMap::new()
     );
 
-    let basis_graph: BasisGraph = if let Some(previous_basis_graph) = input_basis_graph {
+    let mut basis_graph: BasisGraph = if let Some(previous_basis_graph) = input_basis_graph {
         log::info!("Received a basis graph as input");
 
         if !previous_basis_graph.contains_subgraph(Arc::clone(&input_graph)) {
@@ -142,13 +142,13 @@ pub async fn normalize_xml(
     } else {
         log::info!("Did not receive a basis graph as input");
         build_basis_graph(Arc::clone(&input_graph))
-    }
+    };
 
     log::info!("Performing network analysis...");
-    analyze_graph(basis_graph, Arc::clone(&input_graph_copy));
+    analyze_graph(&mut basis_graph, Arc::clone(&input_graph_copy)).await;
 
     log::info!("Performing node analysis...");
-    analyze_nodes(basis_graph, Arc::clone(&output_tree));
+    analyze_nodes(Arc::clone(&basis_graph.root), Arc::clone(&output_tree)).await;
 
     log::info!("Harvesting output tree..");
     let harvest = harvest(Arc::clone(&output_tree), basis_graph.clone());

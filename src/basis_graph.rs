@@ -1,3 +1,5 @@
+use std::sync::{Arc};
+use std::io::{Write};
 use serde::{
     Serialize,
     Deserialize,
@@ -7,6 +9,9 @@ use serde::{
     ser::Error as SerError
 };
 use serde::ser::SerializeStruct;
+use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use crate::environment;
 
 use crate::graph_node::{
     Graph,
@@ -17,15 +22,30 @@ use crate::graph_node::{
 };
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
+use crate::xml_node::{XmlNode};
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Subgraph {
+    id: String,
+    hash: String,
+    description: String,
+}
 
 #[derive(Clone, Debug)]
 pub struct BasisGraph {
     pub root: Graph<BasisNode>,
-    pub subgraph_hashes: Vec<String>,
-    pub description: Option<String>,
+    pub subgraphs: HashMap<String, Subgraph>,
 }
 
-pub fn build_basis_graph(input_graph: Graph<XmlNode>) {
+impl BasisGraph {
+    pub fn contains_subgraph(&self, graph: Graph<XmlNode>) -> bool {
+        let hash = graph_hash(Arc::clone(&graph));
+
+        self.subgraphs.contains_key(&hash)
+    }
+}
+
+pub fn build_basis_graph(input_graph: Graph<XmlNode>) -> BasisGraph {
     log::trace!("In build_basis_graph");
 
     let copy: Graph<BasisNode> = deep_copy(
@@ -43,11 +63,11 @@ pub fn build_basis_graph(input_graph: Graph<XmlNode>) {
 
     BasisGraph {
         root: new_root,
-        subgraphs: Vec::new(),
+        subgraphs: HashMap::new(),
     }
 }
 
-pub async fn analyze_graph(graph: BasisGraph, input_graph: Graph<XmlNode>) {
+pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) {
     log::trace!("In analyze_graph");
 
     read_lock!(input_graph).debug_statistics("pruned_input_graph");
@@ -81,7 +101,7 @@ impl<'de> Deserialize<'de> for BasisGraph {
         #[derive(Deserialize)]
         struct BasisGraphHelper {
             root: String,
-            subgraph_hashes: Vec<String>,
+            subgraphs: HashMap<String, Subgraph>,
         }
 
         let helper = BasisGraphHelper::deserialize(deserializer)?;
@@ -90,7 +110,7 @@ impl<'de> Deserialize<'de> for BasisGraph {
 
         Ok(BasisGraph {
             root,
-            subgraph_hashes: helper.subgraph_hashes,
+            subgraphs: helper.subgraphs,
         })
     }
 }
@@ -105,7 +125,7 @@ impl Serialize for BasisGraph {
 
          let mut state = serializer.serialize_struct("BasisGraph", 2)?;
          state.serialize_field("root", &root_str)?;
-         state.serialize_field("subgraph_hashes", &self.subgraph_hashes)?;
+         state.serialize_field("subgraphs", &self.subgraphs)?;
          state.end()
      }
  }
