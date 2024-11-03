@@ -11,8 +11,9 @@ use serde::{
 use serde::ser::SerializeStruct;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
-use crate::environment;
+use uuid::Uuid;
 
+use crate::environment;
 use crate::graph_node::{
     Graph,
     GraphNode,
@@ -87,10 +88,13 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
     let core_purpose = summarize_core_purpose(pruned_input).await;
     log::debug!("core_purpose: {}", core_purpose);
 
+    let subgraph = Subgraph {
+        id: Uuid::new_v4().to_string(),
+        hash: subgraph_hash.clone(),
+        description: core_purpose,
+    };
 
-
-
-    unimplemented!()
+    graph.subgraphs.entry(subgraph_hash.clone()).or_insert(subgraph);
 }
 
 impl<'de> Deserialize<'de> for BasisGraph {
