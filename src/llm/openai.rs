@@ -381,7 +381,7 @@ Example(s) of the node to be analyzed:
    }
 }
 
-async fn interpret_title(examples: String) -> NodeData {
+async fn interpret_title(examples: String, core_purpose: String) -> NodeData {
     log::trace!("In interpret_title");
 
     let system_prompt = format!(r##"
@@ -402,6 +402,15 @@ Provide the following information in your response:
 ---
 "##);
     let user_prompt = format!(r##"
+The core purpose of this website has been summarized as follows:
+
+---
+
+{}
+
+---
+
+Use this summary to assist you in determining metadata.
 Example(s) of the element node:
 
 ---
@@ -410,7 +419,7 @@ Example(s) of the element node:
 
 ---
 
-"##, examples);
+"##, core_purpose, examples);
     log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
@@ -508,7 +517,7 @@ Example(s) of the element node:
     }
 }
 
-async fn interpret_href(examples: String) -> NodeData {
+async fn interpret_href(examples: String, core_purpose: String) -> NodeData {
     log::trace!("In interpret_href");
 
     let system_prompt = format!(r##"
@@ -530,6 +539,16 @@ Provide the following information in your response:
 ---
 "##);
     let user_prompt = format!(r##"
+The core purpose of this website has been summarized as follows:
+
+---
+
+{}
+
+---
+
+Use this summary to assist you in determining metadata.
+
 Example(s) of the element node:
 
 ---
@@ -538,7 +557,7 @@ Example(s) of the element node:
 
 ---
 
-"##, examples);
+"##, core_purpose, examples);
     log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
@@ -657,10 +676,11 @@ Example {}:
 
     let futures = meaningful_attributes.iter().map(|attribute| {
         let examples_clone = examples.clone();
+        let core_purpose_clone = core_purpose.clone();
         async move {
             match attribute.as_str() {
-                "href" => interpret_href(examples_clone).await,
-                "title" => interpret_title(examples_clone).await,
+                "href" => interpret_href(examples_clone, core_purpose_clone).await,
+                "title" => interpret_title(examples_clone, core_purpose_clone).await,
                 _ => panic!("Unexpected attribute: {}", attribute),
             }
         }
@@ -700,6 +720,16 @@ Additionally, provide this metadata in your JSON response:
 5. is_title: Despite how it currently gets rendered based on the HTML, does this text node fulfill the typical purpose of titles or headings? Is this text node a prominent focal point that draws the user's attention?
 "##);
     let user_prompt = format!(r##"
+The core purpose of this website has been summarized as follows:
+
+---
+
+{}
+
+---
+
+Use this summary to assist you in determining metadata.
+
 Examples(s) of the text node to be analyzed:
 
 ---
@@ -707,7 +737,7 @@ Examples(s) of the text node to be analyzed:
 {}
 
 ---
-"##, examples);
+"##, core_purpose, examples);
     log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
