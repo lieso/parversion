@@ -127,8 +127,9 @@ fn organize_associative_content(content: &mut Content) {
 
                 if let Some(associative_b) = &content.inner_content[j].meta.associative {
                     if associative_a.associated_subgraphs.contains(&associative_b.subgraph) {
-                        let inner_content_b = std::mem::take(&mut content.inner_content[j]);
-                        content.inner_content[i].inner_content.extend(inner_content_b.inner_content);
+                        let inner_content_b = content.inner_content[j].clone();
+                        content.inner_content[i].inner_content.extend(inner_content_b.inner_content.clone());
+                        content.inner_content[j].inner_content.clear();
                         extended_indices.insert((i, j));
                         break;
                     }
