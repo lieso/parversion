@@ -22,6 +22,7 @@ use crate::basis_node::{BasisNode};
 use crate::constants;
 use crate::macros::*;
 use crate::graph_node::analysis::*;
+use crate::basis_graph::{Subgraph};
 
 #[derive(Clone, Debug)]
 pub struct GraphNode<T: GraphNodeData> {
@@ -601,7 +602,11 @@ pub fn prune(graph: Graph<XmlNode>) {
     }
 }
 
-pub async fn analyze_nodes(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>) {
+pub async fn analyze_nodes(
+    basis_graph: Graph<BasisNode>,
+    output_tree: Graph<XmlNode>,
+    subgraph: &Subgraph,
+) {
     log::trace!("In analyze_nodes");
 
     let mut nodes: Vec<Graph<BasisNode>> = Vec::new();
@@ -609,7 +614,7 @@ pub async fn analyze_nodes(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>)
     let mut parents_visited: HashSet<String> = HashSet::new();
     let mut spanning_sample_children: Vec<Graph<BasisNode>> = Vec::new();
 
-    bft(Arc::clone(&graph), &mut |node: Graph<BasisNode>| {
+    bft(Arc::clone(&basis_graph), &mut |node: Graph<BasisNode>| {
         nodes.push(node.clone());
 
         if parents_visited.insert(read_lock!(node).id.clone()) {
@@ -645,12 +650,19 @@ pub async fn analyze_nodes(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>)
     let handles: Vec<_> = nodes.iter().map(|node| {
         let semaphore = semaphore.clone();
         let node = Arc::clone(node);
-        let graph = Arc::clone(&graph);
+        let basis_graph = Arc::clone(&basis_graph);
         let output_tree = Arc::clone(&output_tree);
+        let subgraph_cloned = subgraph.clone();
 
         task::spawn(async move {
             let permit = semaphore.acquire_owned().await.unwrap();
-            analyze(node, graph, output_tree, permit).await
+            analyze(
+                node,
+                basis_graph,
+                output_tree,
+                subgraph_cloned,
+                permit
+            ).await
         })
     }).collect();
 
@@ -661,12 +673,12 @@ pub async fn analyze_nodes(graph: Graph<BasisNode>, output_tree: Graph<XmlNode>)
     let handles: Vec<_> = spanning_sample_children.iter().map(|node| {
         let semaphore = semaphore.clone();
         let node = Arc::clone(node);
-        let graph = Arc::clone(&graph);
+        let basis_graph = Arc::clone(&basis_graph);
         let output_tree = Arc::clone(&output_tree);
 
         task::spawn(async move {
             let permit = semaphore.acquire_owned().await.unwrap();
-            analyze_associations(node, graph, output_tree, permit).await
+            analyze_associations(node, basis_graph, output_tree, permit).await
         })
     }).collect();
 

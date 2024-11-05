@@ -27,11 +27,13 @@ use crate::llm::{
     interpret_text_data,
     interpret_associations
 };
+use crate::basis_graph::{Subgraph};
 
 pub async fn analyze(
     target_node: Graph<BasisNode>,
     basis_root_node: Graph<BasisNode>,
     output_tree: Graph<XmlNode>,
+    subgraph: Subgraph,
     _permit: OwnedSemaphorePermit
 ) {
     log::trace!("In analyze");
@@ -85,6 +87,7 @@ Hash:   {}
         Arc::clone(&target_node),
         homologous_nodes.clone(),
         Arc::clone(&output_tree),
+        &subgraph,
     ).await;
 }
 
@@ -249,7 +252,8 @@ async fn analyze_structure(
 async fn analyze_data(
     target_node: Graph<BasisNode>, 
     homologous_nodes: Vec<Graph<XmlNode>>,
-    output_tree: Graph<XmlNode>
+    output_tree: Graph<XmlNode>,
+    subgraph: &Subgraph,
 ) {
     log::trace!("In analyze_data");
 
@@ -271,7 +275,7 @@ async fn analyze_data(
     );
 
     if read_lock!(output_node).data.is_text() {
-        let interpretation = interpret_text_data(snippets).await;
+        let interpretation = interpret_text_data(snippets, subgraph.description.clone()).await;
 
         {
             let rl = read_lock!(target_node);
@@ -284,7 +288,7 @@ async fn analyze_data(
             .cloned()
             .collect();
 
-        let interpretation = interpret_element_data(meaningful_attributes, snippets).await;
+        let interpretation = interpret_element_data(meaningful_attributes, snippets, subgraph.description.clone()).await;
 
         {
             let rl = read_lock!(target_node);

@@ -11,11 +11,11 @@ pub async fn interpret_data_structure(snippets: Vec<String>) -> RecursiveStructu
     openai::interpret_data_structure(snippets).await
 }
 
-pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>) -> Vec<NodeData> {
+pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>, core_purpose: String) -> Vec<NodeData> {
     openai::interpret_element_data(meaningful_attributes, snippets).await
 }
 
-pub async fn interpret_text_data(snippets: Vec<String>) -> NodeData {
+pub async fn interpret_text_data(snippets: Vec<String>, core_purpose: String) -> NodeData {
     openai::interpret_text_data(snippets).await
 }
 

@@ -639,7 +639,7 @@ Example(s) of the element node:
     }
 }
 
-pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>) -> Vec<NodeData> {
+pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>, core_purpose: String) -> Vec<NodeData> {
     log::trace!("In interpret_element_data");
 
     assert!(snippets.len() > 0, "Did not receive any snippets");
@@ -669,7 +669,7 @@ Example {}:
     futures::future::join_all(futures).await
 }
 
-pub async fn interpret_text_data(snippets: Vec<String>) -> NodeData {
+pub async fn interpret_text_data(snippets: Vec<String>, core_purpose: String) -> NodeData {
     log::trace!("In interpret_text_data");
 
     assert!(snippets.len() > 0, "Did not receive any snippets");

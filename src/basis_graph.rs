@@ -28,9 +28,9 @@ use crate::llm::{summarize_core_purpose};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subgraph {
-    id: String,
-    hash: String,
-    description: String,
+    pub id: String,
+    pub hash: String,
+    pub description: String,
 }
 
 #[derive(Clone, Debug)]

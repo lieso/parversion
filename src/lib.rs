@@ -38,10 +38,13 @@ use graph_node::{
     absorb,
     cyclize,
     prune,
-    analyze_nodes,
-    deep_copy_single
+    deep_copy_single,
+    analyze_nodes
 };
-use basis_graph::{build_basis_graph, analyze_graph};
+use basis_graph::{
+    build_basis_graph,
+    analyze_graph,
+};
 use xml_node::{XmlNode};
 use error::{Errors};
 use harvest::{harvest};
@@ -147,8 +150,20 @@ pub async fn normalize_xml(
     log::info!("Performing network analysis...");
     analyze_graph(&mut basis_graph, Arc::clone(&input_graph_copy)).await;
 
+    if basis_graph.subgraphs.len() > 1 {
+        panic!("Don't know how to handle multiple subgraphs yet");
+    }
+
     log::info!("Performing node analysis...");
-    analyze_nodes(Arc::clone(&basis_graph.root), Arc::clone(&output_tree)).await;
+    for subgraph in basis_graph.subgraphs.values() {
+        log::info!("Analyzing nodes in subgraph with id: {}", subgraph.id);
+
+        analyze_nodes(
+            Arc::clone(&basis_graph.root),
+            Arc::clone(&output_tree),
+            &subgraph
+        ).await;
+    }
 
     log::info!("Harvesting output tree..");
     let harvest = harvest(Arc::clone(&output_tree), basis_graph.clone());
