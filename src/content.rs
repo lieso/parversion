@@ -44,11 +44,18 @@ pub struct ContentMetadata {
     pub associative: Option<ContentMetadataAssociative>,
 }
 
+fn is_metadata_empty(meta: &ContentMetadata) -> bool {
+    meta.recursive.is_none() && meta.enumerative.is_none() && meta.associative.is_none()
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Content {
     pub id: String,
+    #[serde(skip_serializing_if = "is_metadata_empty")]
     pub meta: ContentMetadata,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub values: Vec<ContentValue>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub inner_content: Vec<Content>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<Content>,
