@@ -87,8 +87,8 @@ pub fn postprocess_content(content: &mut Content) {
     let content_copy = content.clone();
     organize_recursive_content(content, &content_copy);
 
-    log::info!("Organising associative content...");
-    organize_associative_content(content);
+    //log::info!("Organising associative content...");
+    //organize_associative_content(content);
 
     //log::info!("Organising enumerative content...");
     //organize_enumerative_content(content);
@@ -152,10 +152,10 @@ fn organize_associative_content(content: &mut Content) {
 fn organize_enumerative_content(content: &mut Content) {
     content.inner_content.iter_mut().for_each(|child| organize_enumerative_content(child));
 
-    let content_map: HashMap<String, &Content> = content
+    let content_map: HashMap<String, Content> = content
         .inner_content
         .iter()
-        .map(|item| (item.id.clone(), item))
+        .map(|item| (item.id.clone(), item.clone()))
         .collect();
     let mut listed_item_ids = HashSet::new();
 

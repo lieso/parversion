@@ -30,6 +30,7 @@ use crate::llm::{summarize_core_purpose};
 pub struct Subgraph {
     pub id: String,
     pub hash: String,
+    pub title: String,
     pub description: String,
 }
 
@@ -85,6 +86,9 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
     let subgraph_hash = graph_hash(Arc::clone(&input_graph));
     log::debug!("subgraph_hash: {}", subgraph_hash);
 
+    let title = get_graph_title(Arc::clone(&input_graph)).unwrap();
+    log::debug!("title: {}", title);
+
     let core_purpose = summarize_core_purpose(pruned_input).await;
     log::debug!("core_purpose: {}", core_purpose);
 
@@ -92,6 +96,7 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
         id: Uuid::new_v4().to_string(),
         hash: subgraph_hash.clone(),
         description: core_purpose,
+        title,
     };
 
     graph.subgraphs.entry(subgraph_hash.clone()).or_insert(subgraph);
@@ -120,16 +125,36 @@ impl<'de> Deserialize<'de> for BasisGraph {
 }
 
 impl Serialize for BasisGraph {
-     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-     where
-         S: Serializer,
-     {
-         let basis_root = read_lock!(self.root);
-         let root_str = GraphNode::serialize(&basis_root).map_err(SerError::custom)?;
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let basis_root = read_lock!(self.root);
+        let root_str = GraphNode::serialize(&basis_root).map_err(SerError::custom)?;
 
-         let mut state = serializer.serialize_struct("BasisGraph", 2)?;
-         state.serialize_field("root", &root_str)?;
-         state.serialize_field("subgraphs", &self.subgraphs)?;
-         state.end()
-     }
- }
+        let mut state = serializer.serialize_struct("BasisGraph", 2)?;
+        state.serialize_field("root", &root_str)?;
+        state.serialize_field("subgraphs", &self.subgraphs)?;
+        state.end()
+    }
+}
+
+fn get_graph_title(root: Graph<XmlNode>) -> Option<String> {
+    log::trace!("In get_graph_title");
+
+    if let Some(head) = read_lock!(root).children.iter().find(|child| {
+        read_lock!(child).data.get_element_tag_name() == "head"
+    }) {
+        if let Some(title) = read_lock!(head).children.iter().find(|child| {
+            read_lock!(child).data.get_element_tag_name() == "title"
+        }) {
+            if let Some(text) = read_lock!(title).children.first() {
+                let title_text = read_lock!(text).data.to_string();
+
+                return Some(title_text);
+            }
+        }
+    }
+
+    None
+}

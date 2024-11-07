@@ -18,6 +18,7 @@ use crate::error::{Errors};
 #[derive(Debug)]
 pub enum HarvestFormats {
     JSON,
+    JSON_SCHEMA,
     //XML,
     //CSV,
     //HTML
@@ -38,6 +39,14 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
 
             Ok(serialized)
         },
+        HarvestFormats::JSON_SCHEMA => {
+            log::info!("Serializing harvest as JSON schema");
+
+            //let json_schema = harvest.content.to_json_schema();
+            //log::debug!("json_schema: {:?}", json_schema);
+
+            unimplemented!()
+        }
     }
 }
 

@@ -199,6 +199,19 @@ fn analyze_classically(target_node: Graph<BasisNode>, homologous_nodes: Vec<Grap
         return true;
     }
 
+    // The title of a document is reliably the child text node of the title element
+    // So we won't need to ask an LLM for this type of information
+    if read_lock!(target_node).hash == constants::TEXT_NODE_HASH {
+        let binding = read_lock!(output_node);
+        let parent = binding.parents.first().unwrap();
+        let parent_tag_name = read_lock!(parent).data.get_element_tag_name();
+
+        if parent_tag_name == "title" {
+            log::info!("Text node is the document title. Not proceeding further");
+            return true;
+        }
+    }
+
     false
 }
 
