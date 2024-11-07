@@ -87,8 +87,8 @@ pub fn postprocess_content(content: &mut Content) {
     let content_copy = content.clone();
     organize_recursive_content(content, &content_copy);
 
-    //log::info!("Organising associative content...");
-    //organize_associative_content(content);
+    log::info!("Organising associative content...");
+    organize_associative_content(content);
 
     //log::info!("Organising enumerative content...");
     //organize_enumerative_content(content);
@@ -120,33 +120,38 @@ fn clear_data_structure_meta(content: &mut Content) {
 fn organize_associative_content(content: &mut Content) {
     content.inner_content.iter_mut().for_each(|child| organize_associative_content(child));
 
-    let mut extended_indices = HashSet::new();
+    let mut matched_indices = HashSet::new();
+    let inner_content = content.inner_content.clone();
+    let len = inner_content.len();
 
-    let mut i = 0;
-    while i < content.inner_content.len() {
-        if let Some(associative_a) = &content.inner_content[i].meta.associative {
-            let mut j = i + 1;
-            while j < content.inner_content.len() {
-                if extended_indices.contains(&(i, j)) || extended_indices.contains(&(j, i)) {
-                    j += 1;
-                    continue;
-                }
+    for i in 0..len {
+        if matched_indices.contains(&i) {
+            continue;
+        }
 
-                if let Some(associative_b) = &content.inner_content[j].meta.associative {
-                    if associative_a.associated_subgraphs.contains(&associative_b.subgraph) {
-                        let inner_content_b = content.inner_content[j].clone();
-                        content.inner_content[i].inner_content.extend(inner_content_b.inner_content.clone());
+        for j in (i + 1)..len {
+            if matched_indices.contains(&j) {
+                continue;
+            }
+
+            if let Some(associative_a) = &inner_content[i].meta.associative {
+                if let Some(associative_b) = &inner_content[j].meta.associative {
+                    if associative_b.associated_subgraphs.contains(&associative_a.subgraph) {
+                        matched_indices.insert(i);
+                        matched_indices.insert(j);
+
+                        content.inner_content[i].inner_content.extend(inner_content[j].inner_content.clone());
                         content.inner_content[j].inner_content.clear();
-                        extended_indices.insert((i, j));
+
+                        content.inner_content[i].meta.associative = None;
+                        content.inner_content[j].meta.associative = None;
+
                         break;
                     }
                 }
-                j += 1;
             }
         }
-        i += 1;
     }
-
 }
 
 fn organize_enumerative_content(content: &mut Content) {
