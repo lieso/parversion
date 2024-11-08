@@ -10,3 +10,6 @@ debug/*
 
 # Environment variables
 .env
+
+# Settings
+settings.toml
