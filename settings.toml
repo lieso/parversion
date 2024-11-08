@@ -1,8 +1,8 @@
 [llm]
 target_node_adjacent_xml_length = 2000
-target_node_examples_max_count = 5
+target_node_examples_max_count = 3
 
 [llm.data_structure_interpretation]
-enabled = false
+enabled = true
 target_node_adjacent_xml_length = 3000
 target_node_examples_max_count = 10
