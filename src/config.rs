@@ -4,6 +4,7 @@ use std::sync::RwLock;
 
 #[derive(Debug, Deserialize)]
 pub struct LlmConfigDataStructureInterpretation {
+    pub enabled: bool,
     pub target_node_adjacent_xml_length: usize,
     pub target_node_examples_max_count: usize,
 }

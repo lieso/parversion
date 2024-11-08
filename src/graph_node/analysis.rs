@@ -78,11 +78,14 @@ Hash:   {}
         return;
     }
 
-    analyze_structure(
-        Arc::clone(&target_node),
-        homologous_nodes.clone(),
-        Arc::clone(&output_tree),
-    ).await;
+    if read_lock!(CONFIG).llm.data_structure_interpretation.enabled {
+        analyze_structure(
+            Arc::clone(&target_node),
+            homologous_nodes.clone(),
+            Arc::clone(&output_tree),
+        ).await;
+    }
+
     analyze_data(
         Arc::clone(&target_node),
         homologous_nodes.clone(),
