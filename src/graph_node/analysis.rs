@@ -151,6 +151,10 @@ pub async fn analyze_associations(
         }
     }
 
+    // Assumming that tiny snippets can never provide enough meaningful information
+    // for associations to be determined
+    snippets.retain(|(_, snippet_content)| snippet_content.len() >= 150);
+
     if snippets.len() < 2 {
         log::info!("Did not receive enough snippets. Aborting...");
         return;
