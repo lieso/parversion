@@ -1,6 +1,7 @@
 use tokio::sync::{OwnedSemaphorePermit};
 use std::sync::{Arc};
 use std::collections::{HashMap};
+use uuid::Uuid;
 
 use super::{
     Graph, 
@@ -127,26 +128,20 @@ pub async fn analyze_associations(
             .cloned()
             .collect();
 
-        let mut hash_counter = HashMap::new();
         let exemplary_nodes: Vec<(Graph<XmlNode>, String)> = deepest_nodes
             .into_iter()
-            .filter_map(|node| {
-                let hash = graph_hash(Arc::clone(&node));
-                let current_count = hash_counter.get(&hash).unwrap_or(&0);
+            .take(10)
+            .map(|item| {
+                let hash = read_lock!(item).hash.clone();
+                (item, hash)
+            })
+            .collect();
 
-                if current_count > &3 {
-                    None
-                } else {
-                    hash_counter.insert(hash.clone(), current_count + 1);
-                    Some((node, hash))
-                }
-            }).collect();
-
-        for (exemplary_node, hash) in exemplary_nodes.iter() {
+        for (exemplary_node, type_id) in exemplary_nodes.iter() {
             let xml_string = to_xml_string(Arc::clone(&exemplary_node));
 
             if xml_string.len() < 3000 {
-                snippets.push((hash.clone(), xml_string));
+                snippets.push((type_id.clone(), xml_string));
             }
         }
     }
@@ -160,7 +155,7 @@ pub async fn analyze_associations(
         return;
     }
 
-    let interpretation = interpret_associations(snippets).await;
+    let interpretation = interpret_associations(snippets.clone()).await;
 
     if interpretation.is_empty() {
         log::info!("Snippets interpreted to be completely unrelated");

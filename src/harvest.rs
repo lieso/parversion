@@ -131,7 +131,7 @@ Node:   {}
             if let Some(associative) = structure.associative.clone() {
 
 
-                let subgraph_hash = graph_hash(Arc::clone(&output_node));
+                let subgraph_hash = read_lock!(output_node).hash.clone();
 
                 let mut associated_subgraphs = Vec::new();
 
