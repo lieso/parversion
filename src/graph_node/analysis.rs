@@ -1,14 +1,11 @@
 use tokio::sync::{OwnedSemaphorePermit};
 use std::sync::{Arc};
-use std::collections::{HashMap};
-use uuid::Uuid;
 
 use super::{
     Graph, 
     GraphNodeData, 
     find_homologous_nodes,
     build_xml_with_target_node,
-    graph_hash,
     get_depth,
     to_xml_string
 };

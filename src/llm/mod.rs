@@ -1,24 +1,62 @@
 use crate::node_data::{NodeData};
 use crate::node_data_structure::{RecursiveStructure};
+use crate::config::{CONFIG};
+use crate::constants::{LlmProvider};
+use crate::macros::*;
 
 mod openai;
+mod anthropic;
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {
-    openai::interpret_associations(snippets).await
+    let llm_provider = get_llm_provider();
+
+    match llm_provider {
+        LlmProvider::openai => openai::interpret_associations(snippets).await,
+        LlmProvider::anthropic => anthropic::interpret_associations(snippets).await,
+    }
 }
 
 pub async fn interpret_data_structure(snippets: Vec<String>) -> RecursiveStructure {
-    openai::interpret_data_structure(snippets).await
+    let llm_provider = get_llm_provider();
+
+    match llm_provider {
+        LlmProvider::openai => openai::interpret_data_structure(snippets).await,
+        LlmProvider::anthropic => anthropic::interpret_data_structure(snippets).await,
+    }
 }
 
-pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>, core_purpose: String) -> Vec<NodeData> {
-    openai::interpret_element_data(meaningful_attributes, snippets, core_purpose).await
+pub async fn interpret_element_data(
+    meaningful_attributes: Vec<String>,
+    snippets: Vec<String>,
+    core_purpose: String
+) -> Vec<NodeData> {
+    let llm_provider = get_llm_provider();
+
+    match llm_provider {
+        LlmProvider::openai => openai::interpret_element_data(meaningful_attributes, snippets, core_purpose).await,
+        LlmProvider::anthropic => anthropic::interpret_element_data(meaningful_attributes, snippets, core_purpose).await,
+    }
 }
 
 pub async fn interpret_text_data(snippets: Vec<String>, core_purpose: String) -> NodeData {
-    openai::interpret_text_data(snippets, core_purpose).await
+    let llm_provider = get_llm_provider();
+
+    match llm_provider {
+        LlmProvider::openai => openai::interpret_text_data(snippets, core_purpose).await,
+        LlmProvider::anthropic => anthropic::interpret_text_data(snippets, core_purpose).await,
+    }
 }
 
 pub async fn summarize_core_purpose(xml: String) -> String {
-    openai::summarize_core_purpose(xml).await
+    let llm_provider = get_llm_provider();
+
+    match llm_provider {
+        LlmProvider::openai => openai::summarize_core_purpose(xml).await,
+        LlmProvider::anthropic => anthropic::summarize_core_purpose(xml).await,
+    }
 }
+
+fn get_llm_provider() -> LlmProvider {
+    read_lock!(CONFIG).llm.llm_provider.clone()
+}
+

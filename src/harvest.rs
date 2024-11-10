@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 
-use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, graph_hash};
+use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::macros::*;

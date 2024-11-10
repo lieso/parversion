@@ -5,6 +5,8 @@ use std::path::Path;
 use std::fs;
 use std::io::Write;
 
+use crate::constants::{LlmProvider};
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfigDataStructureInterpretation {
     pub enabled: bool,
@@ -14,6 +16,7 @@ pub struct LlmConfigDataStructureInterpretation {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfig {
+    pub llm_provider: LlmProvider,
     pub target_node_adjacent_xml_length: usize,
     pub target_node_examples_max_count: usize,
     pub data_structure_interpretation: LlmConfigDataStructureInterpretation,
@@ -28,6 +31,7 @@ impl Config {
     fn default() -> Self {
         Config {
             llm: LlmConfig {
+                llm_provider: LlmProvider::openai,
                 target_node_adjacent_xml_length: 2000,
                 target_node_examples_max_count: 3,
                 data_structure_interpretation: LlmConfigDataStructureInterpretation {
