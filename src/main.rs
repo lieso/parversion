@@ -99,7 +99,7 @@ fn main() {
     if let Ok(normalize_result) = normalize_result {
         let serialized = parversion::serialize_harvest(
             normalize_result.harvest, 
-            parversion::HarvestFormats::JSON
+            parversion::HarvestFormats::JSON_SCHEMA
         ).expect("Unable to serialize result");
 
         println!("{}", serialized);

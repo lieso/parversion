@@ -35,17 +35,23 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
         HarvestFormats::JSON => {
             log::info!("Serializing harvest as JSON");
 
-            let serialized = serde_json::to_string(&harvest).expect("Could not serialize output to JSON");
+            let serialized = serde_json::to_string(&harvest)
+                .expect("Could not serialize output to JSON");
 
             Ok(serialized)
         },
         HarvestFormats::JSON_SCHEMA => {
             log::info!("Serializing harvest as JSON schema");
 
-            //let json_schema = harvest.content.to_json_schema();
-            //log::debug!("json_schema: {:?}", json_schema);
+            let mut content_json_schema = harvest.content.clone().to_json_schema();
+            let related_content_json_schema = harvest.related_content.clone().to_json_schema();
 
-            unimplemented!()
+            content_json_schema.extend(related_content_json_schema);
+
+            let serialized = serde_json::to_string(&content_json_schema)
+                .expect("Could not serialize JSON schema to JSON");
+
+            Ok(serialized)
         }
     }
 }

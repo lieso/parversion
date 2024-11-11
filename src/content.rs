@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize};
+use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
+use sha2::{Sha256, Digest};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContentValueMetadata {
@@ -302,5 +304,36 @@ impl Content {
 
             self.inner_content.insert(0, merged_content);
         }
+    }
+
+    pub fn to_json_schema(&mut self) -> HashMap<String, Value> {
+        let mut object: HashMap<String, Value> = HashMap::new();
+        let mut hasher = Sha256::new();
+        let mut hasher_items = Vec::new();
+
+        for value in self.values.iter() {
+            let key = &value.name;
+            let object_value = "string";
+
+            hasher_items.push(key.clone());
+            hasher_items.push(object_value.to_string());
+
+            object.insert(key.clone(), json!(object_value.to_string()));
+        }
+
+        hasher_items.sort();
+        hasher.update(hasher_items.join(""));
+        
+        let hash = format!("{:x}", hasher.finalize());
+        let mut final_object = vec![(hash, json!(object))];
+
+        self.inner_content.iter().for_each(|inner_content| {
+            final_object.extend(inner_content.clone().to_json_schema());
+        });
+
+        final_object
+            .into_iter()
+            .filter(|(_, v)| !v.is_object() || !v.as_object().unwrap().is_empty())
+            .collect()
     }
 }
