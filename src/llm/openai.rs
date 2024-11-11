@@ -56,8 +56,8 @@ pub async fn analyze_compressed_website(xml: String) -> LLMWebsiteAnalysisRespon
 
     let system_prompt = format!(r##"
 Your task is to analyze a compressed snippet of HTML taken from a website and to provide the following information:
-   • core_purpose: What is the core purpose of the website? Distinguish between the primary content and peripheral related content such as links to other pages.
-   • has_recursive: Guess if there's any recursively-defined, nested-content. For example, a discussion forum consisting of comments and replies is an example of recursive content.
+    • core_purpose: What is the core purpose of the website? Distinguish between the primary content and peripheral related content such as links to other pages.
+    • has_recursive: Identify if there's any recursively-defined, nested-content within the HTML snippet itself. Do not consider potential external pages or linked content.
 
 "##);
     let user_prompt = format!(r##"
