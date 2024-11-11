@@ -24,5 +24,6 @@ pub const MAX_CONCURRENCY: usize = 1;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LlmProvider {
     openai,
-    anthropic
+    anthropic,
+    groq
 }

@@ -6,6 +6,7 @@ use crate::macros::*;
 
 mod openai;
 mod anthropic;
+mod groq;
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {
     let llm_provider = get_llm_provider();
@@ -13,6 +14,7 @@ pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<
     match llm_provider {
         LlmProvider::openai => openai::interpret_associations(snippets).await,
         LlmProvider::anthropic => anthropic::interpret_associations(snippets).await,
+        LlmProvider::groq => groq::interpret_associations(snippets).await,
     }
 }
 
@@ -22,6 +24,7 @@ pub async fn interpret_data_structure(snippets: Vec<String>) -> RecursiveStructu
     match llm_provider {
         LlmProvider::openai => openai::interpret_data_structure(snippets).await,
         LlmProvider::anthropic => anthropic::interpret_data_structure(snippets).await,
+        LlmProvider::groq => groq::interpret_data_structure(snippets).await,
     }
 }
 
@@ -35,6 +38,7 @@ pub async fn interpret_element_data(
     match llm_provider {
         LlmProvider::openai => openai::interpret_element_data(meaningful_attributes, snippets, core_purpose).await,
         LlmProvider::anthropic => anthropic::interpret_element_data(meaningful_attributes, snippets, core_purpose).await,
+        LlmProvider::groq => groq::interpret_element_data(meaningful_attributes, snippets, core_purpose).await,
     }
 }
 
@@ -44,6 +48,7 @@ pub async fn interpret_text_data(snippets: Vec<String>, core_purpose: String) ->
     match llm_provider {
         LlmProvider::openai => openai::interpret_text_data(snippets, core_purpose).await,
         LlmProvider::anthropic => anthropic::interpret_text_data(snippets, core_purpose).await,
+        LlmProvider::groq => groq::interpret_text_data(snippets, core_purpose).await,
     }
 }
 
@@ -53,6 +58,7 @@ pub async fn summarize_core_purpose(xml: String) -> String {
     match llm_provider {
         LlmProvider::openai => openai::summarize_core_purpose(xml).await,
         LlmProvider::anthropic => anthropic::summarize_core_purpose(xml).await,
+        LlmProvider::groq => groq::summarize_core_purpose(xml).await,
     }
 }
 
