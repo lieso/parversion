@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
 

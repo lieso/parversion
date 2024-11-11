@@ -7,7 +7,7 @@ use env_logger::Builder;
 use std::fs::File;
 use std::str::FromStr;
 
-use parversion::{BasisGraph};
+use parversion::basis_graph::{BasisGraph};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -80,7 +80,7 @@ fn main() {
 
     let output_format = {
         let format_str = matches.value_of("format").unwrap_or("json");
-        parversion::HarvestFormats::from_str(format_str).expect("Could not initialize output format")
+        parversion::harvest::HarvestFormats::from_str(format_str).expect("Could not initialize output format")
     };
 
     let basis_graph: Option<BasisGraph> = match matches.value_of("basis") {
@@ -99,16 +99,16 @@ fn main() {
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::normalize_file(file_name, basis_graph)
+            parversion::normalize::normalize_file(file_name, basis_graph)
         }
         None => {
             log::info!("File not provided");
-            parversion::normalize_text(document, basis_graph)
+            parversion::normalize::normalize_text(document, basis_graph)
         }
     };
 
     if let Ok(normalize_result) = normalize_result {
-        let serialized = parversion::serialize_harvest(
+        let serialized = parversion::harvest::serialize_harvest(
             normalize_result.harvest, 
             output_format
         ).expect("Unable to serialize result");
