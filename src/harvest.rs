@@ -1,5 +1,6 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
+use std::str::FromStr;
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
 use crate::xml_node::{XmlNode};
@@ -19,9 +20,20 @@ use crate::error::{Errors};
 pub enum HarvestFormats {
     JSON,
     JSON_SCHEMA,
-    //XML,
-    //CSV,
-    //HTML
+    XML,
+}
+
+impl FromStr for HarvestFormats {
+    type Err = String;
+
+    fn from_str(input: &str) -> Result<HarvestFormats, Self::Err> {
+        match input.to_lowercase().as_str() {
+            "json" => Ok(HarvestFormats::JSON),
+            "json_schema" => Ok(HarvestFormats::JSON_SCHEMA),
+            "xml" => Ok(HarvestFormats::XML),
+            _ => Err(format!("'{}' is not a valid format", input)),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -52,6 +64,10 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
                 .expect("Could not serialize JSON schema to JSON");
 
             Ok(serialized)
+        },
+        HarvestFormats::XML => {
+            log::info!("Serializing harvest as XML");
+            unimplemented!()
         }
     }
 }

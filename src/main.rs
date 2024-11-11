@@ -5,6 +5,7 @@ use clap::{Arg, App};
 use log::LevelFilter;
 use env_logger::Builder;
 use std::fs::File;
+use std::str::FromStr;
 
 use parversion::{BasisGraph};
 
@@ -69,8 +70,18 @@ fn main() {
              .short('b')
              .long("basis")
              .value_name("BASIS")
-             .help("Provide basis graph "))
+             .help("Provide basis graph"))
+        .arg(Arg::with_name("format")
+            .short('o')
+            .long("output-format")
+            .value_name("FORMAT")
+            .help("Set output format: JSON, JSON_SCHEMA, or XML"))
         .get_matches();
+
+    let output_format = {
+        let format_str = matches.value_of("format").unwrap_or("json");
+        parversion::HarvestFormats::from_str(format_str).expect("Could not initialize output format")
+    };
 
     let basis_graph: Option<BasisGraph> = match matches.value_of("basis") {
         Some(file_name) => {
@@ -99,7 +110,7 @@ fn main() {
     if let Ok(normalize_result) = normalize_result {
         let serialized = parversion::serialize_harvest(
             normalize_result.harvest, 
-            parversion::HarvestFormats::JSON_SCHEMA
+            output_format
         ).expect("Unable to serialize result");
 
         println!("{}", serialized);
