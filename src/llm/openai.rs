@@ -397,9 +397,9 @@ At least one example of the target node will be provided, along with some surrou
 An example of how to perform this task would be to give the name 'timestamp' to titles when all examples of it appear to be a timestamp.
 
 Provide the following information in your response:
-• name: A generic name in snake case that could be used to represent title values programmatically.
-3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
-4. is_advertisement: Indicates if the value is an advertisement.
+1. name: A generic name in snake case that could be used to represent title values programmatically.
+2. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
+3. is_advertisement: Indicates if the value is an advertisement.
 
 ---
 "##);
