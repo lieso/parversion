@@ -683,6 +683,31 @@ pub async fn analyze_nodes(
     }).collect();
 
     handle_tasks(handles).await;
+
+    // Interpreting recursive content
+
+    if subgraph.has_recursive {
+        log::info!("Going to interpret recursive relationships between nodes");
+
+        let handles: Vec<_> = nodes.iter().map(|node| {
+            let semaphore = semaphore.clone();
+            let node = Arc::clone(node);
+            let basis_graph = Arc::clone(&basis_graph);
+            let output_tree = Arc::clone(&output_tree);
+
+            task::spawn(async move {
+                let permit = semaphore.acquire_owned().await.unwrap();
+                analyze_recursions(
+                    node,
+                    basis_graph,
+                    output_tree,
+                    permit
+                ).await
+            })
+        }).collect();
+
+        handle_tasks(handles).await;
+    }
 }
 
 pub fn get_lineage(tree_node: Graph<XmlNode>) -> VecDeque<String> {

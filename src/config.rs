@@ -9,7 +9,6 @@ use crate::constants::{LlmProvider};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfigDataStructureInterpretation {
-    pub enabled: bool,
     pub target_node_adjacent_xml_length: usize,
     pub target_node_examples_max_count: usize,
 }
@@ -35,7 +34,6 @@ impl Config {
                 target_node_adjacent_xml_length: 2000,
                 target_node_examples_max_count: 3,
                 data_structure_interpretation: LlmConfigDataStructureInterpretation {
-                    enabled: true,
                     target_node_adjacent_xml_length: 3000,
                     target_node_examples_max_count: 10,
                 },

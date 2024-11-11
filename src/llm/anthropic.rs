@@ -1,6 +1,7 @@
 #![allow(warnings)]
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
+use super::{LLMWebsiteAnalysisResponse};
 
 pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>, core_purpose: String) -> Vec<NodeData> {
     log::trace!("In interpret_element_data");
@@ -12,8 +13,8 @@ pub async fn interpret_text_data(snippets: Vec<String>, core_purpose: String) ->
     unimplemented!()
 }
 
-pub async fn summarize_core_purpose(xml: String) -> String {
-    log::trace!("In summarize_core_purpose");
+pub async fn analyze_compressed_website(xml: String) -> LLMWebsiteAnalysisResponse {
+    log::trace!("In analyze_compressed_website");
     unimplemented!()
 }
 

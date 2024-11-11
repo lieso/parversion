@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use crate::node_data::{NodeData};
 use crate::node_data_structure::{RecursiveStructure};
 use crate::config::{CONFIG};
@@ -7,6 +8,12 @@ use crate::macros::*;
 mod openai;
 mod anthropic;
 mod groq;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LLMWebsiteAnalysisResponse {
+    pub core_purpose: String,
+    pub has_recursive: bool,
+}
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {
     let llm_provider = get_llm_provider();
@@ -52,13 +59,13 @@ pub async fn interpret_text_data(snippets: Vec<String>, core_purpose: String) ->
     }
 }
 
-pub async fn summarize_core_purpose(xml: String) -> String {
+pub async fn analyze_compressed_website(xml: String) -> LLMWebsiteAnalysisResponse {
     let llm_provider = get_llm_provider();
 
     match llm_provider {
-        LlmProvider::openai => openai::summarize_core_purpose(xml).await,
-        LlmProvider::anthropic => anthropic::summarize_core_purpose(xml).await,
-        LlmProvider::groq => groq::summarize_core_purpose(xml).await,
+        LlmProvider::openai => openai::analyze_compressed_website(xml).await,
+        LlmProvider::anthropic => anthropic::analyze_compressed_website(xml).await,
+        LlmProvider::groq => groq::analyze_compressed_website(xml).await,
     }
 }
 

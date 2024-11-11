@@ -24,7 +24,7 @@ use crate::graph_node::{
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::xml_node::{XmlNode};
-use crate::llm::{summarize_core_purpose};
+use crate::llm::{analyze_compressed_website};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subgraph {
@@ -32,6 +32,7 @@ pub struct Subgraph {
     pub hash: String,
     pub title: String,
     pub description: String,
+    pub has_recursive: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -89,13 +90,14 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
     let title = get_graph_title(Arc::clone(&input_graph)).unwrap();
     log::debug!("title: {}", title);
 
-    let core_purpose = summarize_core_purpose(pruned_input).await;
-    log::debug!("core_purpose: {}", core_purpose);
+    let summary = analyze_compressed_website(pruned_input).await;
+    log::debug!("summary: {:?}", summary);
 
     let subgraph = Subgraph {
         id: Uuid::new_v4().to_string(),
         hash: subgraph_hash.clone(),
-        description: core_purpose,
+        description: summary.core_purpose,
+        has_recursive: summary.has_recursive,
         title,
     };
 

@@ -53,18 +53,6 @@ Hash:   {}
         ));
     }
 
-    {
-        // When a basis graph has already been populated with interpreted nodes on a previous
-        // iteration, we are obviously unlikely to find this node again in the current output tree
-        // For now, let's check if the basis node has data on it and ignore such nodes
-        let basis_node = &read_lock!(target_node).data;
-
-        if !read_lock!(basis_node.data).is_empty() || !read_lock!(basis_node.structure).is_empty() {
-            log::info!("Basis node has already been interpreted, not proceeding any further.");
-            return;
-        }
-    }
-
     let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
         Arc::clone(&target_node),
         Arc::clone(&basis_root_node),
@@ -76,19 +64,54 @@ Hash:   {}
         return;
     }
 
-    if read_lock!(CONFIG).llm.data_structure_interpretation.enabled {
-        analyze_structure(
-            Arc::clone(&target_node),
-            homologous_nodes.clone(),
-            Arc::clone(&output_tree),
-        ).await;
-    }
-
     analyze_data(
         Arc::clone(&target_node),
         homologous_nodes.clone(),
         Arc::clone(&output_tree),
         &subgraph,
+    ).await;
+}
+
+pub async fn analyze_recursions(
+    basis_node: Graph<BasisNode>,
+    basis_root_node: Graph<BasisNode>,
+    output_tree: Graph<XmlNode>,
+    _permit: OwnedSemaphorePermit
+) {
+    log::trace!("In analyze_recursions");
+
+    {
+        let block_separator = "=".repeat(60);
+        log::info!("{}", format!(
+        "\n{}
+ANALYZING NODE:
+{}
+Node:   {}
+Hash:   {}
+{}",
+            block_separator,
+            block_separator,
+            read_lock!(basis_node).data.describe(),
+            read_lock!(basis_node).hash,
+            block_separator,
+        ));
+    }
+
+    let homologous_nodes: Vec<Graph<XmlNode>> = find_homologous_nodes(
+        Arc::clone(&basis_node),
+        Arc::clone(&basis_root_node),
+        Arc::clone(&output_tree),
+    );
+
+    if analyze_classically(Arc::clone(&basis_node), homologous_nodes.clone()) {
+        log::info!("Basis node analyzed classically completely, not proceeding any further...");
+        return;
+    }
+
+    analyze_structure(
+        Arc::clone(&basis_node),
+        homologous_nodes.clone(),
+        Arc::clone(&output_tree),
     ).await;
 }
 
@@ -99,6 +122,23 @@ pub async fn analyze_associations(
     _permit: OwnedSemaphorePermit
 ) {
     log::trace!("In analyze_associations");
+
+    {
+        let block_separator = "=".repeat(60);
+        log::info!("{}", format!(
+        "\n{}
+ANALYZING NODE:
+{}
+Node:   {}
+Hash:   {}
+{}",
+            block_separator,
+            block_separator,
+            read_lock!(basis_node).data.describe(),
+            read_lock!(basis_node).hash,
+            block_separator,
+        ));
+    }
 
     let mut snippets: Vec<(String, String)> = Vec::new();
     let target_node_parent: Graph<BasisNode> = read_lock!(basis_node).parents.first().unwrap().clone();

@@ -9,6 +9,7 @@ use std::collections::{HashSet};
 
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
+use super::{LLMWebsiteAnalysisResponse};
 
 static DB: OnceLock<Arc<sled::Db>> = OnceLock::new();
 
@@ -50,16 +51,14 @@ struct LLMAssociationsResponse {
     data: Vec<Vec<String>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct LLMSummaryResponse {
-    core_purpose: String,
-}
-
-pub async fn summarize_core_purpose(xml: String) -> String {
-    log::trace!("In summarize_core_purpose");
+pub async fn analyze_compressed_website(xml: String) -> LLMWebsiteAnalysisResponse {
+    log::trace!("In analyze_compressed_website");
 
     let system_prompt = format!(r##"
-Your task is to summarize the core purpose of an HTML snippet.
+Your task is to analyze a compressed snippet of HTML taken from a website and to provide the following information:
+   • core_purpose: What is the core purpose of the website? Distinguish between the primary content and peripheral related content such as links to other pages.
+   • has_recursive: Guess if there's any recursively-defined, nested-content. For example, a discussion forum consisting of comments and replies is an example of recursive content.
+
 "##);
     let user_prompt = format!(r##"
 Snippet:
@@ -75,11 +74,11 @@ Snippet:
     if let Some(cached_response) = get_cached_response(hash.clone()) {
         log::info!("Cache hit!");
 
-        let llm_summary_response = serde_json::from_str::<LLMSummaryResponse>(&cached_response)
-            .expect("Could not parse JSON response as LLMSummaryResponse");
+        let llm_summary_response = serde_json::from_str::<LLMWebsiteAnalysisResponse>(&cached_response)
+            .expect("Could not parse JSON response as LLMWebsiteAnalysisResponse");
         log::debug!("llm_summary_response: {:?}", llm_summary_response);
 
-        return llm_summary_response.core_purpose;
+        return llm_summary_response;
     }
 
     log::info!("Cache miss!");
@@ -101,16 +100,19 @@ Snippet:
         "response_format": {
             "type": "json_schema",
             "json_schema": {
-                "name": "similarity_response",
+                "name": "website_analysis_response",
                 "strict": true,
                 "schema": {
                     "type": "object",
                     "properties": {
                         "core_purpose": {
                             "type": "string"
+                        },
+                        "has_recursive": {
+                            "type": "boolean"
                         }
                     },
-                    "required": ["core_purpose"],
+                    "required": ["core_purpose", "has_recursive"],
                     "additionalProperties": false
                 }
             }
@@ -135,11 +137,11 @@ Snippet:
 
     set_cached_response(hash.clone(), json_response.to_string());
 
-    let llm_summary_response = serde_json::from_str::<LLMSummaryResponse>(json_response)
-        .expect("Could not parse JSON response as LLMSummaryResponse");
+    let llm_summary_response = serde_json::from_str::<LLMWebsiteAnalysisResponse>(json_response)
+        .expect("Could not parse JSON response as LLMWebsiteAnalysisResponse");
     log::debug!("llm_summary_response: {:?}", llm_summary_response);
 
-    llm_summary_response.core_purpose
+    llm_summary_response
 }
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {

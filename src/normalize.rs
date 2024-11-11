@@ -120,6 +120,8 @@ pub async fn normalize_xml(
     log::info!("Performing network analysis...");
     analyze_graph(&mut basis_graph, Arc::clone(&input_graph_copy)).await;
 
+    panic!("dev");
+
     if basis_graph.subgraphs.len() > 1 {
         panic!("Don't know how to handle multiple subgraphs yet");
     }
