@@ -19,8 +19,6 @@ pub const SEEN_BLACKLISTED_ELEMENTS: &[&str] = &[
     "head", "body", "br", "form"
 ];
 
-pub const MAX_CONCURRENCY: usize = 10;
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum LlmProvider {
     openai,

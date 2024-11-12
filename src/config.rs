@@ -16,6 +16,7 @@ pub struct LlmConfigDataStructureInterpretation {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfig {
     pub llm_provider: LlmProvider,
+    pub max_concurrency: usize,
     pub target_node_adjacent_xml_length: usize,
     pub target_node_examples_max_count: usize,
     pub data_structure_interpretation: LlmConfigDataStructureInterpretation,
@@ -31,6 +32,7 @@ impl Config {
         Config {
             llm: LlmConfig {
                 llm_provider: LlmProvider::openai,
+                max_concurrency: 1,
                 target_node_adjacent_xml_length: 2000,
                 target_node_examples_max_count: 3,
                 data_structure_interpretation: LlmConfigDataStructureInterpretation {

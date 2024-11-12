@@ -23,6 +23,7 @@ use crate::constants;
 use crate::macros::*;
 use crate::graph_node::analysis::*;
 use crate::basis_graph::{Subgraph};
+use crate::config::{CONFIG};
 
 #[derive(Clone, Debug)]
 pub struct GraphNode<T: GraphNodeData> {
@@ -651,7 +652,8 @@ pub async fn analyze_nodes(
         true
     });
 
-    let semaphore = Arc::new(Semaphore::new(constants::MAX_CONCURRENCY));
+    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
     async fn handle_tasks(handles: Vec<task::JoinHandle<()>>) {
         for handle in handles {
