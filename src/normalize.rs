@@ -109,6 +109,16 @@ pub async fn normalize_xml(
         if !previous_basis_graph.contains_subgraph(Arc::clone(&input_graph)) {
             log::info!("Input graph is not a subgraph of basis graph");
             graph_node::absorb(Arc::clone(&previous_basis_graph.root), Arc::clone(&input_graph));
+        } else {
+            log::info!("Input graph is a subgraph of basis graph");
+
+            log::info!("Harvesting output tree..");
+            let harvest = harvest(Arc::clone(&output_tree), previous_basis_graph.clone());
+
+            return Ok(NormalizeResult {
+                basis_graph: previous_basis_graph,
+                harvest: harvest,
+            });
         }
 
         previous_basis_graph

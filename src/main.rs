@@ -1,5 +1,5 @@
 use std::io::{Read};
-use std::io::{self};
+use std::io::{self, Write};
 use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
@@ -8,6 +8,8 @@ use std::fs::File;
 use std::str::FromStr;
 
 use parversion::basis_graph::{BasisGraph};
+
+mod environment;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -46,6 +48,12 @@ fn load_basis_graph(file_name: &str) -> Result<BasisGraph, &str> {
     serde_json::from_str::<BasisGraph>(&serialized).map_err(|_e| "Could not deserialize basis graph")
 }
 
+fn save_basis_graph(graph: BasisGraph) {
+    let serialized = serde_json::to_string(&graph).expect("Could not serialize basis graph");
+    let mut file = File::create("./debug/basis_graph").expect("Could not create file");
+    file.write_all(serialized.as_bytes()).expect("could not write to file");
+}
+
 fn main() {
     let _ = init_logging();
 
@@ -80,7 +88,8 @@ fn main() {
 
     let output_format = {
         let format_str = matches.value_of("format").unwrap_or("json");
-        parversion::harvest::HarvestFormats::from_str(format_str).expect("Could not initialize output format")
+        parversion::harvest::HarvestFormats::from_str(format_str)
+            .expect("Could not initialize output format")
     };
 
     let basis_graph: Option<BasisGraph> = match matches.value_of("basis") {
@@ -112,6 +121,10 @@ fn main() {
             normalize_result.harvest, 
             output_format
         ).expect("Unable to serialize result");
+
+        if environment::is_local() {
+            save_basis_graph(normalize_result.basis_graph.clone());
+        }
 
         println!("{}", serialized);
     } else {
