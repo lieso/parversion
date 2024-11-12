@@ -1,6 +1,8 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
+use serde_json::{json, Value};
 use std::str::FromStr;
+use std::collections::{HashMap};
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
 use crate::xml_node::{XmlNode};
@@ -58,11 +60,11 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
             let mut content_json_schema = harvest.content.clone().to_json_schema();
             let related_content_json_schema = harvest.related_content.clone().to_json_schema();
 
-            content_json_schema.extend(related_content_json_schema);
+            let mut combined_schema = HashMap::new();
+            combined_schema.insert("content".to_string(), json!(content_json_schema));
+            combined_schema.insert("related_content".to_string(), json!(related_content_json_schema));
 
-            log::debug!("content_json_schema: {:?}", content_json_schema);
-
-            let serialized = serde_json::to_string(&content_json_schema)
+            let serialized = serde_json::to_string(&combined_schema)
                 .expect("Could not serialize JSON schema to JSON");
 
             Ok(serialized)
