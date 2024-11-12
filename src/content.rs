@@ -325,15 +325,29 @@ impl Content {
         hasher.update(hasher_items.join(""));
         
         let hash = format!("{:x}", hasher.finalize());
-        let mut final_object = vec![(hash, json!(object))];
+        let mut final_object: HashMap<String, Value> = HashMap::new();
+        final_object.insert(hash.clone(), json!(object));
 
         self.inner_content.iter().for_each(|inner_content| {
-            final_object.extend(inner_content.clone().to_json_schema());
+            let inner_object = inner_content.clone().to_json_schema();
+
+            let mut inner_hasher = Sha256::new();
+            let mut keys: Vec<_> = inner_object.keys().cloned().collect();
+            keys.sort();
+            for key in &keys {
+                inner_hasher.update(key.as_bytes());
+            }
+            let inner_hash = format!("{:x}", inner_hasher.finalize());
+
+            if final_object.contains_key(&inner_hash) {
+
+            } else {
+                final_object.insert(inner_hash, json!(inner_object));
+            }
         });
 
+        final_object.retain(|_, v| !v.is_object() || !v.as_object().unwrap().is_empty());
+
         final_object
-            .into_iter()
-            .filter(|(_, v)| !v.is_object() || !v.as_object().unwrap().is_empty())
-            .collect()
     }
 }

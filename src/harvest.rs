@@ -60,6 +60,8 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
 
             content_json_schema.extend(related_content_json_schema);
 
+            log::debug!("content_json_schema: {:?}", content_json_schema);
+
             let serialized = serde_json::to_string(&content_json_schema)
                 .expect("Could not serialize JSON schema to JSON");
 
