@@ -385,38 +385,62 @@ pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(
 pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Graph<U>) {
     log::trace!("In absorb");
 
-    let recipient_child = {
-        read_lock!(recipient)
-            .children
-            .iter()
-            .find(|item| {
-                read_lock!(item).hash == read_lock!(donor).hash
-            })
-            .cloned()
-    };
+    let mut visited: HashSet<String> = HashSet::new();
 
-    if let Some(recipient_child) = recipient_child {
-        log::trace!("Donor and recipient node have the same hash");
-
-        if graph_hash(Arc::clone(&recipient_child)) != graph_hash(Arc::clone(&donor)) {
-            log::trace!("Donor and recipient child have differing subgraph hashes");
-            let donor_children = read_lock!(donor).children.clone();
-
-            for donor_child in donor_children.iter() {
-                absorb(Arc::clone(&recipient_child), Arc::clone(&donor_child));
-            }
+    fn recurse<T: GraphNodeData, U: GraphNodeData>(
+        recipient: Graph<T>,
+        donor: Graph<U>,
+        visited: &mut HashSet<String>,
+    ) {
+        if visited.contains(&read_lock!(donor).id) {
+            return;
         }
-    } else {
-        log::trace!("Donor and recipient subgraphs incompatible. Adopting donor node...");
 
-        let copied = deep_copy::<T, U>(
-            donor,
-            vec![Arc::clone(&recipient)],
-            &mut HashSet::new(),
-            &mut HashMap::new()
-        );
-        write_lock!(recipient).children.push(copied.clone());
+        visited.insert(read_lock!(donor).id.clone());
+
+        let recipient_child = {
+            read_lock!(recipient)
+                .children
+                .iter()
+                .find(|item| {
+                    read_lock!(item).hash == read_lock!(donor).hash
+                })
+                .cloned()
+        };
+
+        if let Some(recipient_child) = recipient_child {
+            log::trace!("Donor and recipient node have the same hash");
+
+            if graph_hash(Arc::clone(&recipient_child)) != graph_hash(Arc::clone(&donor)) {
+                log::trace!("Donor and recipient child have differing subgraph hashes");
+                let donor_children = read_lock!(donor).children.clone();
+
+                for donor_child in donor_children.iter() {
+                    recurse(
+                        Arc::clone(&recipient_child),
+                        Arc::clone(&donor_child),
+                        visited
+                    );
+                }
+            }
+        } else {
+            log::trace!("Donor and recipient subgraphs incompatible. Adopting donor node...");
+
+            let copied = deep_copy::<T, U>(
+                donor,
+                vec![Arc::clone(&recipient)],
+                &mut HashSet::new(),
+                &mut HashMap::new()
+            );
+            write_lock!(recipient).children.push(copied.clone());
+        }
     }
+
+    recurse(
+        Arc::clone(&recipient),
+        Arc::clone(&donor),
+        &mut visited,
+    );
 }
 
 pub fn bft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>) -> bool) {
