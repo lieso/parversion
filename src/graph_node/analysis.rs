@@ -335,17 +335,34 @@ async fn analyze_data(
             wl.push(interpretation);
         }
     } else {
-        let meaningful_attributes = get_meaningful_attributes(&read_lock!(output_node).data)
+        let meaningful_attributes: Vec<_> = get_meaningful_attributes(&read_lock!(output_node).data)
             .keys()
             .cloned()
+            .filter(|key| {
+                let is_empty_attribute = homologous_nodes
+                    .iter()
+                    .fold(true, |acc, node| {
+                        let xml_node = read_lock!(node).data.clone();
+
+                        acc && xml_node.get_attribute_value(key).unwrap().is_empty()
+                    });
+
+                !is_empty_attribute
+            })
             .collect();
 
-        let interpretation = interpret_element_data(meaningful_attributes, snippets, subgraph.description.clone()).await;
+        if !meaningful_attributes.is_empty() {
+            let interpretation = interpret_element_data(
+                meaningful_attributes,
+                snippets,
+                subgraph.description.clone()
+            ).await;
 
-        {
-            let rl = read_lock!(target_node);
-            let mut wl = write_lock!(rl.data.data);
-            wl.extend(interpretation);
+            {
+                let rl = read_lock!(target_node);
+                let mut wl = write_lock!(rl.data.data);
+                wl.extend(interpretation);
+            }
         }
     }
 }
