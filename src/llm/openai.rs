@@ -34,6 +34,7 @@ struct LLMElementDataResponse {
     is_page_link: bool,
     is_peripheral_content: bool,
     is_advertisement: bool,
+    description: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,6 +45,7 @@ struct LLMTextDataResponse {
     is_peripheral_content: bool,
     is_advertisement: bool,
     is_title: bool,
+    description: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -400,6 +402,7 @@ Provide the following information in your response:
 1. name: A generic name in snake case that could be used to represent title values programmatically.
 2. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
 3. is_advertisement: Indicates if the value is an advertisement.
+4. description: Provide a brief description of this text as if it were a field in a JSON schema
 
 ---
 "##);
@@ -439,6 +442,7 @@ Example(s) of the element node:
                 is_page_link: false,
                 is_peripheral_content: response.is_peripheral_content.clone(),
                 is_advertisement: response.is_advertisement.clone(),
+                description: response.description.clone(),
             }),
             text: None,
         };
@@ -476,9 +480,12 @@ Example(s) of the element node:
                         },
                         "is_advertisement": {
                             "type": "boolean"
+                        },
+                        "description": {
+                            "type": "string"
                         }
                     },
-                    "required": ["name", "is_peripheral_content", "is_advertisement"],
+                    "required": ["name", "is_peripheral_content", "is_advertisement", "description"],
                     "additionalProperties": false
                 },
             },
@@ -514,6 +521,7 @@ Example(s) of the element node:
             is_page_link: false,
             is_peripheral_content: response.is_peripheral_content.clone(),
             is_advertisement: response.is_advertisement.clone(),
+            description: response.description.clone(),
         }),
         text: None,
     }
@@ -537,6 +545,7 @@ Provide the following information in your response:
 2. is_page_link: Indicate whether these href(s) likely just point to a new page or if they are for performing some sort of action or mutation. An example of a page link is a link to a another page in a website where more content is consumed such as visiting an 'about' page from the landing page. Action/mutation href likely require a login and change something about the state of an item on the website.
 3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
 4. is_advertisement: Indicates if the value is an advertisement.
+5. description: Provide a brief description of this text as if it were a field in a JSON schema
 
 ---
 "##);
@@ -577,6 +586,7 @@ Example(s) of the element node:
                 is_page_link: response.is_page_link.clone(),
                 is_peripheral_content: response.is_peripheral_content.clone(),
                 is_advertisement: response.is_advertisement.clone(),
+                description: response.description.clone(),
             }),
             text: None,
         };
@@ -617,9 +627,12 @@ Example(s) of the element node:
                         },
                         "is_advertisement": {
                             "type": "boolean"
+                        },
+                        "description": {
+                            "type": "string"
                         }
                     },
-                    "required": ["name", "is_page_link", "is_peripheral_content", "is_advertisement"],
+                    "required": ["name", "is_page_link", "is_peripheral_content", "is_advertisement", "description"],
                     "additionalProperties": false
                 },
             },
@@ -655,6 +668,7 @@ Example(s) of the element node:
             is_page_link: response.is_page_link.clone(),
             is_peripheral_content: response.is_peripheral_content.clone(),
             is_advertisement: response.is_advertisement.clone(),
+            description: response.description.clone(),
         }),
         text: None,
     }
@@ -720,6 +734,7 @@ Additionally, provide this metadata in your JSON response:
 3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
 4. is_advertisement: Indicates if the text is an advertisement.
 5. is_title: Despite how it currently gets rendered based on the HTML, does this text node fulfill the typical purpose of titles or headings? Is this text node a prominent focal point that draws the user's attention?
+6. description: Provide a brief description of this text as if it were a field in a JSON schema
 "##);
     let user_prompt = format!(r##"
 The core purpose of this website has been summarized as follows:
@@ -759,6 +774,7 @@ Examples(s) of the text node to be analyzed:
                 is_peripheral_content: llm_text_data_response.is_peripheral_content.clone(),
                 is_advertisement: llm_text_data_response.is_advertisement.clone(),
                 is_title: llm_text_data_response.is_title.clone(),
+                description: llm_text_data_response.description.clone(),
             }),
         };
     }
@@ -804,9 +820,12 @@ Examples(s) of the text node to be analyzed:
                         },
                         "is_title": {
                             "type": "boolean"
+                        },
+                        "description": {
+                            "type": "string"
                         }
                     },
-                    "required": ["name", "is_presentational", "is_primary_content", "is_peripheral_content", "is_advertisement", "is_title"],
+                    "required": ["name", "is_presentational", "is_primary_content", "is_peripheral_content", "is_advertisement", "is_title", "description"],
                     "additionalProperties": false
                 }
             }
@@ -844,6 +863,7 @@ Examples(s) of the text node to be analyzed:
             is_peripheral_content: llm_text_data_response.is_peripheral_content.clone(),
             is_advertisement: llm_text_data_response.is_advertisement.clone(),
             is_title: llm_text_data_response.is_title.clone(),
+            description: llm_text_data_response.description.clone(),
         }),
     }
 }

@@ -9,6 +9,7 @@ pub struct ContentValueMetadata {
     pub is_title: bool,
     pub is_primary_content: bool,
     pub is_url: bool,
+    pub description: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -313,12 +314,15 @@ impl Content {
 
         for value in self.values.iter() {
             let key = &value.name;
-            let object_value = "string";
-
             hasher_items.push(key.clone());
-            hasher_items.push(object_value.to_string());
 
-            object.insert(key.clone(), json!(object_value.to_string()));
+            let mut object_value = HashMap::new();
+            object_value.insert("type", "string");
+            object_value.insert("description", &value.meta.description);
+
+            // TODO: add object value to hasher_items
+
+            object.insert(key.clone(), json!(object_value));
         }
 
         hasher_items.sort();
@@ -333,7 +337,9 @@ impl Content {
 
             let mut inner_hasher = Sha256::new();
             let mut keys: Vec<_> = inner_object.keys().cloned().collect();
+
             keys.sort();
+
             for key in &keys {
                 inner_hasher.update(key.as_bytes());
             }

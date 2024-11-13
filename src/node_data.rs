@@ -11,6 +11,7 @@ pub struct ElementData {
     pub is_page_link: bool,
     pub is_peripheral_content: bool,
     pub is_advertisement: bool,
+    pub description: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -20,6 +21,7 @@ pub struct TextData {
     pub is_primary_content: bool,
     pub is_peripheral_content: bool,
     pub is_advertisement: bool,
+    pub description: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -73,7 +75,13 @@ pub fn apply_data(
             is_primary_content: node_data.text.clone().map_or(false, |text| text.is_primary_content),
             is_url: node_data.element.clone().map_or(false, |element| {
                 element.attribute == "href"
-            })
+            }),
+            description: node_data.text.clone().map_or(
+                node_data.element.clone().map_or(String::new(), |element| {
+                    element.description.clone()
+                }),
+                |text| text.description.clone()
+            )
         },
     };
 
