@@ -25,6 +25,7 @@ pub struct NormalizeResult {
 }
 
 pub fn normalize_text(
+    url: Option<&str>,
     text: String,
     input_basis_graph: Option<BasisGraph>
 ) -> Result<NormalizeResult, Errors> {
@@ -39,7 +40,7 @@ pub fn normalize_text(
         if utility::is_valid_xml(&text) {
             log::info!("Document is valid XML");
 
-            let result = normalize_xml(&text, input_basis_graph).await?;
+            let result = normalize_xml(url, &text, input_basis_graph).await?;
 
             return Ok(result);
         }
@@ -47,7 +48,7 @@ pub fn normalize_text(
         if let Some(xml) = utility::string_to_xml(&text) {
             log::info!("Managed to convert string to XML");
 
-            let result = normalize_xml(&xml, input_basis_graph).await?;
+            let result = normalize_xml(url, &xml, input_basis_graph).await?;
 
             return Ok(result);
         }
@@ -57,6 +58,7 @@ pub fn normalize_text(
 }
 
 pub fn normalize_file(
+    url: Option<&str>,
     file_name: &str,
     input_basis_graph: Option<BasisGraph>
 ) -> Result<NormalizeResult, Errors> {
@@ -75,16 +77,17 @@ pub fn normalize_file(
         process::exit(1);
     });
 
-    normalize_text(document, input_basis_graph)
+    normalize_text(url, document, input_basis_graph)
 }
 
 pub async fn normalize_xml(
+    url: Option<&str>,
     xml: &str,
     input_basis_graph: Option<BasisGraph>
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_xml");
 
-    let xml = utility::preprocess_xml(xml);
+    let xml = utility::preprocess_xml(url, xml);
     log::info!("Done preprocessing XML");
 
     let input_graph: Graph<XmlNode> = graph_node::build_graph(xml.clone());

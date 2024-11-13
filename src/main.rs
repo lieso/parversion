@@ -84,6 +84,11 @@ fn main() {
             .long("output-format")
             .value_name("FORMAT")
             .help("Set output format: JSON, JSON_SCHEMA, or XML"))
+        .arg(Arg::with_name("url")
+            .short('u')
+            .long("url")
+            .value_name("URL")
+            .help("The full URL that identifies and locates the provided document"))
         .get_matches();
 
     let output_format = {
@@ -91,6 +96,8 @@ fn main() {
         parversion::harvest::HarvestFormats::from_str(format_str)
             .expect("Could not initialize output format")
     };
+
+    let url: Option<&str> = matches.value_of("url");
 
     let basis_graph: Option<BasisGraph> = match matches.value_of("basis") {
         Some(file_name) => {
@@ -108,11 +115,11 @@ fn main() {
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::normalize::normalize_file(file_name, basis_graph)
+            parversion::normalize::normalize_file(url, file_name, basis_graph)
         }
         None => {
             log::info!("File not provided");
-            parversion::normalize::normalize_text(document, basis_graph)
+            parversion::normalize::normalize_text(url, document, basis_graph)
         }
     };
 

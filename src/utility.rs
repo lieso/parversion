@@ -5,6 +5,7 @@ use std::str::from_utf8;
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
+use url::Url;
 
 use crate::constants;
 use crate::environment;
@@ -94,18 +95,42 @@ fn escape_xml(data: &str) -> String {
         .replace("'", "&apos;")
 }
 
-pub fn preprocess_xml(xml_string: &str) -> String {
+pub fn preprocess_xml(url: Option<&str>, xml_string: &str) -> String {
     let mut root = Element::parse(xml_string.as_bytes()).expect("Unable to parse XML");
 
-    fn remove_attributes(element: &mut Element) {
+    fn remove_attributes(url: Option<&str>, element: &mut Element) {
         element.attributes.retain(|attr, value| {
+
+            // TODO: should we remove origin URLs from a web document?
+
+            // We never need to know that a web document links to itself
+            // So we remove any instances of URLs that match the URL the document came from.
+            let is_self_link = {
+                if attr == "href" {
+                    if let Some(url) = url {
+                        let (origin, path) = get_origin_and_path(url).unwrap();
+
+                        if is_relative_url(value) {
+                            *value == path
+                        } else {
+                            value == url
+                        }
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            };
+
             !constants::UNSEEN_BLACKLISTED_ATTRIBUTES.contains(&attr.as_str()) &&
-            value.as_str().len() < 500
+            value.as_str().len() < 500 &&
+            !is_self_link
         });
 
         for child in &mut element.children {
             if let xmltree::XMLNode::Element(ref mut el) = child {
-                remove_attributes(el);
+                remove_attributes(url, el);
             }
         }
     }
@@ -127,7 +152,7 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     }
 
     remove_elements(&mut root);
-    remove_attributes(&mut root);
+    remove_attributes(url, &mut root);
 
     let mut buffer = Cursor::new(Vec::new());
     root.write(&mut buffer).expect("Could not write root");
@@ -144,4 +169,19 @@ pub fn preprocess_xml(xml_string: &str) -> String {
     }
 
     return as_string
+}
+
+fn get_origin_and_path(url_str: &str) -> Option<(String, String)> {
+    if let Ok(parsed_url) = Url::parse(url_str) {
+        let origin = parsed_url.origin().unicode_serialization();
+        let path = parsed_url.path().trim_start_matches('/').to_string();
+
+        Some((origin, path))
+    } else {
+        None
+    }
+}
+
+fn is_relative_url(url: &str) -> bool {
+    !Url::parse(url).is_ok()
 }
