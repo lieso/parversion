@@ -46,6 +46,7 @@ struct LLMTextDataResponse {
     is_advertisement: bool,
     is_title: bool,
     description: String,
+    is_label: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -735,6 +736,7 @@ Additionally, provide this metadata in your JSON response:
 4. is_advertisement: Indicates if the text is an advertisement.
 5. is_title: Despite how it currently gets rendered based on the HTML, does this text node fulfill the typical purpose of titles or headings? Is this text node a prominent focal point that draws the user's attention?
 6. description: Provide a brief description of this text as if it were a field in a JSON schema
+7. is_label: Indicates if the text node is a label for a UI element meant to assist the user in understanding how to operate the website, as opposed to content that is meant to be consumed
 "##);
     let user_prompt = format!(r##"
 The core purpose of this website has been summarized as follows:
@@ -775,6 +777,7 @@ Examples(s) of the text node to be analyzed:
                 is_advertisement: llm_text_data_response.is_advertisement.clone(),
                 is_title: llm_text_data_response.is_title.clone(),
                 description: llm_text_data_response.description.clone(),
+                is_label: llm_text_data_response.is_label.clone(),
             }),
         };
     }
@@ -823,9 +826,12 @@ Examples(s) of the text node to be analyzed:
                         },
                         "description": {
                             "type": "string"
+                        },
+                        "is_label": {
+                            "type": "boolean"
                         }
                     },
-                    "required": ["name", "is_presentational", "is_primary_content", "is_peripheral_content", "is_advertisement", "is_title", "description"],
+                    "required": ["name", "is_presentational", "is_primary_content", "is_peripheral_content", "is_advertisement", "is_title", "description", "is_label"],
                     "additionalProperties": false
                 }
             }
@@ -864,6 +870,7 @@ Examples(s) of the text node to be analyzed:
             is_advertisement: llm_text_data_response.is_advertisement.clone(),
             is_title: llm_text_data_response.is_title.clone(),
             description: llm_text_data_response.description.clone(),
+            is_label: llm_text_data_response.is_label.clone(),
         }),
     }
 }

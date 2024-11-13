@@ -22,6 +22,7 @@ pub struct TextData {
     pub is_peripheral_content: bool,
     pub is_advertisement: bool,
     pub description: String,
+    pub is_label: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -62,6 +63,12 @@ pub fn apply_data(
     };
     if is_advertisement {
         log::info!("Discarding advertisement");
+        return None;
+    }
+
+    // Discarding labels
+    if node_data.clone().text.map_or(false, |text| text.is_label) {
+        log::info!("Discarding label");
         return None;
     }
 
