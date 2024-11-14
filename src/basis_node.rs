@@ -10,6 +10,7 @@ pub struct BasisNode {
     pub data: Arc<RwLock<Vec<NodeData>>>,
     pub structure: Arc<RwLock<Vec<NodeDataStructure>>>,
     pub description: String,
+    pub analyzed: bool,
 }
 
 impl GraphNodeData for BasisNode {
@@ -18,6 +19,7 @@ impl GraphNodeData for BasisNode {
             data: Arc::new(RwLock::new(Vec::new())),
             structure: Arc::new(RwLock::new(Vec::new())),
             description,
+            analyzed: false,
         }
     }
 

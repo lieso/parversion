@@ -20,14 +20,15 @@ use crate::harvest::{harvest};
 use crate::utility;
 
 pub struct NormalizeResult {
-    pub basis_graph: BasisGraph,
+    pub output_basis_graph: BasisGraph,
     pub harvest: Harvest,
 }
 
 pub fn normalize_text(
     url: Option<&str>,
     text: String,
-    input_basis_graph: Option<BasisGraph>
+    input_basis_graph: Option<BasisGraph>,
+    other_basis_graphs: Vec<BasisGraph>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_text");
 
@@ -40,7 +41,12 @@ pub fn normalize_text(
         if utility::is_valid_xml(&text) {
             log::info!("Document is valid XML");
 
-            let result = normalize_xml(url, &text, input_basis_graph).await?;
+            let result = normalize_xml(
+                url,
+                &text,
+                input_basis_graph,
+                other_basis_graphs
+            ).await?;
 
             return Ok(result);
         }
@@ -48,7 +54,12 @@ pub fn normalize_text(
         if let Some(xml) = utility::string_to_xml(&text) {
             log::info!("Managed to convert string to XML");
 
-            let result = normalize_xml(url, &xml, input_basis_graph).await?;
+            let result = normalize_xml(
+                url,
+                &xml,
+                input_basis_graph,
+                other_basis_graphs
+            ).await?;
 
             return Ok(result);
         }
@@ -60,7 +71,8 @@ pub fn normalize_text(
 pub fn normalize_file(
     url: Option<&str>,
     file_name: &str,
-    input_basis_graph: Option<BasisGraph>
+    input_basis_graph: Option<BasisGraph>,
+    other_basis_graphs: Vec<BasisGraph>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
@@ -77,13 +89,14 @@ pub fn normalize_file(
         process::exit(1);
     });
 
-    normalize_text(url, document, input_basis_graph)
+    normalize_text(url, document, input_basis_graph, other_basis_graphs)
 }
 
 pub async fn normalize_xml(
     url: Option<&str>,
     xml: &str,
-    input_basis_graph: Option<BasisGraph>
+    input_basis_graph: Option<BasisGraph>,
+    other_basis_graphs: Vec<BasisGraph>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_xml");
 
@@ -111,7 +124,10 @@ pub async fn normalize_xml(
 
         if !previous_basis_graph.contains_subgraph(Arc::clone(&input_graph)) {
             log::info!("Input graph is not a subgraph of basis graph");
-            graph_node::absorb(Arc::clone(&previous_basis_graph.root), Arc::clone(&input_graph));
+            graph_node::absorb(
+                Arc::clone(&previous_basis_graph.root),
+                Arc::clone(&input_graph)
+            );
         } else {
             log::info!("Input graph is a subgraph of basis graph");
 
@@ -119,7 +135,7 @@ pub async fn normalize_xml(
             let harvest = harvest(Arc::clone(&output_tree), previous_basis_graph.clone());
 
             return Ok(NormalizeResult {
-                basis_graph: previous_basis_graph,
+                output_basis_graph: previous_basis_graph,
                 harvest: harvest,
             });
         }
@@ -144,7 +160,8 @@ pub async fn normalize_xml(
         graph_node::analyze_nodes(
             Arc::clone(&basis_graph.root),
             Arc::clone(&output_tree),
-            &subgraph
+            &subgraph,
+            &other_basis_graphs
         ).await;
     }
 
@@ -152,7 +169,7 @@ pub async fn normalize_xml(
     let harvest = harvest(Arc::clone(&output_tree), basis_graph.clone());
 
     Ok(NormalizeResult {
-        basis_graph: basis_graph,
+        output_basis_graph: basis_graph,
         harvest: harvest,
     })
 }

@@ -19,6 +19,7 @@ mod analysis;
 use crate::xml_node::{XmlNode};
 use crate::xml_node;
 use crate::basis_node::{BasisNode};
+use crate::basis_graph::{BasisGraph};
 use crate::constants;
 use crate::macros::*;
 use crate::graph_node::analysis::*;
@@ -631,6 +632,7 @@ pub async fn analyze_nodes(
     basis_graph: Graph<BasisNode>,
     output_tree: Graph<XmlNode>,
     subgraph: &Subgraph,
+    other_basis_graphs: &Vec<BasisGraph>
 ) {
     log::trace!("In analyze_nodes");
 
@@ -733,6 +735,12 @@ pub async fn analyze_nodes(
         }).collect();
 
         handle_tasks(handles).await;
+    }
+
+    // Mark nodes as fully-analysed
+
+    for node in nodes.iter() {
+        write_lock!(node).data.analyzed = true;
     }
 }
 

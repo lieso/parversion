@@ -115,11 +115,11 @@ fn main() {
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::normalize::normalize_file(url, file_name, basis_graph)
+            parversion::normalize::normalize_file(url, file_name, basis_graph, Vec::new())
         }
         None => {
             log::info!("File not provided");
-            parversion::normalize::normalize_text(url, document, basis_graph)
+            parversion::normalize::normalize_text(url, document, basis_graph, Vec::new())
         }
     };
 
@@ -130,7 +130,7 @@ fn main() {
         ).expect("Unable to serialize result");
 
         if environment::is_local() {
-            save_basis_graph(normalize_result.basis_graph.clone());
+            save_basis_graph(normalize_result.output_basis_graph.clone());
         }
 
         println!("{}", serialized);

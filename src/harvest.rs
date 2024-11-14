@@ -76,6 +76,73 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
     }
 }
 
+pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest {
+    log::trace!("In harvest");
+
+    let mut content = Content::default();
+    content.id = read_lock!(output_tree).id.clone();
+    let mut related_content = Content::default();
+    related_content.id = read_lock!(output_tree).id.clone();
+
+    fn recurse(
+        mut output_node: Graph<XmlNode>,
+        basis_graph: Graph<BasisNode>,
+        output_content: &mut Content,
+        output_related_content: &mut Content,
+    ) {
+        if read_lock!(output_node).is_linear() {
+            log::info!("Output node is linear");
+
+            while read_lock!(output_node).is_linear() {
+                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
+
+                output_node = {
+                    let next_node = read_lock!(output_node).children.first().expect("Linear output node has no children").clone();
+                    next_node.clone()
+                };
+            }
+
+            process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
+        } else {
+            log::info!("Output node is non-linear");
+
+            process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
+        }
+
+        for child in read_lock!(output_node).children.iter() {
+            let mut child_content = Content::default();
+            child_content.id = read_lock!(child).id.clone();
+            let mut child_related_content = Content::default();
+            child_related_content.id = read_lock!(child).id.clone();
+
+            recurse(
+                Arc::clone(child),
+                Arc::clone(&basis_graph),
+                &mut child_content,
+                &mut child_related_content,
+            );
+
+            output_content.inner_content.push(child_content);
+            output_related_content.inner_content.push(child_related_content);
+        }
+    }
+
+    recurse(
+        Arc::clone(&output_tree),
+        Arc::clone(&basis_graph.root),
+        &mut content,
+        &mut related_content,
+    );
+
+    postprocess_content(&mut content);
+    postprocess_content(&mut related_content);
+
+    Harvest {
+        content: content,
+        related_content: related_content,
+    }
+}
+
 fn process_node(
     output_node: Graph<XmlNode>,
     basis_graph: Graph<BasisNode>,
@@ -205,75 +272,5 @@ Node:   {}
                 }
             }
         }
-    }
-}
-
-pub fn harvest(
-    output_tree: Graph<XmlNode>,
-    basis_graph: BasisGraph
-) -> Harvest {
-    log::trace!("In harvest");
-
-    let mut content = Content::default();
-    content.id = read_lock!(output_tree).id.clone();
-    let mut related_content = Content::default();
-    related_content.id = read_lock!(output_tree).id.clone();
-
-    fn recurse(
-        mut output_node: Graph<XmlNode>,
-        basis_graph: Graph<BasisNode>,
-        output_content: &mut Content,
-        output_related_content: &mut Content,
-    ) {
-        if read_lock!(output_node).is_linear() {
-            log::info!("Output node is linear");
-
-            while read_lock!(output_node).is_linear() {
-                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
-
-                output_node = {
-                    let next_node = read_lock!(output_node).children.first().expect("Linear output node has no children").clone();
-                    next_node.clone()
-                };
-            }
-
-            process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
-        } else {
-            log::info!("Output node is non-linear");
-
-            process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
-        }
-
-        for child in read_lock!(output_node).children.iter() {
-            let mut child_content = Content::default();
-            child_content.id = read_lock!(child).id.clone();
-            let mut child_related_content = Content::default();
-            child_related_content.id = read_lock!(child).id.clone();
-
-            recurse(
-                Arc::clone(child),
-                Arc::clone(&basis_graph),
-                &mut child_content,
-                &mut child_related_content,
-            );
-
-            output_content.inner_content.push(child_content);
-            output_related_content.inner_content.push(child_related_content);
-        }
-    }
-
-    recurse(
-        Arc::clone(&output_tree),
-        Arc::clone(&basis_graph.root),
-        &mut content,
-        &mut related_content,
-    );
-
-    postprocess_content(&mut content);
-    postprocess_content(&mut related_content);
-
-    Harvest {
-        content: content,
-        related_content: related_content,
     }
 }
