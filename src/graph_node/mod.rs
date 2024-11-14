@@ -642,6 +642,24 @@ pub async fn analyze_nodes(
     let mut spanning_sample_children: Vec<Graph<BasisNode>> = Vec::new();
 
     bft(Arc::clone(&basis_graph), &mut |node: Graph<BasisNode>| {
+
+        // TODO: will skipping this node affect spanning sample children?
+        if read_lock!(node).data.analyzed {
+            log::info!("Skipping node which has already been analyzed");
+            return true;
+        }
+
+
+
+
+        for other_basis_graph in other_basis_graphs.iter() {
+
+        }
+
+
+
+
+
         nodes.push(node.clone());
 
         if parents_visited.insert(read_lock!(node).id.clone()) {
