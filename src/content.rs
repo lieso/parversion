@@ -54,6 +54,7 @@ fn is_metadata_empty(meta: &ContentMetadata) -> bool {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Content {
     pub id: String,
+    pub lineage: String,
     #[serde(skip_serializing_if = "is_metadata_empty")]
     pub meta: ContentMetadata,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -70,6 +71,7 @@ impl Default for Content {
     fn default() -> Self {
         Content {
             id: Uuid::new_v4().to_string(),
+            lineage: String::new(),
             meta: ContentMetadata {
                 recursive: None,
                 enumerative: None,
@@ -99,8 +101,8 @@ pub fn postprocess_content(content: &mut Content) {
     log::info!("Removing empty objects from content...");
     content.remove_empty();
 
-    log::info!("Merging content...");
-    content.merge_content();
+    //log::info!("Merging content...");
+    //content.merge_content();
 
     log::info!("Clearing data structure meta...");
     clear_data_structure_meta(content);
@@ -292,6 +294,7 @@ impl Content {
         if !merged_values.is_empty() {
             let merged_content = Content {
                 id: Uuid::new_v4().to_string(),
+                lineage: "?".to_string(),
                 meta: ContentMetadata {
                     recursive: None,
                     enumerative: None,

@@ -30,6 +30,7 @@ use crate::config::{CONFIG};
 pub struct GraphNode<T: GraphNodeData> {
     pub id: String,
     pub hash: String,
+    pub lineage: String,
     pub parents: Vec<Arc<RwLock<GraphNode<T>>>>,
     pub children: Vec<Arc<RwLock<GraphNode<T>>>>,
     pub data: T,
@@ -70,6 +71,7 @@ impl<T: GraphNodeData> GraphNode<T> {
         let temp_node = Arc::new(RwLock::new(GraphNode {
             id: id.clone(),
             hash: json_value["hash"].as_str().unwrap().to_string(),
+            lineage: json_value["lineage"].as_str().unwrap().to_string(),
             data,
             parents: Vec::new(),
             children: Vec::new(),
@@ -207,9 +209,21 @@ pub fn to_xml_string(graph: Graph<XmlNode>) -> String {
 
 impl GraphNode<XmlNode> {
     fn from_xml(xml: &XmlNode, parents: Vec<Graph<XmlNode>>) -> Graph<XmlNode> {
+        let hash = xml_node::xml_to_hash(xml);
+
+        let lineage = if let Some(first_parent) = parents.first() {
+            let mut hasher = Sha256::new();
+            let parent_lineage = read_lock!(first_parent).lineage.clone();
+            hasher.update(vec![parent_lineage, hash.clone()].join(""));
+            format!("{:x}", hasher.finalize())
+        } else {
+            hash.clone()
+        };
+
         let node = Arc::new(RwLock::new(GraphNode {
             id: Uuid::new_v4().to_string(),
-            hash: xml_node::xml_to_hash(xml),
+            hash,
+            lineage,
             parents,
             children: Vec::new(),
             data: xml.without_children(),
@@ -237,6 +251,7 @@ impl<T: GraphNodeData> GraphNode<T> {
         Arc::new(RwLock::new(GraphNode {
             id: Uuid::new_v4().to_string(),
             hash: constants::ROOT_NODE_HASH.to_string(),
+            lineage: String::new(),
             parents: Vec::new(),
             children: Vec::new(),
             data: T::new("blank".to_string()),
@@ -313,6 +328,7 @@ pub fn deep_copy_single<T: GraphNodeData>(
     let new_node = Arc::new(RwLock::new(GraphNode {
         id: guard.id.clone(),
         hash: guard.hash.clone(),
+        lineage: guard.lineage.clone(),
         parents,
         children: Vec::new(),
         data: guard.data.clone(),
@@ -357,6 +373,7 @@ pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(
     let new_node = Arc::new(RwLock::new(GraphNode {
         id: guard.id.clone(),
         hash: guard.hash.clone(),
+        lineage: guard.lineage.clone(),
         parents,
         children: Vec::new(),
         data: T::new(guard.data.describe()),

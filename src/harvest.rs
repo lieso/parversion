@@ -112,8 +112,10 @@ pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest 
         for child in read_lock!(output_node).children.iter() {
             let mut child_content = Content::default();
             child_content.id = read_lock!(child).id.clone();
+            child_content.lineage = read_lock!(child).lineage.clone();
             let mut child_related_content = Content::default();
             child_related_content.id = read_lock!(child).id.clone();
+            child_related_content.lineage = read_lock!(child).lineage.clone();
 
             recurse(
                 Arc::clone(child),
