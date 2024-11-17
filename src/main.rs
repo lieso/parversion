@@ -6,6 +6,7 @@ use log::LevelFilter;
 use env_logger::Builder;
 use std::fs::File;
 use std::str::FromStr;
+use serde_json::{from_str, to_string, Value};
 
 use parversion::basis_graph::{BasisGraph};
 
@@ -45,7 +46,35 @@ fn load_basis_graph(file_name: &str) -> Result<BasisGraph, &str> {
     let mut serialized = String::new();
     let _ = file.read_to_string(&mut serialized).map_err(|_e| "Could not read file to string");
 
-    serde_json::from_str::<BasisGraph>(&serialized).map_err(|_e| "Could not deserialize basis graph")
+    match serde_json::from_str::<BasisGraph>(&serialized) {
+        Ok(basis_graph) => Ok(basis_graph),
+        Err(_e) => {
+
+            // TODO: serialize basis graph root as unescaped json
+            // so we won't have to the following workaround
+
+            let mut json_value: Value = match from_str(&serialized) {
+                Ok(value) => value,
+                Err(_e) => return Err("Could not parse JSON"),
+            };
+
+            if let Some(root_value) = json_value.get_mut("root") {
+                if let Ok(root_str) = to_string(root_value) {
+                    log::debug!("root_str: {}", root_str);
+                    *root_value = Value::String(root_str);
+                } else {
+                    return Err("Failed to convert root to string");
+                }
+            }
+
+            let modified_serialized = match to_string(&json_value) {
+                Ok(json_str) => json_str,
+                Err(_e) => return Err("Failed to serialize modified JSON"),
+            };
+
+            serde_json::from_str::<BasisGraph>(&modified_serialized).map_err(|_e| "Could not deserialize basis graph after modification")
+        }
+    }
 }
 
 fn save_basis_graph(graph: BasisGraph) {
@@ -89,6 +118,11 @@ fn main() {
             .long("url")
             .value_name("URL")
             .help("The full URL that identifies and locates the provided document"))
+        .arg(Arg::with_name("graphs")
+            .short('g')
+            .long("graphs")
+            .value_name("GRAPHS")
+            .help("Provide file path describing location of an analyzed basis graph to be used for interpretation"))
         .get_matches();
 
     let output_format = {
@@ -112,14 +146,26 @@ fn main() {
         }
     };
 
+    let other_basis_graphs: Vec<BasisGraph> = match matches.value_of("graphs") {
+        Some(path) => {
+            log::debug!("other basis graph file name: {}", path);
+            let basis_graph = load_basis_graph(path).expect("Could not load basis graph from filesystem");
+            vec![basis_graph]
+        }
+        None => {
+            log::info!("Other basis graphs not provided");
+            Vec::new()
+        }
+    };
+
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::normalize::normalize_file(url, file_name, basis_graph, Vec::new())
+            parversion::normalize::normalize_file(url, file_name, basis_graph, other_basis_graphs)
         }
         None => {
             log::info!("File not provided");
-            parversion::normalize::normalize_text(url, document, basis_graph, Vec::new())
+            parversion::normalize::normalize_text(url, document, basis_graph, other_basis_graphs)
         }
     };
 

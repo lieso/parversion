@@ -61,6 +61,7 @@ impl<T: GraphNodeData> GraphNode<T> {
         visited: &mut HashMap<String, Graph<T>>,
     ) -> SerdeResult<Graph<T>> {
         let id = json_value["id"].as_str().unwrap().to_string();
+        log::debug!("id: {}", id);
 
         if let Some(existing_node) = visited.get(&id) {
             return Ok(Arc::clone(existing_node));
