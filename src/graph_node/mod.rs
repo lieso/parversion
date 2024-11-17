@@ -123,6 +123,7 @@ impl<T: GraphNodeData> GraphNode<T> {
         Ok(json!({
             "id": self.id,
             "hash": self.hash,
+            "lineage": self.lineage,
             "data": self.data,
             "parents": parents_json?,
             "children": children_json?,

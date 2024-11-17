@@ -131,6 +131,7 @@ fn main() {
 
         if environment::is_local() {
             save_basis_graph(normalize_result.output_basis_graph.clone());
+            log::info!("Saved basis graph to filesystem");
         }
 
         println!("{}", serialized);
