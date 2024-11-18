@@ -668,16 +668,29 @@ pub async fn analyze_nodes(
             return true;
         }
 
-
-
+        let mut should_skip = false;
 
         for other_basis_graph in other_basis_graphs.iter() {
+            bft(Arc::clone(&other_basis_graph.root), &mut |inner_node: Graph<BasisNode>| {
+                if read_lock!(inner_node).lineage == read_lock!(node).lineage {
+                    if read_lock!(inner_node).data.analyzed {
+                        should_skip = true;
+                        return false;
+                    }
+                }
 
+                true
+            });
+
+            if should_skip {
+                break;
+            }
         }
 
-
-
-
+        if should_skip {
+            log::info!("Going to skip node which has already been analyzed on other graphs");
+            return true;
+        }
 
         nodes.push(node.clone());
 

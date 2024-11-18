@@ -274,5 +274,7 @@ Node:   {}
                 }
             }
         }
+    } else {
+        log::warn!("Could not find basis node using output node lineage");
     }
 }

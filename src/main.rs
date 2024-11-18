@@ -161,11 +161,21 @@ fn main() {
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::normalize::normalize_file(url, file_name, basis_graph, other_basis_graphs)
+            parversion::normalize::normalize_file(
+                url,
+                file_name,
+                basis_graph,
+                other_basis_graphs
+            )
         }
         None => {
             log::info!("File not provided");
-            parversion::normalize::normalize_text(url, document, basis_graph, other_basis_graphs)
+            parversion::normalize::normalize_text(
+                url,
+                document,
+                basis_graph,
+                other_basis_graphs
+            )
         }
     };
 
