@@ -132,7 +132,14 @@ pub async fn normalize_xml(
             log::info!("Input graph is a subgraph of basis graph");
 
             log::info!("Harvesting output tree..");
-            let harvest = harvest(Arc::clone(&output_tree), previous_basis_graph.clone());
+            let basis_graphs: Vec<BasisGraph> = other_basis_graphs
+                .into_iter()
+                .chain(std::iter::once(previous_basis_graph.clone()))
+                .collect();
+            let harvest = harvest(
+                Arc::clone(&output_tree),
+                basis_graphs,
+            );
 
             return Ok(NormalizeResult {
                 output_basis_graph: previous_basis_graph,
@@ -166,7 +173,14 @@ pub async fn normalize_xml(
     }
 
     log::info!("Harvesting output tree..");
-    let harvest = harvest(Arc::clone(&output_tree), basis_graph.clone());
+    let basis_graphs: Vec<BasisGraph> = other_basis_graphs
+        .into_iter()
+        .chain(std::iter::once(basis_graph.clone()))
+        .collect();
+    let harvest = harvest(
+        Arc::clone(&output_tree),
+        basis_graphs,
+    );
 
     Ok(NormalizeResult {
         output_basis_graph: basis_graph,

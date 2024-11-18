@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 use std::str::FromStr;
 use std::collections::{HashMap};
 
-use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData};
+use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
 use crate::xml_node::{XmlNode};
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
@@ -76,7 +76,10 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
     }
 }
 
-pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest {
+pub fn harvest(
+    output_tree: Graph<XmlNode>,
+    basis_graphs: Vec<BasisGraph>,
+) -> Harvest {
     log::trace!("In harvest");
 
     let mut content = Content::default();
@@ -86,7 +89,7 @@ pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest 
 
     fn recurse(
         mut output_node: Graph<XmlNode>,
-        basis_graph: Graph<BasisNode>,
+        basis_graphs: Vec<BasisGraph>,
         output_content: &mut Content,
         output_related_content: &mut Content,
     ) {
@@ -94,7 +97,12 @@ pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest 
             log::info!("Output node is linear");
 
             while read_lock!(output_node).is_linear() {
-                process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
+                process_node(
+                    Arc::clone(&output_node),
+                    basis_graphs.clone(),
+                    output_content,
+                    output_related_content
+                );
 
                 output_node = {
                     let next_node = read_lock!(output_node).children.first().expect("Linear output node has no children").clone();
@@ -102,11 +110,21 @@ pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest 
                 };
             }
 
-            process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
+            process_node(
+                Arc::clone(&output_node),
+                basis_graphs.clone(),
+                output_content,
+                output_related_content
+            );
         } else {
             log::info!("Output node is non-linear");
 
-            process_node(Arc::clone(&output_node), Arc::clone(&basis_graph), output_content, output_related_content);
+            process_node(
+                Arc::clone(&output_node),
+                basis_graphs.clone(),
+                output_content,
+                output_related_content
+            );
         }
 
         for child in read_lock!(output_node).children.iter() {
@@ -119,7 +137,7 @@ pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest 
 
             recurse(
                 Arc::clone(child),
-                Arc::clone(&basis_graph),
+                basis_graphs.clone(),
                 &mut child_content,
                 &mut child_related_content,
             );
@@ -131,7 +149,7 @@ pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest 
 
     recurse(
         Arc::clone(&output_tree),
-        Arc::clone(&basis_graph.root),
+        basis_graphs.clone(),
         &mut content,
         &mut related_content,
     );
@@ -145,9 +163,37 @@ pub fn harvest(output_tree: Graph<XmlNode>, basis_graph: BasisGraph) -> Harvest 
     }
 }
 
+fn find_basis_node(
+    output_node: Graph<XmlNode>,
+    basis_graphs: Vec<BasisGraph>,
+) -> Option<(BasisGraph, Graph<BasisNode>)> {
+    log::trace!("In find_basis_node");
+
+    let mut target: Option<(BasisGraph, Graph<BasisNode>)> = None;
+
+    for (index, basis_graph) in basis_graphs.iter().enumerate() {
+        log::info!("Searching for node in graph #{}/{}", index + 1, basis_graphs.len());
+
+        bft(Arc::clone(&basis_graph.root), &mut |basis_node: Graph<BasisNode>| {
+            if read_lock!(basis_node).lineage == read_lock!(output_node).lineage {
+                target = Some((basis_graph.clone(), Arc::clone(&basis_node)));
+                return false;
+            }
+
+            true
+        });
+
+        if target.is_some() {
+            break;
+        }
+    }
+
+    target
+}
+
 fn process_node(
     output_node: Graph<XmlNode>,
-    basis_graph: Graph<BasisNode>,
+    basis_graphs: Vec<BasisGraph>,
     content: &mut Content,
     related_content: &mut Content,
 ) {
@@ -168,41 +214,11 @@ Node:   {}
         ));
     }
 
-
-    let lineage = get_lineage(Arc::clone(&output_node));
-
-    if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph), lineage) {
-
-
-
-
-        // If a node has a parent which is an element with an href that is interpreted to be an "action" link, we discard it
-        // These nodes only describe the action link
-        // e.g. <a href="reply?id=123">reply</a>
-        let rl = read_lock!(output_node);
-        if let Some(output_node_parent) = rl.parents.get(0) {
-            let output_node_parent_lineage = get_lineage(Arc::clone(&output_node_parent));
-            let output_node_parent_basis_node: Graph<BasisNode> = apply_lineage(Arc::clone(&basis_graph), output_node_parent_lineage).unwrap();
-            let output_node_parent_basis_node_data = read_lock!(output_node_parent_basis_node).data.data.clone();
-            let is_parent_action = read_lock!(output_node_parent_basis_node_data).iter().any(|item| {
-                if let Some(element_data) = &item.element {
-                    return element_data.attribute == "href" && !element_data.is_page_link;
-                }
-
-                false
-            });
-
-            if is_parent_action {
-                log::info!("Discarding node data whose parent is an action href");
-                return;
-            }
-        }
-
-
-        
-
-
-
+    if let Some((basis_graph, basis_node)) = find_basis_node(
+        Arc::clone(&output_node),
+        basis_graphs.clone()
+    ) {
+        log::info!("Found basis node");
 
         let data = read_lock!(basis_node).data.data.clone();
         for node_data in read_lock!(data).iter() {
@@ -224,8 +240,6 @@ Node:   {}
         let structures = read_lock!(basis_node).data.structure.clone();
         for structure in read_lock!(structures).iter() {
             if let Some(associative) = structure.associative.clone() {
-
-
                 let subgraph_hash = read_lock!(output_node).hash.clone();
 
                 let mut associated_subgraphs = Vec::new();
@@ -241,9 +255,7 @@ Node:   {}
 
                         associated_subgraphs.extend(filtered);
                     }
-
                 }
-
 
                 if !associated_subgraphs.is_empty() {
                     content.meta.associative = Some(ContentMetadataAssociative {
@@ -251,16 +263,11 @@ Node:   {}
                         associated_subgraphs: associated_subgraphs,
                     });
                 }
-
-
-
-
-
             } else {
                 let meta = apply_structure(
                     structure.clone(),
                     Arc::clone(&output_node),
-                    Arc::clone(&basis_graph),
+                    Arc::clone(&basis_graph.root),
                 );
 
                 if let Some(recursive) = meta.recursive {
