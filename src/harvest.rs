@@ -169,6 +169,7 @@ fn find_basis_node(
 ) -> Option<(BasisGraph, Graph<BasisNode>)> {
     log::trace!("In find_basis_node");
 
+    let lineage = get_lineage(Arc::clone(&output_node));
     let mut target: Option<(BasisGraph, Graph<BasisNode>)> = None;
 
     for (index, basis_graph) in basis_graphs.iter().enumerate() {
@@ -188,7 +189,32 @@ fn find_basis_node(
         }
     }
 
-    target
+    if target.is_some() {
+        return target;
+    }
+
+
+
+
+    // TODO ******************************************************************************************************
+
+    let lineage = get_lineage(Arc::clone(&output_node));
+
+    for (index, basis_graph) in basis_graphs.iter().enumerate() {
+        log::info!("Searching for node in graph #{}/{}", index + 1, basis_graphs.len());
+
+        if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph.root), lineage.clone()) {
+            return Some((basis_graph.clone(), Arc::clone(&basis_node)));
+        }
+    }
+
+    None
+
+    // ************************************************************************************************************
+
+
+
+
 }
 
 fn process_node(
@@ -223,17 +249,6 @@ Lineage:    {}
         basis_graphs.clone()
     ) {
         log::info!("Found basis node");
-
-
-
-
-        //let lineage = get_lineage(Arc::clone(&output_node));
-
-        //if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph.root), lineage) {
-
-
-
-
 
         let data = read_lock!(basis_node).data.data.clone();
         for node_data in read_lock!(data).iter() {
