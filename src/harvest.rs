@@ -44,6 +44,40 @@ pub struct Harvest {
     pub related_content: Content,
 }
 
+/// Serializes a `Harvest` into a string format specified by
+/// `HarvestFormats`. The result will be radically different based on provided
+/// `HarvestFormat`, and deserialization will not be possible using this output.
+///
+/// # Arguments
+///
+/// * `harvest` - A `Harvest` object that contains the results of a basis graph
+///   applied to an output tree (the web document to be processed)
+///
+/// * `format` - A `HarvestFormats` enum value indicating the desired output
+///   format. Possible formats include JSON, JSON Schema, and XML.
+///
+/// # Returns
+///
+/// * `Result<String, Errors>` - Returns a `Result` containing either:
+///   - A `String` with the serialized output if successful.
+///   - An `Errors` variant if an error occurred during serialization.
+///
+/// # Formats
+///
+/// * `HarvestFormats::JSON`:
+///   - Serializes the `Harvest` data into JSON format.
+///   - Serialization will closely match the original `Harvest` data.
+///
+/// * `HarvestFormats::JSON_SCHEMA`:
+///   - Serializes the `Harvest` data into a JSON Schema format.
+///   - The interpreted data of the original web document will be eliminated in
+///     creating the JSON schema.
+///   - This is useful for understanding the nature of the web document and the
+///     objects it contains
+///   - This is crucial for field or schema mapping
+///
+/// * `HarvestFormats::XML`:
+///   - Currently not implemented.
 pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<String, Errors> {
     match format {
         HarvestFormats::JSON => {
@@ -169,7 +203,6 @@ fn find_basis_node(
 ) -> Option<(BasisGraph, Graph<BasisNode>)> {
     log::trace!("In find_basis_node");
 
-    let lineage = get_lineage(Arc::clone(&output_node));
     let mut target: Option<(BasisGraph, Graph<BasisNode>)> = None;
 
     for (index, basis_graph) in basis_graphs.iter().enumerate() {
