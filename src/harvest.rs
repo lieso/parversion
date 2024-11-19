@@ -203,13 +203,17 @@ fn process_node(
         let block_separator = "=".repeat(60);
         log::info!("{}", format!(
         "\n{}
-PROCESSING NODE:
+PROCESSING OUTPUT NODE:
 {}
-Node:   {}
+Node:       {}
+Hash:       {}
+Lineage:    {}
 {}",
             block_separator,
             block_separator,
             read_lock!(output_node).data.describe(),
+            read_lock!(output_node).hash,
+            read_lock!(output_node).lineage,
             block_separator,
         ));
     }
@@ -219,6 +223,17 @@ Node:   {}
         basis_graphs.clone()
     ) {
         log::info!("Found basis node");
+
+
+
+
+        //let lineage = get_lineage(Arc::clone(&output_node));
+
+        //if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph.root), lineage) {
+
+
+
+
 
         let data = read_lock!(basis_node).data.data.clone();
         for node_data in read_lock!(data).iter() {
@@ -240,14 +255,13 @@ Node:   {}
         let structures = read_lock!(basis_node).data.structure.clone();
         for structure in read_lock!(structures).iter() {
             if let Some(associative) = structure.associative.clone() {
-                let subgraph_hash = read_lock!(output_node).hash.clone();
+                log::debug!("Found an associative structure");
 
+                let subgraph_hash = read_lock!(output_node).hash.clone();
                 let mut associated_subgraphs = Vec::new();
 
                 for group in associative.subgraph_ids {
-
                     if group.contains(&subgraph_hash) {
-
                         let filtered: Vec<String> = group
                             .into_iter()
                             .filter(|s| s != &subgraph_hash)
@@ -257,12 +271,10 @@ Node:   {}
                     }
                 }
 
-                if !associated_subgraphs.is_empty() {
-                    content.meta.associative = Some(ContentMetadataAssociative {
-                        subgraph: subgraph_hash,
-                        associated_subgraphs: associated_subgraphs,
-                    });
-                }
+                content.meta.associative = Some(ContentMetadataAssociative {
+                    subgraph: subgraph_hash,
+                    associated_subgraphs: associated_subgraphs,
+                });
             } else {
                 let meta = apply_structure(
                     structure.clone(),

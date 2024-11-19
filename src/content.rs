@@ -104,8 +104,8 @@ pub fn postprocess_content(content: &mut Content) {
     //log::info!("Merging content...");
     //content.merge_content();
 
-    log::info!("Clearing data structure meta...");
-    clear_data_structure_meta(content);
+    //log::info!("Clearing data structure meta...");
+    //clear_data_structure_meta(content);
 }
 
 fn clear_data_structure_meta(content: &mut Content) {

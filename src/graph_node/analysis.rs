@@ -40,15 +40,17 @@ pub async fn analyze(
         let block_separator = "=".repeat(60);
         log::info!("{}", format!(
         "\n{}
-ANALYZING NODE:
+ANALYZING NODE DATA:
 {}
-Node:   {}
-Hash:   {}
+Node:       {}
+Hash:       {}
+Lineage:    {}
 {}",
             block_separator,
             block_separator,
             read_lock!(target_node).data.describe(),
             read_lock!(target_node).hash,
+            read_lock!(target_node).lineage,
             block_separator,
         ));
     }
@@ -84,15 +86,17 @@ pub async fn analyze_recursions(
         let block_separator = "=".repeat(60);
         log::info!("{}", format!(
         "\n{}
-ANALYZING NODE:
+ANALYZING NODE RECURSIONS:
 {}
-Node:   {}
-Hash:   {}
+Node:       {}
+Hash:       {}
+Lineage:    {}
 {}",
             block_separator,
             block_separator,
             read_lock!(basis_node).data.describe(),
             read_lock!(basis_node).hash,
+            read_lock!(basis_node).lineage,
             block_separator,
         ));
     }
@@ -127,15 +131,17 @@ pub async fn analyze_associations(
         let block_separator = "=".repeat(60);
         log::info!("{}", format!(
         "\n{}
-ANALYZING NODE:
+ANALYZING NODE ASSOCIATIONS:
 {}
-Node:   {}
-Hash:   {}
+Node:       {}
+Hash:       {}
+Lineage:    {}
 {}",
             block_separator,
             block_separator,
             read_lock!(basis_node).data.describe(),
             read_lock!(basis_node).hash,
+            read_lock!(basis_node).lineage,
             block_separator,
         ));
     }
