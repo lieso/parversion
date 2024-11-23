@@ -18,6 +18,7 @@ use crate::xml_node::{XmlNode};
 use crate::error::{Errors};
 use crate::harvest::{harvest};
 use crate::utility;
+use crate::macros::*;
 
 pub struct NormalizeResult {
     pub output_basis_graph: BasisGraph,

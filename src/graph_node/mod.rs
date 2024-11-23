@@ -236,6 +236,14 @@ impl GraphNode<XmlNode> {
             data: xml.without_children(),
         }));
 
+        if read_lock!(node).data.describe().contains("minutes") {
+
+            log::debug!("quxxxxx");
+
+            log::debug!("new_lineage: {:?}", new_lineage);
+
+        }
+
         {
             let children: Vec<Graph<XmlNode>> = xml
                 .get_children()
@@ -594,7 +602,7 @@ pub fn prune(graph: Graph<XmlNode>) {
         let a_rl = a.read().unwrap();
         let b_rl = b.read().unwrap();
 
-        a_rl.id != b_rl.id && a_rl.hash == b_rl.hash
+        a_rl.id != b_rl.id && a_rl.lineage == b_rl.lineage
     }
 
     let mut visited = HashSet::new();
@@ -851,11 +859,8 @@ pub fn find_homologous_nodes(
     let mut homologous_nodes: Vec<Graph<XmlNode>> = Vec::new();
 
     bft(Arc::clone(&output_tree), &mut |output_node: Graph<XmlNode>| {
-        let lineage = get_lineage(output_node.clone());
-        if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph), lineage.clone()) {
-            if read_lock!(basis_node).id == read_lock!(target_node).id {
-                homologous_nodes.push(output_node);
-            }
+        if read_lock!(target_node).lineage == read_lock!(output_node).lineage {
+            homologous_nodes.push(output_node);
         }
 
         true

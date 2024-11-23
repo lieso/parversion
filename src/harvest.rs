@@ -222,32 +222,7 @@ fn find_basis_node(
         }
     }
 
-    if target.is_some() {
-        return target;
-    }
-
-
-
-
-    // TODO ******************************************************************************************************
-
-    let lineage = get_lineage(Arc::clone(&output_node));
-
-    for (index, basis_graph) in basis_graphs.iter().enumerate() {
-        log::info!("Searching for node in graph #{}/{}", index + 1, basis_graphs.len());
-
-        if let Some(basis_node) = apply_lineage(Arc::clone(&basis_graph.root), lineage.clone()) {
-            return Some((basis_graph.clone(), Arc::clone(&basis_node)));
-        }
-    }
-
-    None
-
-    // ************************************************************************************************************
-
-
-
-
+    target
 }
 
 fn process_node(
@@ -285,6 +260,8 @@ Lineage:    {}
 
         let data = read_lock!(basis_node).data.data.clone();
         for node_data in read_lock!(data).iter() {
+            log::debug!("node_data: {:?}", node_data);
+
             if let Some(content_value) = apply_data(node_data.clone(), Arc::clone(&output_node)) {
                 let is_peripheral = {
                     node_data.clone().text.map_or(false, |text| text.is_peripheral_content) ||
@@ -302,6 +279,8 @@ Lineage:    {}
 
         let structures = read_lock!(basis_node).data.structure.clone();
         for structure in read_lock!(structures).iter() {
+            log::debug!("structure: {:?}", structure);
+
             if let Some(associative) = structure.associative.clone() {
                 log::debug!("Found an associative structure");
 
@@ -341,6 +320,8 @@ Lineage:    {}
                 }
             }
         }
+
+        log::info!("Done applying basis node to output node");
     } else {
         log::warn!("Could not find basis node using output node lineage");
     }
