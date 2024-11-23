@@ -14,12 +14,17 @@ impl<T: GraphNodeData> GraphNode<T> {
         }
 
         let dot_path = format!("./debug/{}.dot", label);
-        let png_path = format!("./debug/{}.png", label);
+        let svg_path = format!("./debug/{}.svg", label);
         let mut file = File::create(dot_path.clone()).expect("Unable to create file");
         dot::render(self, &mut file).expect("Unable to render dot file");
 
         std::process::Command::new("dot")
-            .args(&["-Tpng", &dot_path, "-o", &png_path])
+            .args(&[
+                "-Tsvg",
+                &dot_path,
+                "-o",
+                &svg_path
+            ])
             .output()
             .expect("Failed to execute dot command");
     }
