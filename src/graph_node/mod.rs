@@ -25,6 +25,7 @@ use crate::macros::*;
 use crate::graph_node::analysis::*;
 use crate::basis_graph::{Subgraph};
 use crate::config::{CONFIG};
+use crate::utility;
 
 #[derive(Clone, Debug)]
 pub struct GraphNode<T: GraphNodeData> {
@@ -156,7 +157,7 @@ pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<XmlNode>>> {
     let mut reader = std::io::Cursor::new(xml);
     let xml = XmlNode::parse(&mut reader).expect("Could not parse XML");
 
-    GraphNode::from_xml(&xml, Vec::new())
+    GraphNode::from_xml(&xml, Vec::new(), Vec::new())
 }
 
 pub fn to_xml_string(graph: Graph<XmlNode>) -> String {
@@ -210,22 +211,26 @@ pub fn to_xml_string(graph: Graph<XmlNode>) -> String {
 }
 
 impl GraphNode<XmlNode> {
-    fn from_xml(xml: &XmlNode, parents: Vec<Graph<XmlNode>>) -> Graph<XmlNode> {
+    fn from_xml(
+        xml: &XmlNode,
+        parents: Vec<Graph<XmlNode>>,
+        lineage: Vec<String>
+    ) -> Graph<XmlNode> {
         let hash = xml_node::xml_to_hash(xml);
 
-        let lineage = if let Some(first_parent) = parents.first() {
-            let mut hasher = Sha256::new();
-            let parent_lineage = read_lock!(first_parent).lineage.clone();
-            hasher.update(vec![parent_lineage, hash.clone()].join(""));
-            format!("{:x}", hasher.finalize())
-        } else {
-            hash.clone()
-        };
+        let mut new_lineage = lineage.clone();
+        new_lineage.push(hash.clone());
+
+        let mut hasher = Sha256::new();
+        let mut hasher_items = utility::remove_duplicate_sequences(new_lineage.clone());
+        hasher.update(hasher_items.join(""));
+
+        let lineage_hash = format!("{:x}", hasher.finalize());
 
         let node = Arc::new(RwLock::new(GraphNode {
             id: Uuid::new_v4().to_string(),
             hash,
-            lineage,
+            lineage: lineage_hash,
             parents,
             children: Vec::new(),
             data: xml.without_children(),
@@ -236,7 +241,7 @@ impl GraphNode<XmlNode> {
                 .get_children()
                 .iter()
                 .map(|child| {
-                    GraphNode::from_xml(child, vec![node.clone()])
+                    GraphNode::from_xml(child, vec![node.clone()], new_lineage.clone())
                 })
                 .collect();
 

@@ -10,6 +10,29 @@ use url::Url;
 use crate::constants;
 use crate::environment;
 
+pub fn remove_duplicate_sequences(vec: Vec<String>) -> Vec<String> {
+    if vec.is_empty() {
+        return vec;
+    }
+
+    let mut result = Vec::new();
+    let mut iter = vec.into_iter().peekable();
+
+    while let Some(current) = iter.next() {
+        result.push(current.clone());
+
+        while let Some(next) = iter.peek() {
+            if next == &current {
+                iter.next();
+            } else {
+                break;
+            }
+        }
+    }
+
+    result
+}
+
 pub fn is_valid_xml(xml_string: &str) -> bool {
     match Element::parse(xml_string.as_bytes()) {
         Ok(_) => true,
