@@ -33,6 +33,7 @@ pub struct Subgraph {
     pub title: String,
     pub description: String,
     pub has_recursive: bool,
+    pub analyzed: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -99,6 +100,7 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
         description: summary.core_purpose,
         has_recursive: summary.has_recursive,
         title,
+        analyzed: false,
     };
 
     graph.subgraphs.entry(subgraph_hash.clone()).or_insert(subgraph);

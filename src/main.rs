@@ -51,7 +51,7 @@ fn load_basis_graph(file_name: &str) -> Result<BasisGraph, &str> {
         Err(_e) => {
 
             // TODO: serialize basis graph root as unescaped json
-            // so we won't have to the following workaround
+            // so we won't have to do the following workaround
 
             let mut json_value: Value = match from_str(&serialized) {
                 Ok(value) => value,

@@ -125,6 +125,7 @@ pub async fn normalize_xml(
 
         if !previous_basis_graph.contains_subgraph(Arc::clone(&input_graph)) {
             log::info!("Input graph is not a subgraph of basis graph");
+
             graph_node::absorb(
                 Arc::clone(&previous_basis_graph.root),
                 Arc::clone(&input_graph)
@@ -157,12 +158,8 @@ pub async fn normalize_xml(
     log::info!("Performing network analysis...");
     analyze_graph(&mut basis_graph, Arc::clone(&input_graph_copy)).await;
 
-    if basis_graph.subgraphs.len() > 1 {
-        panic!("Don't know how to handle multiple subgraphs yet");
-    }
-
     log::info!("Performing node analysis...");
-    for subgraph in basis_graph.subgraphs.values() {
+    for subgraph in basis_graph.subgraphs.values_mut().filter(|s| !s.analyzed) {
         log::info!("Analyzing nodes in subgraph with id: {}", subgraph.id);
 
         graph_node::analyze_nodes(
@@ -171,6 +168,8 @@ pub async fn normalize_xml(
             &subgraph,
             &other_basis_graphs
         ).await;
+        
+        subgraph.analyzed = true;
     }
 
     log::info!("Harvesting output tree..");
