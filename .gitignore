@@ -1,9 +1,5 @@
 /target
 
-# Resources
-resources/*
-!resources/.gitkeep
-
 # Debug
 debug/*
 !debug/.gitkeep
@@ -13,3 +9,6 @@ debug/*
 
 # Settings
 settings.toml
+
+# misc
+resources/
