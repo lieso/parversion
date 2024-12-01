@@ -27,6 +27,7 @@ mod basis_node;
 mod harvest;
 
 use basis_graph::{BasisGraph};
+use crate::config::{CONFIG};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -40,7 +41,8 @@ fn load_stdin() -> io::Result<String> {
 }
 
 fn init_logging() {
-    let log_file = File::create("./debug/debug.log").expect("Could not create log file");
+    let path = format!("{}/{}", read_lock!(CONFIG).dev.debug_dir, "debug.log");
+    let log_file = File::create(path).expect("Could not create log file");
 
     Dispatch::new()
         .level(LevelFilter::Off)
@@ -93,7 +95,8 @@ fn load_basis_graph(file_name: &str) -> Result<BasisGraph, &str> {
 
 fn save_basis_graph(graph: BasisGraph) {
     let serialized = serde_json::to_string(&graph).expect("Could not serialize basis graph");
-    let mut file = File::create("./debug/basis_graph").expect("Could not create file");
+    let path = format!("{}/{}", read_lock!(CONFIG).dev.debug_dir, "basis_graph");
+    let mut file = File::create(path).expect("Could not create file");
     file.write_all(serialized.as_bytes()).expect("could not write to file");
 }
 

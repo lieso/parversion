@@ -6,6 +6,7 @@ use std::fs::File;
 use super::{GraphNode, Graph, GraphNodeData, bft};
 use crate::macros::*;
 use crate::environment;
+use crate::config::{CONFIG};
 
 impl<T: GraphNodeData> GraphNode<T> {
     pub fn debug_visualize(&self, label: &str) {
@@ -13,8 +14,9 @@ impl<T: GraphNodeData> GraphNode<T> {
             return;
         }
 
-        let dot_path = format!("./debug/{}.dot", label);
-        let svg_path = format!("./debug/{}.svg", label);
+        let base_path = read_lock!(CONFIG).dev.debug_dir.clone();
+        let dot_path = format!("{}/{}.dot", base_path, label);
+        let svg_path = format!("{}/{}.svg", base_path, label);
         let mut file = File::create(dot_path.clone()).expect("Unable to create file");
         dot::render(self, &mut file).expect("Unable to render dot file");
 

@@ -1,9 +1,5 @@
 /target
 
-# Debug
-debug/*
-!debug/.gitkeep
-
 # Environment variables
 .env
 
@@ -12,3 +8,4 @@ settings.toml
 
 # misc
 resources/
+debug/

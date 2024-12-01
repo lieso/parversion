@@ -4,6 +4,7 @@ use std::sync::RwLock;
 use std::path::Path;
 use std::fs;
 use std::io::Write;
+use std::env;
 
 use crate::constants::{LlmProvider};
 
@@ -23,8 +24,22 @@ pub struct LlmConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct DevConfig {
+    pub debug_dir: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub llm: LlmConfig,
+    pub dev: DevConfig,
+}
+
+fn get_default_debug_dir() -> String {
+    env::current_dir()
+        .expect("Could not get current working directory")
+        .to_str()
+        .unwrap_or("/dev/null")
+        .to_string()
 }
 
 impl Config {
@@ -40,6 +55,9 @@ impl Config {
                     target_node_examples_max_count: 10,
                 },
             },
+            dev: DevConfig {
+                debug_dir: get_default_debug_dir(),
+            }
         }
     }
 

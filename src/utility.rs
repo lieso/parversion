@@ -7,9 +7,11 @@ use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use url::Url;
 
+use crate::config::{CONFIG};
 use crate::constants;
 use crate::environment;
 use crate::error::{Errors};
+use crate::macros::*;
 
 pub fn remove_duplicate_sequences(vec: Vec<String>) -> Vec<String> {
     if vec.is_empty() {
@@ -185,10 +187,12 @@ pub fn preprocess_xml(url: Option<&str>, xml_string: &str) -> String {
     let as_string = from_utf8(&buf).expect("Found invalid UTF-8").to_string();
 
     if environment::is_local() {
-        let mut file = File::create("./debug/unprocessed.xml").expect("Could not create file");
+        let path = format!("{}{}", read_lock!(CONFIG).dev.debug_dir, "/unprocessed.xml");
+        let mut file = File::create(path).expect("Could not create file");
         file.write_all(xml_string.as_bytes()).expect("Could not write to file");
 
-        let mut file = File::create("./debug/preprocessed.xml").expect("Could not create file");
+        let path = format!("{}{}", read_lock!(CONFIG).dev.debug_dir, "/preprocessed.xml");
+        let mut file = File::create(path).expect("Could not create file");
         file.write_all(as_string.as_bytes()).expect("Could not write to file");
     }
 

@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use uuid::Uuid;
 
+use crate::config::{CONFIG};
 use crate::environment;
 use crate::graph_node::{
     Graph,
@@ -81,7 +82,8 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
     let pruned_input: String = to_xml_string(Arc::clone(&input_graph));
 
     if environment::is_local() {
-        let mut file = File::create("./debug/pruned_input.xml").expect("Could not create file");
+        let path = format!("{}{}", read_lock!(CONFIG).dev.debug_dir, "/pruned_input.xml");
+        let mut file = File::create(path).expect("Could not create file");
         file.write_all(pruned_input.as_bytes()).expect("Could not write to file");
     }
 
