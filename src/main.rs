@@ -3,10 +3,11 @@ use std::io::{self, Write};
 use atty::Stream;
 use clap::{Arg, App};
 use log::LevelFilter;
-use env_logger::Builder;
 use std::fs::File;
 use std::str::FromStr;
 use serde_json::{from_str, to_string, Value};
+use std::io::stdout;
+use fern::Dispatch;
 
 mod error;
 mod llm;
@@ -38,18 +39,16 @@ fn load_stdin() -> io::Result<String> {
     return Ok(buffer);
 }
 
-fn init_logging() -> Builder {
-    let mut builder = Builder::from_default_env();
+fn init_logging() {
+    let log_file = File::create("./debug/debug.log").expect("Could not create log file");
 
-    builder.filter(None, LevelFilter::Off); // disables all logging
-    builder.filter_module("parversion", LevelFilter::Trace);
-
-    let log_file = std::fs::File::create("./debug/debug.log").unwrap();
-    builder.target(env_logger::Target::Pipe(Box::new(log_file)));
-
-    builder.init();
-
-    builder
+    Dispatch::new()
+        .level(LevelFilter::Off)
+        .level_for("parversion", LevelFilter::Trace)
+        .chain(stdout())
+        .chain(log_file)
+        .apply()
+        .expect("Could not initialize logging");
 }
 
 fn load_basis_graph(file_name: &str) -> Result<BasisGraph, &str> {
@@ -99,7 +98,7 @@ fn save_basis_graph(graph: BasisGraph) {
 }
 
 fn main() {
-    let _ = init_logging();
+    init_logging();
 
     let mut document = String::new();
 
