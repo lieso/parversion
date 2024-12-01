@@ -58,20 +58,16 @@ pub fn normalize_text(
             return Ok(result);
         }
 
-        if let Some(xml) = utility::string_to_xml(&text) {
-            log::info!("Managed to convert string to XML");
+        let xml = utility::string_to_xml(&text).expect("Could not convert string to xml");
 
-            let result = normalize_xml(
-                url,
-                &xml,
-                input_basis_graph,
-                other_basis_graphs
-            ).await?;
+        let result = normalize_xml(
+            url,
+            &xml,
+            input_basis_graph,
+            other_basis_graphs
+        ).await?;
 
-            return Ok(result);
-        }
-
-        Err(Errors::UnexpectedDocumentType)
+        Ok(result)
     });
 }
 

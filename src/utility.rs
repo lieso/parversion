@@ -9,6 +9,7 @@ use url::Url;
 
 use crate::constants;
 use crate::environment;
+use crate::error::{Errors};
 
 pub fn remove_duplicate_sequences(vec: Vec<String>) -> Vec<String> {
     if vec.is_empty() {
@@ -40,7 +41,7 @@ pub fn is_valid_xml(xml_string: &str) -> bool {
     }
 }
 
-pub fn string_to_xml(data: &str) -> Option<String> {
+pub fn string_to_xml(data: &str) -> Result<String, Errors> {
     log::trace!("In string_to_xml");
 
     let mut xhtml = String::from("");
@@ -55,10 +56,10 @@ pub fn string_to_xml(data: &str) -> Option<String> {
     walk(&mut xhtml, &dom.document, 0);
 
     if xhtml.trim().is_empty() {
-        return None;
+        return Err(Errors::UnexpectedDocumentType);
     }
 
-    Some(xhtml)
+    Ok(xhtml)
 }
 
 fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
