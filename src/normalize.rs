@@ -19,14 +19,12 @@ use crate::error::{Errors};
 use crate::harvest::{harvest};
 use crate::utility;
 use crate::macros::*;
-use napi_derive::napi;
 
 pub struct NormalizeResult {
     pub output_basis_graph: BasisGraph,
     pub harvest: Harvest,
 }
 
-#[napi]
 pub fn normalize_text_js(
     url: Option<String>,
     text: String,
