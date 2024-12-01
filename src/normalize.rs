@@ -19,17 +19,23 @@ use crate::error::{Errors};
 use crate::harvest::{harvest};
 use crate::utility;
 use crate::macros::*;
+use napi_derive::napi;
 
 pub struct NormalizeResult {
     pub output_basis_graph: BasisGraph,
     pub harvest: Harvest,
 }
 
+pub enum IndeterminateBasisGraph {
+    Unserialized(BasisGraph),
+    Serialized(String),
+}
+
 pub fn normalize_text(
-    url: Option<&str>,
+    url: Option<String>,
     text: String,
-    input_basis_graph: Option<BasisGraph>,
-    other_basis_graphs: Vec<BasisGraph>,
+    input_basis_graph: Option<Box<IndeterminateBasisGraph>>,
+    other_basis_graphs: Vec<Box<IndeterminateBasisGraph>>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_text");
 
@@ -70,10 +76,10 @@ pub fn normalize_text(
 }
 
 pub fn normalize_file(
-    url: Option<&str>,
-    file_name: &str,
-    input_basis_graph: Option<BasisGraph>,
-    other_basis_graphs: Vec<BasisGraph>,
+    url: Option<String>,
+    file_name: String,
+    input_basis_graph: Option<Box<IndeterminateBasisGraph>>,
+    other_basis_graphs: Vec<Box<IndeterminateBasisGraph>>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
@@ -94,14 +100,34 @@ pub fn normalize_file(
 }
 
 pub async fn normalize_xml(
-    url: Option<&str>,
+    url: Option<String>,
     xml: &str,
-    input_basis_graph: Option<BasisGraph>,
-    other_basis_graphs: Vec<BasisGraph>,
+    input_basis_graph: Option<Box<IndeterminateBasisGraph>>,
+    other_basis_graphs: Vec<Box<IndeterminateBasisGraph>>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_xml");
 
-    let xml = utility::preprocess_xml(url, xml);
+    fn process_basis_graph(graph: IndeterminateBasisGraph) -> BasisGraph {
+        match graph {
+            IndeterminateBasisGraph::Unserialized(value) => value,
+            IndeterminateBasisGraph::Serialized(value) => {
+                serde_json::from_str(&value).unwrap()
+            }
+        }
+    }
+
+    let input_basis_graph: Option<BasisGraph> = if let Some(input_basis_graph) = input_basis_graph {
+        Some(process_basis_graph(*input_basis_graph))
+    } else {
+        None
+    };
+
+    let other_basis_graphs: Vec<BasisGraph> = other_basis_graphs
+        .into_iter()
+        .map(|item| process_basis_graph(*item))
+        .collect();
+
+    let xml = utility::preprocess_xml(url.as_deref(), xml);
     log::info!("Done preprocessing XML");
 
     let input_graph: Graph<XmlNode> = graph_node::build_graph(xml.clone());
@@ -134,7 +160,7 @@ pub async fn normalize_xml(
             log::info!("Input graph is a subgraph of basis graph");
 
             log::info!("Harvesting output tree..");
-            let basis_graphs: Vec<BasisGraph> = other_basis_graphs
+            let basis_graphs = other_basis_graphs
                 .into_iter()
                 .chain(std::iter::once(previous_basis_graph.clone()))
                 .collect();
@@ -165,7 +191,7 @@ pub async fn normalize_xml(
         graph_node::analyze_nodes(
             Arc::clone(&basis_graph.root),
             Arc::clone(&output_tree),
-            &subgraph,
+            &*subgraph,
             &other_basis_graphs
         ).await;
         
@@ -173,7 +199,7 @@ pub async fn normalize_xml(
     }
 
     log::info!("Harvesting output tree..");
-    let basis_graphs: Vec<BasisGraph> = other_basis_graphs
+    let basis_graphs = other_basis_graphs
         .into_iter()
         .chain(std::iter::once(basis_graph.clone()))
         .collect();

@@ -8,9 +8,10 @@ use std::fs::File;
 use std::str::FromStr;
 use serde_json::{from_str, to_string, Value};
 
-use parversion::basis_graph::{BasisGraph};
-
 mod environment;
+mod basis_graph;
+mod normalize;
+mod harvest;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -127,7 +128,7 @@ fn main() {
 
     let output_format = {
         let format_str = matches.value_of("format").unwrap_or("json");
-        parversion::harvest::HarvestFormats::from_str(format_str)
+        harvest::HarvestFormats::from_str(format_str)
             .expect("Could not initialize output format")
     };
 
@@ -161,7 +162,7 @@ fn main() {
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
-            parversion::normalize::normalize_file(
+            normalize::normalize_file(
                 url,
                 file_name,
                 basis_graph,
@@ -170,7 +171,7 @@ fn main() {
         }
         None => {
             log::info!("File not provided");
-            parversion::normalize::normalize_text(
+            normalize::normalize_text(
                 url,
                 document,
                 basis_graph,
@@ -180,7 +181,7 @@ fn main() {
     };
 
     if let Ok(normalize_result) = normalize_result {
-        let serialized = parversion::harvest::serialize_harvest(
+        let serialized = harvest::serialize_harvest(
             normalize_result.harvest, 
             output_format
         ).expect("Unable to serialize result");
