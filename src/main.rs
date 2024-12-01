@@ -26,7 +26,6 @@ mod basis_node;
 mod harvest;
 
 use basis_graph::{BasisGraph};
-use normalize::{IndeterminateBasisGraph};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -149,12 +148,12 @@ fn main() {
 
     let url: Option<&str> = matches.value_of("url");
 
-    let basis_graph: Option<BasisGraph> = match matches.value_of("basis") {
+    let basis_graph: Option<Box<BasisGraph>> = match matches.value_of("basis") {
         Some(file_name) => {
-            log::debug!("basis graph file name: {}", file_name);
-            let basis_graph = load_basis_graph(file_name).expect("Could not load basis graph from filesystem");
+            let basis_graph = load_basis_graph(file_name)
+                .expect("Could not load basis graph from filesystem");
 
-            Some(basis_graph)
+            Some(Box::new(basis_graph))
         }
         None => {
             log::info!("Basis graph not provided");
@@ -162,11 +161,11 @@ fn main() {
         }
     };
 
-    let other_basis_graphs: Vec<Box<BasisGraph>> = match matches.value_of("graphs") {
+    let other_basis_graphs: Vec<BasisGraph> = match matches.value_of("graphs") {
         Some(path) => {
-            log::debug!("other basis graph file name: {}", path);
-            let basis_graph = load_basis_graph(path).expect("Could not load basis graph from filesystem");
-            vec![Box::new(basis_graph)]
+            let basis_graph = load_basis_graph(path)
+                .expect("Could not load basis graph from filesystem");
+            vec![basis_graph]
         }
         None => {
             log::info!("Other basis graphs not provided");
@@ -174,20 +173,13 @@ fn main() {
         }
     };
 
-    let obfuscated_basis_graph = basis_graph.map(|some_graph| {
-        Box::new(IndeterminateBasisGraph::Unserialized(some_graph))
-    });
-    let obfuscated_other_graphs = other_basis_graphs.into_iter().map(|item| {
-        Box::new(IndeterminateBasisGraph::Unserialized(*item))
-    }).collect();
-
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
             normalize::normalize_file(
                 url.map(|s| s.to_string()),
                 file_name.to_string(),
-                obfuscated_basis_graph,
-                obfuscated_other_graphs
+                basis_graph,
+                other_basis_graphs
             )
         }
         None => {
@@ -195,8 +187,8 @@ fn main() {
             normalize::normalize_text(
                 url.map(|s| s.to_string()),
                 document,
-                obfuscated_basis_graph,
-                obfuscated_other_graphs
+                basis_graph,
+                other_basis_graphs
             )
         }
     };

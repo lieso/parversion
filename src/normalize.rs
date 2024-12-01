@@ -26,16 +26,38 @@ pub struct NormalizeResult {
     pub harvest: Harvest,
 }
 
-pub enum IndeterminateBasisGraph {
-    Unserialized(BasisGraph),
-    Serialized(String),
+#[napi]
+pub fn normalize_text_js(
+    url: Option<String>,
+    text: String,
+    input_basis_graph: Option<String>,
+    other_basis_graphs: Vec<String>,
+) -> String {
+    log::trace!("In normalize_text_js");
+
+    fn process_basis_graph(graph: &str) -> BasisGraph {
+        serde_json::from_str(graph).unwrap()
+    }
+
+    let input_basis_graph: Option<Box<BasisGraph>> = input_basis_graph.map(|value| {
+        Box::new(process_basis_graph(&value))
+    });
+
+    let other_basis_graphs: Vec<BasisGraph> = other_basis_graphs
+        .into_iter()
+        .map(|item| process_basis_graph(&item))
+        .collect();
+
+    let result = normalize_text(url, text, input_basis_graph, other_basis_graphs).unwrap();
+
+    serialize_harvest(result.harvest, HarvestFormats::JSON).expect("Could not serialize results")
 }
 
 pub fn normalize_text(
     url: Option<String>,
     text: String,
-    input_basis_graph: Option<Box<IndeterminateBasisGraph>>,
-    other_basis_graphs: Vec<Box<IndeterminateBasisGraph>>,
+    input_basis_graph: Option<Box<BasisGraph>>,
+    other_basis_graphs: Vec<BasisGraph>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_text");
 
@@ -74,8 +96,8 @@ pub fn normalize_text(
 pub fn normalize_file(
     url: Option<String>,
     file_name: String,
-    input_basis_graph: Option<Box<IndeterminateBasisGraph>>,
-    other_basis_graphs: Vec<Box<IndeterminateBasisGraph>>,
+    input_basis_graph: Option<Box<BasisGraph>>,
+    other_basis_graphs: Vec<BasisGraph>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
@@ -98,30 +120,10 @@ pub fn normalize_file(
 pub async fn normalize_xml(
     url: Option<String>,
     xml: &str,
-    input_basis_graph: Option<Box<IndeterminateBasisGraph>>,
-    other_basis_graphs: Vec<Box<IndeterminateBasisGraph>>,
+    input_basis_graph: Option<Box<BasisGraph>>,
+    other_basis_graphs: Vec<BasisGraph>,
 ) -> Result<NormalizeResult, Errors> {
     log::trace!("In normalize_xml");
-
-    fn process_basis_graph(graph: IndeterminateBasisGraph) -> BasisGraph {
-        match graph {
-            IndeterminateBasisGraph::Unserialized(value) => value,
-            IndeterminateBasisGraph::Serialized(value) => {
-                serde_json::from_str(&value).unwrap()
-            }
-        }
-    }
-
-    let input_basis_graph: Option<BasisGraph> = if let Some(input_basis_graph) = input_basis_graph {
-        Some(process_basis_graph(*input_basis_graph))
-    } else {
-        None
-    };
-
-    let other_basis_graphs: Vec<BasisGraph> = other_basis_graphs
-        .into_iter()
-        .map(|item| process_basis_graph(*item))
-        .collect();
 
     let xml = utility::preprocess_xml(url.as_deref(), xml);
     log::info!("Done preprocessing XML");
@@ -158,7 +160,7 @@ pub async fn normalize_xml(
             log::info!("Harvesting output tree..");
             let basis_graphs = other_basis_graphs
                 .into_iter()
-                .chain(std::iter::once(previous_basis_graph.clone()))
+                .chain(std::iter::once(*previous_basis_graph.clone()))
                 .collect();
             let harvest = harvest(
                 Arc::clone(&output_tree),
@@ -166,12 +168,12 @@ pub async fn normalize_xml(
             );
 
             return Ok(NormalizeResult {
-                output_basis_graph: previous_basis_graph,
+                output_basis_graph: *previous_basis_graph,
                 harvest: harvest,
             });
         }
 
-        previous_basis_graph
+        *previous_basis_graph
     } else {
         log::info!("Did not receive a basis graph as input");
         build_basis_graph(Arc::clone(&input_graph))

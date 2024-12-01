@@ -39,3 +39,4 @@ napi-build = "1"
 [lib]
 name = "parversion"
 path = "src/lib.rs"
+crate-type = ["cdylib"]
