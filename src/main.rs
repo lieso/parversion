@@ -163,8 +163,8 @@ fn main() {
         Some(file_name) => {
             log::debug!("file_name: {}", file_name);
             normalize::normalize_file(
-                url,
-                file_name,
+                url.map(|s| s.to_string()),
+                file_name.to_string(),
                 basis_graph,
                 other_basis_graphs
             )
@@ -172,7 +172,7 @@ fn main() {
         None => {
             log::info!("File not provided");
             normalize::normalize_text(
-                url,
+                url.map(|s| s.to_string()),
                 document,
                 basis_graph,
                 other_basis_graphs
