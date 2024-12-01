@@ -7,8 +7,8 @@ use bincode::{serialize, deserialize};
 use std::sync::{Arc, OnceLock};
 use std::collections::{HashSet};
 
-use crate::node_data_structure::{RecursiveStructure};
-use crate::node_data::{NodeData, ElementData, TextData};
+use parversion::node_data_structure::{RecursiveStructure};
+use parversion::node_data::{NodeData, ElementData, TextData};
 use super::{LLMWebsiteAnalysisResponse};
 
 static DB: OnceLock<Arc<sled::Db>> = OnceLock::new();

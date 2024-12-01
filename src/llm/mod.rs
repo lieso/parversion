@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
-use crate::node_data::{NodeData};
-use crate::node_data_structure::{RecursiveStructure};
-use crate::config::{CONFIG};
-use crate::constants::{LlmProvider};
-use crate::macros::*;
+use parversion::node_data::{NodeData};
+use parversion::node_data_structure::{RecursiveStructure};
+use parversion::config::{CONFIG};
+use parversion::constants::{LlmProvider};
+use parversion::macros::*;
 
 mod openai;
 mod anthropic;

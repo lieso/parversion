@@ -9,23 +9,23 @@ use super::{
     get_depth,
     to_xml_string
 };
-use crate::xml_node::{XmlNode, get_meaningful_attributes};
-use crate::basis_node::{BasisNode};
-use crate::node_data_structure::{
+use parversion::xml_node::{XmlNode, get_meaningful_attributes};
+use parversion::basis_node::{BasisNode};
+use parversion::node_data_structure::{
     NodeDataStructure,
     EnumerativeStructure,
     AssociativeStructure
 };
-use crate::macros::*;
-use crate::config::{CONFIG};
-use crate::constants;
-use crate::llm::{
+use parversion::macros::*;
+use parversion::config::{CONFIG};
+use parversion::constants;
+use parversion::llm::{
     interpret_data_structure,
     interpret_element_data,
     interpret_text_data,
     interpret_associations
 };
-use crate::basis_graph::{Subgraph};
+use parversion::basis_graph::{Subgraph};
 
 pub async fn analyze(
     target_node: Graph<BasisNode>,

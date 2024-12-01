@@ -13,18 +13,18 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use uuid::Uuid;
 
-use crate::environment;
-use crate::graph_node::{
+use parversion::environment;
+use parversion::graph_node::{
     Graph,
     GraphNode,
     to_xml_string,
     deep_copy,
     graph_hash
 };
-use crate::basis_node::{BasisNode};
-use crate::macros::*;
-use crate::xml_node::{XmlNode};
-use crate::llm::{analyze_compressed_website};
+use parversion::basis_node::{BasisNode};
+use parversion::macros::*;
+use parversion::xml_node::{XmlNode};
+use parversion::llm::{analyze_compressed_website};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subgraph {

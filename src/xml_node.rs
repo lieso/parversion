@@ -8,9 +8,9 @@ use pathetic;
 use url::Url;
 use std::collections::{HashMap};
 
-use crate::error::{Errors};
-use crate::constants;
-use crate::graph_node::{GraphNodeData};
+use parversion::error::{Errors};
+use parversion::constants;
+use parversion::graph_node::{GraphNodeData};
 
 #[derive(Clone, Debug)]
 pub struct XmlNode {

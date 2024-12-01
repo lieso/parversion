@@ -4,11 +4,11 @@ use std::process::{Command, Stdio};
 use regex::Regex;
 use std::io::Write;
 
-use crate::graph_node::{Graph, bft, get_lineage, apply_lineage};
-use crate::xml_node::{XmlNode};
-use crate::basis_node::{BasisNode};
-use crate::macros::*;
-use crate::content::{
+use parversion::graph_node::{Graph, bft, get_lineage, apply_lineage};
+use parversion::xml_node::{XmlNode};
+use parversion::basis_node::{BasisNode};
+use parversion::macros::*;
+use parversion::content::{
     ContentMetadataRecursive,
     ContentMetadataEnumerative,
     ContentMetadata

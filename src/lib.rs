@@ -18,3 +18,5 @@ pub mod graph_node;
 pub mod basis_graph;
 pub mod basis_node;
 pub mod harvest;
+
+pub use macros::{read_lock, write_lock};
