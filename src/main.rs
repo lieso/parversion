@@ -8,10 +8,25 @@ use std::fs::File;
 use std::str::FromStr;
 use serde_json::{from_str, to_string, Value};
 
+mod error;
+mod llm;
+mod node_data;
+mod node_data_structure;
+mod utility;
+mod xml_node;
+mod config;
+mod constants;
+mod macros;
 mod environment;
-mod basis_graph;
 mod normalize;
+mod content;
+mod graph_node;
+mod basis_graph;
+mod basis_node;
 mod harvest;
+
+use basis_graph::{BasisGraph};
+use normalize::{IndeterminateBasisGraph};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -147,11 +162,11 @@ fn main() {
         }
     };
 
-    let other_basis_graphs: Vec<BasisGraph> = match matches.value_of("graphs") {
+    let other_basis_graphs: Vec<Box<BasisGraph>> = match matches.value_of("graphs") {
         Some(path) => {
             log::debug!("other basis graph file name: {}", path);
             let basis_graph = load_basis_graph(path).expect("Could not load basis graph from filesystem");
-            vec![basis_graph]
+            vec![Box::new(basis_graph)]
         }
         None => {
             log::info!("Other basis graphs not provided");
@@ -159,14 +174,20 @@ fn main() {
         }
     };
 
+    let obfuscated_basis_graph = basis_graph.map(|some_graph| {
+        Box::new(IndeterminateBasisGraph::Unserialized(some_graph))
+    });
+    let obfuscated_other_graphs = other_basis_graphs.into_iter().map(|item| {
+        Box::new(IndeterminateBasisGraph::Unserialized(*item))
+    }).collect();
+
     let normalize_result = match matches.value_of("file") {
         Some(file_name) => {
-            log::debug!("file_name: {}", file_name);
             normalize::normalize_file(
                 url.map(|s| s.to_string()),
                 file_name.to_string(),
-                basis_graph,
-                other_basis_graphs
+                obfuscated_basis_graph,
+                obfuscated_other_graphs
             )
         }
         None => {
@@ -174,8 +195,8 @@ fn main() {
             normalize::normalize_text(
                 url.map(|s| s.to_string()),
                 document,
-                basis_graph,
-                other_basis_graphs
+                obfuscated_basis_graph,
+                obfuscated_other_graphs
             )
         }
     };
