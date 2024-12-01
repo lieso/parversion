@@ -16,20 +16,16 @@ use serde_json::{
 mod debug;
 mod analysis;
 
-use parversion::xml_node::{XmlNode};
-use parversion::xml_node;
-use parversion::basis_node::{BasisNode};
-use parversion::basis_graph::{BasisGraph};
-use parversion::constants;
-use parversion::macros::*;
-use parversion::graph_node::analysis::{
-    analyze,
-    analyze_associations,
-    analyze_recursions
-};
-use parversion::basis_graph::{Subgraph};
-use parversion::config::{CONFIG};
-use parversion::utility;
+use crate::xml_node::{XmlNode};
+use crate::xml_node;
+use crate::basis_node::{BasisNode};
+use crate::basis_graph::{BasisGraph};
+use crate::constants;
+use crate::macros::*;
+use crate::graph_node::analysis::*;
+use crate::basis_graph::{Subgraph};
+use crate::config::{CONFIG};
+use crate::utility;
 
 #[derive(Clone, Debug)]
 pub struct GraphNode<T: GraphNodeData> {

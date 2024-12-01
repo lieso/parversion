@@ -5,20 +5,20 @@ use std::fs::File;
 use std::sync::{Arc};
 use std::collections::{HashSet, HashMap};
 
-use parversion::graph_node::GraphNode;
-use parversion::graph_node::Graph;
-use parversion::basis_graph::BasisGraph;
-use parversion::harvest::{Harvest, HarvestFormats, serialize_harvest};
-use parversion::graph_node;
-use parversion::basis_graph::{
+use crate::graph_node::GraphNode;
+use crate::graph_node::Graph;
+use crate::basis_graph::BasisGraph;
+use crate::harvest::{Harvest, HarvestFormats, serialize_harvest};
+use crate::graph_node;
+use crate::basis_graph::{
     build_basis_graph,
     analyze_graph,
 };
-use parversion::xml_node::{XmlNode};
-use parversion::error::{Errors};
-use parversion::harvest::{harvest};
-use parversion::utility;
-use parversion::macros::*;
+use crate::xml_node::{XmlNode};
+use crate::error::{Errors};
+use crate::harvest::{harvest};
+use crate::utility;
+use crate::macros::*;
 use napi_derive::napi;
 
 pub struct NormalizeResult {

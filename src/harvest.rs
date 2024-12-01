@@ -4,19 +4,19 @@ use serde_json::{json, Value};
 use std::str::FromStr;
 use std::collections::{HashMap};
 
-use parversion::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
-use parversion::xml_node::{XmlNode};
-use parversion::basis_node::{BasisNode};
-use parversion::macros::*;
-use parversion::basis_graph::{BasisGraph};
-use parversion::node_data_structure::{apply_structure};
-use parversion::node_data::{apply_data};
-use parversion::content::{
+use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
+use crate::xml_node::{XmlNode};
+use crate::basis_node::{BasisNode};
+use crate::macros::*;
+use crate::basis_graph::{BasisGraph};
+use crate::node_data_structure::{apply_structure};
+use crate::node_data::{apply_data};
+use crate::content::{
     Content,
     ContentMetadataAssociative,
     postprocess_content
 };
-use parversion::error::{Errors};
+use crate::error::{Errors};
 
 #[derive(Debug)]
 pub enum HarvestFormats {

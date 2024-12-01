@@ -7,8 +7,8 @@ use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use url::Url;
 
-use parversion::constants;
-use parversion::environment;
+use crate::constants;
+use crate::environment;
 
 pub fn remove_duplicate_sequences(vec: Vec<String>) -> Vec<String> {
     if vec.is_empty() {

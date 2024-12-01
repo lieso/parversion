@@ -5,7 +5,7 @@ use std::path::Path;
 use std::fs;
 use std::io::Write;
 
-use parversion::constants::{LlmProvider};
+use crate::constants::{LlmProvider};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfigDataStructureInterpretation {

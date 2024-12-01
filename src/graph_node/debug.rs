@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use std::fs::File;
 
 use super::{GraphNode, Graph, GraphNodeData, bft};
-use parversion::macros::*;
-use parversion::environment;
+use crate::macros::*;
+use crate::environment;
 
 impl<T: GraphNodeData> GraphNode<T> {
     pub fn debug_visualize(&self, label: &str) {

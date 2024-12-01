@@ -1,9 +1,9 @@
 use serde::{Serialize, Deserialize};
 
-use parversion::xml_node::{XmlNode};
-use parversion::content::{ContentValue, ContentValueMetadata};
-use parversion::graph_node::{Graph};
-use parversion::macros::*;
+use crate::xml_node::{XmlNode};
+use crate::content::{ContentValue, ContentValueMetadata};
+use crate::graph_node::{Graph};
+use crate::macros::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ElementData {

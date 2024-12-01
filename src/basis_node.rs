@@ -1,9 +1,9 @@
 use serde::{Serialize, Deserialize};
 use std::sync::{Arc, RwLock};
 
-use parversion::node_data::{NodeData};
-use parversion::node_data_structure::{NodeDataStructure};
-use parversion::graph_node::{GraphNodeData};
+use crate::node_data::{NodeData};
+use crate::node_data_structure::{NodeDataStructure};
+use crate::graph_node::{GraphNodeData};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNode {

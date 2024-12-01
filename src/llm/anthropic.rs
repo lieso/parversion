@@ -1,6 +1,6 @@
 #![allow(warnings)]
-use parversion::node_data_structure::{RecursiveStructure};
-use parversion::node_data::{NodeData, ElementData, TextData};
+use crate::node_data_structure::{RecursiveStructure};
+use crate::node_data::{NodeData, ElementData, TextData};
 use super::{LLMWebsiteAnalysisResponse};
 
 pub async fn interpret_element_data(meaningful_attributes: Vec<String>, snippets: Vec<String>, core_purpose: String) -> Vec<NodeData> {
