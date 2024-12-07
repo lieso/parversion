@@ -25,7 +25,7 @@ mod graph_node;
 mod basis_graph;
 mod basis_node;
 mod harvest;
-mod page_type;
+mod interface_type;
 mod json_schema;
 
 use basis_graph::{BasisGraph};

@@ -9,7 +9,7 @@ use std::collections::{HashSet};
 
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
-use crate::page_type::{PAGE_TYPES};
+use crate::interface_type::{INTERFACE_TYPES};
 use super::{
     LLMPageClassificationResponse,
     LLMSchemaMappingResponse,
@@ -169,25 +169,25 @@ And this is the second JSON schema (target).
     llm_response
 }
 
-pub async fn get_page_type(page: String) -> LLMPageClassificationResponse {
-    log::trace!("In get_page_type");
+pub async fn get_interface_type(page: String) -> LLMPageClassificationResponse {
+    log::trace!("In get_interface_type");
 
-    let system_prompt = PAGE_TYPES.iter().fold(
+    let system_prompt = INTERFACE_TYPES.iter().fold(
         format!(r##"
-Your task is to analyze a compressed snippet of HTML taken from a web page and to determine if its categorization exactly matches any from the following list of page types, and providing a page_type_id in your response. If it doesn't match any from the list, leave page_type_id blank and please provide the following information about the web page:
+Your task is to analyze a compressed snippet of HTML taken from a web page and to determine if its categorization exactly matches any from the following list of interface types, and providing a interface_type_id in your response. If it doesn't match any from the list, leave interface_type_id blank and please provide the following information about the web page:
     • name: Please provide a name for this type of web content in snake case
     • core_purpose: What is the core purpose of the website? Distinguish between the primary content and peripheral related content such as links to other pages.
     • has_recursive: Identify if there's any recursively-defined, nested-content within the HTML snippet itself. Do not consider potential external pages or linked content.
 
-    If find a match from the list of page types, don't bother calculating these values and just leave blank strings and default has_recursive to false.
+    If find a match from the list of interface types, don't bother calculating these values and just leave blank strings and default has_recursive to false.
 "##),
-        |mut acc, page_type| {
+        |mut acc, interface_type| {
             acc.push_str(&format!(r##"
 Page Type ID: {}
 Page description:
 {}
 
-"##, page_type.id, page_type.description));
+"##, interface_type.id, interface_type.description));
             acc
         }
     );
@@ -205,11 +205,11 @@ Web page sample:
     if let Some(cached_response) = get_cached_response(hash.clone()) {
         log::info!("Cache hit!");
 
-        let llm_page_type_response = serde_json::from_str::<LLMPageClassificationResponse>(&cached_response)
+        let llm_interface_type_response = serde_json::from_str::<LLMPageClassificationResponse>(&cached_response)
             .expect("Could not parse JSON response as LLMPageClassificationResponse");
-        log::debug!("llm_page_type_response: {:?}", llm_page_type_response);
+        log::debug!("llm_interface_type_response: {:?}", llm_interface_type_response);
 
-        return llm_page_type_response;
+        return llm_interface_type_response;
     }
 
     log::info!("Cache miss!");
@@ -236,7 +236,7 @@ Web page sample:
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "page_type_id": {
+                        "interface_type_id": {
                             "type": "string"
                         },
                         "name": {
@@ -249,7 +249,7 @@ Web page sample:
                             "type": "boolean"
                         }
                     },
-                    "required": ["page_type_id", "name", "core_purpose", "has_recursive"],
+                    "required": ["interface_type_id", "name", "core_purpose", "has_recursive"],
                     "additionalProperties": false
                 }
             }
@@ -274,11 +274,11 @@ Web page sample:
 
     set_cached_response(hash.clone(), json_response.to_string());
 
-    let llm_page_type_response = serde_json::from_str::<LLMPageClassificationResponse>(json_response)
+    let llm_interface_type_response = serde_json::from_str::<LLMPageClassificationResponse>(json_response)
         .expect("Could not parse JSON response as LLMPageClassificationResponse");
-    log::debug!("llm_page_type_response: {:?}", llm_page_type_response);
+    log::debug!("llm_interface_type_response: {:?}", llm_interface_type_response);
 
-    llm_page_type_response
+    llm_interface_type_response
 }
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {

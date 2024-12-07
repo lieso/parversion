@@ -12,7 +12,7 @@ mod groq;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LLMPageClassificationResponse {
-    pub page_type_id: String,
+    pub interface_type_id: String,
     pub name: String,
     pub core_purpose: String,
     pub has_recursive: bool,
@@ -39,11 +39,11 @@ pub async fn get_schema_mapping(schema_from: String, schema_to: String) -> LLMSc
     }
 }
 
-pub async fn get_page_type(page: String) -> LLMPageClassificationResponse {
+pub async fn get_interface_type(page: String) -> LLMPageClassificationResponse {
     let llm_provider = get_llm_provider();
 
     match llm_provider {
-        LlmProvider::openai => openai::get_page_type(page).await,
+        LlmProvider::openai => openai::get_interface_type(page).await,
         LlmProvider::anthropic => unimplemented!(),
         LlmProvider::groq => unimplemented!(),
     }

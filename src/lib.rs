@@ -10,7 +10,7 @@ mod config;
 mod constants;
 mod macros;
 mod environment;
-mod page_type;
+mod interface_type;
 mod json_schema;
 
 pub mod normalize;

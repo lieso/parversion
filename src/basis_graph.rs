@@ -25,8 +25,8 @@ use crate::graph_node::{
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::xml_node::{XmlNode};
-use crate::llm::{get_page_type};
-use crate::page_type::{PageType, PAGE_TYPES};
+use crate::llm::{get_interface_type};
+use crate::interface_type::{InterfaceType, INTERFACE_TYPES};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subgraph {
@@ -34,7 +34,7 @@ pub struct Subgraph {
     pub hash: String,
     pub title: String,
     pub analyzed: bool,
-    pub page_type: PageType,
+    pub interface_type: InterfaceType,
 }
 
 #[derive(Clone, Debug)]
@@ -93,17 +93,17 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
     let title = get_graph_title(Arc::clone(&input_graph)).unwrap();
     log::debug!("title: {}", title);
 
-    let llm_page_type = get_page_type(pruned_input).await;
-    log::debug!("llm_page_type: {:?}", llm_page_type);
+    let llm_interface_type = get_interface_type(pruned_input).await;
+    log::debug!("llm_interface_type: {:?}", llm_interface_type);
 
-    let page_type = if !llm_page_type.page_type_id.is_empty() {
-        PAGE_TYPES.iter().find(|item| item.id == llm_page_type.page_type_id).unwrap().clone()
+    let interface_type = if !llm_interface_type.interface_type_id.is_empty() {
+        INTERFACE_TYPES.iter().find(|item| item.id == llm_interface_type.interface_type_id).unwrap().clone()
     } else {
-        PageType {
+        InterfaceType {
             id: Uuid::new_v4().to_string(),
-            name: llm_page_type.name.clone(),
-            description: llm_page_type.core_purpose.clone(),
-            has_recursive: llm_page_type.has_recursive.clone(),
+            name: llm_interface_type.name.clone(),
+            description: llm_interface_type.core_purpose.clone(),
+            has_recursive: llm_interface_type.has_recursive.clone(),
             json_schema: None
         }
     };
@@ -111,7 +111,7 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
     let subgraph = Subgraph {
         id: Uuid::new_v4().to_string(),
         hash: subgraph_hash.clone(),
-        page_type: page_type,
+        interface_type: interface_type,
         title,
         analyzed: false,
     };

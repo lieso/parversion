@@ -212,10 +212,10 @@ pub async fn normalize_xml(
     let original_schema = content_to_json_schema(harvest_result.content.clone());
     log::debug!("original_schema: {}", original_schema);
 
-    let page_type = basis_graph.subgraphs.values().next().unwrap().page_type.clone();
+    let interface_type = basis_graph.subgraphs.values().next().unwrap().interface_type.clone();
 
-    let normalized = if let Some(known_schema) = page_type.json_schema {
-        log::debug!("Content is of a known category: {}", page_type.name);
+    let normalized = if let Some(known_schema) = interface_type.json_schema {
+        log::debug!("Content is of a known category: {}", interface_type.name);
 
         let schema_mapping = get_schema_mapping(&known_schema, &original_schema).await;
 
