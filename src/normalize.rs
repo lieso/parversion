@@ -237,15 +237,15 @@ pub async fn normalize_xml(
             schema_mapping
         );
 
-        let normalize_result = NormalizeResult {
-            output_basis_graph: basis_graph,
-            harvest: Harvest {
-                content: normalized_content,
-                related_content: harvest_result.related_content.clone(),
-            }
-        };
+        //let normalize_result = NormalizeResult {
+        //    output_basis_graph: basis_graph,
+        //    harvest: Harvest {
+        //        content: normalized_content,
+        //        related_content: harvest_result.related_content.clone(),
+        //    }
+        //};
 
-        return Ok(normalize_result);
+        //return Ok(normalize_result);
     }
 
     
