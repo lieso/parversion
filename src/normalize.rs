@@ -19,7 +19,7 @@ use crate::error::{Errors};
 use crate::harvest::{harvest};
 use crate::utility;
 use crate::macros::*;
-use crate::json_schema::{content_to_json_schema};
+use crate::json_schema::{content_to_json_schema, get_schema_mapping};
 
 pub struct NormalizeResult {
     pub output_basis_graph: BasisGraph,
@@ -181,6 +181,13 @@ pub async fn normalize_xml(
     log::info!("Performing network analysis...");
     analyze_graph(&mut basis_graph, Arc::clone(&input_graph_copy)).await;
 
+
+    if basis_graphs.subgraphs.len() > 1 {
+        panic!("Don't know how to handle multiple subgraphs");
+    }
+
+
+
     log::info!("Performing node analysis...");
     for subgraph in basis_graph.subgraphs.values_mut().filter(|s| !s.analyzed) {
         log::info!("Analyzing nodes in subgraph with id: {}", subgraph.id);
@@ -201,28 +208,33 @@ pub async fn normalize_xml(
         .chain(std::iter::once(basis_graph.clone()))
         .collect();
 
-    let content = harvest(
+    let harvest_result = harvest(
         Arc::clone(&output_tree),
         basis_graphs,
     );
 
-    
-
-
-    let serialized = serialize_harvest(content.clone(), HarvestFormats::JSON_SCHEMA).expect("Could not serialize harvest for schema");
-
-    log::debug!("serialized: {}", serialized);
+    let original_schema = content_to_json_schema(harvest_result.content.clone());
+    log::debug!("original_schema: {}", original_schema);
 
 
 
-    //let json_schema = content_to_json_schema(&harvest.content);
-    //log::debug!("json_schema: {}", json_schema);
+
+
+    if let Some(page_type) = basis_graph.subgraphs.first().unwrap().page_type {
+        log::debug!("Content is of a known category: {}", page_type.name);
+
+
+        let schema_mapping = get_schema_mapping(page_type.schema, original_schema);
+
+
+    }
+
 
 
     
 
     Ok(NormalizeResult {
         output_basis_graph: basis_graph,
-        harvest: content,
+        harvest: harvest_result,
     })
 }

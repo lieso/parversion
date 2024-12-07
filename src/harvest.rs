@@ -21,7 +21,6 @@ use crate::error::{Errors};
 #[derive(Debug)]
 pub enum HarvestFormats {
     JSON,
-    JSON_SCHEMA,
     XML,
 }
 
@@ -31,7 +30,6 @@ impl FromStr for HarvestFormats {
     fn from_str(input: &str) -> Result<HarvestFormats, Self::Err> {
         match input.to_lowercase().as_str() {
             "json" => Ok(HarvestFormats::JSON),
-            "json_schema" => Ok(HarvestFormats::JSON_SCHEMA),
             "xml" => Ok(HarvestFormats::XML),
             _ => Err(format!("'{}' is not a valid format", input)),
         }
@@ -44,40 +42,6 @@ pub struct Harvest {
     pub related_content: Content,
 }
 
-/// Serializes a `Harvest` into a string format specified by
-/// `HarvestFormats`. The result will be radically different based on provided
-/// `HarvestFormat`, and deserialization will not be possible using this output.
-///
-/// # Arguments
-///
-/// * `harvest` - A `Harvest` object that contains the results of a basis graph
-///   applied to an output tree (the web document to be processed)
-///
-/// * `format` - A `HarvestFormats` enum value indicating the desired output
-///   format. Possible formats include JSON, JSON Schema, and XML.
-///
-/// # Returns
-///
-/// * `Result<String, Errors>` - Returns a `Result` containing either:
-///   - A `String` with the serialized output if successful.
-///   - An `Errors` variant if an error occurred during serialization.
-///
-/// # Formats
-///
-/// * `HarvestFormats::JSON`:
-///   - Serializes the `Harvest` data into JSON format.
-///   - Serialization will closely match the original `Harvest` data.
-///
-/// * `HarvestFormats::JSON_SCHEMA`:
-///   - Serializes the `Harvest` data into a JSON Schema format.
-///   - The interpreted data of the original web document will be eliminated in
-///     creating the JSON schema.
-///   - This is useful for understanding the nature of the web document and the
-///     objects it contains
-///   - This is crucial for field or schema mapping
-///
-/// * `HarvestFormats::XML`:
-///   - Currently not implemented.
 pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<String, Errors> {
     match format {
         HarvestFormats::JSON => {
@@ -85,21 +49,6 @@ pub fn serialize_harvest(harvest: Harvest, format: HarvestFormats) -> Result<Str
 
             let serialized = serde_json::to_string(&harvest)
                 .expect("Could not serialize output to JSON");
-
-            Ok(serialized)
-        },
-        HarvestFormats::JSON_SCHEMA => {
-            log::info!("Serializing harvest as JSON schema");
-
-            let mut content_json_schema = harvest.content.clone().to_json_schema();
-            let related_content_json_schema = harvest.related_content.clone().to_json_schema();
-
-            let mut combined_schema = HashMap::new();
-            combined_schema.insert("content".to_string(), json!(content_json_schema));
-            combined_schema.insert("related_content".to_string(), json!(related_content_json_schema));
-
-            let serialized = serde_json::to_string(&combined_schema)
-                .expect("Could not serialize JSON schema to JSON");
 
             Ok(serialized)
         },
