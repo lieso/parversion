@@ -16,10 +16,23 @@ pub fn content_to_json_schema(content: Content) -> String {
 
 
 
-pub async fn get_schema_mapping(schema_from: String, schema_to: String) -> String {
-    let schema_mapping = llm::get_schema_mapping(schema_from, schema_to).await;
+pub async fn get_schema_mapping(schema_from: &String, schema_to: &String) -> Vec<SchemaMapping> {
+    let schema_mapping = llm::get_schema_mapping(schema_from.clone(), schema_to.clone()).await;
 
-    log::debug!("schema_mapping: {:?}", schema_mapping);
+    schema_mapping.mappings.iter().map(|item| {
+        SchemaMapping {
+            source: item.source.clone(),
+            target: item.target.clone(),
+        }
+    }).collect()
+}
 
-    String::from("test")
+pub fn apply_schema_mapping(
+    content: Content,
+    target_schema: &String,
+    schema_mapping: Vec<SchemaMapping>
+) -> Content {
+    log::trace!("In apply_schema_mapping");
+
+    unimplemented!()
 }

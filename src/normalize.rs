@@ -19,7 +19,11 @@ use crate::error::{Errors};
 use crate::harvest::{harvest};
 use crate::utility;
 use crate::macros::*;
-use crate::json_schema::{content_to_json_schema, get_schema_mapping};
+use crate::json_schema::{
+    content_to_json_schema,
+    get_schema_mapping,
+    apply_schema_mapping
+};
 
 pub struct NormalizeResult {
     pub output_basis_graph: BasisGraph,
@@ -225,11 +229,24 @@ pub async fn normalize_xml(
     if let Some(known_schema) = page_type.json_schema {
         log::debug!("Content is of a known category: {}", page_type.name);
 
-        let schema_mapping = get_schema_mapping(known_schema, original_schema).await;
+        let schema_mapping = get_schema_mapping(&known_schema, &original_schema).await;
+
+        let normalized_content = apply_schema_mapping(
+            harvest_result.content.clone(),
+            &known_schema,
+            schema_mapping
+        );
+
+        let normalize_result = NormalizeResult {
+            output_basis_graph: basis_graph,
+            harvest: Harvest {
+                content: normalized_content,
+                related_content: harvest_result.related_content.clone(),
+            }
+        };
+
+        return Ok(normalize_result);
     }
-
-
-
 
     
 
