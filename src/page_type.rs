@@ -26,37 +26,39 @@ lazy_static! {
             has_recursive: false,
             json_schema: String::from(r#"
             {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "title": "Content Aggregator",
-                "type": "object",
-                "properties": {
-                    "entries": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "title": {
-                                    "type": "string",
-                                    "description": "The main title of each entry. Usually the most prominent piece of text."
-                                },
-                                "url": {
-                                    "type": "string",
-                                    "description": "Usually an external URL that directs the user to the content"
-                                },
-                                "score": {
-                                    "type": "string",
-                                    "description": "How many points a post has indicating its popularity"
-                                },
-                                "submitted": {
-                                    "type": "string",
-                                    "description": "A timestamp indicating post submission time"
-                                }
-                            }
-                        }
-                    }
-                },
-                "required": ["entries"]
-            }
+               "$schema": "http://json-schema.org/draft-07/schema#",
+               "title": "Content Aggregator",
+               "type": "object",
+               "properties": {
+                 "entries": {
+                   "type": "array",
+                   "description": "A list of content entries aggregated by the application.",
+                   "items": {
+                     "type": "object",
+                     "properties": {
+                       "title": {
+                         "type": "string",
+                         "description": "The main title of each entry, typically displayed prominently."
+                       },
+                       "url": {
+                         "type": "string",
+                         "description": "The URL directing to the original content."
+                       },
+                       "score": {
+                         "type": "integer",
+                         "description": "The popularity score of the entry, reflecting its user engagement."
+                       },
+                       "submitted": {
+                         "type": "string",
+                         "description": "The timestamp indicating when the entry was submitted."
+                       }
+                     },
+                     "required": ["title", "url", "submitted"]
+                   }
+                 }
+               },
+               "required": ["entries"]
+             }
             "#),
         },
         PageType {
