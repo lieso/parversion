@@ -39,7 +39,8 @@ pub fn apply_schema_mapping(
         schema_object: &Map<String, Value>,
         content: &Content,
         array_index: usize,
-        source: Vec<String>,
+        source: String,
+        mappings: &Vec<SchemaMapping>
     ) -> Value {
         let object_type = schema_object.get("type")
             .and_then(Value::as_str)
@@ -55,8 +56,11 @@ pub fn apply_schema_mapping(
                     .expect("Expected `properties` to be an object");
 
                 for (key, sub_schema) in properties {
-                    let mut new_source = source.clone();
-                    new_source.push(key.clone());
+                    let new_source = if source.is_empty() {
+                        key.clone()
+                    } else {
+                        format!(".{}", key)
+                    };
 
                     object_map.insert(
                         key.clone(),
@@ -64,7 +68,8 @@ pub fn apply_schema_mapping(
                             &sub_schema.as_object().expect("Expected property to be an object"),
                             &content,
                             array_index,
-                            new_source
+                            new_source,
+                            mappings
                         )
                     );
                 }
@@ -80,15 +85,14 @@ pub fn apply_schema_mapping(
                     .expect("Expected `items` to be an object");
 
                 let mut new_array_index: usize = 0;
-                let mut new_source = source.clone();
-                new_source.push("[]".to_string());
 
                 loop {
                     let maybe_item = recurse(
                         &sub_schema,
                         &content,
                         new_array_index,
-                        new_source.clone()
+                        format!("{}[]", source),
+                        mappings
                     );
 
                     if maybe_item == Value::Null {
@@ -102,9 +106,14 @@ pub fn apply_schema_mapping(
                 array
             },
             "string" => {
-
-                unimplemented!()
-
+                if let Some(current_mapping) = mappings.iter().find(|item| {
+                    item.source == source
+                }) {
+                    unimplemented!()
+                } else {
+                    log::warn!("Could not find schema mapping!");
+                    Value::String("not found".to_string())
+                }
             },
             _ => panic!("Unexpected object type: {}", object_type)
         }
@@ -114,6 +123,7 @@ pub fn apply_schema_mapping(
         &serde_json::from_str(target_schema).expect("Invalid JSON"),
         &original_content,
         0,
-        Vec::new()
+        String::new(),
+        &schema_mapping
     )
 }
