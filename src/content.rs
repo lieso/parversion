@@ -310,53 +310,111 @@ impl Content {
         }
     }
 
-    pub fn to_json_schema(&mut self) -> HashMap<String, Value> {
-        let mut object: HashMap<String, Value> = HashMap::new();
-        let mut hasher = Sha256::new();
-        let mut hasher_items = Vec::new();
+    pub fn to_json_schema(&mut self) -> Value {
+        let mut json_schema = Value::Object(serde_json::Map::new());
+
+        if let Value::Object(ref mut map) = json_schema {
+            map.insert("title".to_string(), Value::String("placeholder".to_string()));
+            map.insert("properties".to_string(), self.to_json_properties());
+        }
+
+        json_schema
+    }
+
+    pub fn to_json_properties(&mut self) -> Value {
+        let mut values = Value::Object(serde_json::Map::new());
 
         for value in self.values.iter() {
             let key = &value.name;
-            hasher_items.push(key.clone());
 
             let mut object_value = HashMap::new();
             object_value.insert("type", "string");
             object_value.insert("description", &value.meta.description);
 
-            // TODO: add object value to hasher_items
-
-            object.insert(key.clone(), json!(object_value));
+            if let Value::Object(ref mut map) = values {
+                map.insert(key.clone(), json!(object_value));
+           }
         }
 
-        hasher_items.sort();
-        hasher.update(hasher_items.join(""));
-        
-        let hash = format!("{:x}", hasher.finalize());
-        let mut final_object: HashMap<String, Value> = HashMap::new();
-        final_object.insert(hash.clone(), json!(object));
 
+
+        let mut type_lookup: HashMap<String, usize> = HashMap::new();
         self.inner_content.iter().for_each(|inner_content| {
-            let inner_object = inner_content.clone().to_json_schema();
+            let inner_properties = inner_content.clone().to_json_properties();
 
-            let mut inner_hasher = Sha256::new();
-            let mut keys: Vec<_> = inner_object.keys().cloned().collect();
+            let inner_hash = if let Value::Object(ref map) = inner_properties {
+                let mut inner_hasher = Sha256::new();
 
-            keys.sort();
+                let mut keys: Vec<&String> = map.keys().collect();
+                keys.sort();
 
-            for key in &keys {
-                inner_hasher.update(key.as_bytes());
-            }
-            let inner_hash = format!("{:x}", inner_hasher.finalize());
-
-            if final_object.contains_key(&inner_hash) {
-
+                for key in keys {
+                    inner_hasher.update(key.as_bytes());
+                }
+                format!("{:x}", inner_hasher.finalize())
             } else {
-                final_object.insert(inner_hash, json!(inner_object));
+                panic!("The provided value is not an object.");
+            };
+
+
+
+
+            let count = type_lookup.entry(inner_hash).or_insert(0);
+            *count += 1;
+        });
+
+
+
+
+
+        let mut seen_hashes = HashSet::new();
+
+        self.inner_content.iter().enumerate().for_each(|(index, inner_content)| {
+            let inner_properties = inner_content.clone().to_json_properties();
+
+            let inner_hash = if let Value::Object(ref map) = inner_properties {
+                let mut inner_hasher = Sha256::new();
+
+                let mut keys: Vec<&String> = map.keys().collect();
+                keys.sort();
+
+                for key in keys {
+                    inner_hasher.update(key.as_bytes());
+                }
+                format!("{:x}", inner_hasher.finalize())
+            } else {
+                panic!("The provided value is not an object.");
+            };
+
+            if seen_hashes.insert(inner_hash.clone()) {
+
+                if let Value::Object(ref mut map) = values {
+                    if let Some(&count) = type_lookup.get(&inner_hash) {
+                        let mut object_value: HashMap<String, Value> = HashMap::new();
+
+                        if count > 1 { 
+                            object_value.insert("type".to_string(), Value::String("array".to_string()));
+                            object_value.insert("items".to_string(), json!(inner_properties));
+                        } else {
+                            object_value.insert("type".to_string(), Value::String("object".to_string()));
+                            object_value.insert("properties".to_string(), json!(inner_properties));
+                        }
+
+                        let key = format!("inner_content_{}", index + 1);
+
+                        map.insert(key, json!(object_value));
+                    }
+                }
+
             }
         });
 
-        final_object.retain(|_, v| !v.is_object() || !v.as_object().unwrap().is_empty());
 
-        final_object
+
+
+
+        values
     }
+
+
 }

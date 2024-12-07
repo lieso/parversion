@@ -142,12 +142,6 @@ pub async fn normalize_xml(
         &mut HashSet::new(),
         &mut HashMap::new()
     );
-    let input_graph_copy_copy: Graph<XmlNode> = graph_node::deep_copy_single(
-        Arc::clone(&input_graph),
-        vec![GraphNode::from_void()],
-        &mut HashSet::new(),
-        &mut HashMap::new()
-    );
 
     let mut basis_graph: BasisGraph = if let Some(previous_basis_graph) = input_basis_graph {
         log::info!("Received a basis graph as input");
@@ -207,17 +201,18 @@ pub async fn normalize_xml(
         .chain(std::iter::once(basis_graph.clone()))
         .collect();
 
-    //let content = harvest(
-    //    Arc::clone(&output_tree),
-    //    basis_graphs.clone(),
-    //);
+    let content = harvest(
+        Arc::clone(&output_tree),
+        basis_graphs,
+    );
 
     
 
-    let harvest_for_schema = harvest(
-        Arc::clone(&input_graph_copy_copy),
-        basis_graphs.clone()
-    );
+
+    let serialized = serialize_harvest(content.clone(), HarvestFormats::JSON_SCHEMA).expect("Could not serialize harvest for schema");
+
+    log::debug!("serialized: {}", serialized);
+
 
 
     //let json_schema = content_to_json_schema(&harvest.content);
@@ -228,6 +223,6 @@ pub async fn normalize_xml(
 
     Ok(NormalizeResult {
         output_basis_graph: basis_graph,
-        harvest: harvest_for_schema,
+        harvest: content,
     })
 }
