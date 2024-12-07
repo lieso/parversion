@@ -10,7 +10,12 @@ use std::collections::{HashSet};
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
 use crate::page_type::{PAGE_TYPES};
-use super::{LLMPageClassificationResponse};
+use super::{
+    LLMPageClassificationResponse,
+    LLMSchemaMappingResponse,
+    LLMSchemaMapping
+};
+use crate::json_schema::{SchemaMapping};
 
 static DB: OnceLock<Arc<sled::Db>> = OnceLock::new();
 
@@ -53,6 +58,115 @@ struct LLMTextDataResponse {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct LLMAssociationsResponse {
     data: Vec<Vec<String>>,
+}
+
+pub async fn get_schema_mapping(schema_from: String, schema_to: String) -> LLMSchemaMappingResponse {
+    log::trace!("In get_schema_mapping");
+
+    let system_prompt = format!(r##"
+You task is provide a set of mappings from one JSON schema to another. Both schemas represent the same type of content, but the field names and level of nesting may differ greatly. 
+"##);
+    let user_prompt = format!(r##"
+This is the first JSON schema (source):
+
+---
+
+{}
+
+---
+
+And this is the second JSON schema (target).
+
+---
+
+{}
+
+---
+"##, schema_from, schema_to);
+    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
+
+    let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
+    if let Some(cached_response) = get_cached_response(hash.clone()) {
+        log::info!("Cache hit!");
+
+        let llm_response = serde_json::from_str::<LLMSchemaMappingResponse>(&cached_response)
+            .expect("Could not parse JSON response as LLMSchemaMappingResponse");
+        log::debug!("llm_response: {:?}", llm_response);
+
+        return llm_response;
+    }
+
+    log::info!("Cache miss!");
+
+    let openai_api_key = env::var("OPENAI_API_KEY").expect("OpenAI API key has not been set!");
+    let request_json = json!({
+        "model": "gpt-4o-2024-08-06",
+        "temperature": 0,
+        "messages": [
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": user_prompt
+            }
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "schema_mapping",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "mappings": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "source": {
+                                        "type": "string"
+                                    },
+                                    "target": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": ["source", "target"],
+                                "additionalProperties": false
+                            }
+                        }
+                    },
+                    "required": ["mappings"],
+                    "additionalProperties": false
+                }
+            }
+        }
+    });
+    let url = "https://api.openai.com/v1/chat/completions";
+    let authorization = format!("Bearer {}", openai_api_key);
+    let client = reqwest::Client::new();
+    let response = client
+        .post(url)
+        .json(&request_json)
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::AUTHORIZATION, authorization)
+        .send()
+        .await;
+    let response = response.expect("Failed to send request to OpenAI");
+
+    let json_response = response.json::<serde_json::Value>().await.expect("Unable to get JSON from response");
+    log::debug!("json_response: {:?}", json_response);
+    let json_response = json_response["choices"].as_array().unwrap();
+    let json_response = &json_response[0]["message"]["content"].as_str().unwrap();
+
+    set_cached_response(hash.clone(), json_response.to_string());
+
+    let llm_response = serde_json::from_str::<LLMSchemaMappingResponse>(json_response)
+        .expect("Could not parse json response as LLMSchemaMappingResponse");
+    log::debug!("llm_response: {:?}", llm_response);
+
+    llm_response
 }
 
 pub async fn get_page_type(page: String) -> LLMPageClassificationResponse {

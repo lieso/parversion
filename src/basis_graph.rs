@@ -104,7 +104,7 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
             name: llm_page_type.name.clone(),
             description: llm_page_type.core_purpose.clone(),
             has_recursive: llm_page_type.has_recursive.clone(),
-            json_schema: String::from(""),
+            json_schema: None
         }
     };
 

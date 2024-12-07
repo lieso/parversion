@@ -182,7 +182,7 @@ pub async fn normalize_xml(
     analyze_graph(&mut basis_graph, Arc::clone(&input_graph_copy)).await;
 
 
-    if basis_graphs.subgraphs.len() > 1 {
+    if basis_graph.subgraphs.len() > 1 {
         panic!("Don't know how to handle multiple subgraphs");
     }
 
@@ -213,21 +213,21 @@ pub async fn normalize_xml(
         basis_graphs,
     );
 
+
+
+
     let original_schema = content_to_json_schema(harvest_result.content.clone());
     log::debug!("original_schema: {}", original_schema);
 
+    let page_type = basis_graph.subgraphs.values().next().unwrap().page_type.clone();
 
 
-
-
-    if let Some(page_type) = basis_graph.subgraphs.first().unwrap().page_type {
+    if let Some(known_schema) = page_type.json_schema {
         log::debug!("Content is of a known category: {}", page_type.name);
 
-
-        let schema_mapping = get_schema_mapping(page_type.schema, original_schema);
-
-
+        let schema_mapping = get_schema_mapping(known_schema, original_schema).await;
     }
+
 
 
 
