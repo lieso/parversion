@@ -60,10 +60,12 @@ pub async fn get_page_type(page: String) -> LLMPageClassificationResponse {
 
     let system_prompt = PAGE_TYPES.iter().fold(
         format!(r##"
-Your task is to analyze a compressed snippet of HTML taken from a web page and to determine if its categorization exactly matches any from the following list of page types, and providing a page_type_id in your response. If it doesn't match any from the list, please provide the following information about the web page:
+Your task is to analyze a compressed snippet of HTML taken from a web page and to determine if its categorization exactly matches any from the following list of page types, and providing a page_type_id in your response. If it doesn't match any from the list, leave page_type_id blank and please provide the following information about the web page:
     • name: Please provide a name for this type of web content in snake case
     • core_purpose: What is the core purpose of the website? Distinguish between the primary content and peripheral related content such as links to other pages.
     • has_recursive: Identify if there's any recursively-defined, nested-content within the HTML snippet itself. Do not consider potential external pages or linked content.
+
+    If find a match from the list of page types, don't bother calculating these values and just leave blank strings and default has_recursive to false.
 "##),
         |mut acc, page_type| {
             acc.push_str(&format!(r##"
@@ -133,7 +135,7 @@ Web page sample:
                             "type": "boolean"
                         }
                     },
-                    "required": [],
+                    "required": ["page_type_id", "name", "core_purpose", "has_recursive"],
                     "additionalProperties": false
                 }
             }

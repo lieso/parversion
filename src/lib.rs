@@ -11,6 +11,7 @@ mod constants;
 mod macros;
 mod environment;
 mod page_type;
+mod json_schema;
 
 pub mod normalize;
 pub mod content;

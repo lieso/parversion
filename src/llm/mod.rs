@@ -11,10 +11,10 @@ mod groq;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LLMPageClassificationResponse {
-    pub page_type_id: Option<String>,
-    pub name: Option<String>,
-    pub core_purpose: Option<String>,
-    pub has_recursive: Option<bool>,
+    pub page_type_id: String,
+    pub name: String,
+    pub core_purpose: String,
+    pub has_recursive: bool,
 }
 
 pub async fn get_page_type(page: String) -> LLMPageClassificationResponse {

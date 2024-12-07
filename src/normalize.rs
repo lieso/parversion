@@ -19,6 +19,7 @@ use crate::error::{Errors};
 use crate::harvest::{harvest};
 use crate::utility;
 use crate::macros::*;
+use crate::json_schema::{content_to_json_schema};
 
 pub struct NormalizeResult {
     pub output_basis_graph: BasisGraph,
@@ -141,6 +142,12 @@ pub async fn normalize_xml(
         &mut HashSet::new(),
         &mut HashMap::new()
     );
+    let input_graph_copy_copy: Graph<XmlNode> = graph_node::deep_copy_single(
+        Arc::clone(&input_graph),
+        vec![GraphNode::from_void()],
+        &mut HashSet::new(),
+        &mut HashMap::new()
+    );
 
     let mut basis_graph: BasisGraph = if let Some(previous_basis_graph) = input_basis_graph {
         log::info!("Received a basis graph as input");
@@ -195,17 +202,32 @@ pub async fn normalize_xml(
     }
 
     log::info!("Harvesting output tree..");
-    let basis_graphs = other_basis_graphs
+    let basis_graphs: Vec<BasisGraph> = other_basis_graphs
         .into_iter()
         .chain(std::iter::once(basis_graph.clone()))
         .collect();
-    let harvest = harvest(
-        Arc::clone(&output_tree),
-        basis_graphs,
+
+    //let content = harvest(
+    //    Arc::clone(&output_tree),
+    //    basis_graphs.clone(),
+    //);
+
+    
+
+    let harvest_for_schema = harvest(
+        Arc::clone(&input_graph_copy_copy),
+        basis_graphs.clone()
     );
+
+
+    //let json_schema = content_to_json_schema(&harvest.content);
+    //log::debug!("json_schema: {}", json_schema);
+
+
+    
 
     Ok(NormalizeResult {
         output_basis_graph: basis_graph,
-        harvest: harvest,
+        harvest: harvest_for_schema,
     })
 }

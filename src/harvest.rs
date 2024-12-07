@@ -2,7 +2,7 @@ use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 use serde_json::{json, Value};
 use std::str::FromStr;
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 
 use crate::graph_node::{Graph, get_lineage, apply_lineage, GraphNodeData, bft};
 use crate::xml_node::{XmlNode};
@@ -116,6 +116,8 @@ pub fn harvest(
 ) -> Harvest {
     log::trace!("In harvest");
 
+    let mut visited: HashSet<String> = HashSet::new();
+
     let mut content = Content::default();
     content.id = read_lock!(output_tree).id.clone();
     let mut related_content = Content::default();
@@ -126,7 +128,15 @@ pub fn harvest(
         basis_graphs: Vec<BasisGraph>,
         output_content: &mut Content,
         output_related_content: &mut Content,
+        visited: &mut HashSet<String>,
     ) {
+
+        if visited.contains(&read_lock!(output_node).id) {
+            return;
+        } else {
+            visited.insert(read_lock!(output_node).id.clone());
+        }
+
         if read_lock!(output_node).is_linear() {
             log::info!("Output node is linear");
 
@@ -174,6 +184,7 @@ pub fn harvest(
                 basis_graphs.clone(),
                 &mut child_content,
                 &mut child_related_content,
+                visited,
             );
 
             output_content.inner_content.push(child_content);
@@ -186,6 +197,7 @@ pub fn harvest(
         basis_graphs.clone(),
         &mut content,
         &mut related_content,
+        &mut visited
     );
 
     postprocess_content(&mut content);
