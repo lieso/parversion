@@ -27,23 +27,35 @@ lazy_static! {
             json_schema: String::from(r#"
             {
                 "$schema": "http://json-schema.org/draft-07/schema#",
-                "title": "Page",
+                "title": "Content Aggregator",
                 "type": "object",
                 "properties": {
-                    "submissions": {
+                    "entries": {
                         "type": "array",
                         "items": {
                             "type": "object",
                             "properties": {
-                                "title": { "type": "string" },
-                                "title": { "type": "string" },
-                                "url": { "type": "string" }
-                            },
-                            "required": ["id", "label"]
+                                "title": {
+                                    "type": "string",
+                                    "description": "The main title of each entry. Usually the most prominent piece of text."
+                                },
+                                "url": {
+                                    "type": "string",
+                                    "description": "Usually an external URL that directs the user to the content"
+                                },
+                                "score": {
+                                    "type": "string",
+                                    "description": "How many points a post has indicating its popularity"
+                                },
+                                "submitted": {
+                                    "type": "string",
+                                    "description": "A timestamp indicating post submission time"
+                                }
+                            }
                         }
                     }
                 },
-                "required": ["submissions"]
+                "required": ["entries"]
             }
             "#),
         },
