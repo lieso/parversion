@@ -25,16 +25,16 @@ use crate::graph_node::{
 use crate::basis_node::{BasisNode};
 use crate::macros::*;
 use crate::xml_node::{XmlNode};
-use crate::llm::{analyze_compressed_website};
+use crate::llm::{get_page_type};
+use crate::page_type::{PageType, PAGE_TYPES};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Subgraph {
     pub id: String,
     pub hash: String,
     pub title: String,
-    pub description: String,
-    pub has_recursive: bool,
     pub analyzed: bool,
+    pub page_type: PageType,
 }
 
 #[derive(Clone, Debug)]
@@ -93,14 +93,25 @@ pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) 
     let title = get_graph_title(Arc::clone(&input_graph)).unwrap();
     log::debug!("title: {}", title);
 
-    let summary = analyze_compressed_website(pruned_input).await;
-    log::debug!("summary: {:?}", summary);
+    let llm_page_type = get_page_type(pruned_input).await;
+    log::debug!("llm_page_type: {:?}", llm_page_type);
+
+    let page_type = if let Some(page_type_id) = llm_page_type.page_type_id {
+        PAGE_TYPES.iter().find(|item| item.id == page_type_id).unwrap().clone()
+    } else {
+        PageType {
+            id: Uuid::new_v4().to_string(),
+            name: llm_page_type.name.clone().unwrap(),
+            description: llm_page_type.core_purpose.clone().unwrap(),
+            has_recursive: llm_page_type.has_recursive.clone().unwrap(),
+            json_schema: String::from(""),
+        }
+    };
 
     let subgraph = Subgraph {
         id: Uuid::new_v4().to_string(),
         hash: subgraph_hash.clone(),
-        description: summary.core_purpose,
-        has_recursive: summary.has_recursive,
+        page_type: page_type,
         title,
         analyzed: false,
     };

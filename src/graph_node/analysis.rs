@@ -332,7 +332,7 @@ async fn analyze_data(
     );
 
     if read_lock!(output_node).data.is_text() {
-        let interpretation = interpret_text_data(snippets, subgraph.description.clone()).await;
+        let interpretation = interpret_text_data(snippets, subgraph.page_type.description.clone()).await;
 
         {
             let rl = read_lock!(target_node);
@@ -360,7 +360,7 @@ async fn analyze_data(
             let interpretation = interpret_element_data(
                 meaningful_attributes,
                 snippets,
-                subgraph.description.clone()
+                subgraph.page_type.description.clone()
             ).await;
 
             {

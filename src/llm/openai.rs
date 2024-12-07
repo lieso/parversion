@@ -9,7 +9,8 @@ use std::collections::{HashSet};
 
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
-use super::{LLMWebsiteAnalysisResponse};
+use crate::page_type::{PAGE_TYPES};
+use super::{LLMPageClassificationResponse};
 
 static DB: OnceLock<Arc<sled::Db>> = OnceLock::new();
 
@@ -54,34 +55,45 @@ struct LLMAssociationsResponse {
     data: Vec<Vec<String>>,
 }
 
-pub async fn analyze_compressed_website(xml: String) -> LLMWebsiteAnalysisResponse {
-    log::trace!("In analyze_compressed_website");
+pub async fn get_page_type(page: String) -> LLMPageClassificationResponse {
+    log::trace!("In get_page_type");
 
-    let system_prompt = format!(r##"
-Your task is to analyze a compressed snippet of HTML taken from a website and to provide the following information:
+    let system_prompt = PAGE_TYPES.iter().fold(
+        format!(r##"
+Your task is to analyze a compressed snippet of HTML taken from a web page and to determine if its categorization exactly matches any from the following list of page types, and providing a page_type_id in your response. If it doesn't match any from the list, please provide the following information about the web page:
+    • name: Please provide a name for this type of web content in snake case
     • core_purpose: What is the core purpose of the website? Distinguish between the primary content and peripheral related content such as links to other pages.
     • has_recursive: Identify if there's any recursively-defined, nested-content within the HTML snippet itself. Do not consider potential external pages or linked content.
+"##),
+        |mut acc, page_type| {
+            acc.push_str(&format!(r##"
+Page Type ID: {}
+Page description:
+{}
 
-"##);
+"##, page_type.id, page_type.description));
+            acc
+        }
+    );
     let user_prompt = format!(r##"
-Snippet:
+Web page sample:
 ---
 
 {}
 
 ---
-"##, xml);
+"##, page);
     log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
 
     let hash = compute_hash(vec![system_prompt.clone(), user_prompt.clone()]);
     if let Some(cached_response) = get_cached_response(hash.clone()) {
         log::info!("Cache hit!");
 
-        let llm_summary_response = serde_json::from_str::<LLMWebsiteAnalysisResponse>(&cached_response)
-            .expect("Could not parse JSON response as LLMWebsiteAnalysisResponse");
-        log::debug!("llm_summary_response: {:?}", llm_summary_response);
+        let llm_page_type_response = serde_json::from_str::<LLMPageClassificationResponse>(&cached_response)
+            .expect("Could not parse JSON response as LLMPageClassificationResponse");
+        log::debug!("llm_page_type_response: {:?}", llm_page_type_response);
 
-        return llm_summary_response;
+        return llm_page_type_response;
     }
 
     log::info!("Cache miss!");
@@ -108,6 +120,12 @@ Snippet:
                 "schema": {
                     "type": "object",
                     "properties": {
+                        "page_type_id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
                         "core_purpose": {
                             "type": "string"
                         },
@@ -115,7 +133,7 @@ Snippet:
                             "type": "boolean"
                         }
                     },
-                    "required": ["core_purpose", "has_recursive"],
+                    "required": [],
                     "additionalProperties": false
                 }
             }
@@ -140,11 +158,11 @@ Snippet:
 
     set_cached_response(hash.clone(), json_response.to_string());
 
-    let llm_summary_response = serde_json::from_str::<LLMWebsiteAnalysisResponse>(json_response)
-        .expect("Could not parse JSON response as LLMWebsiteAnalysisResponse");
-    log::debug!("llm_summary_response: {:?}", llm_summary_response);
+    let llm_page_type_response = serde_json::from_str::<LLMPageClassificationResponse>(json_response)
+        .expect("Could not parse JSON response as LLMPageClassificationResponse");
+    log::debug!("llm_page_type_response: {:?}", llm_page_type_response);
 
-    llm_summary_response
+    llm_page_type_response
 }
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {

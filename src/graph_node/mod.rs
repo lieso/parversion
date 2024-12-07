@@ -767,7 +767,7 @@ pub async fn analyze_nodes(
 
     // Interpreting recursive content
 
-    if subgraph.has_recursive {
+    if subgraph.page_type.has_recursive {
         log::info!("Going to interpret recursive relationships between nodes");
 
         let handles: Vec<_> = nodes.iter().map(|node| {

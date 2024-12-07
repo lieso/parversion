@@ -10,9 +10,21 @@ mod anthropic;
 mod groq;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LLMWebsiteAnalysisResponse {
-    pub core_purpose: String,
-    pub has_recursive: bool,
+pub struct LLMPageClassificationResponse {
+    pub page_type_id: Option<String>,
+    pub name: Option<String>,
+    pub core_purpose: Option<String>,
+    pub has_recursive: Option<bool>,
+}
+
+pub async fn get_page_type(page: String) -> LLMPageClassificationResponse {
+    let llm_provider = get_llm_provider();
+
+    match llm_provider {
+        LlmProvider::openai => openai::get_page_type(page).await,
+        LlmProvider::anthropic => unimplemented!(),
+        LlmProvider::groq => unimplemented!(),
+    }
 }
 
 pub async fn interpret_associations(snippets: Vec<(String, String)>) -> Vec<Vec<String>> {
@@ -56,16 +68,6 @@ pub async fn interpret_text_data(snippets: Vec<String>, core_purpose: String) ->
         LlmProvider::openai => openai::interpret_text_data(snippets, core_purpose).await,
         LlmProvider::anthropic => anthropic::interpret_text_data(snippets, core_purpose).await,
         LlmProvider::groq => groq::interpret_text_data(snippets, core_purpose).await,
-    }
-}
-
-pub async fn analyze_compressed_website(xml: String) -> LLMWebsiteAnalysisResponse {
-    let llm_provider = get_llm_provider();
-
-    match llm_provider {
-        LlmProvider::openai => openai::analyze_compressed_website(xml).await,
-        LlmProvider::anthropic => anthropic::analyze_compressed_website(xml).await,
-        LlmProvider::groq => groq::analyze_compressed_website(xml).await,
     }
 }
 

@@ -10,6 +10,7 @@ mod config;
 mod constants;
 mod macros;
 mod environment;
+mod page_type;
 
 pub mod normalize;
 pub mod content;

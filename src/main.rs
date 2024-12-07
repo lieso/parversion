@@ -25,6 +25,7 @@ mod graph_node;
 mod basis_graph;
 mod basis_node;
 mod harvest;
+mod page_type;
 
 use basis_graph::{BasisGraph};
 use crate::config::{CONFIG};
