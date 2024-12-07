@@ -415,6 +415,74 @@ impl Content {
 
         values
     }
+}
 
+pub fn find_content_value_by_path(content: &Content, path: &String, index: usize) -> Option<ContentValue> {
+    log::trace!("In find_content_value_by_path");
+    log::debug!("index: {}", index);
 
+    fn recurse(
+        current_content: &Content,
+        current_path: String,
+        target_path: &String,
+        current_index: &mut usize,
+        target_index: &usize
+    ) -> Option<ContentValue> {
+
+        for value in &current_content.values {
+            let final_path = if current_path.is_empty() {
+                format!("{}", value.name)
+            } else {
+                format!("{}.{}", current_path, value.name)
+            };
+
+            if final_path == *target_path {
+                if current_index == target_index {
+                    return Some(value.clone());
+                } else {
+                    *current_index += 1;
+                }
+            }
+        }
+
+        for inner_content in &current_content.inner_content {
+            let new_path = if current_path.is_empty() {
+                String::from("inner_content")
+            } else {
+                format!("{}.inner_content", current_path)
+            };
+
+            if let Some(content_value) = recurse(
+                inner_content,
+                new_path,
+                target_path,
+                current_index,
+                target_index
+            ) {
+                return Some(content_value);
+            }
+        }
+
+        None
+    }
+
+    let fixed_path = path
+        .split('.')
+        .map(|segment| {
+            if segment.starts_with("inner_content") {
+                String::from("inner_content")
+            } else {
+                segment.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(".");
+
+    recurse(
+        content,
+        String::new(),
+        &fixed_path,
+        &mut 0,
+        &index
+    )
 }

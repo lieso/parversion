@@ -1,7 +1,10 @@
+use serde::{Serialize, Deserialize};
 use serde_json::{json, Value, Map};
 use crate::content::{Content};
 use crate::llm;
+use crate::content::{find_content_value_by_path};
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaMapping {
     pub source: String,
     pub target: String,
@@ -34,12 +37,19 @@ pub fn apply_schema_mapping(
     schema_mapping: Vec<SchemaMapping>
 ) -> Value {
     log::trace!("In apply_schema_mapping");
+    
+    fn is_null_item(value: &Value) -> bool {
+        match value {
+            Value::Object(map) => map.values().all(|v| *v == Value::Null),
+            _ => false
+        }
+    }
 
     fn recurse(
         schema_object: &Map<String, Value>,
         content: &Content,
         array_index: usize,
-        source: String,
+        source: &mut String,
         mappings: &Vec<SchemaMapping>
     ) -> Value {
         let object_type = schema_object.get("type")
@@ -56,10 +66,10 @@ pub fn apply_schema_mapping(
                     .expect("Expected `properties` to be an object");
 
                 for (key, sub_schema) in properties {
-                    let new_source = if source.is_empty() {
+                    let mut new_source = if source.is_empty() {
                         key.clone()
                     } else {
-                        format!(".{}", key)
+                        format!("{}.{}", source, key)
                     };
 
                     object_map.insert(
@@ -68,7 +78,7 @@ pub fn apply_schema_mapping(
                             &sub_schema.as_object().expect("Expected property to be an object"),
                             &content,
                             array_index,
-                            new_source,
+                            &mut new_source,
                             mappings
                         )
                     );
@@ -91,25 +101,35 @@ pub fn apply_schema_mapping(
                         &sub_schema,
                         &content,
                         new_array_index,
-                        format!("{}[]", source),
+                        &mut format!("{}[]", source),
                         mappings
                     );
 
-                    if maybe_item == Value::Null {
+                    log::debug!("maybe_item: {:?}", maybe_item);
+
+                    if is_null_item(&maybe_item) {
                         break;
-                    } else {
-                        array_items.push(maybe_item);
-                        new_array_index += 1;
                     }
+
+                    array_items.push(maybe_item);
+                    new_array_index += 1;
                 }
 
                 array
             },
             "string" => {
                 if let Some(current_mapping) = mappings.iter().find(|item| {
-                    item.source == source
+                    item.source == *source
                 }) {
-                    unimplemented!()
+                    if let Some(content_value) = find_content_value_by_path(
+                        content,
+                        &current_mapping.target,
+                        array_index
+                    ) {
+                        Value::String(content_value.value)
+                    } else {
+                        Value::Null
+                    }
                 } else {
                     log::warn!("Could not find schema mapping!");
                     Value::String("not found".to_string())
@@ -123,7 +143,7 @@ pub fn apply_schema_mapping(
         &serde_json::from_str(target_schema).expect("Invalid JSON"),
         &original_content,
         0,
-        String::new(),
+        &mut String::new(),
         &schema_mapping
     )
 }

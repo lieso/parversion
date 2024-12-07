@@ -237,6 +237,11 @@ pub async fn normalize_xml(
             schema_mapping
         );
 
+        match serde_json::to_string_pretty(&normalized_content) {
+            Ok(serialized) => log::debug!("normalized_content: {}", serialized),
+            Err(e) => {},
+        }
+
         //let normalize_result = NormalizeResult {
         //    output_basis_graph: basis_graph,
         //    harvest: Harvest {

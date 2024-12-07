@@ -45,7 +45,7 @@ lazy_static! {
                          "description": "The URL directing to the original content."
                        },
                        "score": {
-                         "type": "integer",
+                         "type": "string",
                          "description": "The popularity score of the entry, reflecting its user engagement."
                        },
                        "submitted": {
