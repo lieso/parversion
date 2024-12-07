@@ -7,6 +7,7 @@ use bincode::{serialize, deserialize};
 use std::sync::{Arc, OnceLock};
 use std::collections::{HashSet};
 
+use crate::config::{CONFIG};
 use crate::node_data_structure::{RecursiveStructure};
 use crate::node_data::{NodeData, ElementData, TextData};
 use crate::interface_type::{INTERFACE_TYPES};
@@ -16,11 +17,13 @@ use super::{
     LLMSchemaMapping
 };
 use crate::json_schema::{SchemaMapping};
+use crate::macros::*;
 
 static DB: OnceLock<Arc<sled::Db>> = OnceLock::new();
 
 fn init_cache() -> Arc<sled::Db> {
-    let db = sled::open("debug/cache").expect("Could not open cache");
+    let debug_dir = &read_lock!(CONFIG).dev.debug_dir;
+    let db = sled::open(format!("{}/cache", debug_dir)).expect("Could not open cache");
     Arc::new(db)
 }
 
