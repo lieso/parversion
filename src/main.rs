@@ -198,15 +198,25 @@ fn main() {
     };
 
     if let Ok(normalize_result) = normalize_result {
-        let serialized = harvest::serialize_harvest(
-            normalize_result.harvest, 
-            output_format
-        ).expect("Unable to serialize result");
-
         if environment::is_local() {
             save_basis_graph(normalize_result.output_basis_graph.clone());
             log::info!("Saved basis graph to filesystem");
         }
+
+        if let Some(normalized) = normalize_result.normalized {
+            match serde_json::to_string_pretty(&normalized) {
+                Ok(serialized) => {
+                    println!("{}", serialized);
+                    return;
+                },
+                Err(e) => eprintln!("Serialization error: {}", e),
+            }
+        }
+
+        let serialized = harvest::serialize_harvest(
+            normalize_result.harvest, 
+            output_format
+        ).expect("Unable to serialize result");
 
         println!("{}", serialized);
     } else {

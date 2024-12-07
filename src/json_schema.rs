@@ -105,8 +105,6 @@ pub fn apply_schema_mapping(
                         mappings
                     );
 
-                    log::debug!("maybe_item: {:?}", maybe_item);
-
                     if is_null_item(&maybe_item) {
                         break;
                     }

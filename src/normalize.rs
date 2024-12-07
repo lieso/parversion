@@ -4,6 +4,7 @@ use std::io::{Read};
 use std::fs::File;
 use std::sync::{Arc};
 use std::collections::{HashSet, HashMap};
+use serde_json::{Value};
 
 use crate::graph_node::GraphNode;
 use crate::graph_node::Graph;
@@ -28,6 +29,7 @@ use crate::json_schema::{
 pub struct NormalizeResult {
     pub output_basis_graph: BasisGraph,
     pub harvest: Harvest,
+    pub normalized: Option<Value>,
 }
 
 pub fn normalize_text_js(
@@ -160,20 +162,7 @@ pub async fn normalize_xml(
         } else {
             log::info!("Input graph is a subgraph of basis graph");
 
-            log::info!("Harvesting output tree..");
-            let basis_graphs = other_basis_graphs
-                .into_iter()
-                .chain(std::iter::once(*previous_basis_graph.clone()))
-                .collect();
-            let harvest = harvest(
-                Arc::clone(&output_tree),
-                basis_graphs,
-            );
-
-            return Ok(NormalizeResult {
-                output_basis_graph: *previous_basis_graph,
-                harvest: harvest,
-            });
+            unimplemented!();
         }
 
         *previous_basis_graph
@@ -225,8 +214,7 @@ pub async fn normalize_xml(
 
     let page_type = basis_graph.subgraphs.values().next().unwrap().page_type.clone();
 
-
-    if let Some(known_schema) = page_type.json_schema {
+    let normalized = if let Some(known_schema) = page_type.json_schema {
         log::debug!("Content is of a known category: {}", page_type.name);
 
         let schema_mapping = get_schema_mapping(&known_schema, &original_schema).await;
@@ -237,26 +225,14 @@ pub async fn normalize_xml(
             schema_mapping
         );
 
-        match serde_json::to_string_pretty(&normalized_content) {
-            Ok(serialized) => log::debug!("normalized_content: {}", serialized),
-            Err(e) => {},
-        }
-
-        //let normalize_result = NormalizeResult {
-        //    output_basis_graph: basis_graph,
-        //    harvest: Harvest {
-        //        content: normalized_content,
-        //        related_content: harvest_result.related_content.clone(),
-        //    }
-        //};
-
-        //return Ok(normalize_result);
-    }
-
-    
+        Some(normalized_content)
+    } else {
+        None
+    };
 
     Ok(NormalizeResult {
         output_basis_graph: basis_graph,
         harvest: harvest_result,
+        normalized: normalized,
     })
 }
