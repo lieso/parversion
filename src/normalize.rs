@@ -26,84 +26,35 @@ use crate::json_schema::{
     apply_schema_mapping
 };
 
-pub struct NormalizeResult {
+pub struct Normalization {
     pub output_basis_graph: BasisGraph,
-    pub harvest: Harvest,
-    pub normalized: Option<Value>,
-}
-
-pub fn normalize_text_js(
-    url: Option<String>,
-    text: String,
-    input_basis_graph: Option<String>,
-    other_basis_graphs: Vec<String>,
-) -> String {
-    log::trace!("In normalize_text_js");
-
-    fn process_basis_graph(graph: &str) -> BasisGraph {
-        serde_json::from_str(graph).unwrap()
-    }
-
-    let input_basis_graph: Option<Box<BasisGraph>> = input_basis_graph.map(|value| {
-        Box::new(process_basis_graph(&value))
-    });
-
-    let other_basis_graphs: Vec<BasisGraph> = other_basis_graphs
-        .into_iter()
-        .map(|item| process_basis_graph(&item))
-        .collect();
-
-    let result = normalize_text(url, text, input_basis_graph, other_basis_graphs).unwrap();
-
-    serialize_harvest(result.harvest, HarvestFormats::JSON).expect("Could not serialize results")
+    pub normalized: Value,
+    pub related: Value,
 }
 
 pub fn normalize_text(
-    url: Option<String>,
+    origin: Option<String>,
+    date: Option<String>,
     text: String,
-    input_basis_graph: Option<Box<BasisGraph>>,
-    other_basis_graphs: Vec<BasisGraph>,
-) -> Result<NormalizeResult, Errors> {
+) -> Result<Normalization, Errors> {
     log::trace!("In normalize_text");
 
-    if text.trim().is_empty() {
-        log::info!("Document not provided, aborting...");
-        return Err(Errors::DocumentNotProvided);
-    }
-
     return Runtime::new().unwrap().block_on(async {
-        if utility::is_valid_xml(&text) {
-            log::info!("Document is valid XML");
 
-            let result = normalize_xml(
-                url,
-                &text,
-                input_basis_graph,
-                other_basis_graphs
-            ).await?;
+        let document = Document::from_string(text, origin, date)?;
 
-            return Ok(result);
-        }
+        let transformations: Vec<DocumentTransformation> = Vec::new();
 
-        let xml = utility::string_to_xml(&text).expect("Could not convert string to xml");
+        document.apply_transformations(transformations);
 
-        let result = normalize_xml(
-            url,
-            &xml,
-            input_basis_graph,
-            other_basis_graphs
-        ).await?;
 
-        Ok(result)
     });
 }
 
 pub fn normalize_file(
     url: Option<String>,
     file_name: String,
-    input_basis_graph: Option<Box<BasisGraph>>,
-    other_basis_graphs: Vec<BasisGraph>,
-) -> Result<NormalizeResult, Errors> {
+) -> Result<Normalization, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
 
@@ -119,120 +70,105 @@ pub fn normalize_file(
         process::exit(1);
     });
 
-    normalize_text(url, document, input_basis_graph, other_basis_graphs)
+    normalize_text(url, document)
 }
 
-pub async fn normalize_xml(
+pub async fn normalize_document(
+    document: Document,
+    basis_locations: Vec<String>,
+    value_transformations: Vec<Transformation>
+) -> Result<Normalization, Errors> {
+    log::trace!("In normalize_document");
+
+    let input_graph: Graph<XmlNode> = build_unique_graph(xml.clone());
+
+
+    let xml_string: String = to_xml_string(Arc::clone(&input_graph));
+
+
+
+
+    let llm_classification = get_graph_type_id(snippets, xml_string).await;
+
+
+
+
+
+    normalize_document_with_mutable_basis(url, xml, basis_graph)
+}
+
+pub async fn normalize_document_without_basis(
+    document: Document,
+    value_transformations: Vec<Transformation>
+) -> Result<Normalization, Errors> {
+    log::trace!("In normalize_document_without_basis");
+
+    let mut basis_graph = DefaultBasisGraph::default();
+
+    let input_graph: Graph<XmlNode> = build_unique_graph(xml.clone());
+    let xml_string: String = to_xml_string(Arc::clone(&input_graph));
+    let llm_classification = classify_graph(snippets, xml_string).await;
+
+}
+
+pub async fn normalize_document_with_basis_mutable(
+    document: Document,
+    value_transformations: Vec<Transformation>
+    basis_graph: BasisGraph
+) -> Result<Normalization, Errors> {
+    log::trace!("In normalize_document_with_basis_mutable");
+
+    let input_graph: Graph<DataNode> = build_unique_graph(&document);
+
+    basis_graph.perform_node_analysis(Arc::clone(&input_graph)).await;
+
+    let json_tree: Graph<JsonNode>;
+
+    basis_graph.apply_node_transformations(
+        Arc::clone(&output_tree),
+        Arc::clone(&json_tree)
+    );
+    basis_graph.perform_network_analysis(Arc::clone(&json_tree)).await;
+
+
+    let output_tree: Graph<XmlNode> = build_tree(&document);
+
+
+    if let Some(json_schema) = basis_graph.json_schema {
+        basis_graph.transformations = get_schema_transformations(json_schema, source_schema).await;
+    } else {
+        basis_graph.json_schema = source_schema;
+    }
+
+    let normalized = basis_graph.apply_schema_transformations(source_data);
+
+    Normalization {
+        output_basis_graph: basis_graph,
+        normalized: normalized,
+    }
+}
+
+pub async fn normalize_document_with_basis_immutable(
     url: Option<String>,
     xml: &str,
-    input_basis_graph: Option<Box<BasisGraph>>,
-    other_basis_graphs: Vec<BasisGraph>,
-) -> Result<NormalizeResult, Errors> {
-    log::trace!("In normalize_xml");
+    basis_graph: BasisGraph,
+    value_transformations: Vec<Transformation>
+) -> Result<Normalization, Errors> {
+    log::trace!("In normalize_document_with_basis_immutable");
 
-    let xml = utility::preprocess_xml(url.as_deref(), xml);
-    log::info!("Done preprocessing XML");
+    let output_tree: Graph<XmlNode> = build_tree(xml.clone());
 
-    let input_graph: Graph<XmlNode> = graph_node::build_graph(xml.clone());
-    let output_tree: Graph<XmlNode> = graph_node::build_graph(xml.clone());
+    let json_tree: Graph<JsonNode>;
 
-    graph_node::cyclize(Arc::clone(&input_graph));
-    log::info!("Done cyclizing input graph");
+    basis_graph.apply_node_transformations(output_tree, json_tree);
+    basis_graph.apply_network_transformations(json_tree);
+    basis_graph.apply_value_transformations(json_tree, value_transformations);
+    basis_graph.apply_schema_transformations(json_tree);
 
-    graph_node::prune(Arc::clone(&input_graph));
-    log::info!("Done pruning input graph");
+    let data = basis_graph.collect_nodes(json_graph);
 
-    let input_graph_copy: Graph<XmlNode> = graph_node::deep_copy_single(
-        Arc::clone(&input_graph),
-        vec![GraphNode::from_void()],
-        &mut HashSet::new(),
-        &mut HashMap::new()
-    );
-
-    let mut basis_graph: BasisGraph = if let Some(previous_basis_graph) = input_basis_graph {
-        log::info!("Received a basis graph as input");
-
-        if !previous_basis_graph.contains_subgraph(Arc::clone(&input_graph)) {
-            log::info!("Input graph is not a subgraph of basis graph");
-
-            graph_node::absorb(
-                Arc::clone(&previous_basis_graph.root),
-                Arc::clone(&input_graph)
-            );
-        } else {
-            log::info!("Input graph is a subgraph of basis graph");
-
-            unimplemented!();
-        }
-
-        *previous_basis_graph
-    } else {
-        log::info!("Did not receive a basis graph as input");
-        build_basis_graph(Arc::clone(&input_graph))
-    };
-
-    log::info!("Performing network analysis...");
-    analyze_graph(&mut basis_graph, Arc::clone(&input_graph_copy)).await;
-
-
-    if basis_graph.subgraphs.len() > 1 {
-        panic!("Don't know how to handle multiple subgraphs");
-    }
-
-
-
-    log::info!("Performing node analysis...");
-    for subgraph in basis_graph.subgraphs.values_mut().filter(|s| !s.analyzed) {
-        log::info!("Analyzing nodes in subgraph with id: {}", subgraph.id);
-
-        graph_node::analyze_nodes(
-            Arc::clone(&basis_graph.root),
-            Arc::clone(&output_tree),
-            &*subgraph,
-            &other_basis_graphs
-        ).await;
-        
-        subgraph.analyzed = true;
-    }
-
-    log::info!("Harvesting output tree..");
-    let basis_graphs: Vec<BasisGraph> = other_basis_graphs
-        .into_iter()
-        .chain(std::iter::once(basis_graph.clone()))
-        .collect();
-
-    let harvest_result = harvest(
-        Arc::clone(&output_tree),
-        basis_graphs,
-    );
-
-
-
-
-    let original_schema = content_to_json_schema(harvest_result.content.clone());
-    log::debug!("original_schema: {}", original_schema);
-
-    let interface_type = basis_graph.subgraphs.values().next().unwrap().interface_type.clone();
-
-    let normalized = if let Some(known_schema) = interface_type.json_schema {
-        log::debug!("Content is of a known category: {}", interface_type.name);
-
-        let schema_mapping = get_schema_mapping(&known_schema, &original_schema).await;
-
-        let normalized_content = apply_schema_mapping(
-            harvest_result.content.clone(),
-            &known_schema,
-            schema_mapping
-        );
-
-        Some(normalized_content)
-    } else {
-        None
-    };
-
-    Ok(NormalizeResult {
+    Normalization {
         output_basis_graph: basis_graph,
-        harvest: harvest_result,
-        normalized: normalized,
-    })
+        normalized: data
+    }
 }

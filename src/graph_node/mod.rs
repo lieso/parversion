@@ -1,8 +1,6 @@
 use serde::{Serialize, Deserialize};
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
-use uuid::Uuid;
-use sha2::{Sha256, Digest};
 use tokio::sync::Semaphore;
 use tokio::task;
 use serde_json::{
@@ -151,11 +149,21 @@ pub fn get_depth(node: Graph<XmlNode>) -> usize {
     depth
 }
 
-pub fn build_graph(xml: String) -> Arc<RwLock<GraphNode<XmlNode>>> {
-    let mut reader = std::io::Cursor::new(xml);
+pub fn build_tree(document: Document) -> Graph<XmlNode> {
+    let mut reader = std::io::Cursor::new(document.value);
     let xml = XmlNode::parse(&mut reader).expect("Could not parse XML");
 
     GraphNode::from_xml(&xml, Vec::new(), Vec::new())
+}
+
+pub fn build_unique_graph(document: Document) -> Graph<XmlNode> {
+    let graph = build_tree(xml);
+
+    cyclize(Arc::clone(&graph));
+    log::info!("Done cyclizing input graph");
+
+    prune(Arc::clone(&graph));
+    log::info!("Done pruning input graph");
 }
 
 pub fn to_xml_string(graph: Graph<XmlNode>) -> String {
@@ -226,7 +234,7 @@ impl GraphNode<XmlNode> {
         let lineage_hash = format!("{:x}", hasher.finalize());
 
         let node = Arc::new(RwLock::new(GraphNode {
-            id: Uuid::new_v4().to_string(),
+            id: ID::new(),
             hash,
             lineage: lineage_hash,
             parents,
@@ -251,36 +259,6 @@ impl GraphNode<XmlNode> {
     }
 }
 
-impl<T: GraphNodeData> GraphNode<T> {
-    pub fn from_void() -> Graph<T> {
-        Arc::new(RwLock::new(GraphNode {
-            id: Uuid::new_v4().to_string(),
-            hash: constants::ROOT_NODE_HASH.to_string(),
-            lineage: String::new(),
-            parents: Vec::new(),
-            children: Vec::new(),
-            data: T::new("blank".to_string()),
-        }))
-    }
-
-    pub fn is_linear(&self) -> bool {
-        self.children.len() == 1 && self.parents.len() == 1
-    }
-
-    pub fn is_linear_head(&self) -> bool {
-        if self.is_linear() {
-            let parent = self.parents.first().unwrap();
-            return !read_lock!(parent).is_linear();
-        }
-
-        false
-    }
-
-    pub fn is_linear_tail(&self) -> bool {
-        self.is_linear() && !self.is_linear_head()
-    }
-}
-
 pub fn graph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
     let mut visited: HashSet<String> = HashSet::new();
 
@@ -294,177 +272,20 @@ pub fn graph_hash<T: GraphNodeData>(graph: Graph<T>) -> String {
             return "cycle".to_owned();
         }
 
-        let mut hasher = Sha256::new();
-
-        let mut hasher_items = Vec::new();
-        hasher_items.push(node.hash.clone());
+        let mut hash = Hash::with_items(vec![node.hash.clone()]);
 
         visited.insert(node.id.clone());
 
         for child in node.children.iter() {
-            hasher_items.push(compute_hash(child.clone(), visited));
+            hash.push(compute_hash(child.clone(), visited));
         }
 
         visited.remove(&node.id);
 
-        hasher_items.sort();
-        hasher.update(hasher_items.join(""));
-
-        format!("{:x}", hasher.finalize())
+        hash.sort().finalize().to_string()
     }
 
     compute_hash(graph, &mut visited)
-}
-
-pub fn deep_copy_single<T: GraphNodeData>(
-    graph: Graph<T>,
-    parents: Vec<Graph<T>>,
-    visited: &mut HashSet<String>,
-    copies: &mut HashMap<String, Graph<T>>
-) -> Graph<T> where T: GraphNodeData {
-    log::trace!("In deep_copy");
-
-    let guard = read_lock!(graph);
-
-    if let Some(copy) = copies.get(&guard.id) {
-        return copy.clone();
-    }
-
-    let new_node = Arc::new(RwLock::new(GraphNode {
-        id: guard.id.clone(),
-        hash: guard.hash.clone(),
-        lineage: guard.lineage.clone(),
-        parents,
-        children: Vec::new(),
-        data: guard.data.clone(),
-    }));
-
-    copies.insert(guard.id.clone(), new_node.clone());
-    visited.insert(guard.id.clone());
-
-    {
-        let children: Vec<Graph<T>> = guard.children.iter()
-            .map(|child| {
-                deep_copy_single(
-                    child.clone(),
-                    vec![new_node.clone()],
-                    visited,
-                    copies
-                )
-            })
-            .collect();
-
-        let mut write_lock = write_lock!(new_node);
-        write_lock.children.extend(children);
-    }
-
-    new_node
-}
-
-pub fn deep_copy<T: GraphNodeData, U: GraphNodeData>(
-    graph: Graph<U>,
-    parents: Vec<Graph<T>>,
-    visited: &mut HashSet<String>,
-    copies: &mut HashMap<String, Graph<T>>
-) -> Graph<T> where T: GraphNodeData {
-    log::trace!("In deep_copy");
-
-    let guard = read_lock!(graph);
-
-    if let Some(copy) = copies.get(&guard.id) {
-        return copy.clone();
-    }
-
-    let new_node = Arc::new(RwLock::new(GraphNode {
-        id: guard.id.clone(),
-        hash: guard.hash.clone(),
-        lineage: guard.lineage.clone(),
-        parents,
-        children: Vec::new(),
-        data: T::new(guard.data.describe()),
-    }));
-
-    copies.insert(guard.id.clone(), new_node.clone());
-    visited.insert(guard.id.clone());
-
-    {
-        let children: Vec<Graph<T>> = guard.children.iter()
-            .filter_map(|child| {
-                Some(deep_copy(
-                        child.clone(),
-                        vec![new_node.clone()],
-                        visited,
-                        copies
-                ))
-            })
-        .collect();
-
-        let mut write_lock = write_lock!(new_node);
-        write_lock.children.extend(children);
-    }
-
-    new_node
-}
-
-pub fn absorb<T: GraphNodeData, U: GraphNodeData>(recipient: Graph<T>, donor: Graph<U>) {
-    log::trace!("In absorb");
-
-    let mut visited: HashSet<String> = HashSet::new();
-
-    fn recurse<T: GraphNodeData, U: GraphNodeData>(
-        recipient: Graph<T>,
-        donor: Graph<U>,
-        visited: &mut HashSet<String>,
-    ) {
-        if visited.contains(&read_lock!(donor).id) {
-            return;
-        }
-
-        visited.insert(read_lock!(donor).id.clone());
-
-        let recipient_child = {
-            read_lock!(recipient)
-                .children
-                .iter()
-                .find(|item| {
-                    read_lock!(item).hash == read_lock!(donor).hash
-                })
-                .cloned()
-        };
-
-        if let Some(recipient_child) = recipient_child {
-            log::trace!("Donor and recipient node have the same hash");
-
-            if graph_hash(Arc::clone(&recipient_child)) != graph_hash(Arc::clone(&donor)) {
-                log::trace!("Donor and recipient child have differing subgraph hashes");
-                let donor_children = read_lock!(donor).children.clone();
-
-                for donor_child in donor_children.iter() {
-                    recurse(
-                        Arc::clone(&recipient_child),
-                        Arc::clone(&donor_child),
-                        visited
-                    );
-                }
-            }
-        } else {
-            log::trace!("Donor and recipient subgraphs incompatible. Adopting donor node...");
-
-            let copied = deep_copy::<T, U>(
-                donor,
-                vec![Arc::clone(&recipient)],
-                &mut HashSet::new(),
-                &mut HashMap::new()
-            );
-            write_lock!(recipient).children.push(copied.clone());
-        }
-    }
-
-    recurse(
-        Arc::clone(&recipient),
-        Arc::clone(&donor),
-        &mut visited,
-    );
 }
 
 pub fn bft<T: GraphNodeData>(graph: Graph<T>, visit: &mut dyn FnMut(Graph<T>) -> bool) {
@@ -648,215 +469,6 @@ pub fn prune(graph: Graph<XmlNode>) {
             queue.push_back(child.clone());
         }
     }
-}
-
-pub async fn analyze_nodes(
-    basis_graph: Graph<BasisNode>,
-    output_tree: Graph<XmlNode>,
-    subgraph: &Subgraph,
-    other_basis_graphs: &Vec<BasisGraph>
-) {
-    log::trace!("In analyze_nodes");
-
-    let mut nodes: Vec<Graph<BasisNode>> = Vec::new();
-
-    let mut parents_visited: HashSet<String> = HashSet::new();
-    let mut spanning_sample_children: Vec<Graph<BasisNode>> = Vec::new();
-
-    bft(Arc::clone(&basis_graph), &mut |node: Graph<BasisNode>| {
-
-        // TODO: will skipping this node affect spanning sample children?
-        if read_lock!(node).data.analyzed {
-            log::info!("Skipping node which has already been analyzed");
-            return true;
-        }
-
-        let mut should_skip = false;
-
-        for other_basis_graph in other_basis_graphs.iter() {
-            bft(Arc::clone(&other_basis_graph.root), &mut |inner_node: Graph<BasisNode>| {
-                if read_lock!(inner_node).lineage == read_lock!(node).lineage {
-                    if read_lock!(inner_node).data.analyzed {
-                        should_skip = true;
-                        return false;
-                    }
-                }
-
-                true
-            });
-
-            if should_skip {
-                break;
-            }
-        }
-
-        if should_skip {
-            log::info!("Going to skip node which has already been analyzed on other graphs");
-            return true;
-        }
-
-        nodes.push(node.clone());
-
-        if parents_visited.insert(read_lock!(node).id.clone()) {
-            let children = &read_lock!(node).children;
-            if let Some(first_child) = children.first() {
-                spanning_sample_children.push(first_child.clone());
-            }
-        }
-
-        true
-    });
-
-    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-    let semaphore = Arc::new(Semaphore::new(max_concurrency));
-
-    async fn handle_tasks(handles: Vec<task::JoinHandle<()>>) {
-        for handle in handles {
-            match handle.await {
-                Ok(()) => { /* Analyze succeeded, continue */ }
-                Err(e) => {
-                    if e.is_cancelled() {
-                        panic!("A task was cancelled unexpectedly");
-                    } else {
-                        log::error!("Task encountered an error: {:?}", e);
-                        panic!("Analysis failed, aborting");
-                    }
-                }
-            }
-        }
-    }
-
-    // Interpreting attributes, text nodes and node data structures
-
-    let handles: Vec<_> = nodes.iter().map(|node| {
-        let semaphore = semaphore.clone();
-        let node = Arc::clone(node);
-        let basis_graph = Arc::clone(&basis_graph);
-        let output_tree = Arc::clone(&output_tree);
-        let subgraph_cloned = subgraph.clone();
-
-        task::spawn(async move {
-            let permit = semaphore.acquire_owned().await.unwrap();
-            analyze(
-                node,
-                basis_graph,
-                output_tree,
-                subgraph_cloned,
-                permit
-            ).await
-        })
-    }).collect();
-
-    handle_tasks(handles).await;
-
-    // Interpreting associative content
-
-    let handles: Vec<_> = spanning_sample_children.iter().map(|node| {
-        let semaphore = semaphore.clone();
-        let node = Arc::clone(node);
-        let basis_graph = Arc::clone(&basis_graph);
-        let output_tree = Arc::clone(&output_tree);
-
-        task::spawn(async move {
-            let permit = semaphore.acquire_owned().await.unwrap();
-            analyze_associations(node, basis_graph, output_tree, permit).await
-        })
-    }).collect();
-
-    handle_tasks(handles).await;
-
-    // Interpreting recursive content
-
-    if subgraph.interface_type.has_recursive {
-        log::info!("Going to interpret recursive relationships between nodes");
-
-        let handles: Vec<_> = nodes.iter().map(|node| {
-            let semaphore = semaphore.clone();
-            let node = Arc::clone(node);
-            let basis_graph = Arc::clone(&basis_graph);
-            let output_tree = Arc::clone(&output_tree);
-
-            task::spawn(async move {
-                let permit = semaphore.acquire_owned().await.unwrap();
-                analyze_recursions(
-                    node,
-                    basis_graph,
-                    output_tree,
-                    permit
-                ).await
-            })
-        }).collect();
-
-        handle_tasks(handles).await;
-    }
-
-    // Mark nodes as fully-analysed
-
-    for node in nodes.iter() {
-        write_lock!(node).data.analyzed = true;
-    }
-}
-
-pub fn get_lineage(tree_node: Graph<XmlNode>) -> VecDeque<String> {
-    let mut lineage = VecDeque::new();
-    let mut current_node = tree_node;
-
-    loop {
-        lineage.push_front(read_lock!(current_node).hash.clone());
-        
-        let parents = read_lock!(current_node).parents.clone();
-
-        if let Some(parent) = parents.first() {
-            current_node = Arc::clone(parent);
-        } else {
-            break;
-        }
-    }
-
-    lineage
-}
-
-pub fn apply_lineage(basis_graph: Graph<BasisNode>, mut lineage: VecDeque<String>) -> Option<Graph<BasisNode>> {
-    let binding = read_lock!(basis_graph);
-    let mut current_node = binding.children.first().expect("Expected basis graph to contain a child").clone();
-
-    lineage.pop_front();
-
-    while let Some(hash) = lineage.pop_front() {
-        let node = read_lock!(current_node)
-            .children
-            .iter()
-            .find(|child| read_lock!(child).hash == hash)
-            .cloned();
-
-        if let Some(node) = node {
-            current_node = Arc::clone(&node);
-        } else {
-            return None;
-        }
-    }
-
-    Some(current_node.clone())
-}
-
-pub fn find_homologous_nodes(
-    target_node: Graph<BasisNode>,
-    basis_graph: Graph<BasisNode>,
-    output_tree: Graph<XmlNode>,
-) -> Vec<Graph<XmlNode>> {
-    log::trace!("In find_homologous_nodes");
-
-    let mut homologous_nodes: Vec<Graph<XmlNode>> = Vec::new();
-
-    bft(Arc::clone(&output_tree), &mut |output_node: Graph<XmlNode>| {
-        if read_lock!(target_node).lineage == read_lock!(output_node).lineage {
-            homologous_nodes.push(output_node);
-        }
-
-        true
-    });
-
-    homologous_nodes
 }
 
 pub fn build_xml_with_target_node(

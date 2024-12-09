@@ -1,29 +1,24 @@
 use serde::{Serialize, Deserialize};
-use std::sync::{Arc, RwLock};
 
-use crate::node_data::{NodeData};
-use crate::node_data_structure::{NodeDataStructure};
-use crate::graph_node::{GraphNodeData};
+use crate::transformation::{Transformation};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNode {
-    pub data: Arc<RwLock<Vec<NodeData>>>,
-    pub structure: Arc<RwLock<Vec<NodeDataStructure>>>,
+    pub id: String,
+    pub hash: String,
+    pub lineage: String,
     pub description: String,
-    pub analyzed: bool,
+    pub transformations: Vec<Transformation>,
 }
 
-impl GraphNodeData for BasisNode {
-    fn new(description: String) -> Self {
-        BasisNode {
-            data: Arc::new(RwLock::new(Vec::new())),
-            structure: Arc::new(RwLock::new(Vec::new())),
-            description,
-            analyzed: false,
-        }
+impl BasisNode {
+    pub fn apply_data_node_transformations(&self, data_node: DataNode, transform: ) -> Value {
+
     }
 
-    fn describe(&self) -> String {
-        self.description.to_string()
+    pub fn apply_node_transformations(&self, node: Graph<XmlNode>) -> Value {
+
     }
 }
+
+

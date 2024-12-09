@@ -1,177 +1,185 @@
-use std::sync::{Arc};
-use std::io::{Write};
-use serde::{
-    Serialize,
-    Deserialize,
-    Deserializer,
-    de::Error as DeError,
-    Serializer,
-    ser::Error as SerError
-};
-use serde::ser::SerializeStruct;
-use std::collections::{HashMap, HashSet};
-use std::fs::File;
-use uuid::Uuid;
-
-use crate::config::{CONFIG};
-use crate::environment;
-use crate::graph_node::{
-    Graph,
-    GraphNode,
-    to_xml_string,
-    deep_copy,
-    graph_hash
-};
-use crate::basis_node::{BasisNode};
-use crate::macros::*;
-use crate::xml_node::{XmlNode};
-use crate::llm::{get_interface_type};
-use crate::interface_type::{InterfaceType, INTERFACE_TYPES};
+use crate::transformations::{SchemaTransformation};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Subgraph {
+pub struct MutableBasisGraph {
     pub id: String,
-    pub hash: String,
-    pub title: String,
-    pub analyzed: bool,
-    pub interface_type: InterfaceType,
+    pub name: String,
+    pub description: String,
+    pub has_recursive: bool,
+    pub graph_nodes: HashMap<String, BasisNode>,
+    pub graph_networks: HashMap<String, BasisNetwork>,
+    pub source_json_schema: String,
+    pub transformations: HashMap<(String, String), Vec<SchemaTransformation>>,
+    pub json_schema: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct BasisGraph {
-    pub root: Graph<BasisNode>,
-    pub subgraphs: HashMap<String, Subgraph>,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ImmutableBasisGraph {
+    pub id: Arc<String>,
+    pub name: Arc<String>,
+    pub description: Arc<String>,
+    pub has_recursive: Arc<bool>,
+    pub graph_nodes: HashMap<String, BasisNode>,
+    pub graph_networks: HashMap<String, BasisNetwork>,
+    pub source_json_schema: String,
+    pub transformations: HashMap<(String, String), Vec<SchemaTransformation>>,
+    pub json_schema: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DefaultBasisGraph {
+    pub id: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub has_recursive: Option<bool>,
+    pub graph_nodes: HashMap<String, BasisNode>,
+    pub graph_networks: HashMap<String, BasisNetwork>,
+    pub default_json_schema: Option<String>,
+    pub transformations: HashMap<(String, String), Vec<SchemaTransformation>>,
+    pub normal_json_schema: Option<String>,
+}
+
+impl Default for DefaultBasisGraph {
+    fn default() -> Self {
+        DefaultBasisGraph {
+            id: Uuid::new_v4().to_string(),
+            name:  None,
+            description: None,
+            has_recursive: None,
+            graph_nodes: HashMap::new(),
+            default_json_schema = None,
+            transformations: HashMap::new(),
+            json_schema: None,
+        }
+    }
 }
 
 impl BasisGraph {
-    pub fn contains_subgraph(&self, graph: Graph<XmlNode>) -> bool {
-        let hash = graph_hash(Arc::clone(&graph));
+    pub fn perform_network_analysis(self, json_tree: Graph<JsonNode>) {
 
-        self.subgraphs.contains_key(&hash)
-    }
-}
-
-pub fn build_basis_graph(input_graph: Graph<XmlNode>) -> BasisGraph {
-    log::trace!("In build_basis_graph");
-
-    let copy: Graph<BasisNode> = deep_copy(
-        Arc::clone(&input_graph),
-        vec![GraphNode::from_void()],
-        &mut HashSet::new(),
-        &mut HashMap::new()
-    );
-
-    let new_root: Graph<BasisNode> = GraphNode::from_void();
-
-    {
-        write_lock!(new_root).children.push(Arc::clone(&copy));
     }
 
-    BasisGraph {
-        root: new_root,
-        subgraphs: HashMap::new(),
-    }
-}
+    pub async fn perform_node_analysis(self, input_graph: Graph<XmlNode>) {
 
-pub async fn analyze_graph(graph: &mut BasisGraph, input_graph: Graph<XmlNode>) {
-    log::trace!("In analyze_graph");
+        bft(Arc::clone(&input_graph), &mut |node: Graph<XmlNode>| {
+            let lineage = read_lock!(node).lineage.clone();
 
-    read_lock!(input_graph).debug_statistics("pruned_input_graph");
-    read_lock!(input_graph).debug_visualize("pruned_input_graph");
-
-    let pruned_input: String = to_xml_string(Arc::clone(&input_graph));
-
-    if environment::is_local() {
-        let path = format!("{}{}", read_lock!(CONFIG).dev.debug_dir, "/pruned_input.xml");
-        let mut file = File::create(path).expect("Could not create file");
-        file.write_all(pruned_input.as_bytes()).expect("Could not write to file");
-    }
-
-    let subgraph_hash = graph_hash(Arc::clone(&input_graph));
-    log::debug!("subgraph_hash: {}", subgraph_hash);
-
-    let title = get_graph_title(Arc::clone(&input_graph)).unwrap();
-    log::debug!("title: {}", title);
-
-    let llm_interface_type = get_interface_type(pruned_input).await;
-    log::debug!("llm_interface_type: {:?}", llm_interface_type);
-
-    let interface_type = if !llm_interface_type.interface_type_id.is_empty() {
-        INTERFACE_TYPES.iter().find(|item| item.id == llm_interface_type.interface_type_id).unwrap().clone()
-    } else {
-        InterfaceType {
-            id: Uuid::new_v4().to_string(),
-            name: llm_interface_type.name.clone(),
-            description: llm_interface_type.core_purpose.clone(),
-            has_recursive: llm_interface_type.has_recursive.clone(),
-            json_schema: None
-        }
-    };
-
-    let subgraph = Subgraph {
-        id: Uuid::new_v4().to_string(),
-        hash: subgraph_hash.clone(),
-        interface_type: interface_type,
-        title,
-        analyzed: false,
-    };
-
-    graph.subgraphs.entry(subgraph_hash.clone()).or_insert(subgraph);
-}
-
-impl<'de> Deserialize<'de> for BasisGraph {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        struct BasisGraphHelper {
-            root: String,
-            subgraphs: HashMap<String, Subgraph>,
-        }
-
-        let helper = BasisGraphHelper::deserialize(deserializer)?;
-
-        let root: Graph<BasisNode> = GraphNode::deserialize(&helper.root).map_err(DeError::custom)?;
-
-        Ok(BasisGraph {
-            root,
-            subgraphs: helper.subgraphs,
-        })
-    }
-}
-
-impl Serialize for BasisGraph {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let basis_root = read_lock!(self.root);
-        let root_str = GraphNode::serialize(&basis_root).map_err(SerError::custom)?;
-
-        let mut state = serializer.serialize_struct("BasisGraph", 2)?;
-        state.serialize_field("root", &root_str)?;
-        state.serialize_field("subgraphs", &self.subgraphs)?;
-        state.end()
-    }
-}
-
-fn get_graph_title(root: Graph<XmlNode>) -> Option<String> {
-    log::trace!("In get_graph_title");
-
-    if let Some(head) = read_lock!(root).children.iter().find(|child| {
-        read_lock!(child).data.get_element_tag_name() == "head"
-    }) {
-        if let Some(title) = read_lock!(head).children.iter().find(|child| {
-            read_lock!(child).data.get_element_tag_name() == "title"
-        }) {
-            if let Some(text) = read_lock!(title).children.first() {
-                let title_text = read_lock!(text).data.to_string();
-
-                return Some(title_text);
+            if self.nodes.contains_key(&lineage) {
+                log::info!("Basis graph already contains input node");
+                return true;
             }
-        }
+
+            let xml_transformations = 
+
+        });
+
     }
 
-    None
+    pub fn apply_node_transformations(self, output_tree: Graph<XmlNode>, json_tree: Graph<JsonNode>) {
+        let unique_paths = HashMap<String, (SchemaPath, Value)> = HashMap::new();
+
+        let mut related_data: Value;
+        let mut data: Value;
+        
+        let mut current_path = SchemaPath::Default();
+
+        fn recurse(
+
+        ) {
+            Arc::clone(&output_tree),
+            &self,
+            &mut current_path,
+            &mut data,
+            &mut related_data
+        }
+
+
+        let schema = build_schema_from_paths(unique_paths.values,);
+        self.source_json_schema = schema;
+    }
+
+    pub fn apply_network_transformations(self, json_tree: Graph<JsonNode>) -> Graph<JsonNde> {
+
+    }
+
+    pub fn 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+lazy_static! {
+    pub static ref BASIS_GRAPHS: Vec<BasisGraph> = vec![
+        BasisGraph {
+            id: String::from("7bba3bdf-3343-4f71-a0c9-c24a076dc7e8"),
+            name: String::from("content_aggregator"),
+            description: String::from("Content aggregators are web platforms that curate and compile information from various sources, presenting it in a single, convenient location for users to easily access and explore. These platforms do not typically produce original content themselves but instead collate articles, news stories, blog posts, and other digital media from across the internet. Examples of popular content aggregators include Reddit, where users submit and vote on links, creating dynamic discussions and community-driven content relevance; Hacker News, which features a constantly updated mix of significant tech and startup industry news curated by user submissions; and Google Search Results, which aggregate webpages, images, videos, and other types of content based on user queries, offering a broad spectrum of the most relevant and authoritative sources available online. Content aggregators serve as valuable tools for staying informed by allowing users to discover content aligned with their interests, preferences, or professional needs efficiently."),
+            has_recursive: false,
+            json_schema: String::from(r#"
+            {
+               "$schema": "http://json-schema.org/draft-07/schema#",
+               "title": "Content Aggregator",
+               "type": "object",
+               "properties": {
+                 "entries": {
+                   "type": "array",
+                   "description": "A list of content entries aggregated by the application.",
+                   "items": {
+                     "type": "object",
+                     "properties": {
+                       "title": {
+                         "type": "string",
+                         "description": "The main title of each entry, typically displayed prominently."
+                       },
+                       "url": {
+                         "type": "string",
+                         "description": "The URL directing to the original content."
+                       },
+                       "score": {
+                         "type": "string",
+                         "description": "The popularity score of the entry, reflecting its user engagement."
+                       },
+                       "submitted": {
+                         "type": "string",
+                         "description": "The timestamp indicating when the entry was submitted."
+                       }
+                     },
+                     "required": ["title", "url", "submitted"]
+                   }
+                 }
+               },
+               "required": ["entries"]
+             }
+            "#),
+            transformations: serde_json::from_str(r#"
+            {
+                "source,target": [
+                    {"id": 1, "name": "Alice"},
+                    {"id": 2, "name": "Bob"}
+                ],
+                "source2,target2": [
+                    {"id": 3, "name": "Charlie"},
+                    {"id": 4, "name": "David"}
+                ]
+            }
+            "#).expect("Error parsing transformations"),
+            nodes: serde_json::from_str(r#"
+            []
+            "#).expect("Error parsing nodes"),
+        },
+    ];
 }
