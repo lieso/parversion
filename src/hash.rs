@@ -6,18 +6,22 @@ pub struct Hash {
 }
 
 impl Hash {
-    pub fn new() -> self {
-        self.items = Vec::new();
-        self
+    pub fn from_str(s: &str) -> Self {
+        Hash {
+            item: Vec::new(),
+            value: Some(s),
+        }
     }
 
-    pub fn with_items(self, items: Vec<_>) -> self {
-        self.items = items;
-        self
+    pub fn from_items<T>(self, items: Vec<T>) -> Self {
+        Hash {
+            items: items.iter().map(item -> item.to_string()),
+            value: None,
+        }
     }
     
     pub fn push(self, item: T) -> self {
-        self.item.push(item);
+        self.items.push(item);
         self
     }
 
@@ -36,6 +40,6 @@ impl Hash {
     }
 
     pub fn to_string(self) -> String {
-        value
+        self.value.unwrap()
     }
 }

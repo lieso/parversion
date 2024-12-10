@@ -1,24 +1,56 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyModule};
+use pyo3::types::{PyList, PySet};
 use serde_json::{Value, json};
 use regex::Regex;
 
-pub fn python(script: String, json_string: String) -> Result<String, String> {
-    log::trace!("In python");
+pub fn python_field_constant(
+    code: String,
+    input_map: HashMap<String, String>
+) -> Result<HashMap<String, String>, String> {
 
     Python::with_gil(|py| {
-        let data: Value = serde_json::from_str(json_string).expect("Invalid JSON");
-        let py_data = PyDict::new(py);
-        if let JsonValue::Object(map) = data {
-            for (key, value) in map {
-                py_data.set_item(key, value.to_string()).unwrap();
-            }
+        let input_json = serde_json::to_string(&input_map).expect("Failed to serialize HashMap");
+
+        //import json
+
+        //def process_json_string(json_string):
+        //    input_dict = json.loads(json_string)
+
+        //    filtered_dict = {k: v for k, v in input_dict.items() if 'keep' in v}
+
+        //    return json.dumps(filtered_dict)
+
+        let module = PyModule::from_code(py, code, "field_constant", "field_constant")?
+
+        let process_json_string = module.get("process_json_string")?;
+        let filtered_json: String = process_json_string.call1((input_json,))?.extract()?
+
+        Ok(filtered_json)
+    })
+}
+
+pub fn python_field_map(code: String, input_map: HashMap<String, String>) -> Result<HashMap<String, String>, String> {
+    Python::with_gil(|py| {
+        let py_dict = PyDict::new(py);
+        for (key, value) in &input_map {
+            py_dict.set_item(key, value)?;
         }
 
+        // keys_of_interest = {'href', 'title'}
+        // output = {k: v for k, v in input_dict.items() if k in keys_of_interest}
 
-    });
+        let globals = [("input_dict", py_dict)].into_py_dict(py);
+        py.run(py_code, Some(globals), None)?;
 
-    unimplemented!()
+        let filtered_py_dict: &PyDict = globals.get_item("output").unwrap().downcast().unwrap();
+
+        let mut output_map = HashMap::new();
+        for (key, value) in filtered_py_dict {
+            output_map.insert(key.extract::<String>()?, value.extract::<String>()?);
+        }
+
+        Ok(output_map)
+    })
 }
 
 pub fn awk(expression: String, input_data: String) -> Result<String, String> {

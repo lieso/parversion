@@ -9,7 +9,7 @@ pub enum Runtime {
 trait Transform {
     fn get_id(&self) -> ID,
     fn get_runtime(&self) -> Runtime,
-    fn get_expression(&self) -> String,
+    fn get_script(&self) -> String,
 }
 
 pub struct JsonSchemaTransform {
@@ -18,10 +18,9 @@ pub struct JsonSchemaTransform {
     target: SchemaPath,
 }
 
-pub struct DataNodeMeaningfulTransform {
+pub struct DataNodeFieldsTransform {
     id: ID,
     runtime: Runtime,
-    regex: Regex,
     expression: String,
 }
 
@@ -69,9 +68,21 @@ pub struct DocumentTransformation {
     expression: String,
 }
 
-pub fn transform<T>(transformation: Transformation, payload: T) -> T {
+pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
     let runtime = transformation.get_runtime();
 
+    match transformation {
+        Transformation::DataNodeFieldsTransform(t) => {
+            match runtime {
+                Runtime::Python => runtimes::python_field_map(t.get_script(), payload)
+            }
+        },
+        Transformation::DataNodeHashTransform(t) => {
+            match runtime {
+                Runtime::Python => runtimes::python_field_constant(t.get_script(), payload)
+            }
+        }
+    }
 }
 
 lazy_static! {

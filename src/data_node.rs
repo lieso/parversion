@@ -6,12 +6,17 @@ use crate::transformations::{
     transform
 };
 
-pub type DataNodeFields = HashSet<String>;
+enum DataNodeTransform {
+    A(DataNodeFieldsTransform),
+    B(DataNodeHashTransform),
+}
+pub type DataNodeFields = HashMap<String, String>;
 
 pub struct DataNode {
     id: ID,
     context_id: ID,
     hash: Hash,
+    lineage: Lineage, // lineage
     fields: DataNodeFields,
 }
 
@@ -19,23 +24,23 @@ pub fn get_fields_transform() -> DataNodeFieldsTransform {
     FIELD_TRANSFORMATIONS.first().clone().unwrap()
 }
 
-pub fn apply_fields_transform(
-    transformation: DataNodeFieldTransform,
-    fields: DataNodeFields
-) -> DataNodeFields {
-    let serialized = serde_json::to_string(fields).expect("Could not serialize fields");
-    transform(transformation, serialized)
-}
-
 pub fn get_hash_transform() -> DataNodeHashTransform {
     HASH_TRANSFORMATIONS.first().clone().unwrap()
 }
 
+pub fn apply_fields_transform(
+    transformation: DataNodeTransform,
+    fields: DataNodeFields
+) -> DataNodeFields {
+    transform(transformation, fields)
+}
+
 pub fn apply_hash_transform(
-    transformation: DataNodeHashTransform,
+    transformation: DataNodeTransform,
     fields: DataNodeFields
 ) -> Hash {
-
+    let hash_string: &str = transform(transformation, fields);
+    Hash::from_str(hash_string)
 }
 
 impl DataNode {
@@ -44,16 +49,12 @@ impl DataNode {
         fields: DataNodeFields
         description: String,
     ) -> Self {
-        let transform = get_hash_transform();
-        let hash: Hash = apply_hash_transform(transform, fields.clone());
-
-        let transform = get_fields_transform();
-        let fields: DataNodeFields = apply_fields_transform(transform, fields.clone());
+        let hash: Hash = apply_hash_transform(get_hash_transform(), fields.clone());
+        let fields: DataNodeFields = apply_fields_transform(get_fields_transform(), fields.clone());
 
         DataNode {
             id: ID::new(),
             hash,
-            description,
             context_id,
             fields,
         }

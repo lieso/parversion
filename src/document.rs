@@ -20,6 +20,8 @@ enum DocumentType {
     Html
 }
 
+pub type DocumentNode = XMLNode;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Document {
     document_type: DocumentType,
@@ -53,20 +55,52 @@ impl Document {
             Err(Errors::UnexpectedDocumentType)
         }
     }
-    
-    pub fn to_data_node(self) -> DataNode {
-        assert!(self.document_type == TextType::Xml);
 
+    pub fn get_root_node<T>(self) -> (DataNode, Vec<T>) {
         let mut reader = std::io::Cursor::new(self.value);
-        let xml_node = XmlNode::parse(&mut reader).expect("Could not parse XML");
+        let root = XmlNode::parse(&mut reader).expect("Could not parse XML");
+        Document::document_to_data(root, None)
+    }
 
+    pub fn document_to_data(
+        xml_node: XmlNode,
+        parent_node: Option<DataNode>
+    ) -> (DataNode, Vec<DocumentNode>) {
         let context_id = Context::register(xml_node);
 
-        DataNode {
-            id: ID::new(),
-            description: xml_node.to_string(),
-            context_id,
+        let lineage = &parent_node.unwrap_or(Lineage::new()).lineage;
+
+        match xml_node {
+            XMLNode::Element(element_node) => {
+                (
+                    DataNode::new(
+                        context_id,
+                        element_node.attributes,
+                        element_node.to_string().truncate(20)
+                        &lineage
+                    ),
+                    element_node.children
+                )
+            },
+            XMLNode::Text(text_node) => {
+                (
+                    DataNode::new(
+                        context_id,
+                        HashMap::from([
+                            ("text", text_node.to_string())
+                        ]),
+                        element_node.to_string().truncate(20),
+                        &lineage
+                    ),
+                    Vec::new()
+                )
+            },
+            _ => panic!("Unexpected node type")
         }
+    }
+
+    pub fn next_node() -> DataNode {
+
     }
 
     pub fn perform_document_analysis(self) {

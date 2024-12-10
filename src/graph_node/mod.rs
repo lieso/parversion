@@ -149,15 +149,13 @@ pub fn get_depth(node: Graph<XmlNode>) -> usize {
     depth
 }
 
-pub fn build_tree(document: Document) -> Graph<XmlNode> {
-    let mut reader = std::io::Cursor::new(document.value);
-    let xml = XmlNode::parse(&mut reader).expect("Could not parse XML");
-
-    GraphNode::from_xml(&xml, Vec::new(), Vec::new())
+pub fn build_data_node_tree(document: Document) -> Graph<DataNode> {
+    let root_node = document.get_root_node();
+    GraphNode::from_data_node(root_node, Vec::new(), Vec::new())
 }
 
-pub fn build_unique_graph(document: Document) -> Graph<XmlNode> {
-    let graph = build_tree(xml);
+pub fn build_data_node_graph(document: Document) -> Graph<DataNode> {
+    let graph = build_data_node_tree(document);
 
     cyclize(Arc::clone(&graph));
     log::info!("Done cyclizing input graph");
@@ -166,54 +164,22 @@ pub fn build_unique_graph(document: Document) -> Graph<XmlNode> {
     log::info!("Done pruning input graph");
 }
 
-pub fn to_xml_string(graph: Graph<XmlNode>) -> String {
-    let mut visited: HashSet<String> = HashSet::new();
-    let mut xml = String::new();
+impl GraphNode<DataNode> {
+    fn from_data_node(
+        data_node: (DataNode, Vec<T>),
+        parents: Vec<Graph<DataNode>>,
+        hashes: Vec<Hash>
+    ) -> Graph<DataNode> {
 
-    fn recurse(
-        node: Graph<XmlNode>,
-        xml: &mut String,
-        visited: &mut HashSet<String>,
-    ) {
-        let xml_node: &XmlNode = &read_lock!(node).data;
+        let graph_node = GraphNode {
+            id: ID::new(),
+            parents,
+            children: Vec::new(),
+            data: data_node.0
+        };
 
-        if visited.contains(&read_lock!(node).id) {
-            return;
-        }
-
-        if xml_node.is_element() {
-            let opening_tag = xml_node.get_opening_tag();
-            let closing_tag = xml_node.get_closing_tag();
-
-            xml.push_str(&opening_tag);
-
-            visited.insert(read_lock!(node).id.clone());
-
-            for child in read_lock!(node).children.iter() {
-                recurse(
-                    Arc::clone(&child),
-                    xml,
-                    visited,
-                );
-            }
-
-            visited.remove(&read_lock!(node).id);
-
-            xml.push_str(&closing_tag);
-        }
-
-        if let Some(text) = &xml_node.text {
-            xml.push_str(&text.clone());
-        }
+        let graph_node = Arc::new(RwLock::new(graph_node));
     }
-
-    recurse(
-        Arc::clone(&graph),
-        &mut xml,
-        &mut visited
-    );
-
-    xml
 }
 
 impl GraphNode<XmlNode> {
@@ -222,25 +188,6 @@ impl GraphNode<XmlNode> {
         parents: Vec<Graph<XmlNode>>,
         lineage: Vec<String>
     ) -> Graph<XmlNode> {
-        let hash = xml_node::xml_to_hash(xml);
-
-        let mut new_lineage = lineage.clone();
-        new_lineage.push(hash.clone());
-
-        let mut hasher = Sha256::new();
-        let mut hasher_items = utility::remove_duplicate_sequences(new_lineage.clone());
-        hasher.update(hasher_items.join(""));
-
-        let lineage_hash = format!("{:x}", hasher.finalize());
-
-        let node = Arc::new(RwLock::new(GraphNode {
-            id: ID::new(),
-            hash,
-            lineage: lineage_hash,
-            parents,
-            children: Vec::new(),
-            data: xml.without_children(),
-        }));
 
         {
             let children: Vec<Graph<XmlNode>> = xml
@@ -469,105 +416,6 @@ pub fn prune(graph: Graph<XmlNode>) {
             queue.push_back(child.clone());
         }
     }
-}
-
-pub fn build_xml_with_target_node(
-    output_tree: Graph<XmlNode>,
-    target_node: Graph<XmlNode>
-) -> (
-    String, // html before target node
-    String, // target node opening tag
-    String, // target node child content
-    String, // target node closing tag
-    String, // html after target node
-) {
-    log::trace!("In build_xml_with_target_node");
-
-    let mut before_html = String::new();
-    let mut target_opening_html = String::new();
-
-    let mut target_child_content = String::new();
-    let mut target_closing_html = String::new();
-    let mut after_html = String::new();
-    let mut found_target = false;
-
-    fn recurse(
-        current: Graph<XmlNode>,
-        target: Graph<XmlNode>,
-        found_target: &mut bool,
-        before_html: &mut String,
-        target_opening_html: &mut String,
-        target_child_content: &mut String,
-        target_closing_html: &mut String,
-        after_html: &mut String,
-    ) {
-        let xml_node: &XmlNode = &read_lock!(current).data;
-
-        if xml_node.is_element() {
-            let opening_tag = xml_node.get_opening_tag();
-            let closing_tag = xml_node.get_closing_tag();
-
-            if *found_target {
-                after_html.push_str(&opening_tag);
-            } else if read_lock!(current).id == read_lock!(target).id {
-                *found_target = true;
-                target_opening_html.push_str(&opening_tag);
-            } else {
-                before_html.push_str(&opening_tag);
-            }
-
-            for child in read_lock!(current).children.iter() {
-                recurse(
-                    Arc::clone(&child),
-                    Arc::clone(&target),
-                    found_target,
-                    before_html,
-                    target_opening_html,
-                    target_child_content,
-                    target_closing_html,
-                    after_html,
-                );
-            }
-
-            if *found_target && read_lock!(current).id == read_lock!(target).id {
-                target_closing_html.push_str(&closing_tag);
-            } else if *found_target {
-                after_html.push_str(&closing_tag);
-            } else {
-                before_html.push_str(&closing_tag);
-            }
-        }
-
-        if let Some(text) = &xml_node.text {
-            if *found_target {
-                after_html.push_str(&text.clone());
-            } else if read_lock!(current).id == read_lock!(target).id {
-                *found_target = true;
-                target_child_content.push_str(&text.clone());
-            } else {
-                before_html.push_str(&text.clone());
-            }
-        }
-    }
-
-    recurse(
-        Arc::clone(&output_tree),
-        Arc::clone(&target_node),
-        &mut found_target,
-        &mut before_html,
-        &mut target_opening_html,
-        &mut target_child_content,
-        &mut target_closing_html,
-        &mut after_html
-    );
-
-    (
-        before_html,
-        target_opening_html,
-        target_child_content,
-        target_closing_html,
-        after_html
-    )
 }
 
 fn merge_nodes<T: GraphNodeData>(parent: Graph<T>, nodes: (Graph<T>, Graph<T>)) {

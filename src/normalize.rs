@@ -103,6 +103,77 @@ pub async fn normalize_document_without_basis(
 ) -> Result<Normalization, Errors> {
     log::trace!("In normalize_document_without_basis");
 
+
+
+    let mut (root_node, root_node_children) = docment.get_root_node();
+
+    let data_nodes: HashMap<ID, DataNode> = HashMap::from(
+        vec![current_node.id.to_string(), current_node.clone()]
+    );
+
+
+    fn recurse(
+        document_data: (DataNode, Vec<DocumentNode>),
+        parents: Vec<Rc<GraphNode>>
+    ) {
+
+        let mut graph_node = GraphNode {
+            id: ID::new(),
+            parents,
+            children: Vec::new(),
+            origin_node_id: document_data.0.id.to_string()
+        };
+
+        let children: document_data.1.iter().map(|child| {
+            recurse(
+                Document::document_to_data(child, Some(nodes.0)),
+                Rc::new(graph_node),
+            )
+        });
+
+        graph_node.children.extend(children);
+
+    }
+
+    fn recurse(
+        document_node: T,
+    ) {
+
+
+        let (data_node, children) = Document::get_data_node(child);
+
+        data_nodes.insert(data_node.id, data_node.clone());
+
+        let graph_node = GraphNode {
+            id: ID::new(),
+            parents: vec![current_graph_node.clone()],
+            children: Vec::new(),
+            origin_node_id: data_node.id.to_string(),
+        };
+
+        graph_node.children = recurse(
+            
+        );
+
+    }
+
+    let graph_node_children = recurse(
+
+    )
+
+    let graph_node: GraphNode {
+        id: ID::new(),
+        parents: Vec::new(),
+        children: graph_node_children,
+        origin_node_id: current_node.id.to_string()
+    };
+
+
+
+
+
+
+
     let mut basis_graph = DefaultBasisGraph::default();
 
     let input_graph: Graph<XmlNode> = build_unique_graph(xml.clone());
