@@ -1,57 +1,31 @@
 use crate::transformations::{SchemaTransformation};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MutableBasisGraph {
+pub struct BasisGraph {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub has_recursive: bool,
-    pub graph_nodes: HashMap<String, BasisNode>,
-    pub graph_networks: HashMap<String, BasisNetwork>,
-    pub source_json_schema: String,
-    pub transformations: HashMap<(String, String), Vec<SchemaTransformation>>,
     pub json_schema: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ImmutableBasisGraph {
-    pub id: Arc<String>,
-    pub name: Arc<String>,
-    pub description: Arc<String>,
-    pub has_recursive: Arc<bool>,
     pub graph_nodes: HashMap<String, BasisNode>,
     pub graph_networks: HashMap<String, BasisNetwork>,
-    pub source_json_schema: String,
-    pub transformations: HashMap<(String, String), Vec<SchemaTransformation>>,
-    pub json_schema: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DefaultBasisGraph {
-    pub id: String,
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub has_recursive: Option<bool>,
-    pub graph_nodes: HashMap<String, BasisNode>,
-    pub graph_networks: HashMap<String, BasisNetwork>,
-    pub default_json_schema: Option<String>,
-    pub transformations: HashMap<(String, String), Vec<SchemaTransformation>>,
-    pub normal_json_schema: Option<String>,
+pub fn classify_text(
+    text: String
+) -> Option<BasisGraph> {
+
 }
 
-impl Default for DefaultBasisGraph {
-    fn default() -> Self {
-        DefaultBasisGraph {
-            id: Uuid::new_v4().to_string(),
-            name:  None,
-            description: None,
-            has_recursive: None,
-            graph_nodes: HashMap::new(),
-            default_json_schema = None,
-            transformations: HashMap::new(),
-            json_schema: None,
-        }
-    }
+pub fn create_basis_graph(
+    text: String
+) -> BasisGraph {
+
+}
+
+pub fn classify_or_create_basis_graph(
+    text: String
+) {
+
 }
 
 impl BasisGraph {

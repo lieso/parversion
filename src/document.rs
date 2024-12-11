@@ -99,14 +99,16 @@ impl Document {
         }
     }
 
-    pub fn next_node() -> DataNode {
-
-    }
-
     pub fn perform_document_analysis(self) {
         // provide sample
         // ask if it uses meaningful class namres
         // create transformation if it doesn't
+
+
+        // identify clusters
+        // ask if cluster is discardable
+        // less total inference required
+        // e.g. navigation bars are clusted away from contetn
     }
 
     pub fn apply_document_transformations(self) {

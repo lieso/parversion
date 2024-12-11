@@ -103,123 +103,125 @@ fn save_basis_graph(graph: BasisGraph) {
 }
 
 fn main() {
-    init_logging();
+    Runtime::new().unwrap().block_on(async {
+        init_logging();
 
-    let mut document = String::new();
+        let mut document = String::new();
 
-    match load_stdin() {
-        Ok(stdin) => {
-            document = stdin;
-        }
-        Err(_e) => {
-            log::debug!("Did not receive input from stdin");
-        }
-    }
-
-    let matches = App::new("parversion")
-        .arg(Arg::with_name("file")
-             .short('f')
-             .long("file")
-             .value_name("FILE")
-             .help("Provide file as document for processing"))
-        .arg(Arg::with_name("basis")
-             .short('b')
-             .long("basis")
-             .value_name("BASIS")
-             .help("Provide basis graph"))
-        .arg(Arg::with_name("format")
-            .short('o')
-            .long("output-format")
-            .value_name("FORMAT")
-            .help("Set output format: JSON, JSON_SCHEMA, or XML"))
-        .arg(Arg::with_name("url")
-            .short('u')
-            .long("url")
-            .value_name("URL")
-            .help("The full URL that identifies and locates the provided document"))
-        .arg(Arg::with_name("graphs")
-            .short('g')
-            .long("graphs")
-            .value_name("GRAPHS")
-            .help("Provide file path describing location of an analyzed basis graph to be used for interpretation"))
-        .get_matches();
-
-    let output_format = {
-        let format_str = matches.value_of("format").unwrap_or("json");
-        harvest::HarvestFormats::from_str(format_str)
-            .expect("Could not initialize output format")
-    };
-
-    let url: Option<&str> = matches.value_of("url");
-
-    let basis_graph: Option<Box<BasisGraph>> = match matches.value_of("basis") {
-        Some(file_name) => {
-            let basis_graph = load_basis_graph(file_name)
-                .expect("Could not load basis graph from filesystem");
-
-            Some(Box::new(basis_graph))
-        }
-        None => {
-            log::info!("Basis graph not provided");
-            None
-        }
-    };
-
-    let other_basis_graphs: Vec<BasisGraph> = match matches.value_of("graphs") {
-        Some(path) => {
-            let basis_graph = load_basis_graph(path)
-                .expect("Could not load basis graph from filesystem");
-            vec![basis_graph]
-        }
-        None => {
-            log::info!("Other basis graphs not provided");
-            Vec::new()
-        }
-    };
-
-    let normalize_result = match matches.value_of("file") {
-        Some(file_name) => {
-            normalize::normalize_file(
-                url.map(|s| s.to_string()),
-                file_name.to_string(),
-                basis_graph,
-                other_basis_graphs
-            )
-        }
-        None => {
-            log::info!("File not provided");
-            normalize::normalize_text(
-                url.map(|s| s.to_string()),
-                document,
-                basis_graph,
-                other_basis_graphs
-            )
-        }
-    };
-
-    if let Ok(normalize_result) = normalize_result {
-        if environment::is_local() {
-            save_basis_graph(normalize_result.output_basis_graph.clone());
-            log::info!("Saved basis graph to filesystem");
-        }
-
-        if let Some(normalized) = normalize_result.normalized {
-            match serde_json::to_string_pretty(&normalized) {
-                Ok(serialized) => {
-                    println!("{}", serialized);
-                    return;
-                },
-                Err(e) => eprintln!("Serialization error: {}", e),
+        match load_stdin() {
+            Ok(stdin) => {
+                document = stdin;
+            }
+            Err(_e) => {
+                log::debug!("Did not receive input from stdin");
             }
         }
 
-        let serialized = harvest::serialize_harvest(
-            normalize_result.harvest, 
-            output_format
-        ).expect("Unable to serialize result");
+        let matches = App::new("parversion")
+            .arg(Arg::with_name("file")
+                 .short('f')
+                 .long("file")
+                 .value_name("FILE")
+                 .help("Provide file as document for processing"))
+            .arg(Arg::with_name("basis")
+                 .short('b')
+                 .long("basis")
+                 .value_name("BASIS")
+                 .help("Provide basis graph"))
+            .arg(Arg::with_name("format")
+                .short('o')
+                .long("output-format")
+                .value_name("FORMAT")
+                .help("Set output format: JSON, JSON_SCHEMA, or XML"))
+            .arg(Arg::with_name("url")
+                .short('u')
+                .long("url")
+                .value_name("URL")
+                .help("The full URL that identifies and locates the provided document"))
+            .arg(Arg::with_name("graphs")
+                .short('g')
+                .long("graphs")
+                .value_name("GRAPHS")
+                .help("Provide file path describing location of an analyzed basis graph to be used for interpretation"))
+            .get_matches();
 
-        println!("{}", serialized);
-    } else {
-        println!("An error occurred while processing document");
-    }
+        let output_format = {
+            let format_str = matches.value_of("format").unwrap_or("json");
+            harvest::HarvestFormats::from_str(format_str)
+                .expect("Could not initialize output format")
+        };
+
+        let url: Option<&str> = matches.value_of("url");
+
+        let basis_graph: Option<Box<BasisGraph>> = match matches.value_of("basis") {
+            Some(file_name) => {
+                let basis_graph = load_basis_graph(file_name)
+                    .expect("Could not load basis graph from filesystem");
+
+                Some(Box::new(basis_graph))
+            }
+            None => {
+                log::info!("Basis graph not provided");
+                None
+            }
+        };
+
+        let other_basis_graphs: Vec<BasisGraph> = match matches.value_of("graphs") {
+            Some(path) => {
+                let basis_graph = load_basis_graph(path)
+                    .expect("Could not load basis graph from filesystem");
+                vec![basis_graph]
+            }
+            None => {
+                log::info!("Other basis graphs not provided");
+                Vec::new()
+            }
+        };
+
+        let normalize_result = match matches.value_of("file") {
+            Some(file_name) => {
+                normalize::normalize_file(
+                    url.map(|s| s.to_string()),
+                    file_name.to_string(),
+                    basis_graph,
+                    other_basis_graphs
+                )
+            }
+            None => {
+                log::info!("File not provided");
+                normalize::normalize_text(
+                    url.map(|s| s.to_string()),
+                    document,
+                    basis_graph,
+                    other_basis_graphs
+                )
+            }
+        };
+
+        if let Ok(normalize_result) = normalize_result {
+            if environment::is_local() {
+                save_basis_graph(normalize_result.output_basis_graph.clone());
+                log::info!("Saved basis graph to filesystem");
+            }
+
+            if let Some(normalized) = normalize_result.normalized {
+                match serde_json::to_string_pretty(&normalized) {
+                    Ok(serialized) => {
+                        println!("{}", serialized);
+                        return;
+                    },
+                    Err(e) => eprintln!("Serialization error: {}", e),
+                }
+            }
+
+            let serialized = harvest::serialize_harvest(
+                normalize_result.harvest, 
+                output_format
+            ).expect("Unable to serialize result");
+
+            println!("{}", serialized);
+        } else {
+            println!("An error occurred while processing document");
+        }
+    });
 }

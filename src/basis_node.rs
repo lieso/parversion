@@ -12,7 +12,13 @@ pub struct BasisNode {
 }
 
 impl BasisNode {
-    pub fn apply_data_node_transformations(&self, data_node: DataNode, transform: ) -> Value {
+    pub fn new() -> self {
+
+    }
+}
+
+impl BasisNode {
+    pub fn apply_data_node_transformations(&self, data_node: DataNode) -> Value {
 
     }
 
