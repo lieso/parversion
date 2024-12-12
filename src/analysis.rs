@@ -39,50 +39,41 @@ impl Analysis {
         );
 
 
+
+
+        fn recurse(
+            document_data: (DataNode, Vec<DocumentNode>),
+            parents: Vec<Rc<GraphNode>>
+        ) {
+            let data_node = document_data.0;
+
+            data_nodes.insert(data_node.id.to_string(), data_node.clone());
+
+            let mut graph_node = GraphNode {
+                id: ID::new(),
+                parents,
+                children: Vec::new(),
+                origin_node_id: document_data.0.id.to_string()
+            };
+
+            let children: document_data.1.iter().map(|child| {
+                recurse(
+                    Document::document_to_data(child, Some(nodes.0)),
+                    Rc::new(graph_node),
+                )
+            });
+
+            graph_node.children.extend(children);
+
+            graph_node
+        }
+
+
+
+
+
         Analysis {
             document_transformations,
         }
     }
-}
-
-pub fn init_data_structures(document: Document) {
-
-
-
-
-
-
-
-
-
-
-    fn recurse(
-        document_data: (DataNode, Vec<DocumentNode>),
-        parents: Vec<Rc<GraphNode>>
-    ) {
-        let data_node = document_data.0;
-
-        data_nodes.insert(data_node.id.to_string(), data_node.clone());
-
-        let mut graph_node = GraphNode {
-            id: ID::new(),
-            parents,
-            children: Vec::new(),
-            origin_node_id: document_data.0.id.to_string()
-        };
-
-        let children: document_data.1.iter().map(|child| {
-            recurse(
-                Document::document_to_data(child, Some(nodes.0)),
-                Rc::new(graph_node),
-            )
-        });
-
-        graph_node.children.extend(children);
-
-        graph_node
-    }
-
-
-
 }

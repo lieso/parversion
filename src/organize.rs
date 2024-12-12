@@ -1,9 +1,13 @@
+use std::io::{Read};
+use std::fs::File;
+use std::sync::{Arc};
+use serde_json::{Value};
 
-
+use crate::basis_graph::BasisGraph;
 
 pub struct Organization {
     pub basis_graph: BasisGraph,
-    pub related_data: OutputData,
+    pub related_data: Option<OutputData>,
     pub organized_data: OutputData,
 }
 
@@ -52,7 +56,8 @@ pub async fn organize_document(
 
     let analysis = Analysis::from_document(document)
         .with_basis(basis_graph)
-        .perform_analysis().await;
+        .perform_analysis()
+        .await;
 
     analysis.apply_value_transformations(value_transformations);
 
