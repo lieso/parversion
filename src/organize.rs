@@ -11,7 +11,7 @@ pub struct Organization {
     pub organized_data: OutputData,
 }
 
-pub fn organize_file(
+pub async fn organize_file(
     file_name: String,
     options: Option<Options>,
 ) -> Result<Organization, Errors> {
@@ -30,10 +30,10 @@ pub fn organize_file(
         process::exit(1);
     });
 
-    organize_text(text, options)
+    organize_text(text, options).await
 }
 
-pub fn organize_text(
+pub async fn organize_text(
     text: String,
     options: Option<Options>,
 ) -> Result<Organization, Errors> {
@@ -41,7 +41,10 @@ pub fn organize_text(
 
     let document = Document::from_string(text)?;
 
-    organize_document(document, options)
+    document.perform_document_analysis().await;
+    document.apply_document_transformations();
+
+    organize_document(document, options).await
 }
 
 pub async fn organize_document(

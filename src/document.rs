@@ -99,7 +99,7 @@ impl Document {
         }
     }
 
-    pub fn perform_document_analysis(self) {
+    pub async fn perform_document_analysis(self) {
         // provide sample
         // ask if it uses meaningful class namres
         // create transformation if it doesn't
@@ -109,6 +109,7 @@ impl Document {
         // ask if cluster is discardable
         // less total inference required
         // e.g. navigation bars are clusted away from contetn
+        unimplemented!()
     }
 
     pub fn apply_document_transformations(self) {
@@ -194,10 +195,6 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
         _ => {}
     }
 }
-
-
-
-
 
 lazy_static! {
     pub static ref DOCUMENT_TRANSFORMATIONS: Vec<Transformation> = vec![

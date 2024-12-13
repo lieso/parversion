@@ -11,7 +11,7 @@ pub struct Normalization {
     pub normalized_data: OutputData,
 }
 
-pub fn normalize_file(
+pub async fn normalize_file(
     file_name: String,
     options: Option<Options>,
 ) -> Result<Normalization, Errors> {
@@ -30,10 +30,10 @@ pub fn normalize_file(
         process::exit(1);
     });
 
-    normalize_text(text, options)
+    normalize_text(text, options).await
 }
 
-pub fn normalize_text(
+pub async fn normalize_text(
     text: String,
     options: Option<Options>,
 ) -> Result<Normalization, Errors> {
@@ -41,7 +41,10 @@ pub fn normalize_text(
 
     let document = Document::from_string(text, options)?;
 
-    normalize_document(document, options)
+    document.perform_document_analysis().await;
+    document.apply_document_transformations();
+
+    normalize_document(document, options).await
 }
 
 pub async fn normalize_document(
@@ -52,7 +55,7 @@ pub async fn normalize_document(
 
     let organization = organization::organize_document(document, options);
 
-    normalize_organization(organization, options)
+    normalize_organization(organization, options).await
 }
 
 pub async fn normalize_organization(

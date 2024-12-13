@@ -1,100 +1,33 @@
 use crate::transformations::{SchemaTransformation};
+use crate::id::{ID};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BasisGraph {
-    pub id: String,
+    pub id: ID,
     pub name: String,
     pub description: String,
     pub json_schema: String,
-    pub graph_nodes: HashMap<String, BasisNode>,
-    pub graph_networks: HashMap<String, BasisNetwork>,
+    pub nodes: HashMap<ID, BasisNode>,
+    pub networks: HashMap<ID, BasisNetwork>,
 }
 
-pub fn classify_text(
+pub async fn classify_text(
     text: String
 ) -> Option<BasisGraph> {
-
+    unimplemented!()
 }
 
-pub fn create_basis_graph(
+pub async fn create_basis_graph(
     text: String
 ) -> BasisGraph {
-
+    unimplemented!()
 }
 
-pub fn classify_or_create_basis_graph(
+pub async fn classify_or_create_basis_graph(
     text: String
-) {
-
+) -> BasisGraph {
+    unimplemented!()
 }
-
-impl BasisGraph {
-    pub fn perform_network_analysis(self, json_tree: Graph<JsonNode>) {
-
-    }
-
-    pub async fn perform_node_analysis(self, input_graph: Graph<XmlNode>) {
-
-        bft(Arc::clone(&input_graph), &mut |node: Graph<XmlNode>| {
-            let lineage = read_lock!(node).lineage.clone();
-
-            if self.nodes.contains_key(&lineage) {
-                log::info!("Basis graph already contains input node");
-                return true;
-            }
-
-            let xml_transformations = 
-
-        });
-
-    }
-
-    pub fn apply_node_transformations(self, output_tree: Graph<XmlNode>, json_tree: Graph<JsonNode>) {
-        let unique_paths = HashMap<String, (SchemaPath, Value)> = HashMap::new();
-
-        let mut related_data: Value;
-        let mut data: Value;
-        
-        let mut current_path = SchemaPath::Default();
-
-        fn recurse(
-
-        ) {
-            Arc::clone(&output_tree),
-            &self,
-            &mut current_path,
-            &mut data,
-            &mut related_data
-        }
-
-
-        let schema = build_schema_from_paths(unique_paths.values,);
-        self.source_json_schema = schema;
-    }
-
-    pub fn apply_network_transformations(self, json_tree: Graph<JsonNode>) -> Graph<JsonNde> {
-
-    }
-
-    pub fn 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 lazy_static! {
     pub static ref BASIS_GRAPHS: Vec<BasisGraph> = vec![
@@ -139,21 +72,12 @@ lazy_static! {
                "required": ["entries"]
              }
             "#),
-            transformations: serde_json::from_str(r#"
-            {
-                "source,target": [
-                    {"id": 1, "name": "Alice"},
-                    {"id": 2, "name": "Bob"}
-                ],
-                "source2,target2": [
-                    {"id": 3, "name": "Charlie"},
-                    {"id": 4, "name": "David"}
-                ]
-            }
-            "#).expect("Error parsing transformations"),
             nodes: serde_json::from_str(r#"
             []
             "#).expect("Error parsing nodes"),
+            networks: serde_json::from_str(r#"
+            []
+            "#).expect("Error parsing networks"),
         },
     ];
 }

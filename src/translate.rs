@@ -11,7 +11,7 @@ pub struct Translation {
     pub translated_data: OutputData,
 }
 
-pub fn translate_file(
+pub async fn translate_file(
     file_name: String,
     options: Option<Options>,
     json_schema: String,
@@ -31,10 +31,10 @@ pub fn translate_file(
         process::exit(1);
     });
 
-    translate_text(text, options, json_schema)
+    translate_text(text, options, json_schema).await
 }
 
-pub fn translate_text(
+pub async fn translate_text(
     text: String,
     options: Option<Options>,
     json_schema: String,
@@ -43,10 +43,13 @@ pub fn translate_text(
 
     let document = Document::from_string(text, options)?;
 
-    translate_document(document, options, json_schema)
+    document.perform_document_analysis().await;
+    document.apply_document_transformations();
+
+    translate_document(document, options, json_schema).await
 }
 
-pub fn translate_document(
+pub async fn translate_document(
     document: Document
     options: Option<Options>,
     json_schema: String,
@@ -55,7 +58,7 @@ pub fn translate_document(
 
     let organization = organization::organize_document(document, options);
 
-    translate_organization(organization, options, json_schema)
+    translate_organization(organization, options, json_schema).await
 }
 
 pub fn translate_organization(
@@ -71,7 +74,7 @@ pub fn translate_organization(
         related_data
     } = organization;
 
-    let translated_data = basis_graph.translate(organized_data, json_schema);
+    let translated_data = basis_graph.translate(organized_data, json_schema).await;
 
     Translation {
         basis_graph,
