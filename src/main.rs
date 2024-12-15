@@ -9,24 +9,18 @@ use serde_json::{from_str, to_string, Value};
 use std::io::stdout;
 use fern::Dispatch;
 
-mod error;
-mod llm;
-mod node_data;
-mod node_data_structure;
-mod utility;
-mod xml_node;
+mod types;
 mod config;
-mod constants;
 mod macros;
 mod environment;
-mod normalize;
-mod content;
-mod graph_node;
 mod basis_graph;
 mod basis_node;
-mod harvest;
-mod interface_type;
-mod json_schema;
+mod basis_network;
+mod normalize;
+mod organize;
+mod translate;
+mod transformation;
+mod runtimes;
 
 use basis_graph::{BasisGraph};
 use crate::config::{CONFIG};
@@ -53,53 +47,6 @@ fn init_logging() {
         .chain(log_file)
         .apply()
         .expect("Could not initialize logging");
-}
-
-fn load_basis_graph(file_name: &str) -> Result<BasisGraph, &str> {
-    let mut file = match File::open(file_name) {
-        Ok(file) => file,
-        Err(_e) => return Err("Could not open file"),
-    };
-
-    let mut serialized = String::new();
-    let _ = file.read_to_string(&mut serialized).map_err(|_e| "Could not read file to string");
-
-    match serde_json::from_str::<BasisGraph>(&serialized) {
-        Ok(basis_graph) => Ok(basis_graph),
-        Err(_e) => {
-
-            // TODO: serialize basis graph root as unescaped json
-            // so we won't have to do the following workaround
-
-            let mut json_value: Value = match from_str(&serialized) {
-                Ok(value) => value,
-                Err(_e) => return Err("Could not parse JSON"),
-            };
-
-            if let Some(root_value) = json_value.get_mut("root") {
-                if let Ok(root_str) = to_string(root_value) {
-                    log::debug!("root_str: {}", root_str);
-                    *root_value = Value::String(root_str);
-                } else {
-                    return Err("Failed to convert root to string");
-                }
-            }
-
-            let modified_serialized = match to_string(&json_value) {
-                Ok(json_str) => json_str,
-                Err(_e) => return Err("Failed to serialize modified JSON"),
-            };
-
-            serde_json::from_str::<BasisGraph>(&modified_serialized).map_err(|_e| "Could not deserialize basis graph after modification")
-        }
-    }
-}
-
-fn save_basis_graph(graph: BasisGraph) {
-    let serialized = serde_json::to_string(&graph).expect("Could not serialize basis graph");
-    let path = format!("{}/{}", read_lock!(CONFIG).dev.debug_dir, "basis_graph");
-    let mut file = File::create(path).expect("Could not create file");
-    file.write_all(serialized.as_bytes()).expect("could not write to file");
 }
 
 fn main() {
@@ -153,75 +100,7 @@ fn main() {
 
         let url: Option<&str> = matches.value_of("url");
 
-        let basis_graph: Option<Box<BasisGraph>> = match matches.value_of("basis") {
-            Some(file_name) => {
-                let basis_graph = load_basis_graph(file_name)
-                    .expect("Could not load basis graph from filesystem");
 
-                Some(Box::new(basis_graph))
-            }
-            None => {
-                log::info!("Basis graph not provided");
-                None
-            }
-        };
-
-        let other_basis_graphs: Vec<BasisGraph> = match matches.value_of("graphs") {
-            Some(path) => {
-                let basis_graph = load_basis_graph(path)
-                    .expect("Could not load basis graph from filesystem");
-                vec![basis_graph]
-            }
-            None => {
-                log::info!("Other basis graphs not provided");
-                Vec::new()
-            }
-        };
-
-        let normalize_result = match matches.value_of("file") {
-            Some(file_name) => {
-                normalize::normalize_file(
-                    url.map(|s| s.to_string()),
-                    file_name.to_string(),
-                    basis_graph,
-                    other_basis_graphs
-                )
-            }
-            None => {
-                log::info!("File not provided");
-                normalize::normalize_text(
-                    url.map(|s| s.to_string()),
-                    document,
-                    basis_graph,
-                    other_basis_graphs
-                )
-            }
-        };
-
-        if let Ok(normalize_result) = normalize_result {
-            if environment::is_local() {
-                save_basis_graph(normalize_result.output_basis_graph.clone());
-                log::info!("Saved basis graph to filesystem");
-            }
-
-            if let Some(normalized) = normalize_result.normalized {
-                match serde_json::to_string_pretty(&normalized) {
-                    Ok(serialized) => {
-                        println!("{}", serialized);
-                        return;
-                    },
-                    Err(e) => eprintln!("Serialization error: {}", e),
-                }
-            }
-
-            let serialized = harvest::serialize_harvest(
-                normalize_result.harvest, 
-                output_format
-            ).expect("Unable to serialize result");
-
-            println!("{}", serialized);
-        } else {
-            println!("An error occurred while processing document");
-        }
+        unimplemented!()
     });
 }

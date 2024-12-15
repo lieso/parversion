@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use regex::Regex;
 
 pub fn python_field_constant(
-    code: String,
+    code: &str,
     input_map: HashMap<String, String>
 ) -> Result<HashMap<String, String>, String> {
 
@@ -20,16 +20,11 @@ pub fn python_field_constant(
 
         //    return json.dumps(filtered_dict)
 
-        let module = PyModule::from_code(py, code, "field_constant", "field_constant")?
-
-        let process_json_string = module.get("process_json_string")?;
-        let filtered_json: String = process_json_string.call1((input_json,))?.extract()?
-
-        Ok(filtered_json)
+        unimplemented!()
     })
 }
 
-pub fn python_field_map(code: String, input_map: HashMap<String, String>) -> Result<HashMap<String, String>, String> {
+pub fn python_field_map(code: &str, input_map: HashMap<String, String>) -> Result<HashMap<String, String>, String> {
     Python::with_gil(|py| {
         let py_dict = PyDict::new(py);
         for (key, value) in &input_map {
@@ -80,7 +75,7 @@ pub fn awk(expression: String, input_data: String) -> Result<String, String> {
 
         Ok(result.to_string())
     } else {
-        Err("Failed to evaluate awk expression")
+        Err("Failed to evaluate awk expression".to_string())
     }
 }
 

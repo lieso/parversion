@@ -3,7 +3,9 @@ use std::fs::File;
 use std::sync::{Arc};
 use serde_json::{Value};
 
-use crate::basis_graph::BasisGraph;
+use crate::basis_graph::{BasisGraph};
+use crate::document::{Document};
+use crate::types::*;
 
 pub struct Organization {
     pub basis_graph: BasisGraph,
@@ -64,9 +66,11 @@ pub async fn organize_document(
 
     analysis.apply_value_transformations(value_transformations);
 
-    Organization {
+    let organization = Organization {
         basis_graph: analysis.get_basis_graph(),
         organized_data: analysis.get_data(),
         related_data: analysis.get_related_data(),
-    }
+    };
+
+    Ok(organization)
 }

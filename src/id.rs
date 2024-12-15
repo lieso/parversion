@@ -1,4 +1,5 @@
 use uuid::Uuid;
+use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ID {

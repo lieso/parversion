@@ -1,87 +1,160 @@
-use crate::schema_path::{SchemaPath};
+use serde::{Serialize, Deserialize};
 
+use crate::schema_path::{SchemaPath};
+use crate::runtimes;
+use crate::id::{ID};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
     AWK,
-    JavaScript,
+    NodeJS,
     Python
 }
 
 trait Transform {
-    fn get_id(&self) -> ID,
-    fn get_runtime(&self) -> Runtime,
-    fn get_script(&self) -> String,
+    fn get_id(&self) -> ID;
+    fn get_runtime(&self) -> Runtime;
+    fn get_code(&self) -> String;
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct JsonSchemaTransform {
     id: ID,
+    runtime: Runtime,
+    code: String,
     source: SchemaPath,
     target: SchemaPath,
 }
 
+impl Transform for JsonSchemaTransform {
+    fn get_id(&self) -> ID {
+        self.id.clone()
+    }
+
+    fn get_runtime(&self) -> Runtime {
+        self.runtime.clone()
+    }
+
+    fn get_code(&self) -> String {
+        self.code.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DataNodeFieldsTransform {
     id: ID,
     runtime: Runtime,
-    expression: String,
+    code: String,
 }
 
-pub struct DataNodeRecursiveTransform {
-    id: ID,
-    runtime: Runtime,
-    source: 
-    expression: String,
+impl Transform for DataNodeFieldsTransform {
+    fn get_id(&self) -> ID {
+        self.id.clone()
+    }
+
+    fn get_runtime(&self) -> Runtime {
+        self.runtime.clone()
+    }
+
+    fn get_code(&self) -> String {
+        self.code.clone()
+    }
 }
 
-pub struct DataToJsonFieldTransform {
-    id: ID,
-    runtime: Runtime,
-    regex: Regex,
-    expression: String,
-}
-
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DataNodeHashTransform {
     id: ID,
     runtime: Runtime,
     regex: Regex,
-    expression: String,
+    code: String,
 }
 
-pub enum Transformation {
-    A(DataNodeMeaningfulTransform),
-    B(DataNodeRecursiveTransform),
-    C(DataNodeHashTransform),
-    D(DataToJsonFieldTransform),
-    E(JsonSchemaTransform),
+impl Transform for DataNodeHashTransform {
+    fn get_id(&self) -> ID {
+        self.id.clone()
+    }
+
+    fn get_runtime(&self) -> Runtime {
+        self.runtime.clone()
+    }
+
+    fn get_code(&self) -> String {
+        self.code.clone()
+    }
 }
 
-pub struct NodeTransformation {
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DataNodeRecursiveTransform {
     id: ID,
-    name: String,
-    description: String,
-    source_expression: String,
-    target_expression: String,
+    runtime: Runtime,
+    code: String,
 }
 
+impl Transform for DataNodeRecursiveTransform {
+    fn get_id(&self) -> ID {
+        self.id.clone()
+    }
+
+    fn get_runtime(&self) -> Runtime {
+        self.runtime.clone()
+    }
+
+    fn get_code(&self) -> String {
+        self.code.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DataToJsonFieldTransform {
+    id: ID,
+    runtime: Runtime,
+    code: String,
+}
+
+impl Transform for DataToJsonFieldTransform {
+    fn get_id(&self) -> ID {
+        self.id.clone()
+    }
+
+    fn get_runtime(&self) -> Runtime {
+        self.runtime.clone()
+    }
+
+    fn get_code(&self) -> String {
+        self.code.clone()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum Transformation {
+    DataNodeFieldsTransform(DataNodeFieldsTransform),
+    DataNodeRecursiveTransform(DataNodeRecursiveTransform),
+    DataNodeHashTransform(DataNodeHashTransform),
+    DataToJsonFieldTransform(DataToJsonFieldTransform),
+    JsonSchemaTransform(JsonSchemaTransform),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DocumentTransformation {
     id: ID,
     document_type: DocumentType,
     runtime: Runtime,
-    expression: String,
+    code: String,
 }
 
 pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
-    let runtime = transformation.get_runtime();
-
     match transformation {
         Transformation::DataNodeFieldsTransform(t) => {
-            match runtime {
-                Runtime::Python => runtimes::python_field_map(t.get_script(), payload)
+            match t.get_runtime() {
+                Runtime::Python => runtimes::python_field_map(&t.get_code(), payload)
             }
         },
         Transformation::DataNodeHashTransform(t) => {
-            match runtime {
-                Runtime::Python => runtimes::python_field_constant(t.get_script(), payload)
+            match t.get_runtime() {
+                Runtime::Python => runtimes::python_field_constant(&t.get_code(), payload)
             }
-        }
+        },
+        _ => unimplemented!()
     }
 }
 
@@ -91,13 +164,13 @@ lazy_static! {
             runtime: Runtime::AWK,
             description: String::from("Converts American weights in pounds (lbs)"),
             regex: Regex::new(r"\b\d+(\.\d+)?\s*(lbs?|pounds?)\b").unwrap(),
-            expression: String::from(r#"{ printf "%.2f lbs = %.2f kg\n", $1, $1 * 0.45359237 }"#),
+            code: String::from(r#"{ printf "%.2f lbs = %.2f kg\n", $1, $1 * 0.45359237 }"#),
         },
         Transformation {
             runtime: Runtime::AWK,
             description: String::from("Identity Transformation"),
             regex: Regex::new(r"(?s).*").unwrap(),
-            expression: String::from(r#"{ print $0 }"#),
+            code: String::from(r#"{ print $0 }"#),
         },
     ];
 }

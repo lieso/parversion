@@ -18,6 +18,7 @@ pub type OutputData = Vec<JsonNode>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
+    FileInputError,
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,

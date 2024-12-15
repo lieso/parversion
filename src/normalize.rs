@@ -3,7 +3,10 @@ use std::fs::File;
 use std::sync::{Arc};
 use serde_json::{Value};
 
-use crate::basis_graph::BasisGraph;
+use crate::basis_graph::{BasisGraph};
+use crate::document::{Document};
+use crate::types::*;
+use crate::organize::{organize_document};
 
 pub struct Normalization {
     pub basis_graph: BasisGraph,
@@ -53,7 +56,7 @@ pub async fn normalize_document(
 ) -> Result<Normalization, Errors> {
     log::trace!("In normalize_document");
 
-    let organization = organization::organize_document(document, options);
+    let organization = organize::organize_document(document, options);
 
     normalize_organization(organization, options).await
 }
@@ -72,9 +75,11 @@ pub async fn normalize_organization(
 
     let normalized_data = basis_graph.normalize(organized_data).await;
 
-    Normalization {
+    let normalization = Normalization {
         basis_graph,
         related_data,
         normalized_data,
-    }
+    };
+
+    Ok(normalization)
 }

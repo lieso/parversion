@@ -2,8 +2,13 @@ use std::io::{Read};
 use std::fs::File;
 use std::sync::{Arc};
 use serde_json::{Value};
+use std::path::Path;
+use tokio::task;
 
-use crate::basis_graph::BasisGraph;
+use crate::basis_graph::{BasisGraph};
+use crate::document::{Document};
+use crate::types::*;
+use crate::organize;
 
 pub struct Translation {
     pub basis_graph: BasisGraph,
@@ -19,19 +24,23 @@ pub async fn translate_file(
     log::trace!("In translate_file");
     log::debug!("file_name: {}", file_name);
 
-    let mut text = String::new();
+    let text = task::spawn_blocking(move || -> Result<String, Errors> {
+        let path = Path::new(&file_name);
+        let mut file = File::open(path).map_err(|err| {
+            log::error!("Failed to open file: {}", err);
+            Errors::FileInputError
+        })?;
 
-    let mut file = File::open(file_name).unwrap_or_else(|err| {
-        eprintln!("Failed to open file: {}", err);
-        process::exit(1);
-    });
+        let mut text = String::new();
+        file.read_to_string(&mut text).map_err(|err| {
+            log::error!("Failed to read file: {}", err);
+            Errors::FileInputError
+        })?;
 
-    file.read_to_string(&mut text).unwrap_or_else(|err| {
-        eprintln!("Failed to read file: {}", err);
-        process::exit(1);
-    });
+        Ok(text)
+    }).await.map_err(|_| Errors::FileInputError)?;
 
-    translate_text(text, options, json_schema).await
+    translate_text(text?, options, json_schema).await
 }
 
 pub async fn translate_text(
@@ -56,12 +65,12 @@ pub async fn translate_document(
 ) -> Result<Translation, Errors> {
     log::trace!("In translate_document");
 
-    let organization = organization::organize_document(document, options);
+    let organization = organize::organize_document(document, options);
 
     translate_organization(organization, options, json_schema).await
 }
 
-pub fn translate_organization(
+pub async fn translate_organization(
     organization: Organization,
     options: Option<Options>,
     json_schema: String,
@@ -76,9 +85,11 @@ pub fn translate_organization(
 
     let translated_data = basis_graph.translate(organized_data, json_schema).await;
 
-    Translation {
+    let translation = Translation {
         basis_graph,
         related_data,
         translated_data,
-    }
+    };
+
+    Ok(translation)
 }
