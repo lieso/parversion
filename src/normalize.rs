@@ -23,15 +23,15 @@ pub async fn normalize_file(
 
     let mut text = String::new();
 
-    let mut file = File::open(file_name).unwrap_or_else(|err| {
-        eprintln!("Failed to open file: {}", err);
-        process::exit(1);
-    });
+    let mut file = File::open(file_name).map_err(|err| {
+        log::error!("Failed to open file: {}", err);
+        Errors::FileInputError
+    })?;
 
-    file.read_to_string(&mut text).unwrap_or_else(|err| {
-        eprintln!("Failed to read file: {}", err);
-        process::exit(1);
-    });
+    file.read_to_string(&mut text).map_err(|err| {
+        log::error!("Failed to read file: {}", err);
+        Errors::FileInputError
+    })?;
 
     normalize_text(text, options).await
 }

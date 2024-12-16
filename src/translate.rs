@@ -24,23 +24,19 @@ pub async fn translate_file(
     log::trace!("In translate_file");
     log::debug!("file_name: {}", file_name);
 
-    let text = task::spawn_blocking(move || -> Result<String, Errors> {
-        let path = Path::new(&file_name);
-        let mut file = File::open(path).map_err(|err| {
-            log::error!("Failed to open file: {}", err);
-            Errors::FileInputError
-        })?;
+    let mut text = String::new();
 
-        let mut text = String::new();
-        file.read_to_string(&mut text).map_err(|err| {
-            log::error!("Failed to read file: {}", err);
-            Errors::FileInputError
-        })?;
+    let mut file = File::open(file_name).map_err(|err| {
+        log::error!("Failed to open file: {}", err);
+        Errors::FileInputError
+    })?;
 
-        Ok(text)
-    }).await.map_err(|_| Errors::FileInputError)?;
+    file.read_to_string(&mut text).map_err(|err| {
+        log::error!("Failed to read file: {}", err);
+        Errors::FileInputError
+    })?;
 
-    translate_text(text?, options, json_schema).await
+    translate_text(text, options, json_schema).await
 }
 
 pub async fn translate_text(
