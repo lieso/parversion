@@ -17,6 +17,14 @@ use crate::transformation::{Transformation};
 
 pub type DocumentNode = XMLNode;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum DocumentType {
+    Json,
+    PlainText,
+    Xml,
+    Html,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Document {
     pub document_type: DocumentType,

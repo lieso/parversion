@@ -45,11 +45,14 @@ pub async fn organize_document(
     document: Document,
     options: Option<Options>,
 ) -> Result<Analysis, Errors> {
-    log::trace!("In organize_text");
+    log::trace!("In organize_document");
 
-    let basis_graph = options
-        .and_then(|opts| opts.basis_graph)
-        .unwrap_or_else(|| classify_or_create_basis_graph(document));
+    let basis_graph = options.as_ref().and_then(|opts| opts.basis_graph.clone());
+
+    let value_transformations = options
+        .as_ref()
+        .and_then(|opts| opts.value_transformations.clone())
+        .unwrap_or_else(Vec::new);
 
     Analysis::from_document(document, options.clone())
         .with_basis(basis_graph)

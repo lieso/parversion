@@ -81,6 +81,17 @@ impl Analysis {
 
 
 
+
+        let document_transformations = document.get_transformations();
+
+        document.apply_transformations(document_transformations);
+
+
+
+
+
+
+
         let document_root = self.document.get_root_node();
 
         let data_nodes: HashMap<ID, DataNode> = HashMap::from(
@@ -97,10 +108,6 @@ impl Analysis {
 }
 
 
-//
-//        let document_transformations = document.get_transformations();
-//
-//        document.apply_transformations(document_transformations);
 
 //        fn recurse(
 //            document_data: (DataNode, Vec<DocumentNode>),

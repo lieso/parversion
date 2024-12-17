@@ -5,8 +5,9 @@ use serde_json::{Value};
 use crate::basis_graph::{BasisGraph};
 use crate::document::{Document};
 use crate::types::*;
-use crate::organize::{organize_document};
+use crate::organize;
 use crate::analysis::{Analysis};
+use crate::model;
 
 pub async fn normalize_file(
     file_name: String,
@@ -60,7 +61,7 @@ pub async fn normalize_analysis(
 
     let basis_graph = analysis.get_basis_graph();
 
-    let target_schema = get_normal_json_schema(&basis_graph);
+    let target_schema = model::get_normal_json_schema(&basis_graph);
 
     analysis.get_schema_transformations(target_schema)
         .await

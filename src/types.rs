@@ -1,20 +1,14 @@
 use serde::{Serialize, Deserialize};
 
+#[derive(Clone, Debug)]
 pub enum AnalysisMode {
     DISABLED,
     SIMPLE,
     COMPLEX,
 }
 
-pub enum DocumentType {
-    Json,
-    PlainText,
-    Xml,
-    Html,
-}
-
+#[derive(Clone, Debug)]
 pub struct Options {
-    pub target_document_Type: Option<DocumentType>,
     pub basis_graph: Option<BasisGraph>,
     pub analysis_mode: Option<AnalysisMode>,
     pub origin: Option<String>,
