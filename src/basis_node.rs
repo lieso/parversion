@@ -4,9 +4,9 @@ use crate::transformation::{Transformation};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNode {
-    pub id: String,
-    pub hash: String,
-    pub lineage: String,
+    pub id: ID,
+    pub hash: Hash,
+    pub lineage: Lineage,
     pub description: String,
     pub transformations: Vec<Transformation>,
 }

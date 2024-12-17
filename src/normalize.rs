@@ -1,23 +1,17 @@
 use std::io::{Read};
 use std::fs::File;
-use std::sync::{Arc};
 use serde_json::{Value};
 
 use crate::basis_graph::{BasisGraph};
 use crate::document::{Document};
 use crate::types::*;
 use crate::organize::{organize_document};
-
-pub struct Normalization {
-    pub basis_graph: BasisGraph,
-    pub related_data: OutputData,
-    pub normalized_data: OutputData,
-}
+use crate::analysis::{Analysis};
 
 pub async fn normalize_file(
     file_name: String,
     options: Option<Options>,
-) -> Result<Normalization, Errors> {
+) -> Result<Analysis, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
 
@@ -39,13 +33,10 @@ pub async fn normalize_file(
 pub async fn normalize_text(
     text: String,
     options: Option<Options>,
-) -> Result<Normalization, Errors> {
+) -> Result<Analysis, Errors> {
     log::trace!("In normalize_text");
 
     let document = Document::from_string(text, options)?;
-
-    document.perform_document_analysis().await;
-    document.apply_document_transformations();
 
     normalize_document(document, options).await
 }
@@ -53,33 +44,25 @@ pub async fn normalize_text(
 pub async fn normalize_document(
     document: Document,
     options: Option<Options>,
-) -> Result<Normalization, Errors> {
+) -> Result<Analysis, Errors> {
     log::trace!("In normalize_document");
 
-    let organization = organize::organize_document(document, options);
+    let analysis = organize::organize_document(document, options);
 
-    normalize_organization(organization, options).await
+    normalize_analysis(analysis, options).await
 }
 
-pub async fn normalize_organization(
-    organization: Organization,
+pub async fn normalize_analysis(
+    analysis: Analysis,
     options: Option<Options>,
-) -> Result<Normalization, Errors> {
-    log::trace!("In normalize_organization");
+) -> Result<Analysis, Errors> {
+    log::trace!("In normalize_analysis");
 
-    let Organization {
-        basis_graph,
-        organized_data,
-        related_data
-    } = organization;
+    let basis_graph = analysis.get_basis_graph();
 
-    let normalized_data = basis_graph.normalize(organized_data).await;
+    let target_schema = get_normal_json_schema(&basis_graph);
 
-    let normalization = Normalization {
-        basis_graph,
-        related_data,
-        normalized_data,
-    };
-
-    Ok(normalization)
+    analysis.get_schema_transformations(target_schema)
+        .await
+        .apply_schema_transformations()?
 }

@@ -8,10 +8,11 @@ use std::str::FromStr;
 use serde_json::{from_str, to_string, Value};
 use std::io::stdout;
 use fern::Dispatch;
+use tokio::runtime::Runtime;
 
 mod types;
 mod config;
-mod macros;
+//mod macros;
 mod environment;
 mod basis_graph;
 mod basis_node;
@@ -22,8 +23,7 @@ mod translate;
 mod transformation;
 mod runtimes;
 
-use basis_graph::{BasisGraph};
-use crate::config::{CONFIG};
+//use crate::config::{CONFIG};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");

@@ -6,17 +6,12 @@ use serde_json::{Value};
 use crate::basis_graph::{BasisGraph};
 use crate::document::{Document};
 use crate::types::*;
-
-pub struct Organization {
-    pub basis_graph: BasisGraph,
-    pub related_data: Option<OutputData>,
-    pub organized_data: OutputData,
-}
+use crate::analysis::{Analysis};
 
 pub async fn organize_file(
     file_name: String,
     options: Option<Options>,
-) -> Result<Organization, Errors> {
+) -> Result<Analysis, Errors> {
     log::trace!("In organize_file");
     log::debug!("file_name: {}", file_name);
 
@@ -38,13 +33,10 @@ pub async fn organize_file(
 pub async fn organize_text(
     text: String,
     options: Option<Options>,
-) -> Result<Organization, Errors> {
+) -> Result<Analysis, Errors> {
     log::trace!("In organize_text");
 
     let document = Document::from_string(text)?;
-
-    document.perform_document_analysis().await;
-    document.apply_document_transformations();
 
     organize_document(document, options).await
 }
@@ -52,25 +44,16 @@ pub async fn organize_text(
 pub async fn organize_document(
     document: Document,
     options: Option<Options>,
-) -> Result<Organization, Errors> {
+) -> Result<Analysis, Errors> {
     log::trace!("In organize_text");
 
     let basis_graph = options
         .and_then(|opts| opts.basis_graph)
         .unwrap_or_else(|| classify_or_create_basis_graph(document));
 
-    let analysis = Analysis::from_document(document)
+    Analysis::from_document(document, options.clone())
         .with_basis(basis_graph)
+        .with_value_transformations(value_transformations)
         .perform_analysis()
-        .await;
-
-    analysis.apply_value_transformations(value_transformations);
-
-    let organization = Organization {
-        basis_graph: analysis.get_basis_graph(),
-        organized_data: analysis.get_data(),
-        related_data: analysis.get_related_data(),
-    };
-
-    Ok(organization)
+        .await?
 }

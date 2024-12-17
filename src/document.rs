@@ -12,27 +12,63 @@ use crate::constants;
 use crate::environment;
 use crate::error::{Errors};
 use crate::macros::*;
+use crate::types::*;
 use crate::transformation::{Transformation};
-
-enum DocumentType {
-    Plain,
-    Xml,
-    Html
-}
 
 pub type DocumentNode = XMLNode;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Document {
-    document_type: DocumentType,
-    origin: Option<String>,
-    date: Option<String>,
-    value: String,
-    transformations: Vec<DocumentTransformations>,
-    context: Context<T>
+    pub document_type: DocumentType,
+    pub origin: Option<String>,
+    pub date: Option<String>,
+    pub transformations: Vec<DocumentTransformations>,
+    pub context: Context<T>
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DocumentMetadata {
+    pub origin: Option<String>,
+    pub date: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Document<T> {
+    pub metadata: DocumentMetadata,
+    pub data: T,
+}
+
+impl Document<String> {
+    pub fn to_string(&self) -> String {
+        self.data.clone()
+    }
+}
+
+impl Document<Vec<JsonNode>> {
+    pub fn to_string(&self) -> String {
+        unimplemented!()
+    }
+
+    pub fn to_html(&self) -> String {
+        unimplemented!()
+    }
+
+    pub fn to_xml(&self) -> String {
+        unimplemented!()
+    }
+
+    pub fn to_plain_text(&self) -> String {
+        unimplemented!()
+    }
 }
  
 impl Document {
+    pub fn to_string(&self) -> String {
+        match document_type {
+            DocumentType::Json => unimplemented!(),
+        }
+    }
+
     pub fn from_string(
         value: String,
         origin: Option<String>,
@@ -47,7 +83,6 @@ impl Document {
                 document_type: DocumentType::Xml,
                 origin: origin,
                 date: date,
-                value: xml,
             };
 
             Ok(document)

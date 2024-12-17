@@ -1,6 +1,4 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyList, PySet};
-use serde_json::{Value, json};
 use regex::Regex;
 
 pub fn python_field_constant(

@@ -6,15 +6,21 @@ pub enum AnalysisMode {
     COMPLEX,
 }
 
-pub struct Options {
-    basis_graph: Option<BasisGraph>,
-    analysis_mode: Option<AnalysisMode>,
-    origin: Option<String>,
-    date: Option<String>,
-    value_transformations: Option<Vec<Transformation>>
+pub enum DocumentType {
+    Json,
+    PlainText,
+    Xml,
+    Html,
 }
 
-pub type OutputData = Vec<JsonNode>;
+pub struct Options {
+    pub target_document_Type: Option<DocumentType>,
+    pub basis_graph: Option<BasisGraph>,
+    pub analysis_mode: Option<AnalysisMode>,
+    pub origin: Option<String>,
+    pub date: Option<String>,
+    pub value_transformations: Option<Vec<Transformation>>
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Errors {
