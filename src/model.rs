@@ -43,8 +43,7 @@ lazy_static! {
                     }
                 },
                 "required": ["source", "timestamp", "content"]
-            })
-            .to_string(),
+            }).to_string(),
             tags: vec!["content", "aggregation", "news", "information"].into_iter().map(String::from).collect(),
             metadata: serde_json::from_str::<HashMap<String, String>>(r#"
                 {

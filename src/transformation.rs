@@ -65,7 +65,7 @@ impl Transform for DataNodeFieldsTransform {
 pub struct DataNodeHashTransform {
     id: ID,
     runtime: Runtime,
-    regex: Regex,
+    regex: String,
     code: String,
 }
 
@@ -137,7 +137,6 @@ pub enum Transformation {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DocumentTransformation {
     id: ID,
-    document_type: DocumentType,
     runtime: Runtime,
     code: String,
 }
@@ -163,13 +162,13 @@ lazy_static! {
         Transformation {
             runtime: Runtime::AWK,
             description: String::from("Converts American weights in pounds (lbs)"),
-            regex: Regex::new(r"\b\d+(\.\d+)?\s*(lbs?|pounds?)\b").unwrap(),
+            regex: r"\b\d+(\.\d+)?\s*(lbs?|pounds?)\b",
             code: String::from(r#"{ printf "%.2f lbs = %.2f kg\n", $1, $1 * 0.45359237 }"#),
         },
         Transformation {
             runtime: Runtime::AWK,
             description: String::from("Identity Transformation"),
-            regex: Regex::new(r"(?s).*").unwrap(),
+            regex: r"(?s).*",
             code: String::from(r#"{ print $0 }"#),
         },
     ];

@@ -1,5 +1,8 @@
 use serde::{Serialize, Deserialize};
 
+use crate::basis_graph::{BasisGraph};
+use crate::transformation::{Transformation};
+
 #[derive(Clone, Debug)]
 pub enum AnalysisMode {
     DISABLED,

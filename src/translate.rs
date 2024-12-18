@@ -64,7 +64,7 @@ pub async fn translate_analysis(
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_document");
 
-    analysis.get_schema_transformations(target_schema)
+    analysis.get_schema_transformations(json_schema)
         .await
         .apply_schema_transformations()?
 }

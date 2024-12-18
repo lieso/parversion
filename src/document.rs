@@ -79,8 +79,7 @@ impl Document {
 
     pub fn from_string(
         value: String,
-        origin: Option<String>,
-        date: Option<String>,
+        options: Option<Options>,
     ) -> Result<self, Errors> {
         if value.trim().is_empty() {
             return Err(Errors::DocumentNotProvided);
@@ -89,8 +88,6 @@ impl Document {
         if let Ok(xml) = string_to_xml(value) {
             let document = Document {
                 document_type: DocumentType::Xml,
-                origin: origin,
-                date: date,
             };
 
             Ok(document)

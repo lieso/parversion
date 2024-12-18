@@ -1,6 +1,9 @@
 use serde::{Serialize, Deserialize};
 
 use crate::transformation::{Transformation};
+use crate::hash::{Hash};
+use crate::id::{ID};
+use crate::lineage::{Lineage};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNode {

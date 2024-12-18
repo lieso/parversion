@@ -22,6 +22,7 @@ mod organize;
 mod translate;
 mod transformation;
 mod runtimes;
+mod document;
 
 //use crate::config::{CONFIG};
 
@@ -79,27 +80,19 @@ fn main() {
                 .short('o')
                 .long("output-format")
                 .value_name("FORMAT")
-                .help("Set output format: JSON, JSON_SCHEMA, or XML"))
+                .help("Set output format: JSON, HTML, XML, text"))
             .arg(Arg::with_name("url")
                 .short('u')
                 .long("url")
                 .value_name("URL")
                 .help("The full URL that identifies and locates the provided document"))
-            .arg(Arg::with_name("graphs")
-                .short('g')
-                .long("graphs")
-                .value_name("GRAPHS")
-                .help("Provide file path describing location of an analyzed basis graph to be used for interpretation"))
             .get_matches();
 
         let output_format = {
-            let format_str = matches.value_of("format").unwrap_or("json");
-            harvest::HarvestFormats::from_str(format_str)
-                .expect("Could not initialize output format")
+            let format_str = matches.value_of("format").unwrap_or("json")
         };
 
         let url: Option<&str> = matches.value_of("url");
-
 
         unimplemented!()
     });
