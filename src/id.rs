@@ -1,7 +1,7 @@
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct ID {
     value: String
 }
@@ -18,3 +18,11 @@ impl ID {
     }
 
 }
+
+impl PartialEq for ID {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl Eq for ID {}

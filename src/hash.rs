@@ -1,5 +1,7 @@
+use serde::{Serialize, Deserialize};
 use sha2::{Sha256, Digest};
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Hash {
     items: Vec<_>,
     value: Option<String>,

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
-use crate::transformations::{SchemaTransformation};
 use crate::id::{ID};
 use crate::basis_node::{BasisNode};
 use crate::basis_network::{BasisNetwork};

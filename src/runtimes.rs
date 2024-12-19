@@ -93,7 +93,7 @@ pub fn sanitize_awk_expression(input: &str) -> Result<String, String> {
 
     re.captures(input).and_then(|caps| {
         caps.get(1).map(|matched_text| matched_text.as_str().to_string())
-    })
+    });
 
     if let Some(caps) = re.captures(input) {
         if let Some(matched_text) = caps.get(1) {

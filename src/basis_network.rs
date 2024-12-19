@@ -8,7 +8,7 @@ use crate::id::{ID};
 pub struct BasisNetwork {
     pub id: ID,
     pub description: String,
-    pub associations: Option<HashSet<Hash>>
+    pub associations: Option<HashSet<Hash>>,
     pub recursive_network: Option<Vec<BasisNode>>,
 }
 

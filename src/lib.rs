@@ -2,7 +2,7 @@
 
 pub mod types;
 pub mod config;
-//pub mod macros;
+pub mod macros;
 pub mod environment;
 pub mod basis_graph;
 pub mod basis_node;
@@ -13,3 +13,7 @@ pub mod translate;
 pub mod transformation;
 pub mod runtimes;
 pub mod document;
+pub mod id;
+pub mod hash;
+pub mod lineage;
+pub mod model;

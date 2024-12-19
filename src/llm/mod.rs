@@ -10,6 +10,13 @@ mod openai;
 mod anthropic;
 mod groq;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum LlmProvider {
+    OpenAi,
+    Anthropic,
+    Groq
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LLMPageClassificationResponse {
     pub interface_type_id: String,

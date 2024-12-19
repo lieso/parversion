@@ -1,27 +1,25 @@
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::fmt::Debug;
+use xmltree::{Element, XMLNode};
 
-impl ID {
-    fn new() -> Self {
-        ID {}
-    }
+use crate::id::{ID};
+use crate::document::{DocumentNode};
+
+struct Context {
+    nodes: HashMap<ID, &XMLNode>,
 }
 
-struct Context<N> {
-    nodes: HashMap<ID, N>,
-}
-
-impl<N> Context<N> {
+impl Context {
     pub fn new() -> Self {
         Context {
             nodes: HashMap::new(),
         }
     }
 
-    pub fn register(&mut self, node: N) -> ID {
+    pub fn register(&mut self, node: XMLNode) -> ID {
         let id = ID::new();
-        self.nodes.insert(id.clone(), node);
+        self.nodes.insert(id.clone(), &node);
         id
     }
 }

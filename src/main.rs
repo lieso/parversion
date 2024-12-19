@@ -23,6 +23,10 @@ mod translate;
 mod transformation;
 mod runtimes;
 mod document;
+mod id;
+mod hash;
+mod lineage;
+mod model;
 
 //use crate::config::{CONFIG};
 
@@ -87,10 +91,6 @@ fn main() {
                 .value_name("URL")
                 .help("The full URL that identifies and locates the provided document"))
             .get_matches();
-
-        let output_format = {
-            let format_str = matches.value_of("format").unwrap_or("json")
-        };
 
         let url: Option<&str> = matches.value_of("url");
 

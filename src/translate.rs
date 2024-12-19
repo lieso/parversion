@@ -46,7 +46,7 @@ pub async fn translate_text(
 }
 
 pub async fn translate_document(
-    document: Document
+    document: Document,
     options: Option<Options>,
     json_schema: String,
 ) -> Result<Analysis, Errors> {

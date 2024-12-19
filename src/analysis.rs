@@ -35,6 +35,10 @@ impl Analysis {
         }
     }
 
+    pub fn to_document(self, document_type: DocumentType) -> Document {
+        unimplemented!()
+    }
+
     pub fn with_basis(self, basis_graph: &BasisGraph) -> self {
         self.basis_name = Some(basis_graph.name.clone());
         self.basis_description = Some(basis_graph.description.clone());

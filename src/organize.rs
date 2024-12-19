@@ -36,7 +36,7 @@ pub async fn organize_text(
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize_text");
 
-    let document = Document::from_string(text)?;
+    let document = Document::from_string(text, options)?;
 
     organize_document(document, options).await
 }

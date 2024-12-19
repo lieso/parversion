@@ -1,4 +1,6 @@
-use xmltree::Element;
+use serde::{Serialize, Deserialize};
+use lazy_static::lazy_static;
+use xmltree::{Element, XMLNode};
 use std::io::{Write, Cursor};
 use std::fs::File;
 use std::str::from_utf8;
@@ -10,28 +12,18 @@ use url::Url;
 use crate::config::{CONFIG};
 use crate::constants;
 use crate::environment;
-use crate::error::{Errors};
 use crate::macros::*;
 use crate::types::*;
 use crate::transformation::{Transformation};
+use crate::context::{Context};
 
 pub type DocumentNode = XMLNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum DocumentType {
-    Json,
     PlainText,
     Xml,
     Html,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Document {
-    pub document_type: DocumentType,
-    pub origin: Option<String>,
-    pub date: Option<String>,
-    pub transformations: Vec<DocumentTransformations>,
-    pub context: Context<T>
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,35 +33,12 @@ pub struct DocumentMetadata {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Document<T> {
+pub struct Document {
+    pub document_type: DocumentType,
     pub metadata: DocumentMetadata,
     pub data: T,
 }
 
-impl Document<String> {
-    pub fn to_string(&self) -> String {
-        self.data.clone()
-    }
-}
-
-impl Document<Vec<JsonNode>> {
-    pub fn to_string(&self) -> String {
-        unimplemented!()
-    }
-
-    pub fn to_html(&self) -> String {
-        unimplemented!()
-    }
-
-    pub fn to_xml(&self) -> String {
-        unimplemented!()
-    }
-
-    pub fn to_plain_text(&self) -> String {
-        unimplemented!()
-    }
-}
- 
 impl Document {
     pub fn to_string(&self) -> String {
         match document_type {
@@ -88,6 +57,11 @@ impl Document {
         if let Ok(xml) = string_to_xml(value) {
             let document = Document {
                 document_type: DocumentType::Xml,
+                metadata: DocumentMetadata {
+                    origin: options.as_ref().and_then(|opts| opts.origin.clone()),
+                    date: options.as_ref().and_then(|opts| opts.date.clone()),
+                },
+                data: xml,
             };
 
             Ok(document)
@@ -96,7 +70,7 @@ impl Document {
         }
     }
 
-    pub fn get_root_node<T>(self) -> (DataNode, Vec<T>) {
+    pub fn get_root_node<T>(self, context: Context) -> (DataNode, Vec<T>) {
         let mut reader = std::io::Cursor::new(self.value);
         let root = XmlNode::parse(&mut reader).expect("Could not parse XML");
         Document::document_to_data(root, None)
@@ -104,10 +78,10 @@ impl Document {
 
     pub fn document_to_data(
         xml_node: XmlNode,
-        parent_node: Option<DataNode>
+        parent_node: Option<DataNode>,
+        context: Context
     ) -> (DataNode, Vec<DocumentNode>) {
-        let context_id = Context::register(xml_node);
-
+        let context_id = context::register(xml_node);
         let lineage = &parent_node.unwrap_or(Lineage::new()).lineage;
 
         match xml_node {
@@ -116,7 +90,7 @@ impl Document {
                     DataNode::new(
                         context_id,
                         element_node.attributes,
-                        element_node.to_string().truncate(20)
+                        format!("{:?}", element_node).truncate(20),
                         &lineage
                     ),
                     element_node.children
@@ -157,10 +131,10 @@ impl Document {
     }
 }
 
-fn string_to_xml(self) -> Result<self, Errors> {
+fn string_to_xml(value: String) -> Result<String, Errors> {
     let mut xhtml = String::from("");
 
-    let sanitized = self.replace("\n", "");
+    let sanitized = value.replace("\n", "");
 
     let dom = parse_document(RcDom::default(), Default::default())
         .from_utf8()
@@ -173,10 +147,7 @@ fn string_to_xml(self) -> Result<self, Errors> {
         return Err(Errors::UnexpectedDocumentType);
     }
 
-    self.value = xhtml;
-    self.text_type = TextType::Xml;
-
-    Ok()
+    Ok(xhtml)
 }
 
 fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
