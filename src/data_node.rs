@@ -51,6 +51,9 @@ impl DataNode {
         parent_lineage: &Lineage,
     ) -> Self {
         let hash: Hash = apply_hash_transform(get_hash_transform(), fields.clone());
+
+
+        // we'll need original set of fields if we want to determine which other data node is recursively related to the current one
         let fields: DataNodeFields = apply_fields_transform(get_fields_transform(), fields.clone());
         let lineage = parent_lineage.with_item(hash.clone());
 

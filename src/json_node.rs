@@ -19,8 +19,6 @@ pub struct JsonMetadata {
 pub struct Json {
     pub key: String,
     pub value: String,
-    pub schema_type: String,
-    pub schema_path: SchemaPath,
-    pub schema_description: String,
     pub meta: JsonMetadata,
+    //pub property: Property,
 }
