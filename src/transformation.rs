@@ -144,19 +144,20 @@ pub struct DocumentTransformation {
 }
 
 pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
-    match transformation {
-        Transformation::DataNodeFieldsTransform(t) => {
-            match t.get_runtime() {
-                Runtime::Python => runtimes::python_field_map(&t.get_code(), payload)
-            }
-        },
-        Transformation::DataNodeHashTransform(t) => {
-            match t.get_runtime() {
-                Runtime::Python => runtimes::python_field_constant(&t.get_code(), payload)
-            }
-        },
-        _ => unimplemented!()
-    }
+    unimplemented!()
+    //match transformation {
+    //    Transformation::DataNodeFieldsTransform(t) => {
+    //        match t.get_runtime() {
+    //            Runtime::Python => runtimes::python_field_map(&t.get_code(), payload)
+    //        }
+    //    },
+    //    Transformation::DataNodeHashTransform(t) => {
+    //        match t.get_runtime() {
+    //            Runtime::Python => runtimes::python_field_constant(&t.get_code(), payload)
+    //        }
+    //    },
+    //    _ => unimplemented!()
+    //}
 }
 
 lazy_static! {

@@ -17,9 +17,9 @@ impl Context {
         }
     }
 
-    pub fn register(&mut self, node: XMLNode) -> ID {
+    pub fn register(&mut self, node: &XMLNode) -> ID {
         let id = ID::new();
-        self.nodes.insert(id.clone(), &node);
+        self.nodes.insert(id.clone(), node);
         id
     }
 }

@@ -8,6 +8,7 @@ use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use url::Url;
+use std::collections::HashMap;
 
 use crate::config::{CONFIG};
 use crate::constants;
@@ -44,7 +45,7 @@ impl Document {
     pub fn from_string(
         value: String,
         options: Option<Options>,
-    ) -> Result<self, Errors> {
+    ) -> Result<Self, Errors> {
         if value.trim().is_empty() {
             return Err(Errors::DocumentNotProvided);
         }
@@ -65,40 +66,46 @@ impl Document {
         }
     }
 
-    pub fn get_root_node<T>(self, context: Context) -> (DataNode, Vec<T>) {
+    pub fn get_root_node(self, context: &Context) -> (DataNode, Vec<XMLNode>) {
         let mut reader = std::io::Cursor::new(self.data);
         let root = XMLNode::parse(&mut reader).expect("Could not parse XML");
-        Document::document_to_data(root, None)
+        Document::document_to_data(root, None, context)
     }
 
     pub fn document_to_data(
         xml_node: XMLNode,
         parent_node: Option<DataNode>,
-        context: Context
+        context: &Context
     ) -> (DataNode, Vec<DocumentNode>) {
-        let context_id = context::register(xml_node);
+        let context_id = context.register(&xml_node);
         let lineage = &parent_node.unwrap_or(Lineage::new()).lineage;
 
         match xml_node {
             XMLNode::Element(element_node) => {
+                let mut description = format!("{:?}", element_node);
+                description.truncate(20);
+
                 (
                     DataNode::new(
                         context_id,
                         element_node.attributes,
-                        format!("{:?}", element_node).truncate(20),
+                        description,
                         &lineage
                     ),
                     element_node.children
                 )
             },
             XMLNode::Text(text_node) => {
+                let mut description = text_node.to_string();
+                description.truncate(20);
+
                 (
                     DataNode::new(
                         context_id,
                         HashMap::from([
                             ("text", text_node.to_string())
                         ]),
-                        element_node.to_string().truncate(20),
+                        description,
                         &lineage
                     ),
                     Vec::new()

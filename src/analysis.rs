@@ -1,6 +1,8 @@
+use crate::prelude::*;
 use crate::basis_node::{BasisNode};
 use crate::basis_graph::{BasisGraph};
-use crate::prelude::*;
+use crate::json_node::{JsonNode};
+use crate::document::{Document};
 
 pub struct Analysis {
     pub options: Option<Options>,
@@ -22,15 +24,19 @@ impl Analysis {
         document: Document,
         options: Option<Options>
     ) -> Self {
+        let context: Context = Context::new();
+
         Analysis {
-            document,
             options,
-            data_nodes: HashMap::new(),
-            json_nodes: HashMap::new(),
+            document,
+            document_context: context,
+            document_transformations: Vec::new(),
             basis_nodes: HashMap::new(),
-            basis_networks: HashMap::new(),
             basis_name: None,
             basis_description: None,
+            basis_networks: HashMap::new(),
+            data_nodes: HashMap::new(),
+            json_nodes: HashMap::new(),
             json_schema: None,
             value_transformations: Vec::new(),
         }
@@ -58,27 +64,15 @@ impl Analysis {
     pub fn get_basis_graph(self) -> BasisGraph {
         BasisGraph {
             id: ID::new(),
-            name: self.name.clone().unwrap(),
-            description: self.description.clone().unwrap(),
+            name: self.basis_name.clone().unwrap(),
+            description: self.basis_description.clone().unwrap(),
             json_schema: self.json_schema.clone().unwrap(),
             nodes: self.basis_nodes.clone().unwrap(),
             networks: self.basis_networks.clone().unwrap(),
         }
     }
-
-    pub fn to_json(self) -> String {
-        unimplemented!()
-    }
-
-    pub fn to_html(self) -> String {
-        unimplemented!()
-    }
-
-    pub fn to_xml(self) -> String {
-        unimplemented!()
-    }
-
-    pub fn to_text(self) -> String {
+    
+    pub async fn get_schema_transformations(self, target_schema: String) {
         unimplemented!()
     }
 
@@ -97,7 +91,7 @@ impl Analysis {
 
 
 
-        let document_root = self.document.get_root_node();
+        let document_root = self.document.get_root_node(&self.context);
 
         let data_nodes: HashMap<ID, DataNode> = HashMap::from(
             vec![
@@ -108,6 +102,22 @@ impl Analysis {
 
         self.data_nodes = data_nodes;
 
+        unimplemented!()
+    }
+
+    fn to_json(self) -> String {
+        unimplemented!()
+    }
+
+    fn to_html(self) -> String {
+        unimplemented!()
+    }
+
+    fn to_xml(self) -> String {
+        unimplemented!()
+    }
+
+    fn to_text(self) -> String {
         unimplemented!()
     }
 }
