@@ -1,5 +1,6 @@
 use crate::basis_node::{BasisNode};
 use crate::basis_graph::{BasisGraph};
+use crate::prelude::*;
 
 pub struct Analysis {
     pub options: Option<Options>,
