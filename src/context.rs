@@ -6,7 +6,7 @@ use xmltree::{Element, XMLNode};
 use crate::id::{ID};
 use crate::document::{DocumentNode};
 
-struct Context {
+pub struct Context {
     nodes: HashMap<ID, &XMLNode>,
 }
 

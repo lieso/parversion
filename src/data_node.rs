@@ -16,7 +16,7 @@ pub struct DataNode {
     id: ID,
     context_id: ID,
     hash: Hash,
-    lineage: Lineage, // lineage
+    lineage: Lineage,
     fields: DataNodeFields,
 }
 
@@ -48,15 +48,18 @@ impl DataNode {
         context_id: ID,
         fields: DataNodeFields
         description: String,
+        parent_lineage: &Lineage,
     ) -> Self {
         let hash: Hash = apply_hash_transform(get_hash_transform(), fields.clone());
         let fields: DataNodeFields = apply_fields_transform(get_fields_transform(), fields.clone());
+        let lineage = parent_lineage.with_item(hash.clone());
 
         DataNode {
             id: ID::new(),
             hash,
             context_id,
             fields,
+            lineage,
         }
     }
 

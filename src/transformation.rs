@@ -138,6 +138,7 @@ pub enum Transformation {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DocumentTransformation {
     id: ID,
+    description: String,
     runtime: Runtime,
     code: String,
 }

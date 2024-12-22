@@ -16,6 +16,7 @@ use crate::macros::*;
 use crate::types::*;
 use crate::transformation::{Transformation};
 use crate::context::{Context};
+use crate::data_node::{DataNode};
 
 pub type DocumentNode = XMLNode;
 
@@ -36,16 +37,10 @@ pub struct DocumentMetadata {
 pub struct Document {
     pub document_type: DocumentType,
     pub metadata: DocumentMetadata,
-    pub data: T,
+    pub data: String,
 }
 
 impl Document {
-    pub fn to_string(&self) -> String {
-        match document_type {
-            DocumentType::Json => unimplemented!(),
-        }
-    }
-
     pub fn from_string(
         value: String,
         options: Option<Options>,
@@ -71,13 +66,13 @@ impl Document {
     }
 
     pub fn get_root_node<T>(self, context: Context) -> (DataNode, Vec<T>) {
-        let mut reader = std::io::Cursor::new(self.value);
-        let root = XmlNode::parse(&mut reader).expect("Could not parse XML");
+        let mut reader = std::io::Cursor::new(self.data);
+        let root = XMLNode::parse(&mut reader).expect("Could not parse XML");
         Document::document_to_data(root, None)
     }
 
     pub fn document_to_data(
-        xml_node: XmlNode,
+        xml_node: XMLNode,
         parent_node: Option<DataNode>,
         context: Context
     ) -> (DataNode, Vec<DocumentNode>) {
@@ -207,33 +202,25 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
     }
 }
 
-lazy_static! {
-    pub static ref DOCUMENT_TRANSFORMATIONS: Vec<Transformation> = vec![
-        DocumentTransformation {
-            runtime: Runtime::AWK,
-            description: String::from("Unseen blacklisted attributes"),
-            regex: Regex::new(r#"
-"style", "bgcolor", "border", "cellpadding", "cellspacing",
-"width", "height", "rows", "cols", "wrap",
-"aria-hidden", "size", "op", "lang", "colspan", "rel"
-            "#).unwrap(),
-            expression: String::from(r#"{ print $0 }"#),
-        },
-        DocumentTransformation {
-            runtime: Runtime::AWK,
-            description: String::from("Unseen blacklisted elements"),
-            regex: Regex::new(r#"
-"script", "meta", "link", "iframe", "svg", "style", "noscript"
-            "#).unwrap(),
-            expression: String::from(r#"{ print $0 }"#),
-        },
-        DocumentTransformation {
-            runtime: Runtime::AWK,
-            description: String::from("Seen blacklisted elements"),
-            regex: Regex::new(r#"
-"head", "body", "br", "form"
-            "#).unwrap(),
-            expression: String::from(r#"{ print $0 }"#),
-        }
-    ];
-}
+//lazy_static! {
+//    pub static ref DOCUMENT_TRANSFORMATIONS: Vec<Transformation> = vec![
+//        DocumentTransformation {
+//            runtime: Runtime::AWK,
+//            description: String::from("Unseen blacklisted attributes"),
+//            regex: Regex::new(r#"
+//"style", "bgcolor", "border", "cellpadding", "cellspacing",
+//"width", "height", "rows", "cols", "wrap",
+//"aria-hidden", "size", "op", "lang", "colspan", "rel"
+//            "#).unwrap(),
+//            expression: String::from(r#"{ print $0 }"#),
+//        },
+//        DocumentTransformation {
+//            runtime: Runtime::AWK,
+//            description: String::from("Unseen blacklisted elements"),
+//            regex: Regex::new(r#"
+//"script", "meta", "link", "iframe", "svg", "style", "noscript"
+//            "#).unwrap(),
+//            expression: String::from(r#"{ print $0 }"#),
+//        },
+//    ];
+//}

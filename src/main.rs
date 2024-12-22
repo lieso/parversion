@@ -10,25 +10,28 @@ use std::io::stdout;
 use fern::Dispatch;
 use tokio::runtime::Runtime;
 
-mod types;
-mod config;
-//mod macros;
-mod environment;
-mod basis_graph;
-mod basis_node;
+mod analysis;
 mod basis_network;
+mod basis_node;
+mod basis_graph;
+mod config;
+mod context;
+mod data_node;
+mod document;
+mod environment;
+mod hash;
+mod id;
+mod lineage;
+mod macros;
+mod model;
 mod normalize;
 mod organize;
-mod translate;
-mod transformation;
 mod runtimes;
-mod document;
-mod id;
-mod hash;
-mod lineage;
-mod model;
+mod transformation;
+mod translate;
+mod types;
 
-//use crate::config::{CONFIG};
+use crate::config::{CONFIG};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");

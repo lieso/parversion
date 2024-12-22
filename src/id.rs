@@ -7,16 +7,21 @@ pub struct ID {
 }
 
 impl ID {
-    pub fn new() -> self {
+    pub fn new() -> Self {
         ID {
             value: Uuid::new_v4().to_string()
         }
     }
-
-    pub fn to_string(&self) -> String {
-        format!("{}", self.value);
+    
+    pub fn from_str(value: &str) -> Self {
+        ID {
+            value: value.to_string()
+        }
     }
 
+    pub fn to_string(&self) -> String {
+        self.value.clone()
+    }
 }
 
 impl PartialEq for ID {
