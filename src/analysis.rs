@@ -1,7 +1,8 @@
 use crate::prelude::*;
 use crate::basis_node::{BasisNode};
-use crate::basis_graph::{BasisGraph};
+use crate::data_node::{DataNode};
 use crate::json_node::{JsonNode};
+use crate::basis_graph::{BasisGraph};
 use crate::document::{Document};
 
 pub struct Analysis {
@@ -46,7 +47,7 @@ impl Analysis {
         unimplemented!()
     }
 
-    pub fn with_basis(self, basis_graph: &BasisGraph) -> self {
+    pub fn with_basis(self, basis_graph: &BasisGraph) -> Self {
         self.basis_name = Some(basis_graph.name.clone());
         self.basis_description = Some(basis_graph.description.clone());
         self.basis_nodes = Some(basis_graph.nodes.clone());
@@ -55,7 +56,7 @@ impl Analysis {
         self
     }
 
-    pub fn with_value_transformations(self, value_transformations: Vec<ValueTransformation>) -> self {
+    pub fn with_value_transformations(self, value_transformations: Vec<ValueTransformation>) -> Self {
         self.value_transformations = value_transformations;
 
         self
@@ -72,18 +73,18 @@ impl Analysis {
         }
     }
     
-    pub async fn get_schema_transformations(self, target_schema: String) {
+    pub async fn transmute(self, target_schema: &str) -> Result<Self, Errors> {
         unimplemented!()
     }
 
-    pub async fn perform_analysis(self) {
+    pub async fn perform_analysis(self) -> Result<Self, Errors> {
 
 
 
 
-        let document_transformations = document.get_transformations();
+        let document_transformations = self.document.perform_analysis();
 
-        document.apply_transformations(document_transformations);
+        self.document.apply_transformations(document_transformations);
 
 
 

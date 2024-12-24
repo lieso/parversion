@@ -12,8 +12,8 @@ use crate::analysis::{Analysis};
 
 pub async fn translate_file(
     file_name: String,
-    options: Option<Options>,
-    json_schema: String,
+    options: &Option<Options>,
+    json_schema: &str,
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_file");
     log::debug!("file_name: {}", file_name);
@@ -30,41 +30,39 @@ pub async fn translate_file(
         Errors::FileInputError
     })?;
 
-    translate_text(text, options, json_schema).await
+    translate_text(text, options, json_schema).await?
 }
 
 pub async fn translate_text(
     text: String,
-    options: Option<Options>,
-    json_schema: String,
+    options: &Option<Options>,
+    json_schema: &str,
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_text");
 
     let document = Document::from_string(text, options)?;
 
-    translate_document(document, options, json_schema).await
+    translate_document(document, options, json_schema).await?
 }
 
 pub async fn translate_document(
     document: Document,
-    options: Option<Options>,
-    json_schema: String,
+    options: &Option<Options>,
+    json_schema: &str,
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_document");
 
-    let analysis = organize::organize_document(document, options);
+    let analysis = organize::organize_document(document, options).await?;
 
-    translate_analysis(analysis, options, json_schema).await
+    translate_analysis(analysis, options, json_schema).await?
 }
 
 pub async fn translate_analysis(
     analysis: Analysis,
-    options: Option<Options>,
-    json_schema: String,
+    options: &Option<Options>,
+    json_schema: &str,
 ) -> Result<Analysis, Errors> {
-    log::trace!("In translate_document");
+    log::trace!("In translate_analysis");
 
-    analysis.get_schema_transformations(json_schema)
-        .await
-        .apply_schema_transformations()?
+    analysis.transmute(json_schema).await?
 }

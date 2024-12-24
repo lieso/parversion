@@ -11,7 +11,7 @@ use crate::model;
 
 pub async fn normalize_file(
     file_name: String,
-    options: Option<Options>,
+    options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file_name: {}", file_name);
@@ -33,7 +33,7 @@ pub async fn normalize_file(
 
 pub async fn normalize_text(
     text: String,
-    options: Option<Options>,
+    options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In normalize_text");
 
@@ -44,7 +44,7 @@ pub async fn normalize_text(
 
 pub async fn normalize_document(
     document: Document,
-    options: Option<Options>,
+    options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In normalize_document");
 
@@ -55,7 +55,7 @@ pub async fn normalize_document(
 
 pub async fn normalize_analysis(
     analysis: Analysis,
-    options: Option<Options>,
+    options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In normalize_analysis");
 
@@ -63,7 +63,5 @@ pub async fn normalize_analysis(
 
     let target_schema = model::get_normal_json_schema(&basis_graph);
 
-    analysis.get_schema_transformations(target_schema)
-        .await
-        .apply_schema_transformations()?
+    analysis.transmute(target_schema).await?
 }

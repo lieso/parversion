@@ -10,7 +10,7 @@ use crate::analysis::{Analysis};
 
 pub async fn organize_file(
     file_name: String,
-    options: Option<Options>,
+    options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize_file");
     log::debug!("file_name: {}", file_name);
@@ -32,7 +32,7 @@ pub async fn organize_file(
 
 pub async fn organize_text(
     text: String,
-    options: Option<Options>,
+    options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize_text");
 
@@ -43,7 +43,7 @@ pub async fn organize_text(
 
 pub async fn organize_document(
     document: Document,
-    options: Option<Options>,
+    options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize_document");
 
@@ -54,7 +54,7 @@ pub async fn organize_document(
         .and_then(|opts| opts.value_transformations.clone())
         .unwrap_or_else(Vec::new);
 
-    Analysis::from_document(document, options.clone())
+    Analysis::from_document(document, &options)
         .with_basis(basis_graph)
         .with_value_transformations(value_transformations)
         .perform_analysis()

@@ -115,7 +115,7 @@ impl Document {
         }
     }
 
-    pub async fn perform_document_analysis(self) {
+    pub async fn perform_analysis(self) {
         // provide sample
         // ask if it uses meaningful class namres
         // create transformation if it doesn't
@@ -128,7 +128,7 @@ impl Document {
         unimplemented!()
     }
 
-    pub fn apply_document_transformations(self) {
+    pub fn apply_transformations(self) {
         unimplemented!()
     }
 }

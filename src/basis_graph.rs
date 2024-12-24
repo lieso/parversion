@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
-use crate::id::{ID};
+use crate::prelude::*;
 use crate::basis_node::{BasisNode};
 use crate::basis_network::{BasisNetwork};
 
