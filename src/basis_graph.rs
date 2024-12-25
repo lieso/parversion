@@ -15,7 +15,7 @@ pub struct BasisGraph {
     pub networks: Vec<BasisNetwork>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct BasisGraphBuilder {
     id: ID,
     name: Option<String>,
@@ -38,23 +38,22 @@ impl BasisGraphBuilder {
     }
 
     pub fn from_basis_graph(basis_graph: &BasisGraph) -> Self {
-        BasisGraphBuilder {
-            id: basis_graph.id.clone(),
-            name: Some(basis_graph.name.clone()),
-            description: Some(basis_graph.description.clone()),
-            json_schema: Some(basis_graph.json_schema.clone()),
-            nodes: basis_graph.nodes.into_iter()
-                .map(|node| (node.lineage.clone(), node.clone()))
-                .collect(),
-            networks: basis_graph.networks.clone(),
-        }
+        unimplemented!()
+        //BasisGraphBuilder {
+        //    id: basis_graph.id.clone(),
+        //    name: Some(basis_graph.name.clone()),
+        //    description: Some(basis_graph.description.clone()),
+        //    json_schema: Some(basis_graph.json_schema.clone()),
+        //    nodes: HashMap::new(),
+        //    networks: basis_graph.networks.clone(),
+        //}
     }
 
     pub fn build(self) -> Result<BasisGraph, Errors> {
         let name = self.name.ok_or_else(||
             Errors::BasisGraphBuildError("Name is required".into())
         )?;
-        let description = self.name.ok_or_else(||
+        let description = self.description.ok_or_else(||
             Errors::BasisGraphBuildError("Description is required".into())
         )?;
         let json_schema = self.json_schema.ok_or_else(||
@@ -66,7 +65,7 @@ impl BasisGraphBuilder {
             name,
             description,
             json_schema,
-            nodes: self.nodes,
+            nodes: self.nodes.into_values().collect(),
             networks: self.networks,
         })
     }

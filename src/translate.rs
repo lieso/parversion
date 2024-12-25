@@ -108,7 +108,7 @@ pub async fn translate_file_to_analysis(
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path).map_err(|err| {
-        log::error!("Failed to get file as text: {}", err);
+        log::error!("Failed to get file as text: {:?}", err);
         Errors::FileInputError
     })?;
 
@@ -153,7 +153,7 @@ pub async fn translate_file(
     let new_path = append_to_filename(path, "_translated")?;
 
     write_text_to_file(&new_path, &text).map_err(|err| {
-        log::error!("Failed to write translated text to file: {}", err);
+        log::error!("Failed to write translated text to file: {:?}", err);
         Errors::FileOutputError
     })
 }

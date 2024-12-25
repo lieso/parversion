@@ -63,7 +63,7 @@ impl Document {
         let mut reader = std::io::Cursor::new(self.data);
         match Element::parse(reader) {
             Ok(element) => {
-                Document::document_to_data(element, None)
+                Document::document_to_data(xmltree::XMLNode::Element(element), None)
             },
             _ => panic!("Could not parse xml")
         }
@@ -74,9 +74,13 @@ impl Document {
         parent_node: Option<DataNode>,
     ) -> (DataNode, Vec<DocumentNode>) {
         //let context_id = context.register(&xml_node);
-        let lineage = &parent_node.unwrap_or(Lineage::new()).lineage;
 
-        let context_id = "placeholder".to_string();
+        let lineage = match &parent_node {
+            Some(node) => &node.lineage,
+            None => &Lineage::new(),
+        };
+
+        let context_id = ID::new();
 
         match xml_node {
             XMLNode::Element(element_node) => {

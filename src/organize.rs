@@ -88,7 +88,7 @@ pub async fn organize_file_to_analysis(
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path).map_err(|err| {
-        log::error!("Failed to get file as text: {}", err);
+        log::error!("Failed to get file as text: {:?}", err);
         Errors::FileInputError
     })?;
 
@@ -133,7 +133,7 @@ pub async fn organize_file(
     let new_path = append_to_filename(path, "_organized")?;
 
     write_text_to_file(&new_path, &text).map_err(|err| {
-        log::error!("Failed to write organized text to file: {}", err);
+        log::error!("Failed to write organized text to file: {:?}", err);
         Errors::FileOutputError
     })
 }

@@ -50,8 +50,8 @@ impl Analysis {
         }
     }
 
-    pub fn build_basis_graph(self) -> Result<BasisGraph, Errors> {
-        self.basis_graph.build()
+    pub fn build_basis_graph(&self) -> Result<BasisGraph, Errors> {
+        self.basis_graph.clone().build()
     }
     
     pub async fn transmute(self, target_schema: &str) -> Result<Self, Errors> {
@@ -81,7 +81,7 @@ impl Analysis {
         unimplemented!()
     }
 
-    pub fn to_document(self, document_format: DocumentFormat) -> Result<Document, Errors> {
+    pub fn to_document(self, document_format: &Option<DocumentFormat>) -> Result<Document, Errors> {
         unimplemented!()
     }
 

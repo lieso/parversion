@@ -9,6 +9,13 @@ pub struct Lineage {
 }
 
 impl Lineage {
+    pub fn new() -> Self {
+        Lineage {
+            source_hashes: Vec::new(),
+            identity_hash: Hash::new(),
+        }
+    }
+
     pub fn from_hashes(source_hashes: Vec<Hash>) -> Self {
         let identity_hash = derive_identity(source_hashes.clone());
 

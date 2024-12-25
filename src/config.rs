@@ -8,7 +8,7 @@ use std::env;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 enum LlmProvider {
-    OpenAi,
+    OpenAI,
     Anthropic,
     Groq
 }
@@ -51,7 +51,7 @@ impl Config {
     fn default() -> Self {
         Config {
             llm: LlmConfig {
-                llm_provider: LlmProvider::openai,
+                llm_provider: LlmProvider::OpenAI,
                 max_concurrency: 1,
                 target_node_adjacent_xml_length: 2000,
                 target_node_examples_max_count: 3,

@@ -31,7 +31,7 @@ pub fn get_hash_transform() -> DataNodeHashTransform {
 }
 
 pub fn apply_fields_transform(
-    transformation: DataNodeTransform,
+    transformation: DataNodeFieldsTransform,
     fields: DataNodeFields
 ) -> DataNodeFields {
     unimplemented!()
@@ -39,7 +39,7 @@ pub fn apply_fields_transform(
 }
 
 pub fn apply_hash_transform(
-    transformation: DataNodeTransform,
+    transformation: DataNodeHashTransform,
     fields: DataNodeFields
 ) -> Hash {
     unimplemented!()
@@ -59,7 +59,7 @@ impl DataNode {
 
         // we'll need original set of fields if we want to determine which other data node is recursively related to the current one
         let fields: DataNodeFields = apply_fields_transform(get_fields_transform(), fields.clone());
-        let lineage = parent_lineage.with_item(hash.clone());
+        let lineage = parent_lineage.with_hash(hash.clone());
 
         DataNode {
             id: ID::new(),

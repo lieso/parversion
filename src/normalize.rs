@@ -15,7 +15,7 @@ pub async fn normalize(
 
     let target_model = Model::get_normal_json_schema(&basis_graph).unwrap();
 
-    analysis.transmute(target_model.json_schema).await
+    analysis.transmute(&target_model.json_schema).await
 }
 
 pub async fn normalize_analysis(
@@ -148,7 +148,7 @@ pub async fn normalize_file(
     let new_path = append_to_filename(path, "_normalized")?;
 
     write_text_to_file(&new_path, &text).map_err(|err| {
-        log::error!("Failed to write translated text to file: {}", err);
+        log::error!("Failed to write translated text to file: {:?}", err);
         Errors::FileOutputError
     })
 }
