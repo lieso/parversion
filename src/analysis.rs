@@ -79,7 +79,7 @@ impl Analysis {
         unimplemented!()
     }
 
-    pub fn to_document(self, document_type: DocumentType) -> Document {
+    pub fn to_document(self, document_type: DocumentType) -> Result<Document, Errors> {
         unimplemented!()
     }
 

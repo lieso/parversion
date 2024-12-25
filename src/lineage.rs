@@ -35,6 +35,14 @@ impl Lineage {
     }
 }
 
+impl PartialEq for Lineage {
+    fn eq(&self, other: &Self) -> bool {
+        self.identity_hash == other.identity_hash
+    }
+}
+
+impl Eq for Lineage {}
+
 fn derive_identity(source_hashes: Vec<Hash>) -> Hash {
 
     let mut hashes = source_hashes.clone();

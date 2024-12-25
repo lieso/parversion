@@ -21,7 +21,7 @@ pub struct BasisGraphBuilder {
     name: Option<String>,
     description: Option<String>,
     json_schema: Option<String>,
-    nodes: HashMap<ID, BasisNode>,
+    nodes: HashMap<Lineage, BasisNode>,
     networks: Vec<BasisNetwork>,
 }
 
@@ -44,7 +44,7 @@ impl BasisGraphBuilder {
             description: Some(basis_graph.description.clone()),
             json_schema: Some(basis_graph.json_schema.clone()),
             nodes: basis_graph.nodes.into_iter()
-                .map(|node| (node.lineage.id.clone(), node.clone()))
+                .map(|node| (node.lineage.clone(), node.clone()))
                 .collect(),
             networks: basis_graph.networks.clone(),
         }
@@ -52,13 +52,13 @@ impl BasisGraphBuilder {
 
     pub fn build(self) -> Result<BasisGraph, Errors> {
         let name = self.name.ok_or_else(||
-            Errors::BasisGraphBuilderError("Name is required".into())
+            Errors::BasisGraphBuildError("Name is required".into())
         )?;
         let description = self.name.ok_or_else(||
-            Errors::BasisGraphBuilderError("Description is required".into())
+            Errors::BasisGraphBuildError("Description is required".into())
         )?;
         let json_schema = self.json_schema.ok_or_else(||
-            Errors::BasisGraphBuilderError("JSON schema is required".into())
+            Errors::BasisGraphBuildError("JSON schema is required".into())
         )?;
 
         Ok(BasisGraph {

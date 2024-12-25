@@ -20,10 +20,12 @@ pub struct Options {
 #[derive(Clone, Debug)]
 pub enum Errors {
     FileInputError,
+    FileOutputError,
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,
     UnexpectedOutputFormat,
     XmlParseError,
-    BasisGraphBuildError(String)
+    BasisGraphBuildError(String),
+    PathConversionError,
 }

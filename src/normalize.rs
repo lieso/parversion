@@ -1,9 +1,6 @@
 use crate::prelude::*;
-use crate::basis_graph::{BasisGraph};
 use crate::document::{Document};
-use crate::types::*;
-use crate::organize::{organize_document};
-use crate::analysis::{Analysis};
+use crate::organize::{organize};
 use crate::model;
 
 pub async fn normalize_analysis(
@@ -26,7 +23,7 @@ pub async fn normalize_text_to_analysis(
     log::trace!("In normalize_text_to_analysis");
 
     let document = Document::from_string(text, options)?;
-    let analysis = organize_document(document, options).await?;
+    let analysis = organize(document, options).await?;
 
     normalize_analysis(analysis, options).await?
 }
@@ -38,9 +35,9 @@ pub async fn normalize_text_to_document(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_text_to_document");
 
-    let analysis = normalize_text_to_analysis(text, options)?;
+    let analysis = normalize_text_to_analysis(text, options).await?;
 
-    analysis.to_document(document_type)
+    analysis.to_document(document_type)?
 }
 
 pub async fn normalize_text(
@@ -52,7 +49,7 @@ pub async fn normalize_text(
 
     let document = normalize_text_to_document(text, options, document_type).await?;
 
-    document.to_string()
+    Ok(document.to_string())
 }
 
 pub async fn normalize_document_to_analysis(
@@ -61,7 +58,7 @@ pub async fn normalize_document_to_analysis(
 ) -> Result<Analysis, Errors> {
     log::trace!("In normalize_document_to_analysis");
 
-    let analysis = organize::organize_document(document, options)?;
+    let analysis = organize(document, options).await?;
 
     normalize_analysis(analysis, options).await?;
 }
@@ -73,7 +70,7 @@ pub async fn normalize_document(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_document");
 
-    let analysis = normalize_document_to_analysis(document, options)?;
+    let analysis = normalize_document_to_analysis(document, options).await?;
 
     analysis.to_document(document_type)
 }
@@ -85,9 +82,9 @@ pub async fn normalize_document_to_text(
 ) -> Result<String, Errors> {
     log::trace!("In normalize_document_to_text");
 
-    let document = normalize_document(document, options, document_type)?;
+    let document = normalize_document(document, options, document_type).await?;
 
-    document.to_string()
+    Ok(document.to_string())
 }
 
 pub async fn normalize_file_to_analysis(
@@ -110,7 +107,7 @@ pub async fn normalize_file_to_document(
     log::trace!("In normalize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let analysis = normalize_file_to_analysis(path, options)?;
+    let analysis = normalize_file_to_analysis(path, options).await?;
 
     analysis.to_document(document_type)
 }
@@ -123,9 +120,9 @@ pub async fn normalize_file_to_text(
     log::trace!("In normalize_file_to_text");
     log::debug!("file path: {}", path);
 
-    let document = normalize_file_to_document(path, options, document_type)?;
+    let document = normalize_file_to_document(path, options, document_type).await?;
 
-    document.to_string()
+    Ok(document.to_string())
 }
 
 pub async fn normalize_file(
@@ -136,12 +133,11 @@ pub async fn normalize_file(
     log::trace!("In normalize_file");
     log::debug!("file path: {}", path);
 
-    let text = normalize_file_to_text(path, options, document_type)?;
-
+    let text = normalize_file_to_text(path, options, document_type).await?;
     let new_path = append_to_filename(path, "_normalized")?;
 
-    // TODO: both params are strings, order may be confused
-    write_text_to_file(new_path, text)?;
-
-    Ok(())
+    write_text_to_file(&new_path, &text).map_err(|err| {
+        log::error!("Failed to write translated text to file: {}", err);
+        Errors::FileOutputError
+    })
 }

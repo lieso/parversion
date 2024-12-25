@@ -10,11 +10,7 @@ use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use url::Url;
 use std::collections::HashMap;
 
-use crate::config::{CONFIG};
-use crate::constants;
-use crate::environment;
-use crate::macros::*;
-use crate::types::*;
+use crate::prelude::*;
 use crate::transformation::{Transformation};
 use crate::context::{Context};
 use crate::data_node::{DataNode};

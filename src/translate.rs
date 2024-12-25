@@ -1,10 +1,6 @@
-use std::io::{Read};
-use std::fs::File;
-use std::path::Path;
-use crate::basis_graph::{BasisGraph};
+use crate::prelude::*;
 use crate::document::{Document};
-use crate::types::*;
-use crate::organize::{organize_document};
+use crate::organize::{organize};
 use crate::analysis::{Analysis};
 
 pub async fn translate_analysis(
@@ -25,7 +21,7 @@ pub async fn translate_text_to_analysis(
     log::trace!("In translate_text_to_analysis");
 
     let document = Document::from_string(text, options)?;
-    let analysis = organize_document(document, options).await?;
+    let analysis = organize(document, options).await?;
 
     translate_analysis(analysis, options, json_schema).await
 }
@@ -51,7 +47,7 @@ pub async fn translate_text(
     log::trace!("In translate_text");
 
     let document = translate_text_to_document(text, options, document_type, json_schema).await?;
-    document.to_string()
+    Ok(document.to_string())
 }
 
 pub async fn translate_document_to_analysis(
@@ -61,7 +57,8 @@ pub async fn translate_document_to_analysis(
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_document_to_analysis");
 
-    let analysis = organize_document(document, options).await?;
+    let analysis = organize(document, options).await?;
+
     translate_analysis(analysis, options, json_schema).await
 }
 
@@ -86,7 +83,8 @@ pub async fn translate_document_to_text(
     log::trace!("In translate_document_to_text");
 
     let document = translate_document(document, options, document_type, json_schema).await?;
-    document.to_string()
+
+    Ok(document.to_string())
 }
 
 pub async fn translate_file_to_analysis(
@@ -126,7 +124,8 @@ pub async fn translate_file_to_text(
     log::trace!("In translate_file_to_text");
 
     let document = translate_file_to_document(path, options, document_type, json_schema).await?;
-    document.to_string()
+
+    Ok(document.to_string())
 }
 
 pub async fn translate_file(
@@ -141,7 +140,7 @@ pub async fn translate_file(
     let text = translate_file_to_text(path, options, document_type, json_schema).await?;
     let new_path = append_to_filename(path, "_translated")?;
 
-    write_text_to_file(new_path, text).map_err(|err| {
+    write_text_to_file(&new_path, &text).map_err(|err| {
         log::error!("Failed to write translated text to file: {}", err);
         Errors::FileOutputError
     })

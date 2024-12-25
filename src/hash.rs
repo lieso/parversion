@@ -81,6 +81,8 @@ impl PartialEq for Hash {
     }
 }
 
+impl Eq for Hash {}
+
 impl fmt::Display for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.value {
@@ -90,4 +92,3 @@ impl fmt::Display for Hash {
     }
 }
 
-impl Eq for Hash {}
