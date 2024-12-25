@@ -2,7 +2,7 @@ use std::env;
 use dotenv::dotenv;
 
 #[derive(PartialEq)]
-enum Environment {
+pub enum Environment {
     Local,
     Production,
 }

@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use crate::prelude::*;
-use crate::basis_node::{BasisNode};
 use crate::data_node::{DataNode};
 use crate::json_node::{JsonNode};
 use crate::basis_graph::{BasisGraph, BasisGraphBuilder};
 use crate::document::{Document};
+use crate::document_format::{DocumentFormat};
 use crate::transformation::{Transformation};
 
 pub struct Analysis {
@@ -79,7 +81,7 @@ impl Analysis {
         unimplemented!()
     }
 
-    pub fn to_document(self, document_type: DocumentType) -> Result<Document, Errors> {
+    pub fn to_document(self, document_format: DocumentFormat) -> Result<Document, Errors> {
         unimplemented!()
     }
 

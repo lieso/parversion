@@ -1,13 +1,9 @@
 use std::collections::HashMap;
-use std::hash::Hash;
-use std::fmt::Debug;
-use xmltree::{Element, XMLNode};
 
 use crate::id::{ID};
-use crate::document::{DocumentNode};
 
 pub struct Context {
-    nodes: HashMap<ID, &XMLNode>,
+    nodes: HashMap<ID, String>,
 }
 
 impl Context {
@@ -17,7 +13,7 @@ impl Context {
         }
     }
 
-    pub fn register(&mut self, node: &XMLNode) -> ID {
+    pub fn register(&mut self, node: String) -> ID {
         let id = ID::new();
         self.nodes.insert(id.clone(), node);
         id

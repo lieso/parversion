@@ -1,7 +1,10 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
+use serde_json::json;
 
 use crate::id::{ID};
+use crate::basis_graph::BasisGraph;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Model {
@@ -24,6 +27,12 @@ pub struct Model {
 
     /// A sample instance of data for demonstration or testing purposes
     pub example_data: Option<String>,
+}
+
+impl Model {
+    pub fn get_normal_json_schema(basis_graph: &BasisGraph) -> Option<Self> {
+        unimplemented!()
+    }
 }
 
 lazy_static! {

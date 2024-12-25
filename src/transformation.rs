@@ -1,8 +1,5 @@
 use serde::{Serialize, Deserialize};
-use lazy_static::lazy_static;
 
-use crate::schema_path::{SchemaPath};
-use crate::runtimes;
 use crate::id::{ID};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -23,8 +20,8 @@ pub struct JsonSchemaTransform {
     id: ID,
     runtime: Runtime,
     code: String,
-    source: SchemaPath,
-    target: SchemaPath,
+    source: String,
+    target: String,
 }
 
 impl Transform for JsonSchemaTransform {
@@ -143,8 +140,7 @@ pub struct DocumentTransformation {
     code: String,
 }
 
-pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
-    unimplemented!()
+//pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
     //match transformation {
     //    Transformation::DataNodeFieldsTransform(t) => {
     //        match t.get_runtime() {
@@ -158,21 +154,21 @@ pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
     //    },
     //    _ => unimplemented!()
     //}
-}
+//}
 
-lazy_static! {
-    pub static ref VALUE_TRANSFORMATIONS: Vec<Transformation> = vec![
-        Transformation {
-            runtime: Runtime::AWK,
-            description: String::from("Converts American weights in pounds (lbs)"),
-            regex: r"\b\d+(\.\d+)?\s*(lbs?|pounds?)\b",
-            code: String::from(r#"{ printf "%.2f lbs = %.2f kg\n", $1, $1 * 0.45359237 }"#),
-        },
-        Transformation {
-            runtime: Runtime::AWK,
-            description: String::from("Identity Transformation"),
-            regex: r"(?s).*",
-            code: String::from(r#"{ print $0 }"#),
-        },
-    ];
-}
+//lazy_static! {
+//    pub static ref VALUE_TRANSFORMATIONS: Vec<Transformation> = vec![
+//        Transformation {
+//            runtime: Runtime::AWK,
+//            description: String::from("Converts American weights in pounds (lbs)"),
+//            regex: r"\b\d+(\.\d+)?\s*(lbs?|pounds?)\b",
+//            code: String::from(r#"{ printf "%.2f lbs = %.2f kg\n", $1, $1 * 0.45359237 }"#),
+//        },
+//        Transformation {
+//            runtime: Runtime::AWK,
+//            description: String::from("Identity Transformation"),
+//            regex: r"(?s).*",
+//            code: String::from(r#"{ print $0 }"#),
+//        },
+//    ];
+//}

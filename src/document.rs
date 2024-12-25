@@ -1,18 +1,11 @@
 use serde::{Serialize, Deserialize};
-use lazy_static::lazy_static;
 use xmltree::{Element, XMLNode};
-use std::io::{Write, Cursor};
-use std::fs::File;
-use std::str::from_utf8;
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
-use url::Url;
 use std::collections::HashMap;
 
 use crate::prelude::*;
-use crate::transformation::{Transformation};
-use crate::context::{Context};
 use crate::data_node::{DataNode};
 
 pub type DocumentNode = XMLNode;
@@ -66,19 +59,24 @@ impl Document {
         self.data.clone()
     }
 
-    pub fn get_root_node(self, context: &Context) -> (DataNode, Vec<XMLNode>) {
+    pub fn get_root_node(self) -> (DataNode, Vec<XMLNode>) {
         let mut reader = std::io::Cursor::new(self.data);
-        let root = XMLNode::parse(&mut reader).expect("Could not parse XML");
-        Document::document_to_data(root, None, context)
+        match Element::parse(reader) {
+            Ok(element) => {
+                Document::document_to_data(element, None)
+            },
+            _ => panic!("Could not parse xml")
+        }
     }
 
     pub fn document_to_data(
         xml_node: XMLNode,
         parent_node: Option<DataNode>,
-        context: &Context
     ) -> (DataNode, Vec<DocumentNode>) {
-        let context_id = context.register(&xml_node);
+        //let context_id = context.register(&xml_node);
         let lineage = &parent_node.unwrap_or(Lineage::new()).lineage;
+
+        let context_id = "placeholder".to_string();
 
         match xml_node {
             XMLNode::Element(element_node) => {
@@ -103,7 +101,7 @@ impl Document {
                     DataNode::new(
                         context_id,
                         HashMap::from([
-                            ("text", text_node.to_string())
+                            ("text".to_string(), text_node.to_string())
                         ]),
                         description,
                         &lineage

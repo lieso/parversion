@@ -1,9 +1,5 @@
 use regex::Regex;
 use std::collections::HashMap;
-use std::process::{Command, Stdio};
-use std::io::Write;
-use serde_json;
-use pyo3::types::IntoPyDict;
 
 pub fn python_field_constant(
     code: &str,

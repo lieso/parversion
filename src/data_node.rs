@@ -1,10 +1,9 @@
-use lazy_static::lazy_static;
+use std::collections::HashMap;
 
 use crate::prelude::*;
-use crate::transformations::{
+use crate::transformation::{
     DataNodeFieldsTransform,
     DataNodeHashTransform,
-    transform
 };
 
 enum DataNodeTransform {
@@ -35,21 +34,23 @@ pub fn apply_fields_transform(
     transformation: DataNodeTransform,
     fields: DataNodeFields
 ) -> DataNodeFields {
-    transform(transformation, fields)
+    unimplemented!()
+    //transform(transformation, fields)
 }
 
 pub fn apply_hash_transform(
     transformation: DataNodeTransform,
     fields: DataNodeFields
 ) -> Hash {
-    let hash_string: &str = transform(transformation, fields);
-    Hash::from_str(hash_string)
+    unimplemented!()
+    //let hash_string: &str = transform(transformation, fields);
+    //Hash::from_str(hash_string)
 }
 
 impl DataNode {
     pub fn new(
         context_id: ID,
-        fields: DataNodeFields
+        fields: DataNodeFields,
         description: String,
         parent_lineage: &Lineage,
     ) -> Self {

@@ -1,9 +1,7 @@
-use std::collections::HashSet;
 use serde::{Serialize, Deserialize};
 
 use crate::prelude::*;
-use crate::basis_node::{BasisNode};
-use crate::transformations::{
+use crate::transformation::{
     DataNodeFieldsTransform,
 };
 
@@ -26,7 +24,6 @@ pub struct LineageSubgraph {
     pub subgraph: Hash,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub type Association = Vec<LineageSubgraph>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

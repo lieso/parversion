@@ -6,7 +6,12 @@ use std::fs;
 use std::io::Write;
 use std::env;
 
-use crate::llm::{LlmProvider};
+#[derive(Clone, Debug, Serialize, Deserialize)]
+enum LlmProvider {
+    OpenAi,
+    Anthropic,
+    Groq
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfigDataStructureInterpretation {

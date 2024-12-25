@@ -1,10 +1,10 @@
 use std::io::{self, Read, Write};
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 
 use crate::types::*;
 
-pub fn get_file_as_text(path: String) -> Result<String, Errors> {
+pub fn get_file_as_text(path: &str) -> Result<String, Errors> {
     let mut text = String::new();
 
     let mut file = File::open(path).map_err(|err| {
