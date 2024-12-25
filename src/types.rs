@@ -1,5 +1,3 @@
-use serde::{Serialize, Deserialize};
-
 use crate::basis_graph::{BasisGraph};
 use crate::transformation::{Transformation};
 
@@ -19,12 +17,13 @@ pub struct Options {
     pub value_transformations: Option<Vec<Transformation>>
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum Errors {
     FileInputError,
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,
     UnexpectedOutputFormat,
-    XmlParseError
+    XmlParseError,
+    BasisGraphBuildError(String)
 }

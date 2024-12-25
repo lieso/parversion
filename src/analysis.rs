@@ -2,75 +2,54 @@ use crate::prelude::*;
 use crate::basis_node::{BasisNode};
 use crate::data_node::{DataNode};
 use crate::json_node::{JsonNode};
-use crate::basis_graph::{BasisGraph};
+use crate::basis_graph::{BasisGraph, BasisGraphBuilder};
 use crate::document::{Document};
+use crate::transformation::{Transformation};
 
 pub struct Analysis {
-    pub options: Option<Options>,
-    pub document: Document,
-    pub document_context: Context,
-    pub document_transformations: Vec<DocumentTransformation>,
-    pub basis_nodes: HashMap<ID, BasisNode>,
-    pub basis_name: Option<String>,
-    pub basis_description: Option<String>,
-    pub basis_networks: HashMap<ID, BasisNetwork>,
-    pub data_nodes: HashMap<ID, DataNode>,
-    pub json_nodes: HashMap<ID, JsonNode>,
-    pub json_schema: Option<String>,
-    pub value_transformations: Vec<ValueTransformation>,
+    analysis_mode: AnalysisMode,
+    document: Document,
+    basis_graph: BasisGraphBuilder,
+    data_nodes: HashMap<ID, DataNode>,
+    json_nodes: HashMap<ID, JsonNode>,
+    value_transformations: Vec<Transformation>,
 }
 
 impl Analysis {
     pub fn from_document(
         document: Document,
-        options: Option<Options>
+        options: &Option<Options>
     ) -> Self {
-        let context: Context = Context::new();
+        let default_analysis_mode = AnalysisMode::COMPLEX;
+
+        let analysis_mode = options
+            .as_ref()
+            .and_then(|opts| opts.analysis_mode.clone())
+            .unwrap_or(default_analysis_mode);
+
+        let basis_graph = options
+            .as_ref()
+            .and_then(|opts| opts.basis_graph.as_ref())
+            .map(|basis_graph| BasisGraphBuilder::from_basis_graph(basis_graph))
+            .unwrap_or_else(BasisGraphBuilder::new);
+
+        let value_transformations = options
+            .as_ref()
+            .and_then(|opts| opts.value_transformations.clone())
+            .unwrap_or_else(Vec::new);
 
         Analysis {
-            options,
+            analysis_mode,
             document,
-            document_context: context,
-            document_transformations: Vec::new(),
-            basis_nodes: HashMap::new(),
-            basis_name: None,
-            basis_description: None,
-            basis_networks: HashMap::new(),
+            basis_graph,
             data_nodes: HashMap::new(),
             json_nodes: HashMap::new(),
-            json_schema: None,
-            value_transformations: Vec::new(),
+            value_transformations,
         }
     }
 
-    pub fn to_document(self, document_type: DocumentType) -> Document {
-        unimplemented!()
-    }
-
-    pub fn with_basis(self, basis_graph: &BasisGraph) -> Self {
-        self.basis_name = Some(basis_graph.name.clone());
-        self.basis_description = Some(basis_graph.description.clone());
-        self.basis_nodes = Some(basis_graph.nodes.clone());
-        self.basis_networks = Some(basis_graph.networks.clone());
-
-        self
-    }
-
-    pub fn with_value_transformations(self, value_transformations: Vec<ValueTransformation>) -> Self {
-        self.value_transformations = value_transformations;
-
-        self
-    }
-
-    pub fn get_basis_graph(self) -> BasisGraph {
-        BasisGraph {
-            id: ID::new(),
-            name: self.basis_name.clone().unwrap(),
-            description: self.basis_description.clone().unwrap(),
-            json_schema: self.json_schema.clone().unwrap(),
-            nodes: self.basis_nodes.clone().unwrap(),
-            networks: self.basis_networks.clone().unwrap(),
-        }
+    pub fn build_basis_graph(self) -> Result<BasisGraph, Errors> {
+        self.basis_graph.build()
     }
     
     pub async fn transmute(self, target_schema: &str) -> Result<Self, Errors> {
@@ -79,30 +58,28 @@ impl Analysis {
 
     pub async fn perform_analysis(self) -> Result<Self, Errors> {
 
+        //let document_transformations = self.document.perform_analysis();
 
-
-
-        let document_transformations = self.document.perform_analysis();
-
-        self.document.apply_transformations(document_transformations);
-
+        //self.document.apply_transformations(document_transformations);
 
 
 
 
+        //let document_root = self.document.get_root_node(&self.context);
 
+        //let data_nodes: HashMap<ID, DataNode> = HashMap::from(
+        //    vec![
+        //        document_root.0.id.to_string(),
+        //        document_root.0.clone()
+        //    ]
+        //);
 
-        let document_root = self.document.get_root_node(&self.context);
+        //self.data_nodes = data_nodes;
 
-        let data_nodes: HashMap<ID, DataNode> = HashMap::from(
-            vec![
-                document_root.0.id.to_string(),
-                document_root.0.clone()
-            ]
-        );
+        unimplemented!()
+    }
 
-        self.data_nodes = data_nodes;
-
+    pub fn to_document(self, document_type: DocumentType) -> Document {
         unimplemented!()
     }
 

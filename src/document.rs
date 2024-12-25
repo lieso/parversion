@@ -44,7 +44,7 @@ pub struct Document {
 impl Document {
     pub fn from_string(
         value: String,
-        options: Option<Options>,
+        options: &Option<Options>,
     ) -> Result<Self, Errors> {
         if value.trim().is_empty() {
             return Err(Errors::DocumentNotProvided);
@@ -64,6 +64,10 @@ impl Document {
         } else {
             Err(Errors::UnexpectedDocumentType)
         }
+    }
+
+    pub fn to_string(self) -> String {
+        self.data.clone()
     }
 
     pub fn get_root_node(self, context: &Context) -> (DataNode, Vec<XMLNode>) {
