@@ -51,3 +51,7 @@ pub fn append_to_filename(path: &str, suffix: &str) -> Result<String, Errors> {
 
     Ok(new_path.to_string())
 }
+
+pub async fn fetch_url_as_text(url: &str) -> Result<String, Errors> {
+    unimplemented!()
+}

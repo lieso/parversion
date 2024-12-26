@@ -30,7 +30,7 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn get_normal_json_schema(basis_graph: &BasisGraph) -> Option<Self> {
+    pub fn get_normal_model(basis_graph: &BasisGraph) -> Option<Self> {
         unimplemented!()
     }
 }

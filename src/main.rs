@@ -32,6 +32,7 @@ mod prelude;
 mod utility;
 mod json_node;
 
+use crate::prelude::*;
 use crate::config::{CONFIG};
 
 fn load_stdin() -> io::Result<String> {
@@ -96,7 +97,23 @@ fn main() {
                 .help("The full URL that identifies and locates the provided document"))
             .get_matches();
 
-        let url: Option<&str> = matches.value_of("url");
+        let origin: Option<String> = matches.value_of("url").map(|s| s.to_string());
+
+
+
+
+        let options = Options {
+            origin,
+            ..Options::default()
+        };
+
+
+
+
+
+
+
+
 
         unimplemented!()
     });

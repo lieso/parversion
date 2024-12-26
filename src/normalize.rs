@@ -5,15 +5,17 @@ use crate::organize::{organize};
 use crate::analysis::{Analysis};
 use crate::model::{Model};
 
+// TODO: streaming basis graphs, and text
+
 pub async fn normalize(
     analysis: Analysis,
     options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
-    log::trace!("In normalize_analysis");
+    log::trace!("In normalize");
 
     let basis_graph = analysis.build_basis_graph()?;
 
-    let target_model = Model::get_normal_json_schema(&basis_graph).unwrap();
+    let target_model = Model::get_normal_model(&basis_graph).unwrap();
 
     analysis.transmute(&target_model.json_schema).await
 }
@@ -151,4 +153,42 @@ pub async fn normalize_file(
         log::error!("Failed to write translated text to file: {:?}", err);
         Errors::FileOutputError
     })
+}
+
+pub async fn normalize_url_to_analysis(
+    url: &str,
+    options: &Option<Options>,
+) -> Result<Analysis, Errors> {
+    log::trace!("In normalize_url_to_analysis");
+    log::debug!("URL: {}", url);
+
+    let text = fetch_url_as_text(url).await?;
+
+    normalize_text_to_analysis(text, options).await
+}
+
+pub async fn normalize_url_to_document(
+    url: &str,
+    options: &Option<Options>,
+    document_format: &Option<DocumentFormat>,
+) -> Result<Document, Errors> {
+    log::trace!("In normalize_url_to_document");
+    log::debug!("URL: {}", url);
+
+    let analysis = normalize_url_to_analysis(url, options).await?;
+
+    analysis.to_document(document_format)
+}
+
+pub async fn normalize_url_to_text(
+    url: &str,
+    options: &Option<Options>,
+    document_format: &Option<DocumentFormat>,
+) -> Result<String, Errors> {
+    log::trace!("In normalize_url_to_text");
+    log::debug!("URL: {}", url);
+
+    let document = normalize_url_to_document(url, options, document_format).await?;
+
+    Ok(document.to_string())
 }

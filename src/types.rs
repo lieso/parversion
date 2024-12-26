@@ -9,15 +9,6 @@ pub enum AnalysisMode {
 }
 
 #[derive(Clone, Debug)]
-pub struct Options {
-    pub basis_graph: Option<BasisGraph>,
-    pub analysis_mode: Option<AnalysisMode>,
-    pub origin: Option<String>,
-    pub date: Option<String>,
-    pub value_transformations: Option<Vec<Transformation>>
-}
-
-#[derive(Clone, Debug)]
 pub enum Errors {
     FileInputError,
     FileOutputError,
@@ -28,4 +19,25 @@ pub enum Errors {
     XmlParseError,
     BasisGraphBuildError(String),
     PathConversionError,
+}
+
+#[derive(Clone, Debug)]
+pub struct Options {
+    pub analysis_mode: Option<AnalysisMode>,
+    pub basis_graph: Option<BasisGraph>,
+    pub origin: Option<String>,
+    pub date: Option<String>,
+    pub value_transformations: Option<Vec<Transformation>>
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options {
+            basis_graph: None,
+            analysis_mode: Some(AnalysisMode::COMPLEX),
+            origin: None,
+            date: None,
+            value_transformations: None,
+        }
+    }
 }

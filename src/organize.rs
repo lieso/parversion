@@ -9,7 +9,10 @@ pub async fn organize(
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize");
 
-    Analysis::from_document(document, options).perform_analysis().await
+    let mut analysis = Analysis::from_document(document, options);
+    analysis.perform_analysis().await?;
+
+    Ok(analysis)
 }
 
 pub async fn organize_document_to_analysis(

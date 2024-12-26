@@ -58,11 +58,10 @@ impl Analysis {
         unimplemented!()
     }
 
-    pub async fn perform_analysis(self) -> Result<Self, Errors> {
+    pub async fn perform_analysis(&mut self) -> Result<Self, Errors> {
 
-        //let document_transformations = self.document.perform_analysis();
-
-        //self.document.apply_transformations(document_transformations);
+        self.document.perform_analysis().await?;
+        self.document.apply_transformations();
 
 
 
