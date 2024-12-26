@@ -12,9 +12,10 @@ pub type DocumentNode = XMLNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum DocumentType {
-    PlainText,
-    Xml,
-    Html,
+    JSON,
+    PLAIN_TEXT,
+    XML,
+    HTML,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -41,7 +42,7 @@ impl Document {
 
         if let Ok(xml) = string_to_xml(value) {
             let document = Document {
-                document_type: DocumentType::Xml,
+                document_type: DocumentType::XML,
                 metadata: DocumentMetadata {
                     origin: options.as_ref().and_then(|opts| opts.origin.clone()),
                     date: options.as_ref().and_then(|opts| opts.date.clone()),

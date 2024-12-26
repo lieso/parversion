@@ -15,7 +15,7 @@ pub mod id;
 pub mod lineage;
 pub mod macros;
 pub mod model;
-pub mod normalize;
+pub mod normalization;
 pub mod organize;
 pub mod runtimes;
 pub mod transformation;

@@ -22,7 +22,7 @@ mod id;
 mod lineage;
 mod macros;
 mod model;
-mod normalize;
+mod normalization;
 mod organize;
 mod runtimes;
 mod transformation;
@@ -110,6 +110,35 @@ fn main() {
 
 
 
+        let analysis = match matches.value_of("file") {
+            Some(path) => {
+                normalization::normalize_file_to_analysis(
+                    path,
+                    &Some(options),
+                ).await.expect("Could not normalize file")
+            }
+            None => {
+                log::info!("File not provided");
+                normalization::normalize_text_to_analysis(
+                    document,
+                    &Some(options),
+                ).await.expect("Could not normalize text")
+            }
+        };
+
+
+
+        let basis_graph = analysis.build_basis_graph();
+
+
+
+        let document_format = document_format::DocumentFormat::default();
+
+
+        let normalized_text = analysis.to_document(&Some(document_format)).expect("Could not convert to document").to_string();
+
+
+        println!("{}", normalized_text);
 
 
 
