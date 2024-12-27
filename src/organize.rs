@@ -9,6 +9,9 @@ pub async fn organize(
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize");
 
+    // If a basis graph is provided, try and apply it before
+    // doing any analysis
+
     let mut analysis = Analysis::from_document(document, options);
     analysis.perform_analysis().await?;
 

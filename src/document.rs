@@ -40,20 +40,14 @@ impl Document {
             return Err(Errors::DocumentNotProvided);
         }
 
-        if let Ok(xml) = string_to_xml(value) {
-            let document = Document {
-                document_type: DocumentType::XML,
-                metadata: DocumentMetadata {
-                    origin: options.as_ref().and_then(|opts| opts.origin.clone()),
-                    date: options.as_ref().and_then(|opts| opts.date.clone()),
-                },
-                data: xml,
-            };
-
-            Ok(document)
-        } else {
-            Err(Errors::UnexpectedDocumentType)
-        }
+        Ok(Document {
+            document_type: DocumentType::PLAIN_TEXT,
+            metadata: DocumentMetadata {
+                origin: options.as_ref().and_then(|opts| opts.origin.clone()),
+                date: options.as_ref().and_then(|opts| opts.date.clone()),
+            },
+            data: value,
+        })
     }
 
     pub fn to_string(self) -> String {
@@ -128,7 +122,31 @@ impl Document {
         // ask if cluster is discardable
         // less total inference required
         // e.g. navigation bars are clusted away from contetn
-        unimplemented!()
+
+
+        if let Ok(xml) = string_to_xml(self.data.clone()) {
+            self.document_type = DocumentType::XML;
+
+
+
+            println!("{}", xml);
+
+
+            unimplemented!()
+
+
+
+
+
+
+
+
+
+
+
+        } else {
+             Err(Errors::UnexpectedDocumentType)
+        }
     }
 
     pub fn apply_transformations(&self) {
@@ -145,6 +163,16 @@ fn string_to_xml(value: String) -> Result<String, Errors> {
         .from_utf8()
         .read_from(&mut sanitized.as_bytes())
         .unwrap();
+
+
+
+
+    log::info!("It seems to be possible to parse this document as XML");
+
+
+
+
+
 
     walk(&mut xhtml, &dom.document, 0);
 
@@ -191,13 +219,28 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
         } => {
             let tag_name = &name.local;
 
+            log::debug!("element name: {}", tag_name);
+
+            if tag_name == "script" || tag_name == "style" || tag_name == "noscript" || tag_name == "link" || tag_name == "iframe" {
+                return;
+            }
+
             xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
 
             for attr in attrs.borrow().iter() {
                 let attr_name = &*attr.name.local.trim();
                 let attr_value = escape_xml(&*attr.value.trim());
 
-                xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
+                let foo = attr_name.clone();
+                let mut bar = attr_value.clone();
+                bar.truncate(20);
+
+                log::debug!("attribute name: {},\t value: {}", foo, bar);
+
+                if attr_name == "href" || attr_name == "title" {
+
+                    xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
+                }
             }
 
             xhtml.push_str(">\n");
