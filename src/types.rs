@@ -35,8 +35,8 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Options {
-            basis_graph: None,
-            document_profile: None,
+            //basis_graph: None,
+            //document_profile: None,
             analysis_mode: Some(AnalysisMode::COMPLEX),
             origin: None,
             date: None,

@@ -1,30 +1,33 @@
 use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
-use crate::organize::{organize};
+use crate::organize::organize;
 use crate::analysis::{Analysis};
 
-pub async fn translate(
+pub async fn translate<P: Provider>(
+    provider: &P,
     analysis: Analysis,
     options: &Option<Options>,
     json_schema: &str,
 ) -> Result<Analysis, Errors> {
-    log::trace!("In translate_analysis");
+    log::trace!("In translate");
 
     analysis.transmute(json_schema).await
 }
 
-pub async fn translate_analysis(
+pub async fn translate_analysis<P: Provider>(
+    provider: &P,
     analysis: Analysis,
     options: &Option<Options>,
     json_schema: &str,
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_analysis");
 
-    translate(analysis, options, json_schema).await
+    translate(provider, analysis, options, json_schema).await
 }
 
-pub async fn translate_text_to_analysis(
+pub async fn translate_text_to_analysis<P: Provider>(
+    provider: &P,
     text: String,
     options: &Option<Options>,
     json_schema: &str,
@@ -32,12 +35,13 @@ pub async fn translate_text_to_analysis(
     log::trace!("In translate_text_to_analysis");
 
     let document = Document::from_string(text, options)?;
-    let analysis = organize(document, options).await?;
+    let analysis = organize(provider, document, options).await?;
 
-    translate_analysis(analysis, options, json_schema).await
+    translate_analysis(provider, analysis, options, json_schema).await
 }
 
-pub async fn translate_text_to_document(
+pub async fn translate_text_to_document<P: Provider>(
+    provider: &P,
     text: String,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -45,11 +49,13 @@ pub async fn translate_text_to_document(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let analysis = translate_text_to_analysis(text, options, json_schema).await?;
+    let analysis = translate_text_to_analysis(provider, text, options, json_schema).await?;
+
     analysis.to_document(document_format)
 }
 
-pub async fn translate_text(
+pub async fn translate_text<P: Provider>(
+    provider: &P,
     text: String,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -57,23 +63,32 @@ pub async fn translate_text(
 ) -> Result<String, Errors> {
     log::trace!("In translate_text");
 
-    let document = translate_text_to_document(text, options, document_format, json_schema).await?;
+    let document = translate_text_to_document(
+        provider,
+        text,
+        options,
+        document_format,
+        json_schema
+    ).await?;
+
     Ok(document.to_string())
 }
 
-pub async fn translate_document_to_analysis(
+pub async fn translate_document_to_analysis<P: Provider>(
+    provider: &P,
     document: Document,
     options: &Option<Options>,
     json_schema: &str,
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_document_to_analysis");
 
-    let analysis = organize(document, options).await?;
+    let analysis = organize(provider, document, options).await?;
 
-    translate_analysis(analysis, options, json_schema).await
+    translate_analysis(provider, analysis, options, json_schema).await
 }
 
-pub async fn translate_document(
+pub async fn translate_document<P: Provider>(
+    provider: &P,
     document: Document,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -81,12 +96,18 @@ pub async fn translate_document(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_document");
 
-    let analysis = translate_document_to_analysis(document, options, json_schema).await?;
+    let analysis = translate_document_to_analysis(
+        provider,
+        document,
+        options,
+        json_schema
+    ).await?;
 
     analysis.to_document(document_format)
 }
 
-pub async fn translate_document_to_text(
+pub async fn translate_document_to_text<P: Provider>(
+    provider: &P,
     document: Document,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -94,12 +115,19 @@ pub async fn translate_document_to_text(
 ) -> Result<String, Errors> {
     log::trace!("In translate_document_to_text");
 
-    let document = translate_document(document, options, document_format, json_schema).await?;
+    let document = translate_document(
+        provider,
+        document,
+        options,
+        document_format,
+        json_schema
+    ).await?;
 
     Ok(document.to_string())
 }
 
-pub async fn translate_file_to_analysis(
+pub async fn translate_file_to_analysis<P: Provider>(
+    provider: &P,
     path: &str,
     options: &Option<Options>,
     json_schema: &str,
@@ -112,10 +140,11 @@ pub async fn translate_file_to_analysis(
         Errors::FileInputError
     })?;
 
-    translate_text_to_analysis(text, options, json_schema).await
+    translate_text_to_analysis(provider, text, options, json_schema).await
 }
 
-pub async fn translate_file_to_document(
+pub async fn translate_file_to_document<P: Provider>(
+    provider: &P,
     path: &str,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -123,11 +152,12 @@ pub async fn translate_file_to_document(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_file_to_document");
 
-    let analysis = translate_file_to_analysis(path, options, json_schema).await?;
+    let analysis = translate_file_to_analysis(provider, path, options, json_schema).await?;
     analysis.to_document(document_format)
 }
 
-pub async fn translate_file_to_text(
+pub async fn translate_file_to_text<P: Provider>(
+    provider: &P,
     path: &str,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -135,12 +165,19 @@ pub async fn translate_file_to_text(
 ) -> Result<String, Errors> {
     log::trace!("In translate_file_to_text");
 
-    let document = translate_file_to_document(path, options, document_format, json_schema).await?;
+    let document = translate_file_to_document(
+        provider,
+        path,
+        options,
+        document_format,
+        json_schema
+    ).await?;
 
     Ok(document.to_string())
 }
 
-pub async fn translate_file(
+pub async fn translate_file<P: Provider>(
+    provider: &P,
     path: &str,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -149,7 +186,7 @@ pub async fn translate_file(
     log::trace!("In translate_file");
     log::debug!("file path: {}", path);
 
-    let text = translate_file_to_text(path, options, document_format, json_schema).await?;
+    let text = translate_file_to_text(provider, path, options, document_format, json_schema).await?;
     let new_path = append_to_filename(path, "_translated")?;
 
     write_text_to_file(&new_path, &text).map_err(|err| {

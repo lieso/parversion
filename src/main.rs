@@ -24,10 +24,10 @@ mod lineage;
 mod macros;
 mod model;
 mod normalization;
-mod organize;
+mod organization;
 mod runtimes;
 mod transformation;
-mod translate;
+mod translation;
 mod types;
 mod prelude;
 mod utility;
@@ -107,6 +107,9 @@ fn main() {
             origin,
             ..Options::default()
         };
+
+
+
 
 
 
