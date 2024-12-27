@@ -7,6 +7,7 @@ use std::io::stdout;
 use fern::Dispatch;
 use tokio::runtime::Runtime;
 use async_trait::async_trait;
+use quick_js::{Context, JsValue};
 
 mod analysis;
 mod basis_network;
@@ -125,6 +126,15 @@ async fn main() {
         .get_matches();
 
     let origin: Option<String> = matches.value_of("url").map(|s| s.to_string());
+
+
+
+    let context = Context::new().unwrap();
+    let value = context.eval("1 + 2").unwrap();
+    assert_eq!(value, JsValue::Int(3));
+
+
+
 
 
 
