@@ -3,7 +3,7 @@ use xmltree::{Element, XMLNode};
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::prelude::*;
 use crate::data_node::{DataNode};
@@ -163,6 +163,15 @@ fn string_to_xml(value: String) -> Result<String, Errors> {
 
     log::info!("It seems to be possible to parse this document as XML");
 
+    let mut features: HashSet<String> = HashSet::new();
+
+    get_xml_features(&dom.document, String::from("root"), &mut features);
+
+
+    log::debug!("features: {:?}", features);
+
+
+    unimplemented!();
 
 
 
@@ -175,6 +184,36 @@ fn string_to_xml(value: String) -> Result<String, Errors> {
     }
 
     Ok(xhtml)
+}
+
+fn get_xml_features(node: &Handle, path: String, features: &mut HashSet<String>) {
+    match node.data {
+        NodeData::Document => {
+            for child in node.children.borrow().iter() {
+                get_xml_features(child, path.clone(), features);
+            }
+        }
+        NodeData::Text { ref contents } => {
+            features.insert(format!("{}/text", path));
+        },
+        NodeData::Element {
+            ref name,
+            ref attrs,
+            ..
+        } => {
+            let new_path = format!("{}/{}", path, &name.local);
+
+            for attr in attrs.borrow().iter() {
+                let attr_name = &*attr.name.local.trim();
+                features.insert(format!("{}.{}", new_path, attr_name));
+            }
+
+            for child in node.children.borrow().iter() {
+                get_xml_features(child, new_path.clone(), features);
+            }
+        },
+        _ => {}
+    }
 }
 
 fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
@@ -213,28 +252,13 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
         } => {
             let tag_name = &name.local;
 
-            log::debug!("element name: {}", tag_name);
-
-            if tag_name == "script" || tag_name == "style" || tag_name == "noscript" || tag_name == "link" || tag_name == "iframe" {
-                return;
-            }
-
             xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
 
             for attr in attrs.borrow().iter() {
                 let attr_name = &*attr.name.local.trim();
                 let attr_value = escape_xml(&*attr.value.trim());
 
-                let foo = attr_name.clone();
-                let mut bar = attr_value.clone();
-                bar.truncate(20);
-
-                log::debug!("attribute name: {},\t value: {}", foo, bar);
-
-                if attr_name == "href" || attr_name == "title" {
-
-                    xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
-                }
+                xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
             }
 
             xhtml.push_str(">\n");
