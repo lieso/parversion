@@ -4,6 +4,8 @@ use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use std::collections::{HashMap, HashSet};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use crate::prelude::*;
 use crate::data_node::{DataNode};
@@ -118,25 +120,40 @@ impl Document {
         provider: &P
     ) -> Result<(), Errors> {
 
-        if let Ok(xml) = string_to_xml(self.data.clone()) {
+        if let Some(dom) = self.to_dom() {
             self.document_type = DocumentType::XML;
 
 
-
-            println!("{}", xml);
-
-
-            unimplemented!()
+            log::info!("It seems to be possible to parse this document as XML");
 
 
 
 
+            fn calculate_hash<T: Hash>(t: &T) -> u64 {
+                let mut s = DefaultHasher::new();
+                t.hash(&mut s);
+                s.finish()
+            }
+
+            let mut features: HashSet<String> = HashSet::new();
+
+            get_xml_features(&dom.document, String::from(""), &mut features);
+
+            let mut features: HashSet<u64> = features.iter().map(|feature| calculate_hash(feature)).collect();
 
 
 
 
 
+            if let Some(document_profile) = provider.get_document_profile(&features).await? {
+                log::info!("Document profile provided, we will not proceed with further analysis");
 
+            } else {
+                log::info!("Document profile not provided, we will create a new one");
+            }
+
+
+            unimplemented!();
 
         } else {
              Err(Errors::UnexpectedDocumentType)
@@ -146,44 +163,15 @@ impl Document {
     pub fn apply_transformations(&self) {
         unimplemented!()
     }
-}
 
-fn string_to_xml(value: String) -> Result<String, Errors> {
-    let mut xhtml = String::from("");
+    fn to_dom(&self) -> Option<RcDom> {
+        let sanitized = self.data.replace("\n", "");
 
-    let sanitized = value.replace("\n", "");
-
-    let dom = parse_document(RcDom::default(), Default::default())
-        .from_utf8()
-        .read_from(&mut sanitized.as_bytes())
-        .unwrap();
-
-
-
-
-    log::info!("It seems to be possible to parse this document as XML");
-
-    let mut features: HashSet<String> = HashSet::new();
-
-    get_xml_features(&dom.document, String::from("root"), &mut features);
-
-
-    log::debug!("features: {:?}", features);
-
-
-    unimplemented!();
-
-
-
-
-
-    walk(&mut xhtml, &dom.document, 0);
-
-    if xhtml.trim().is_empty() {
-        return Err(Errors::UnexpectedDocumentType);
+        parse_document(RcDom::default(), Default::default())
+            .from_utf8()
+            .read_from(&mut sanitized.as_bytes())
+            .ok()
     }
-
-    Ok(xhtml)
 }
 
 fn get_xml_features(node: &Handle, path: String, features: &mut HashSet<String>) {
@@ -214,6 +202,25 @@ fn get_xml_features(node: &Handle, path: String, features: &mut HashSet<String>)
         },
         _ => {}
     }
+}
+
+fn string_to_xml(value: String) -> Result<String, Errors> {
+    let mut xhtml = String::from("");
+
+    let sanitized = value.replace("\n", "");
+
+    let dom = parse_document(RcDom::default(), Default::default())
+        .from_utf8()
+        .read_from(&mut sanitized.as_bytes())
+        .unwrap();
+
+    walk(&mut xhtml, &dom.document, 0);
+
+    if xhtml.trim().is_empty() {
+        return Err(Errors::UnexpectedDocumentType);
+    }
+
+    Ok(xhtml)
 }
 
 fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
