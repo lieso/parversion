@@ -10,6 +10,7 @@ use std::hash::{Hash, Hasher};
 use crate::prelude::*;
 use crate::data_node::{DataNode};
 use crate::provider::Provider;
+use crate::transformation::DocumentTransformation;
 
 pub type DocumentNode = XMLNode;
 
@@ -32,6 +33,7 @@ pub struct Document {
     pub document_type: DocumentType,
     pub metadata: DocumentMetadata,
     pub data: String,
+    pub transformations: Vec<DocumentTransformation>,
 }
 
 impl Document {
@@ -50,6 +52,7 @@ impl Document {
                 date: options.as_ref().and_then(|opts| opts.date.clone()),
             },
             data: value,
+            transformations: Vec::new(),
         })
     }
 
@@ -148,12 +151,17 @@ impl Document {
             if let Some(document_profile) = provider.get_document_profile(&features).await? {
                 log::info!("Document profile provided, we will not proceed with further analysis");
 
+
+                self.transformations = document_profile.transformations.clone();
+
+                Ok(())
+
+
             } else {
                 log::info!("Document profile not provided, we will create a new one");
+                unimplemented!();
             }
 
-
-            unimplemented!();
 
         } else {
              Err(Errors::UnexpectedDocumentType)
@@ -161,6 +169,9 @@ impl Document {
     }
 
     pub fn apply_transformations(&self) {
+
+        log::debug!("transformations: {:?}", self.transformations);
+
         unimplemented!()
     }
 

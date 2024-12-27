@@ -6,7 +6,8 @@ use crate::id::{ID};
 pub enum Runtime {
     AWK,
     NodeJS,
-    Python
+    Python,
+    QuickJS,
 }
 
 trait Transform {
@@ -133,11 +134,16 @@ pub enum Transformation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DocumentTransformation {
-    id: ID,
-    description: String,
-    runtime: Runtime,
-    code: String,
+pub struct XMLElementTransformation {
+    pub id: ID,
+    pub description: String,
+    pub runtime: Runtime,
+    pub code: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum DocumentTransformation {
+    XMLElementTransformation(XMLElementTransformation),
 }
 
 //pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
