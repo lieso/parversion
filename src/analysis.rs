@@ -7,6 +7,7 @@ use crate::basis_graph::{BasisGraph, BasisGraphBuilder};
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::transformation::{Transformation};
+use crate::provider::Provider;
 
 pub struct Analysis {
     analysis_mode: AnalysisMode,
@@ -29,12 +30,6 @@ impl Analysis {
             .and_then(|opts| opts.analysis_mode.clone())
             .unwrap_or(default_analysis_mode);
 
-        let basis_graph = options
-            .as_ref()
-            .and_then(|opts| opts.basis_graph.as_ref())
-            .map(|basis_graph| BasisGraphBuilder::from_basis_graph(basis_graph))
-            .unwrap_or_else(BasisGraphBuilder::new);
-
         let value_transformations = options
             .as_ref()
             .and_then(|opts| opts.value_transformations.clone())
@@ -43,7 +38,7 @@ impl Analysis {
         Analysis {
             analysis_mode,
             document,
-            basis_graph,
+            basis_graph: BasisGraphBuilder::new(),
             data_nodes: HashMap::new(),
             json_nodes: HashMap::new(),
             value_transformations,
@@ -58,9 +53,12 @@ impl Analysis {
         unimplemented!()
     }
 
-    pub async fn perform_analysis(&mut self) -> Result<Self, Errors> {
+    pub async fn perform_analysis<P: Provider>(
+        &mut self,
+        provider: &P
+    ) -> Result<Self, Errors> {
 
-        self.document.perform_analysis().await?;
+        self.document.perform_analysis(provider).await?;
         self.document.apply_transformations();
 
 

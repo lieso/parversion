@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::data_node::{DataNode};
+use crate::provider::Provider;
 
 pub type DocumentNode = XMLNode;
 
@@ -112,17 +113,10 @@ impl Document {
         }
     }
 
-    pub async fn perform_analysis(&mut self) -> Result<(), Errors> {
-        // provide sample
-        // ask if it uses meaningful class namres
-        // create transformation if it doesn't
-
-
-        // identify clusters
-        // ask if cluster is discardable
-        // less total inference required
-        // e.g. navigation bars are clusted away from contetn
-
+    pub async fn perform_analysis<P: Provider>(
+        &mut self,
+        provider: &P
+    ) -> Result<(), Errors> {
 
         if let Ok(xml) = string_to_xml(self.data.clone()) {
             self.document_type = DocumentType::XML;

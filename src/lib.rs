@@ -27,35 +27,3 @@ pub mod prelude;
 pub mod utility;
 pub mod json_node;
 
-use std::sync::Arc;
-
-use crate::provider::{Provider, DefaultProvider};
-
-use crate::Parversion<P: Provider> {
-    provider: Arc<P>,
-}
-
-pub struct Parversion<P: Provider> {
-    provider: Arc<P>,
-}
-
-impl Parversion<DefaultProvider> {
-    pub fn new() -> Self {
-        Parversion {
-            provider: Arc::new(DefaultProvider),
-        }
-    }
-}
-
-impl<P: Provider> Parversion<P> {
-
-    pub fn from_provider(provider: P) -> Self {
-        Parversion {
-            provider: Arc::new(provider),
-        }
-    }
-
-    
-
-}
-

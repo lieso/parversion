@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::stdout;
 use fern::Dispatch;
 use tokio::runtime::Runtime;
+use async_trait::async_trait;
 
 mod analysis;
 mod basis_network;
@@ -25,6 +26,7 @@ mod macros;
 mod model;
 mod normalization;
 mod organization;
+mod provider;
 mod runtimes;
 mod transformation;
 mod translation;
@@ -35,6 +37,8 @@ mod json_node;
 
 use crate::prelude::*;
 use crate::config::{CONFIG};
+use crate::document_profile::DocumentProfile;
+use crate::provider::Provider;
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -60,94 +64,115 @@ fn init_logging() {
         .expect("Could not initialize logging");
 }
 
-fn main() {
-    Runtime::new().unwrap().block_on(async {
-        init_logging();
-
-        let mut document = String::new();
-
-        match load_stdin() {
-            Ok(stdin) => {
-                document = stdin;
-            }
-            Err(_e) => {
-                log::debug!("Did not receive input from stdin");
-            }
-        }
-
-        let matches = App::new("parversion")
-            .arg(Arg::with_name("file")
-                 .short('f')
-                 .long("file")
-                 .value_name("FILE")
-                 .help("Provide file as document for processing"))
-            .arg(Arg::with_name("basis")
-                 .short('b')
-                 .long("basis")
-                 .value_name("BASIS")
-                 .help("Provide basis graph"))
-            .arg(Arg::with_name("format")
-                .short('o')
-                .long("output-format")
-                .value_name("FORMAT")
-                .help("Set output format: JSON, HTML, XML, text"))
-            .arg(Arg::with_name("url")
-                .short('u')
-                .long("url")
-                .value_name("URL")
-                .help("The full URL that identifies and locates the provided document"))
-            .get_matches();
-
-        let origin: Option<String> = matches.value_of("url").map(|s| s.to_string());
 
 
 
 
-        let options = Options {
-            origin,
-            ..Options::default()
-        };
+struct TestProvider;
 
+#[async_trait]
+impl Provider for TestProvider {
 
-
-
-
-
-
-        let analysis = match matches.value_of("file") {
-            Some(path) => {
-                normalization::normalize_file_to_analysis(
-                    path,
-                    &Some(options),
-                ).await.expect("Could not normalize file")
-            }
-            None => {
-                log::info!("File not provided");
-                normalization::normalize_text_to_analysis(
-                    document,
-                    &Some(options),
-                ).await.expect("Could not normalize text")
-            }
-        };
-
-
-
-        let basis_graph = analysis.build_basis_graph();
-
-
-
-        let document_format = document_format::DocumentFormat::default();
-
-
-        let normalized_text = analysis.to_document(&Some(document_format)).expect("Could not convert to document").to_string();
-
-
-        println!("{}", normalized_text);
-
-
-
-
+    async fn get_document_profile(&self, features: &str) -> Result<Option<DocumentProfile>, Errors> {
 
         unimplemented!()
-    });
+
+    }
+
+}
+
+
+
+
+
+
+#[tokio::main]
+async fn main() {
+    init_logging();
+
+    let mut document = String::new();
+
+    match load_stdin() {
+        Ok(stdin) => {
+            document = stdin;
+        }
+        Err(_e) => {
+            log::debug!("Did not receive input from stdin");
+        }
+    }
+
+    let matches = App::new("parversion")
+        .arg(Arg::with_name("file")
+             .short('f')
+             .long("file")
+             .value_name("FILE")
+             .help("Provide file as document for processing"))
+        .arg(Arg::with_name("basis")
+             .short('b')
+             .long("basis")
+             .value_name("BASIS")
+             .help("Provide basis graph"))
+        .arg(Arg::with_name("format")
+            .short('o')
+            .long("output-format")
+            .value_name("FORMAT")
+            .help("Set output format: JSON, HTML, XML, text"))
+        .arg(Arg::with_name("url")
+            .short('u')
+            .long("url")
+            .value_name("URL")
+            .help("The full URL that identifies and locates the provided document"))
+        .get_matches();
+
+    let origin: Option<String> = matches.value_of("url").map(|s| s.to_string());
+
+
+
+
+    let provider = TestProvider;
+
+    let options = Options {
+        origin,
+        ..Options::default()
+    };
+
+
+
+    let analysis = match matches.value_of("file") {
+        Some(path) => {
+            normalization::normalize_file_to_analysis(
+                &provider,
+                path,
+                &Some(options),
+            ).await.expect("Could not normalize file")
+        }
+        None => {
+            log::info!("File not provided");
+            normalization::normalize_text_to_analysis(
+                &provider,
+                document,
+                &Some(options),
+            ).await.expect("Could not normalize text")
+        }
+    };
+
+
+
+    let basis_graph = analysis.build_basis_graph();
+
+
+
+    let document_format = document_format::DocumentFormat::default();
+
+
+    let normalized_text = analysis.to_document(&Some(document_format)).expect("Could not convert to document").to_string();
+
+
+    println!("{}", normalized_text);
+
+
+
+
+
+    unimplemented!()
 }

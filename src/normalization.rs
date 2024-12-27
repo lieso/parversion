@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
-use crate::organize::{organize};
+use crate::organization::{organize};
 use crate::analysis::{Analysis};
 use crate::model::{Model};
 use crate::provider::{Provider};
