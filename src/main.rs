@@ -281,7 +281,10 @@ lazy_static! {
                     description: String::from("XML element transformation during document preprocessing. Blacklisted elements and attributes are eliminated, unseen by the LLM, reducing token count for inference."),
                     runtime: Runtime::QuickJS,
                     code: String::from(r#"
-                        3*4
+                        element = 'foo';
+                        attributes = Object.keys(attributes).filter(item => {
+                            item === 'href' || item === 'title'
+                        });
                     "#),
                 })
             ],

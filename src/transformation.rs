@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use std::collections::{HashMap, HashSet};
 
 use crate::id::{ID};
 
@@ -139,6 +140,22 @@ pub struct XMLElementTransformation {
     pub description: String,
     pub runtime: Runtime,
     pub code: String,
+}
+
+impl XMLElementTransformation {
+    pub fn get_signature(element: String, attributes: HashMap<String, String>) -> String {
+        let element_code = format!("let element = '{}';", element);
+
+        let attributes_code = {
+            let attributes_list: Vec<String> = attributes
+                .into_iter()
+                .map(|(key, value)| format!("'{}': '{}'", key, value))
+                .collect();
+            format!("let attributes = {{ {} }};", attributes_list.join(", "))
+        };
+
+        format!("{}\n{}", element_code, attributes_code)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
