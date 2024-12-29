@@ -87,6 +87,11 @@ impl<T: HashStrategy> Hasher<T> {
     pub fn to_string(&self) -> Option<String> {
         self.value.clone()
     }
+    
+    pub fn clear_items(&mut self) -> &mut Self {
+        self.items.clear();
+        self
+    }
 }
 
 impl<T: HashStrategy> PartialEq for Hasher<T> {

@@ -59,7 +59,7 @@ impl Analysis {
     ) -> Result<Self, Errors> {
 
         self.document.perform_analysis(provider).await?;
-        self.document.apply_transformations();
+        self.document.apply_transformations()?;
 
 
 

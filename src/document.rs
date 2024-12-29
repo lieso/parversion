@@ -1,13 +1,9 @@
 use serde::{Serialize, Deserialize};
-use serde_json::Value;
 use xmltree::{Element, XMLNode};
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use quick_js::{Context, JsValue};
 
 use crate::prelude::*;
 use crate::data_node::{DataNode};
@@ -17,6 +13,7 @@ use crate::transformation::{
     DocumentTransformation,
     XMLElementTransformation,
 };
+use crate::hash::{Hash, FastHash};
 
 pub type DocumentNode = XMLNode;
 
@@ -128,101 +125,63 @@ impl Document {
         &mut self,
         provider: &P
     ) -> Result<(), Errors> {
-
         if let Some(dom) = self.to_dom() {
-            self.document_type = DocumentType::XML;
-
-
             log::info!("It seems to be possible to parse this document as XML");
 
-
-
-
-            fn calculate_hash<T: Hash>(t: &T) -> u64 {
-                let mut s = DefaultHasher::new();
-                t.hash(&mut s);
-                s.finish()
-            }
+            self.document_type = DocumentType::XML;
 
             let mut features: HashSet<String> = HashSet::new();
 
-            get_xml_features(&dom.document, String::from(""), &mut features);
+            let features: HashSet<String> = get_xml_features(
+                &dom.document,
+                String::from(""),
+                &mut features,
+            );
 
-            let mut features: HashSet<u64> = features.iter().map(|feature| calculate_hash(feature)).collect();
-
-
-
-
+            let features: HashSet<Hash> = features.iter().map(|feature| {
+                Hash::new().push(feature).finalize().clear_items()
+            });
+            //let features: HashSet<FastHash> = features.iter().map(|feature| {
+            //    FastHash::new().push(feature).finalize().clear_items()
+            //});
 
             if let Some(document_profile) = provider.get_document_profile(&features).await? {
                 log::info!("Document profile provided, we will not proceed with further analysis");
 
-
                 self.transformations = document_profile.transformations.clone();
 
                 Ok(())
-
-
             } else {
                 log::info!("Document profile not provided, we will create a new one");
                 unimplemented!();
             }
-
-
         } else {
              Err(Errors::UnexpectedDocumentType)
         }
     }
 
-    pub fn apply_transformations(&self) {
-
-        log::debug!("transformations: {:?}", self.transformations);
-
-
+    pub fn apply_transformations(&self) -> Result<(), Errors> {
+        log::trace!("In apply_transformations");
 
         if self.transformations.is_empty() {
-
             panic!("Not expecting there to be zero transformations");
-
         }
 
+        match self.document_type {
+            DocumentType::XML => {
+                let mut xml: String = String::from("");
+                let transformations = self.transformations.clone();
 
+                walk_transform(&mut xml, &dom.document, 0, &transformations);
 
-        if let Some(dom) = self.to_dom() {
+                log::debug!("Transformed XML document: {}", xml);
 
+                self.data = xml;
 
-            for transformation in self.transformations.iter() {
-
-                match transformation {
-
-                    DocumentTransformation::XMLElementTransformation(t) => {
-
-                        let mut xml: String = String::from("");
-
-                        walk_transform(&mut xml, &dom.document, 0, &t);
-
-                        log::debug!("transformed document: {}", xml);
-
-
-
-                    }
-
-                }
-
-            }
-
-
-
+                Ok(())
+            },
+            _ => Err(Errors::UnexpectedDocumentType),
         }
-
-
-
-
-
-
-
-
-        unimplemented!()
     }
 
     fn to_dom(&self) -> Option<RcDom> {
@@ -235,56 +194,71 @@ impl Document {
     }
 }
 
-fn get_xml_features(node: &Handle, path: String, features: &mut HashSet<String>) {
-    match node.data {
+fn get_xml_features(
+    node: &Handle,
+    path: &str,
+    features: &mut HashSet<String>,
+) {
+    match &node.data {
         NodeData::Document => {
             for child in node.children.borrow().iter() {
-                get_xml_features(child, path.clone(), features);
+                get_xml_features(child, path, features);
             }
         }
-        NodeData::Text { ref contents } => {
+        NodeData::Text { .. } => {
             features.insert(format!("{}/text", path));
-        },
+        }
         NodeData::Element {
             ref name,
             ref attrs,
             ..
         } => {
-            let new_path = format!("{}/{}", path, &name.local);
+            let new_path = format!("{}/{}", path, name.local);
 
             for attr in attrs.borrow().iter() {
-                let attr_name = &*attr.name.local.trim();
+                let attr_name = attr.name.local.trim();
                 features.insert(format!("{}.{}", new_path, attr_name));
             }
 
             for child in node.children.borrow().iter() {
-                get_xml_features(child, new_path.clone(), features);
+                get_xml_features(child, &new_path, features);
             }
-        },
+        }
         _ => {}
     }
 }
 
-fn walk_transform(xml: &mut String, node: &Handle, indent: usize, transformation: &XMLElementTransformation) {
-    let real_indent = " ".repeat(indent * 2);
+fn escape_xml(data: &str) -> String {
+    data.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
+}
 
-    fn escape_xml(data: &str) -> String {
-        data.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
-            .replace("'", "&apos;")
-    }
+fn walk_transform(
+    xml: &mut String,
+    node: &Handle,
+    indent_factor: usize,
+    transformations: &Vec<DocumentTransformation>
+) {
+    let indentation = " ".repeat(indent_factor * 2);
+
+    let xml_element_transformations: Vec<XMLElementTransformation> = transformations.into_iter().filter(|transformation| {
+        match transformation {
+            DocumentTransformation::XMLElementTransformation(t) => &t,
+        }
+    }).collect();
 
     match node.data {
         NodeData::Document => {
             for child in node.children.borrow().iter() {
-                walk_transform(xml, child, indent, transformation);
+                walk_transform(xml, child, indent_factor, transformations);
             }
         }
         NodeData::Text { ref contents } => {
             let contents = &contents.borrow();
-            let text = format!("{}{}\n", real_indent, escape_xml(contents.trim()));
+            let text = format!("{}{}\n", indentation, escape_xml(contents.trim()));
 
             if !text.trim().is_empty() {
                 xml.push_str(&text);
@@ -298,78 +272,57 @@ fn walk_transform(xml: &mut String, node: &Handle, indent: usize, transformation
             ref attrs,
             ..
         } => {
-            let tag_name = &name.local;
-
-            let mut quick_attributes: HashMap<String, String>  = HashMap::new();
+            let mut element: Option<String> = Some(name.local.to_string());
+            let mut attributes: HashMap<String, String>  = HashMap::new();
 
             for attr in attrs.borrow().iter() {
-                let attr_name = &*attr.name.local.trim().to_string();
+                let attr_name = attr.name.local.trim().clone();
                 let attr_value = escape_xml(&attr.value.trim().to_string());
 
-                quick_attributes.insert(attr_name.to_string(), attr_value);
+                attributes.insert(attr_name.to_string(), attr_value);
             }
 
-            let quick_signature = XMLElementTransformation::get_signature(tag_name.to_string(), quick_attributes.clone());
+            log::info!("Applying XML element transformations...");
 
-            log::debug!("quick_signature: {}", quick_signature);
+            for transformation in xml_element_transformations.iter() {
+                let (transformed_element, transformed_attributes) = transformation.transform(
+                    element.clone(),
+                    attributes.clone()
+                );
 
-            let quick_code = format!(r#"
-{}
-{}
-JSON.stringify({{ element, attributes }});
-"#, quick_signature, &transformation.code);
+                attributes = transformed_attributes;
 
-            log::debug!("quick_code: {}", quick_code);
-
-
-            let quick_context = Context::new().unwrap();
-            let result =  quick_context.eval_as::<String>(&quick_code).unwrap();
-            log::debug!("result: {}", result);
-
-
-            let parsed: Value = serde_json::from_str(&result).unwrap();
-
-            let transformed_element = parsed.get("element").and_then(|e|
-                e.as_str().map(String::from));
-
-            let transformed_attributes = parsed["attributes"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|v| v.as_str().unwrap().to_string())
-                .collect::<Vec<String>>();
-
-
-            if let Some(transformed_element) = transformed_element {
-
-                xml.push_str(&format!("{}<{}", real_indent, transformed_element));
-
-
-                for attribute in transformed_attributes.iter() {
-
-                    let value = quick_attributes.get(attribute).unwrap();
-
-                    xml.push_str(&format!(" {}=\"{}\"", attribute, value));
-
+                if let Some(transformed_element) = transformed_element {
+                    element = Some(transformed_element);
+                } else {
+                    log::info!("Transformation has eliminated an element, no further transfomations will be applied");
+                    element = None;
+                    break;
                 }
+            }
 
+            log::info!("Done applying XML element transformations.");
+
+            if let Some(element) = element {
+                xml.push_str(&format!("{}<{}", indentation, transformed_element));
+
+                for attribute in attributes.iter() {
+                    let value = attributes.get(&attribute).unwrap();
+                    xml.push_str(&format!(" {}=\"{}\"", attribute, value));
+                }
 
                 xml.push_str(">\n");
 
                 for child in node.children.borrow().iter() {
-                    walk_transform(xml, child, indent + 1, transformation);
+                    walk_transform(xml, child, indent_factor + 1, transformations);
                 }
 
-                xml.push_str(&format!("{}</{}>\n", real_indent, transformed_element));
-
-
+                xml.push_str(&format!("{}</{}>\n", indentation, element));
             } else {
                 for child in node.children.borrow().iter() {
-                    walk_transform(xml, child, indent + 1, transformation);
+                    walk_transform(xml, child, indent_factor + 1, transformations);
                 }
             }
-
-
         },
         _ => {}
     }
@@ -394,9 +347,9 @@ fn string_to_xml(value: String) -> Result<String, Errors> {
     Ok(xhtml)
 }
 
-fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
+fn walk(xhtml: &mut String, handle: &Handle, indent_factor: usize) {
     let node = handle;
-    let real_indent = " ".repeat(indent * 2);
+    let indentation = " ".repeat(indent_factor * 2);
 
     fn escape_xml(data: &str) -> String {
         data.replace("&", "&amp;")
@@ -409,12 +362,12 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
     match node.data {
         NodeData::Document => {
             for child in node.children.borrow().iter() {
-                walk(xhtml, child, indent);
+                walk(xhtml, child, indent_factor);
             }
         }
         NodeData::Text { ref contents } => {
             let contents = &contents.borrow();
-            let text = format!("{}{}\n", real_indent, escape_xml(contents.trim()));
+            let text = format!("{}{}\n", indentation, escape_xml(contents.trim()));
 
             if !text.trim().is_empty() {
                 xhtml.push_str(&text);
@@ -430,7 +383,7 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
         } => {
             let tag_name = &name.local;
 
-            xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
+            xhtml.push_str(&format!("{}<{}", indentation, tag_name));
 
             for attr in attrs.borrow().iter() {
                 let attr_name = &*attr.name.local.trim();
@@ -442,10 +395,10 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
             xhtml.push_str(">\n");
 
             for child in node.children.borrow().iter() {
-                walk(xhtml, child, indent + 1);
+                walk(xhtml, child, indent_factor + 1);
             }
 
-            xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
+            xhtml.push_str(&format!("{}</{}>\n", indentation, tag_name));
         },
         _ => {}
     }

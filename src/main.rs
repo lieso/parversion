@@ -40,7 +40,7 @@ mod json_node;
 use crate::prelude::*;
 use crate::config::{CONFIG};
 use crate::document_profile::DocumentProfile;
-use crate::provider::Provider;
+use crate::provider::{YamlFileProvider};
 use crate::transformation::{
     Runtime,
     DocumentTransformation,
@@ -70,58 +70,6 @@ fn init_logging() {
         .apply()
         .expect("Could not initialize logging");
 }
-
-
-
-fn jaccard_similarity(set_a: &HashSet<u64>, set_b: &HashSet<u64>) -> f64 {
-    let intersection: HashSet<_> = set_a.intersection(set_b).collect();
-    let union: HashSet<_> = set_a.union(set_b).collect();
-
-    if union.is_empty() {
-        return 1.0;
-    }
-
-    intersection.len() as f64 / union.len() as f64
-}
-
-
-
-
-
-struct TestProvider;
-
-#[async_trait]
-impl Provider for TestProvider {
-
-    async fn get_document_profile(&self, features: &HashSet<u64>) -> Result<Option<&DocumentProfile>, Errors> {
-        log::trace!("In get_document_profile");
-
-
-        let serialized_features = serde_json::to_string(features).expect("could not serialize");
-        log::debug!("{}", serialized_features);
-
-
-        let document_profile = DOCUMENT_PROFILES.iter().find(|item| {
-            let similarity = jaccard_similarity(features, &item.features);
-
-            log::debug!("id: {}", item.id.to_string());
-            log::debug!("similarity: {}", similarity);
-
-            similarity > 0.8
-        });
-
-        Ok(document_profile)
-    }
-
-}
-
-
-
-
-
-
-
-
 
 #[tokio::main]
 async fn main() {
@@ -165,17 +113,8 @@ async fn main() {
 
 
 
-    let context = Context::new().unwrap();
-    let value = context.eval("1 + 2").unwrap();
-    assert_eq!(value, JsValue::Int(3));
 
-
-
-
-
-
-
-    let provider = TestProvider;
+    let provider = YamlFileProvider::new(String::from("provider.json"));
 
     let options = Options {
         origin,
@@ -280,8 +219,21 @@ lazy_static! {
                     id: ID::new(),
                     description: String::from("XML element transformation during document preprocessing. Blacklisted elements and attributes are eliminated, unseen by the LLM, reducing token count for inference."),
                     runtime: Runtime::QuickJS,
-                    code: String::from(r#"
-                        element = 'foo';
+                    infix: String::from(r#"
+                        const blacklistedElements = [
+                            'script',
+                            'meta',
+                            'link',
+                            'iframe',
+                            'svg',
+                            'style',
+                            'noscript',
+                        ];
+
+                        if (blacklistedElements.includes(element)) {
+                            element = null;
+                        }
+
                         attributes = Object.keys(attributes).filter(item => {
                             item === 'href' || item === 'title'
                         });

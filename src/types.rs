@@ -11,8 +11,10 @@ pub enum AnalysisMode {
 
 #[derive(Clone, Debug)]
 pub enum Errors {
+    FileReadError,
     FileInputError,
     FileOutputError,
+    JsonParseError,
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,

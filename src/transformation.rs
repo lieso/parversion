@@ -1,6 +1,9 @@
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use quick_js::{Context, JsValue};
 
+use crate::prelude::*;
 use crate::id::{ID};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -138,12 +141,12 @@ pub enum Transformation {
 pub struct XMLElementTransformation {
     pub id: ID,
     pub description: String,
-    pub runtime: Runtime,
-    pub code: String,
+    runtime: Runtime,
+    infix: String,
 }
 
 impl XMLElementTransformation {
-    pub fn get_signature(element: String, attributes: HashMap<String, String>) -> String {
+    fn prefix(&self, element: String, attributes: HashMap<String, String>) -> String {
         let element_code = format!("let element = '{}';", element);
 
         let attributes_code = {
@@ -155,6 +158,58 @@ impl XMLElementTransformation {
         };
 
         format!("{}\n{}", element_code, attributes_code)
+    }
+
+    fn suffix(&self) -> String {
+        match self.runtime {
+            Runtime::QuickJS => {
+                format!("JSON.stringify({ element, attribute })")
+            },
+            _ => panic!("unexpected runtime: {:?}", self.runtime),
+        }
+    }
+    
+    pub fn transform(
+        &self,
+        element: String,
+        attributes: HashMap<String, String>
+    ) -> (
+        Option<String>,
+        HashMap<String, String>
+    ) {
+        log::trace!("In transform");
+
+        let prefix = self.prefix(element, attributes);
+        let suffix = self.suffix();
+
+        let code = format!("{}\n{}\n{}"#, prefix, self.infix, suffix);
+        log::debug!("code: {}", code);
+
+        match self.runtime {
+            Runtime::QuickJS => {
+                log::info!("Runtime is QuickJS");
+
+                let quick_context = Context::new().unwrap();
+
+                let result =  quick_context.eval_as::<String>(&code).unwrap();
+                log::debug!("QuickJS result: {}", result);
+
+                let parsed: Value = serde_json::from_str(&result).unwrap();
+
+                let transformed_element = parsed.get("element").and_then(|e|
+                    e.as_str().map(String::from));
+
+                let transformed_attributes = parsed["attributes"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| v.as_str().unwrap().to_string())
+                    .collect::<Vec<String>>();
+
+                (transformed_element, transformed_attributes)
+            },
+            _ => panic!("Unexpected runtime: {:?}", self.runtime);
+        }
     }
 }
 
