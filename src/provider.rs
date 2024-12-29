@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::collections::{HashMap, HashSet};
-use std::fs:
+use std::fs;
 use serde_json::Value;
 use rusqlite::{Connection};
 use serde_yaml;
@@ -13,16 +13,17 @@ pub trait Provider: Send + Sync + Sized {
     async fn get_document_profile(
         &self,
         features: &HashSet<Hash>
-    ) -> Result<Option<&DocumentProfile>, Errors>;
+    ) -> Result<Option<DocumentProfile>, Errors>;
 }
 
 pub struct VoidProvider;
 
+#[async_trait]
 impl Provider for VoidProvider {
     async fn get_document_profile(
         &self,
         _features: &HashSet<Hash>
-    ) -> Result<Option<&DocumentProfile>, Errors> {
+    ) -> Result<Option<DocumentProfile>, Errors> {
         Ok(None)
     }
 }
@@ -42,7 +43,7 @@ impl Provider for YamlFileProvider {
     async fn get_document_profile(
         &self,
         features: &HashSet<Hash>
-    ) -> Result<Option<&DocumentProfile>, Errors> {
+    ) -> Result<Option<DocumentProfile>, Errors> {
         let data = fs::read_to_string(&self.file_path)
             .map_err(|_| Errors::FileReadError)?;
 
@@ -79,7 +80,7 @@ impl Provider for JsonFileProvider {
     async fn get_document_profile(
         &self,
         features: &HashSet<Hash>
-    ) -> Result<Option<&DocumentProfile>, Errors> {
+    ) -> Result<Option<DocumentProfile>, Errors> {
         let data = fs::read_to_string(&self.file_path)
             .map_err(|_| Errors::FileReadError)?;
 
@@ -113,10 +114,10 @@ impl SqliteProvider {
 
 #[async_trait]
 impl Provider for SqliteProvider {
-    async fn get_document_profiles(
+    async fn get_document_profile(
         &self,
         features: &HashSet<Hash>
-    ) -> Result<Option<&DocumentProfile>, Errors> {
+    ) -> Result<Option<DocumentProfile>, Errors> {
         let conn = Connection::open(&self.db_path)
             .map_err(|_| Errors::SqliteDatabaseConnectionError)?;
 

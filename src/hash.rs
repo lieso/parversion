@@ -111,6 +111,14 @@ impl<T: HashStrategy> fmt::Display for Hasher<T> {
     }
 }
 
+impl<T: HashStrategy> std::hash::Hash for Hasher<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        if let Some(ref value) = self.value {
+            value.hash(state);
+        }
+    }
+}
+
 pub type Hash = Hasher<Sha256Strategy>;
 pub type FastHash = Hasher<DefaultHasherStrategy>;
 

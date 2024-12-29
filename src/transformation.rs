@@ -141,8 +141,8 @@ pub enum Transformation {
 pub struct XMLElementTransformation {
     pub id: ID,
     pub description: String,
-    runtime: Runtime,
-    infix: String,
+    pub runtime: Runtime,
+    pub infix: String,
 }
 
 impl XMLElementTransformation {
@@ -163,7 +163,7 @@ impl XMLElementTransformation {
     fn suffix(&self) -> String {
         match self.runtime {
             Runtime::QuickJS => {
-                format!("JSON.stringify({ element, attribute })")
+                format!("JSON.stringify({{ element, attribute }})")
             },
             _ => panic!("unexpected runtime: {:?}", self.runtime),
         }
@@ -182,7 +182,7 @@ impl XMLElementTransformation {
         let prefix = self.prefix(element, attributes);
         let suffix = self.suffix();
 
-        let code = format!("{}\n{}\n{}"#, prefix, self.infix, suffix);
+        let code = format!("{}\n{}\n{}", prefix, self.infix, suffix);
         log::debug!("code: {}", code);
 
         match self.runtime {
@@ -199,16 +199,17 @@ impl XMLElementTransformation {
                 let transformed_element = parsed.get("element").and_then(|e|
                     e.as_str().map(String::from));
 
-                let transformed_attributes = parsed["attributes"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(|v| v.as_str().unwrap().to_string())
-                    .collect::<Vec<String>>();
+                let transformed_attributes = parsed.get("attributes")
+                    .and_then(|attr| attr.as_object())
+                    .map(|attr_obj| {
+                        attr_obj.iter().map(|(k, v)| {
+                            (k.clone(), v.as_str().unwrap_or("").to_string())
+                        }).collect::<HashMap<String, String>>()
+                    }).unwrap_or_default();
 
                 (transformed_element, transformed_attributes)
             },
-            _ => panic!("Unexpected runtime: {:?}", self.runtime);
+            _ => panic!("Unexpected runtime: {:?}", self.runtime),
         }
     }
 }
@@ -217,22 +218,6 @@ impl XMLElementTransformation {
 pub enum DocumentTransformation {
     XMLElementTransformation(XMLElementTransformation),
 }
-
-//pub fn transform<T, U>(transformation: Transformation, payload: T) -> U {
-    //match transformation {
-    //    Transformation::DataNodeFieldsTransform(t) => {
-    //        match t.get_runtime() {
-    //            Runtime::Python => runtimes::python_field_map(&t.get_code(), payload)
-    //        }
-    //    },
-    //    Transformation::DataNodeHashTransform(t) => {
-    //        match t.get_runtime() {
-    //            Runtime::Python => runtimes::python_field_constant(&t.get_code(), payload)
-    //        }
-    //    },
-    //    _ => unimplemented!()
-    //}
-//}
 
 //lazy_static! {
 //    pub static ref VALUE_TRANSFORMATIONS: Vec<Transformation> = vec![

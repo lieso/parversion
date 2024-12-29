@@ -132,18 +132,20 @@ impl Document {
 
             let mut features: HashSet<String> = HashSet::new();
 
-            let features: HashSet<String> = get_xml_features(
+            get_xml_features(
                 &dom.document,
-                String::from(""),
+                &mut String::from(""),
                 &mut features,
             );
 
             let features: HashSet<Hash> = features.iter().map(|feature| {
-                Hash::new().push(feature).finalize().clear_items()
-            });
+                let mut hash = Hash::new();
+                hash.push(feature).finalize().clear_items();
+                hash.clone()
+            }).collect();
             //let features: HashSet<FastHash> = features.iter().map(|feature| {
             //    FastHash::new().push(feature).finalize().clear_items()
-            //});
+            //}).collect();
 
             if let Some(document_profile) = provider.get_document_profile(&features).await? {
                 log::info!("Document profile provided, we will not proceed with further analysis");
@@ -160,7 +162,7 @@ impl Document {
         }
     }
 
-    pub fn apply_transformations(&self) -> Result<(), Errors> {
+    pub fn apply_transformations(&mut self) -> Result<(), Errors> {
         log::trace!("In apply_transformations");
 
         if self.transformations.is_empty() {
@@ -169,16 +171,20 @@ impl Document {
 
         match self.document_type {
             DocumentType::XML => {
-                let mut xml: String = String::from("");
-                let transformations = self.transformations.clone();
+                if let Some(dom) = self.to_dom() {
+                    let mut xml: String = String::from("");
+                    let transformations = self.transformations.clone();
 
-                walk_transform(&mut xml, &dom.document, 0, &transformations);
+                    walk_transform(&mut xml, &dom.document, 0, &transformations);
 
-                log::debug!("Transformed XML document: {}", xml);
+                    log::debug!("Transformed XML document: {}", xml);
 
-                self.data = xml;
+                    self.data = xml;
 
-                Ok(())
+                    Ok(())
+                } else {
+                     Err(Errors::UnexpectedDocumentType)
+                }
             },
             _ => Err(Errors::UnexpectedDocumentType),
         }
@@ -196,7 +202,7 @@ impl Document {
 
 fn get_xml_features(
     node: &Handle,
-    path: &str,
+    path: &mut String,
     features: &mut HashSet<String>,
 ) {
     match &node.data {
@@ -213,7 +219,7 @@ fn get_xml_features(
             ref attrs,
             ..
         } => {
-            let new_path = format!("{}/{}", path, name.local);
+            let mut new_path = format!("{}/{}", path, name.local);
 
             for attr in attrs.borrow().iter() {
                 let attr_name = attr.name.local.trim();
@@ -221,7 +227,7 @@ fn get_xml_features(
             }
 
             for child in node.children.borrow().iter() {
-                get_xml_features(child, &new_path, features);
+                get_xml_features(child, &mut new_path, features);
             }
         }
         _ => {}
@@ -244,9 +250,10 @@ fn walk_transform(
 ) {
     let indentation = " ".repeat(indent_factor * 2);
 
-    let xml_element_transformations: Vec<XMLElementTransformation> = transformations.into_iter().filter(|transformation| {
+    let xml_element_transformations: Vec<XMLElementTransformation> = transformations.into_iter().filter_map(|transformation| {
         match transformation {
-            DocumentTransformation::XMLElementTransformation(t) => &t,
+            DocumentTransformation::XMLElementTransformation(t) => Some(t.clone()),
+            _ => None,
         }
     }).collect();
 
@@ -286,7 +293,7 @@ fn walk_transform(
 
             for transformation in xml_element_transformations.iter() {
                 let (transformed_element, transformed_attributes) = transformation.transform(
-                    element.clone(),
+                    element.unwrap().clone(),
                     attributes.clone()
                 );
 
@@ -304,11 +311,11 @@ fn walk_transform(
             log::info!("Done applying XML element transformations.");
 
             if let Some(element) = element {
-                xml.push_str(&format!("{}<{}", indentation, transformed_element));
+                xml.push_str(&format!("{}<{}", indentation, element));
 
-                for attribute in attributes.iter() {
-                    let value = attributes.get(&attribute).unwrap();
-                    xml.push_str(&format!(" {}=\"{}\"", attribute, value));
+                for (attr_name, attr_value) in &attributes {
+                    let value = attributes.get(attr_name).unwrap();
+                    xml.push_str(&format!(" {}=\"{}\"", attr_name, value));
                 }
 
                 xml.push_str(">\n");

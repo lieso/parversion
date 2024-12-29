@@ -22,6 +22,8 @@ pub enum Errors {
     XmlParseError,
     BasisGraphBuildError(String),
     PathConversionError,
+    SqliteDatabaseConnectionError,
+    YamlParseError,
 }
 
 #[derive(Clone, Debug)]
