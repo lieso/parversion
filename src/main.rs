@@ -113,7 +113,7 @@ async fn main() {
 
 
 
-    let provider = YamlFileProvider::new(String::from("provider.json"));
+    let provider = YamlFileProvider::new(String::from("provider.yaml"));
 
     let options = Options {
         origin,

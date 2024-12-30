@@ -125,6 +125,8 @@ impl Document {
         &mut self,
         provider: &P
     ) -> Result<(), Errors> {
+        log::trace!("In document/perform_analysis");
+
         if let Some(dom) = self.to_dom() {
             log::info!("It seems to be possible to parse this document as XML");
 
@@ -163,7 +165,7 @@ impl Document {
     }
 
     pub fn apply_transformations(&mut self) -> Result<(), Errors> {
-        log::trace!("In apply_transformations");
+        log::trace!("In document/apply_transformations");
 
         if self.transformations.is_empty() {
             panic!("Not expecting there to be zero transformations");

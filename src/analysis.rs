@@ -57,6 +57,7 @@ impl Analysis {
         &mut self,
         provider: &P
     ) -> Result<Self, Errors> {
+        log::trace!("In analysis/perform_analysis");
 
         self.document.perform_analysis(provider).await?;
         self.document.apply_transformations()?;
