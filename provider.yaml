@@ -106,13 +106,12 @@ document_profiles:
           description: "XML element transformation during document preprocessing. Blacklisted elements and attributes are eliminated, unseen by the LLM, reducing token count for inference."
           runtime: "QuickJS"
           infix: |
+            const BLACKLISTED_ATTRIBUTES = {style:1, bgcolor:1, border:1, cellpadding:1, cellspacing:1, width:1, height:1, rows:1, cols:1, wrap:1, "aria-hidden":1, size:1, op:1, lang:1, colspan:1, rel:1};
             const BLACKLISTED_ELEMENTS = {script:1,meta:1,link:1,iframe:1,svg:1,style:1,noscript:1};
             if (BLACKLISTED_ELEMENTS[element]) element = null;
             attributes = Object.keys(attributes)
-              .filter(item => item === 'href' || item === 'title') // Use === for comparison
+              .filter(item => !BLACKLISTED_ATTRIBUTES[item])
               .reduce((acc, key) => {
                   acc[key] = attributes[key];
                   return acc;
               }, {});
-
-

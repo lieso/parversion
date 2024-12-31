@@ -411,26 +411,3 @@ fn walk(xhtml: &mut String, handle: &Handle, indent_factor: usize) {
         _ => {}
     }
 }
-
-//lazy_static! {
-//    pub static ref DOCUMENT_TRANSFORMATIONS: Vec<Transformation> = vec![
-//        DocumentTransformation {
-//            runtime: Runtime::AWK,
-//            description: String::from("Unseen blacklisted attributes"),
-//            regex: Regex::new(r#"
-//"style", "bgcolor", "border", "cellpadding", "cellspacing",
-//"width", "height", "rows", "cols", "wrap",
-//"aria-hidden", "size", "op", "lang", "colspan", "rel"
-//            "#).unwrap(),
-//            expression: String::from(r#"{ print $0 }"#),
-//        },
-//        DocumentTransformation {
-//            runtime: Runtime::AWK,
-//            description: String::from("Unseen blacklisted elements"),
-//            regex: Regex::new(r#"
-//"script", "meta", "link", "iframe", "svg", "style", "noscript"
-//            "#).unwrap(),
-//            expression: String::from(r#"{ print $0 }"#),
-//        },
-//    ];
-//}

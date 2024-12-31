@@ -183,16 +183,12 @@ impl XMLElementTransformation {
         let suffix = self.suffix();
 
         let code = format!("{}\n{}\n{}", prefix, self.infix, suffix);
-        log::debug!("code: {}", code);
 
         match self.runtime {
             Runtime::QuickJS => {
-                log::info!("Runtime is QuickJS");
-
                 let quick_context = Context::new().unwrap();
 
                 let result =  quick_context.eval_as::<String>(&code).unwrap();
-                log::debug!("QuickJS result: {}", result);
 
                 let parsed: Value = serde_json::from_str(&result).unwrap();
 
