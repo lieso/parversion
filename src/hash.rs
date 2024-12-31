@@ -1,82 +1,60 @@
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::de::{self, Visitor};
 use sha2::{Sha256, Digest};
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash as StdHash, Hasher as StdHasher};
 use std::fmt;
-use std::fmt::Debug;
 
-pub trait HashStrategy {
-    fn hash(data: &[u8]) -> String;
-}
-
-#[derive(Debug, Clone)]
-pub struct Sha256Strategy;
-impl HashStrategy for Sha256Strategy {
-    fn hash(data: &[u8]) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(data);
-        format!("{:x}", hasher.finalize())
-    }
-}
-
-// DefaultHasher (non-cryptographic) strategy
-#[derive(Debug, Clone)]
-pub struct DefaultHasherStrategy;
-impl HashStrategy for DefaultHasherStrategy {
-    fn hash(data: &[u8]) -> String {
-        let mut hasher = DefaultHasher::new();
-        data.hash(&mut hasher);
-        format!("{:x}", hasher.finish())
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Hasher<T: HashStrategy> {
-    items: Vec<String>,
+#[derive(Clone, Debug)]
+pub struct Hash {
+    items: Option<Vec<String>>,
     value: Option<String>,
-    _strategy: std::marker::PhantomData<T>,
 }
 
-impl<T: HashStrategy> Hasher<T> {
+impl Hash {
     pub fn new() -> Self {
-        Hasher {
-            items: Vec::new(),
+        Hash {
+            items: Some(Vec::new()),
             value: None,
-            _strategy: std::marker::PhantomData,
         }
     }
 
     pub fn from_str(s: &str) -> Self {
-        Hasher {
-            items: Vec::new(),
-            value: Some(T::hash(s.as_bytes())),
-            _strategy: std::marker::PhantomData,
+        Hash {
+            items: Some(Vec::new()),
+            value: Some(Self::hash(s.as_bytes())),
         }
     }
 
     pub fn from_items<U: ToString>(items: Vec<U>) -> Self {
         let string_items = items.into_iter().map(|item| item.to_string()).collect();
-        Hasher {
-            items: string_items,
+        Hash {
+            items: Some(string_items),
             value: None,
-            _strategy: std::marker::PhantomData,
         }
     }
 
     pub fn push<U: ToString>(&mut self, item: U) -> &mut Self {
-        self.items.push(item.to_string());
-        self.value = None;
+        if self.items.is_none() {
+            self.items = Some(Vec::new());
+        }
+        if let Some(ref mut items) = self.items {
+            items.push(item.to_string());
+            self.value = None;
+        }
         self
     }
 
     pub fn sort(&mut self) -> &mut Self {
-        self.items.sort();
+        if let Some(ref mut items) = self.items {
+            items.sort();
+        }
         self
     }
 
     pub fn finalize(&mut self) -> &mut Self {
-        let concatenated = self.items.join("").into_bytes();
-        self.value = Some(T::hash(&concatenated));
+        if let Some(ref items) = self.items {
+            let concatenated = items.join("").into_bytes();
+            self.value = Some(Self::hash(&concatenated));
+        }
         self
     }
 
@@ -87,22 +65,28 @@ impl<T: HashStrategy> Hasher<T> {
     pub fn to_string(&self) -> Option<String> {
         self.value.clone()
     }
-    
+
     pub fn clear_items(&mut self) -> &mut Self {
-        self.items.clear();
+        self.items = Some(Vec::new());
         self
+    }
+
+    fn hash(data: &[u8]) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        format!("{:x}", hasher.finalize())
     }
 }
 
-impl<T: HashStrategy> PartialEq for Hasher<T> {
+impl PartialEq for Hash {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value
     }
 }
 
-impl<T: HashStrategy> Eq for Hasher<T> {}
+impl Eq for Hash {}
 
-impl<T: HashStrategy> fmt::Display for Hasher<T> {
+impl fmt::Display for Hash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.value {
             Some(value) => write!(f, "{}", value),
@@ -111,7 +95,7 @@ impl<T: HashStrategy> fmt::Display for Hasher<T> {
     }
 }
 
-impl<T: HashStrategy> std::hash::Hash for Hasher<T> {
+impl std::hash::Hash for Hash {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         if let Some(ref value) = self.value {
             value.hash(state);
@@ -119,6 +103,43 @@ impl<T: HashStrategy> std::hash::Hash for Hasher<T> {
     }
 }
 
-pub type Hash = Hasher<Sha256Strategy>;
-pub type FastHash = Hasher<DefaultHasherStrategy>;
+impl Serialize for Hash {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.value {
+            Some(value) => serializer.serialize_str(value),
+            None => Err(serde::ser::Error::custom("Hash value is missing")),
+        }
+    }
+}
 
+impl<'de> Deserialize<'de> for Hash {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct HashVisitor;
+
+        impl<'de> Visitor<'de> for HashVisitor {
+            type Value = Hash;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid hash string")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Hash, E>
+            where
+                E: de::Error,
+            {
+                Ok(Hash {
+                    items: None,
+                    value: Some(value.to_string()),
+                })
+            }
+        }
+
+        deserializer.deserialize_str(HashVisitor)
+    }
+}

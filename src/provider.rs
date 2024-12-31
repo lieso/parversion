@@ -47,14 +47,16 @@ impl Provider for YamlFileProvider {
         let data = fs::read_to_string(&self.file_path)
             .map_err(|_| Errors::FileReadError)?;
 
+        let serialized_features = serde_yaml::to_string(features).expect("Could not serialize to yaml");
+
+        log::debug!("serialized_features: {}", serialized_features);
+
         let yaml_result: Result<serde_yaml::Value, _> = serde_yaml::from_str(&data);
         if let Err(e) = yaml_result {
             log::error!("Failed to parse YAML: {:?}", e);
             return Err(Errors::YamlParseError);
         }
         let yaml = yaml_result.unwrap();
-
-        log::debug!("yaml: {:?}", yaml);
 
         let document_profiles: Vec<DocumentProfile> = yaml.get("document_profiles")
             .and_then(|dp| {
@@ -65,8 +67,6 @@ impl Provider for YamlFileProvider {
                 deserialized.ok()
             })
             .ok_or(Errors::YamlParseError)?;
-
-        log::debug!("Deserialized document_profiles: {:?}", document_profiles);
 
         if let Some(target_profile) = DocumentProfile::get_similar_profile(
             &document_profiles,

@@ -163,7 +163,7 @@ impl XMLElementTransformation {
     fn suffix(&self) -> String {
         match self.runtime {
             Runtime::QuickJS => {
-                format!("JSON.stringify({{ element, attribute }})")
+                format!("JSON.stringify({{ element, attributes }})")
             },
             _ => panic!("unexpected runtime: {:?}", self.runtime),
         }

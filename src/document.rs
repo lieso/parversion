@@ -13,7 +13,7 @@ use crate::transformation::{
     DocumentTransformation,
     XMLElementTransformation,
 };
-use crate::hash::{Hash, FastHash};
+use crate::hash::{Hash};
 
 pub type DocumentNode = XMLNode;
 
@@ -145,14 +145,13 @@ impl Document {
                 hash.push(feature).finalize().clear_items();
                 hash.clone()
             }).collect();
-            //let features: HashSet<FastHash> = features.iter().map(|feature| {
-            //    FastHash::new().push(feature).finalize().clear_items()
-            //}).collect();
 
             if let Some(document_profile) = provider.get_document_profile(&features).await? {
                 log::info!("Document profile provided, we will not proceed with further analysis");
 
                 self.transformations = document_profile.transformations.clone();
+
+                log::debug!("self.transformations: {:?}", self.transformations);
 
                 Ok(())
             } else {
