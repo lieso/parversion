@@ -58,6 +58,8 @@ fn load_stdin() -> io::Result<String> {
 }
 
 fn init_logging() {
+    log::info!("Initializing logging...");
+
     let path = format!("{}/{}", read_lock!(CONFIG).dev.debug_dir, "debug.log");
     let log_file = File::create(path).expect("Could not create log file");
 
@@ -70,20 +72,13 @@ fn init_logging() {
         .expect("Could not initialize logging");
 }
 
+fn setup() {
+    init_logging();
+}
+
 #[tokio::main]
 async fn main() {
-    init_logging();
-
-    let mut document = String::new();
-
-    match load_stdin() {
-        Ok(stdin) => {
-            document = stdin;
-        }
-        Err(_e) => {
-            log::debug!("Did not receive input from stdin");
-        }
-    }
+    setup();
 
     let matches = App::new("parversion")
         .arg(Arg::with_name("file")
@@ -91,66 +86,85 @@ async fn main() {
              .long("file")
              .value_name("FILE")
              .help("Provide file as document for processing"))
-        .arg(Arg::with_name("basis")
-             .short('b')
-             .long("basis")
-             .value_name("BASIS")
-             .help("Provide basis graph"))
-        .arg(Arg::with_name("format")
-            .short('o')
-            .long("output-format")
-            .value_name("FORMAT")
-            .help("Set output format: JSON, HTML, XML, text"))
         .arg(Arg::with_name("url")
             .short('u')
             .long("url")
             .value_name("URL")
-            .help("The full URL that identifies and locates the provided document"))
+            .help("Provide url as document for processing"))
         .get_matches();
-
-    let origin: Option<String> = matches.value_of("url").map(|s| s.to_string());
-
-
-
-
-    let provider = YamlFileProvider::new(String::from("provider.yaml"));
-
-    let options = Options {
-        origin,
-        ..Options::default()
-    };
-
-    let analysis = match matches.value_of("file") {
-        Some(path) => {
-            normalization::normalize_file_to_analysis(
-                &provider,
-                path,
-                &Some(options),
-            ).await.expect("Could not normalize file")
-        }
-        None => {
-            log::info!("File not provided");
-            normalization::normalize_text_to_analysis(
-                &provider,
-                document,
-                &Some(options),
-            ).await.expect("Could not normalize text")
-        }
-    };
-
-
 
     let document_format = document_format::DocumentFormat::default();
 
+    let provider = YamlFileProvider::new(String::from("provider.yaml"));
 
-    let normalized_text = analysis.to_document(&Some(document_format)).expect("Could not convert to document").to_string();
+    log::info!("Using yaml file provider");
 
+    let options = Options {
+        ..Options::default()
+    };
 
-    println!("{}", normalized_text);
+    log::debug!("options: {:?}", options);
 
+    let analysis = {
+        if let Ok(stdin) = load_stdin() {
+            log::info!("Received data from stdin");
+            
+            match normalization::normalize_text_to_analysis(
+                &provider,
+                stdin,
+                &Some(options),
+            ).await {
+                Ok(analysis) => analysis,
+                Err(err) => {
+                    eprintln!("Failed to normalize text from stdin: {:?}", err);
+                    std::process::exit(1);
+                }
+            }
+        } else if let Some(path) = matches.value_of("file") {
+            log::info!("Received a file name");
 
+            match normalization::normalize_file_to_analysis(
+                &provider,
+                path,
+                &Some(options),
+            ).await {
+                Ok(analysis) => analysis,
+                Err(err) => {
+                    eprintln!("Failed to normalize URL: {:?}", err);
+                    std::process::exit(1);
+                }
+            }
+        } else if let Some(url) = matches.value_of("url") {
+            log::info!("Received a URL");
 
+            match normalization::normalize_url_to_analysis(
+                &provider,
+                url,
+                &Some(options),
+            ).await {
+                Ok(analysis) => analysis,
+                Err(err) => {
+                    eprintln!("Failed to normalize URL: {:?}", err);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            eprintln!("No valid input provided. Please provide either stdin, a file or URL.");
+            std::process::exit(1);
+        }
+    };
 
+    log::info!("Successfully completed analysis");
 
-    unimplemented!()
+    match analysis.to_document(&Some(document_format)) {
+        Ok(document) => {
+            println!("{}", document.to_string());
+        },
+        Err(err) => {
+            eprintln!("Failed to generate normalized document: {:?}", err);
+            std::process::exit(1);
+        }
+    }
+
+    std::process::exit(0);
 }
