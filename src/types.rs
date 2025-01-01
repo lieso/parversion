@@ -24,6 +24,7 @@ pub enum Errors {
     PathConversionError,
     SqliteDatabaseConnectionError,
     YamlParseError,
+    FetchUrlError(String),
 }
 
 #[derive(Clone, Debug)]

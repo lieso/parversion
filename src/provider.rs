@@ -49,7 +49,7 @@ impl Provider for YamlFileProvider {
 
         let serialized_features = serde_yaml::to_string(features).expect("Could not serialize to yaml");
 
-        log::debug!("serialized_features: {}", serialized_features);
+        log::debug!("serialized_features:\n{}", serialized_features);
 
         let yaml_result: Result<serde_yaml::Value, _> = serde_yaml::from_str(&data);
         if let Err(e) = yaml_result {
