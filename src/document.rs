@@ -235,14 +235,6 @@ fn get_xml_features(
     }
 }
 
-fn escape_xml(data: &str) -> String {
-    data.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;")
-        .replace("'", "&apos;")
-}
-
 fn walk_transform(
     xml: &mut String,
     node: &Handle,
@@ -336,78 +328,10 @@ fn walk_transform(
     }
 }
 
-fn string_to_xml(value: String) -> Result<String, Errors> {
-    let mut xhtml = String::from("");
-
-    let sanitized = value.replace("\n", "");
-
-    let dom = parse_document(RcDom::default(), Default::default())
-        .from_utf8()
-        .read_from(&mut sanitized.as_bytes())
-        .unwrap();
-
-    walk(&mut xhtml, &dom.document, 0);
-
-    if xhtml.trim().is_empty() {
-        return Err(Errors::UnexpectedDocumentType);
-    }
-
-    Ok(xhtml)
-}
-
-fn walk(xhtml: &mut String, handle: &Handle, indent_factor: usize) {
-    let node = handle;
-    let indentation = " ".repeat(indent_factor * 2);
-
-    fn escape_xml(data: &str) -> String {
-        data.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace("\"", "&quot;")
-            .replace("'", "&apos;")
-    }
-
-    match node.data {
-        NodeData::Document => {
-            for child in node.children.borrow().iter() {
-                walk(xhtml, child, indent_factor);
-            }
-        }
-        NodeData::Text { ref contents } => {
-            let contents = &contents.borrow();
-            let text = format!("{}{}\n", indentation, escape_xml(contents.trim()));
-
-            if !text.trim().is_empty() {
-                xhtml.push_str(&text);
-            }
-        },
-        NodeData::Comment { ref contents } => {
-            log::warn!("Ignoring HTML comment: {}", contents.escape_default());
-        },
-        NodeData::Element {
-            ref name,
-            ref attrs,
-            ..
-        } => {
-            let tag_name = &name.local;
-
-            xhtml.push_str(&format!("{}<{}", indentation, tag_name));
-
-            for attr in attrs.borrow().iter() {
-                let attr_name = &*attr.name.local.trim();
-                let attr_value = escape_xml(&*attr.value.trim());
-
-                xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
-            }
-
-            xhtml.push_str(">\n");
-
-            for child in node.children.borrow().iter() {
-                walk(xhtml, child, indent_factor + 1);
-            }
-
-            xhtml.push_str(&format!("{}</{}>\n", indentation, tag_name));
-        },
-        _ => {}
-    }
+fn escape_xml(data: &str) -> String {
+    data.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
 }
