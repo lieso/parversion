@@ -19,6 +19,7 @@ mod context;
 mod data_node;
 mod document;
 mod document_format;
+mod document_node;
 mod document_profile;
 mod environment;
 mod hash;

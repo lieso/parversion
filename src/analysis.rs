@@ -4,10 +4,11 @@ use crate::prelude::*;
 use crate::data_node::{DataNode};
 use crate::json_node::{JsonNode};
 use crate::basis_graph::{BasisGraph, BasisGraphBuilder};
-use crate::document::{Document};
+use crate::document::{Document, DocumentType};
 use crate::document_format::{DocumentFormat};
 use crate::transformation::{Transformation};
 use crate::provider::Provider;
+use crate::context::Context;
 
 pub struct Analysis {
     analysis_mode: AnalysisMode,
@@ -61,6 +62,27 @@ impl Analysis {
 
         self.document.perform_analysis(provider).await?;
         self.document.apply_transformations()?;
+
+        if self.document.document_type != DocumentType::XML {
+            log::info!("Analysis of non-XML documents is unimplemented");
+            unimplemented!();
+        }   
+
+
+        let mut context = Context::new();
+
+        let document_root = self.document.get_root_node();
+        let context_id = context.register(&document_root);
+
+        let data_node = DataNode::new(
+            context_id.clone(),
+            document_root.get_fields(),
+            document_root.get_description(),
+            &Lineage::new(),
+        );
+
+
+        log::debug!("Initial data node: {:?}", data_node);
 
 
 

@@ -9,6 +9,7 @@ pub mod context;
 pub mod data_node;
 pub mod document;
 pub mod document_format;
+pub mod document_node;
 pub mod document_profile;
 pub mod environment;
 pub mod hash;

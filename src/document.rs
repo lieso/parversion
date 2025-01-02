@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::prelude::*;
 use crate::data_node::{DataNode};
+use crate::document_node::{DocumentNode};
 use crate::provider::Provider;
 use crate::transformation::{
     Runtime,
@@ -15,9 +16,7 @@ use crate::transformation::{
 };
 use crate::hash::{Hash};
 
-pub type DocumentNode = XMLNode;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
     JSON,
     PLAIN_TEXT,
@@ -63,7 +62,7 @@ impl Document {
         self.data.clone()
     }
 
-    pub fn get_root_node(self) -> (DataNode, Vec<XMLNode>) {
+    pub fn _get_root_node(self) -> (DataNode, Vec<XMLNode>) {
         let mut reader = std::io::Cursor::new(self.data);
         match Element::parse(reader) {
             Ok(element) => {
@@ -73,10 +72,22 @@ impl Document {
         }
     }
 
+    pub fn get_root_node(&self) -> DocumentNode {
+        if self.document_type != DocumentType::XML {
+            panic!("Expected an XML document");
+        }
+
+        let mut reader = std::io::Cursor::new(&self.data);
+        match Element::parse(reader) {
+            Ok(element) => DocumentNode::new(xmltree::XMLNode::Element(element)),
+            _ => panic!("Could not parse XML"),
+        }
+    }
+
     pub fn document_to_data(
         xml_node: XMLNode,
         parent_node: Option<DataNode>,
-    ) -> (DataNode, Vec<DocumentNode>) {
+    ) -> (DataNode, Vec<XMLNode>) {
         //let context_id = context.register(&xml_node);
 
         let lineage = match &parent_node {

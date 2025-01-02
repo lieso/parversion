@@ -1,3 +1,4 @@
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
 use crate::prelude::*;
@@ -12,6 +13,7 @@ enum DataNodeTransform {
 }
 pub type DataNodeFields = HashMap<String, String>;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DataNode {
     pub id: ID,
     pub context_id: ID,

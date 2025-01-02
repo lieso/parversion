@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use crate::id::{ID};
+use crate::document_node::DocumentNode;
 
 pub struct Context {
-    nodes: HashMap<ID, String>,
+    nodes: HashMap<ID, DocumentNode>,
 }
 
 impl Context {
@@ -13,9 +14,9 @@ impl Context {
         }
     }
 
-    pub fn register(&mut self, node: String) -> ID {
+    pub fn register(&mut self, node: &DocumentNode) -> ID {
         let id = ID::new();
-        self.nodes.insert(id.clone(), node);
+        self.nodes.insert(id.clone(), node.clone());
         id
     }
 }
