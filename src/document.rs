@@ -9,6 +9,7 @@ use crate::prelude::*;
 use crate::data_node::{DataNode};
 use crate::document_node::{DocumentNode};
 use crate::provider::Provider;
+use crate::profile::Profile;
 use crate::transformation::{
     Runtime,
     DocumentTransformation,
@@ -35,7 +36,6 @@ pub struct Document {
     pub document_type: DocumentType,
     pub metadata: DocumentMetadata,
     pub data: String,
-    pub transformations: Vec<DocumentTransformation>,
 }
 
 impl Document {
@@ -54,7 +54,6 @@ impl Document {
                 date: options.as_ref().and_then(|opts| opts.date.clone()),
             },
             data: value,
-            transformations: Vec::new(),
         })
     }
 
@@ -62,80 +61,19 @@ impl Document {
         self.data.clone()
     }
 
-    pub fn _get_root_node(self) -> (DataNode, Vec<XMLNode>) {
-        let mut reader = std::io::Cursor::new(self.data);
-        match Element::parse(reader) {
-            Ok(element) => {
-                Document::document_to_data(xmltree::XMLNode::Element(element), None)
-            },
-            _ => panic!("Could not parse xml")
-        }
-    }
-
-    pub fn get_root_node(&self) -> DocumentNode {
-        if self.document_type != DocumentType::XML {
-            panic!("Expected an XML document");
-        }
-
+    pub fn get_document_node(&self) -> DocumentNode {
         let mut reader = std::io::Cursor::new(&self.data);
+
         match Element::parse(reader) {
             Ok(element) => DocumentNode::new(xmltree::XMLNode::Element(element)),
             _ => panic!("Could not parse XML"),
         }
     }
 
-    pub fn document_to_data(
-        xml_node: XMLNode,
-        parent_node: Option<DataNode>,
-    ) -> (DataNode, Vec<XMLNode>) {
-        //let context_id = context.register(&xml_node);
-
-        let lineage = match &parent_node {
-            Some(node) => &node.lineage,
-            None => &Lineage::new(),
-        };
-
-        let context_id = ID::new();
-
-        match xml_node {
-            XMLNode::Element(element_node) => {
-                let mut description = format!("{:?}", element_node);
-                description.truncate(20);
-
-                (
-                    DataNode::new(
-                        context_id,
-                        element_node.attributes,
-                        description,
-                        &lineage
-                    ),
-                    element_node.children
-                )
-            },
-            XMLNode::Text(text_node) => {
-                let mut description = text_node.to_string();
-                description.truncate(20);
-
-                (
-                    DataNode::new(
-                        context_id,
-                        HashMap::from([
-                            ("text".to_string(), text_node.to_string())
-                        ]),
-                        description,
-                        &lineage
-                    ),
-                    Vec::new()
-                )
-            },
-            _ => panic!("Unexpected node type")
-        }
-    }
-
     pub async fn perform_analysis<P: Provider>(
         &mut self,
         provider: &P
-    ) -> Result<(), Errors> {
+    ) -> Result<Profile, Errors> {
         log::trace!("In document/perform_analysis");
 
         if let Some(dom) = self.to_dom() {
@@ -157,16 +95,22 @@ impl Document {
                 hash.clone()
             }).collect();
 
-            if let Some(document_profile) = provider.get_document_profile(&features).await? {
-                log::info!("Document profile provided, we will not proceed with further analysis");
+            if let Some(profile) = provider.get_profile(&features).await? {
+                log::info!("Found a profile");
 
-                self.transformations = document_profile.transformations.clone();
+                if profile.document_transformations.is_none() {
+                    log::info!("Profile provided but document transformations missing");
+                    unimplemented!();
+                }
 
-                log::debug!("self.transformations: {:?}", self.transformations);
+                if profile.hash_transformation.is_none() {
+                    log::info!("Profile provided by hash transformation is missing");
+                    unimplemented!();
+                }
 
-                Ok(())
+                Ok(profile)
             } else {
-                log::info!("Document profile not provided, we will create a new one");
+                log::info!("Profile not provided, we will create a new one");
                 unimplemented!();
             }
         } else {
@@ -174,33 +118,36 @@ impl Document {
         }
     }
 
-    pub fn apply_transformations(&mut self) -> Result<(), Errors> {
-        log::trace!("In document/apply_transformations");
+    //pub fn apply_transformations(
+    //    &mut self,
+    //    profile: &Profile
+    //) -> Result<(), Errors> {
+    //    log::trace!("In document/apply_transformations");
 
-        if self.transformations.is_empty() {
-            panic!("Not expecting there to be zero transformations");
-        }
+    //    assert!(profile.document_transformations.clone().is_some());
+    //    assert!(!profile.document_transformations.clone().unwrap().is_empty());
 
-        match self.document_type {
-            DocumentType::XML => {
-                if let Some(dom) = self.to_dom() {
-                    let mut xml: String = String::from("");
-                    let transformations = self.transformations.clone();
+    //    match self.document_type {
+    //        DocumentType::XML => {
+    //            if let Some(dom) = self.to_dom() {
+    //                let mut xml: String = String::from("");
+    //                let transformations = &profile.document_transformations
+    //                    .clone().unwrap();
 
-                    walk_transform(&mut xml, &dom.document, 0, &transformations);
+    //                walk_transform(&mut xml, &dom.document, 0, transformations);
 
-                    log::debug!("Transformed XML document: {}", xml);
+    //                log::debug!("Transformed XML document: {}", xml);
 
-                    self.data = xml;
+    //                self.data = xml;
 
-                    Ok(())
-                } else {
-                     Err(Errors::UnexpectedDocumentType)
-                }
-            },
-            _ => Err(Errors::UnexpectedDocumentType),
-        }
-    }
+    //                Ok(())
+    //            } else {
+    //                 Err(Errors::UnexpectedDocumentType)
+    //            }
+    //        },
+    //        _ => Err(Errors::UnexpectedDocumentType),
+    //    }
+    //}
 
     fn to_dom(&self) -> Option<RcDom> {
         let sanitized = self.data.replace("\n", "");

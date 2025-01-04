@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use quick_js::{Context, JsValue};
+use quick_js::{Context as QuickContext, JsValue};
 
 use crate::prelude::*;
 use crate::id::{ID};
@@ -138,6 +138,80 @@ pub enum Transformation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HashTransformation {
+    pub id: ID,
+    pub description: String,
+    pub runtime: Runtime,
+    pub infix: String,
+}
+
+impl HashTransformation {
+    fn prefix(&self, fields: HashMap<String, String>) -> String {
+        match self.runtime {
+            Runtime::QuickJS => {
+                let fields_js: Vec<String> = fields
+                    .into_iter()
+                    .map(|(key, value)| {
+                        if key == "text" {
+                            format!("'{}': '<omitted>'", key)
+                        } else {
+                            format!("'{}': '{}'", key, value)
+                        }
+                    })
+                    .collect();
+                format!("let fields = {{ {} }};", fields_js.join(", "))
+            },
+            _ => panic!("Unexpected runtime: {:?}", self.runtime),
+        }
+    }
+
+    fn suffix(&self) -> String {
+        match self.runtime {
+            Runtime::QuickJS => {
+                format!("JSON.stringify({{ hasherItems }})")
+            },
+            _ => panic!("Unexpected runtime: {:?}", self.runtime),
+        }
+    }
+
+    pub fn transform(
+        &self,
+        fields: HashMap<String, String>
+    ) -> Hash {
+        log::trace!("In transform");
+
+        let prefix = self.prefix(fields.clone());
+        let suffix = self.suffix();
+        let script = format!("{}\n{}\n{}", prefix, self.infix, suffix);
+
+        log::debug!("script: {}", script);
+
+        match self.runtime {
+            Runtime::QuickJS => {
+                let quick_context = QuickContext::new().unwrap();
+                let result = quick_context.eval_as::<String>(&script).unwrap();
+                let parsed: Value = serde_json::from_str(&result).unwrap();
+                let hasher_items = parsed.get("hasherItems").unwrap();
+
+                if let Some(array) = hasher_items.as_array() {
+                    let hasher_items_vec = array
+                        .iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect::<Vec<String>>();
+
+                    let mut hash = Hash::from_items(hasher_items_vec);
+                    hash.finalize();
+                    return hash;
+                } else {
+                    panic!("Expected 'hasherItems' to be an array");
+                }
+            },
+            _ => panic!("Unexpected runtime: {:?}", self.runtime),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct XMLElementTransformation {
     pub id: ID,
     pub description: String,
@@ -186,7 +260,7 @@ impl XMLElementTransformation {
 
         match self.runtime {
             Runtime::QuickJS => {
-                let quick_context = Context::new().unwrap();
+                let quick_context = QuickContext::new().unwrap();
 
                 let result =  quick_context.eval_as::<String>(&code).unwrap();
 
@@ -214,20 +288,3 @@ impl XMLElementTransformation {
 pub enum DocumentTransformation {
     XMLElementTransformation(XMLElementTransformation),
 }
-
-//lazy_static! {
-//    pub static ref VALUE_TRANSFORMATIONS: Vec<Transformation> = vec![
-//        Transformation {
-//            runtime: Runtime::AWK,
-//            description: String::from("Converts American weights in pounds (lbs)"),
-//            regex: r"\b\d+(\.\d+)?\s*(lbs?|pounds?)\b",
-//            code: String::from(r#"{ printf "%.2f lbs = %.2f kg\n", $1, $1 * 0.45359237 }"#),
-//        },
-//        Transformation {
-//            runtime: Runtime::AWK,
-//            description: String::from("Identity Transformation"),
-//            regex: r"(?s).*",
-//            code: String::from(r#"{ print $0 }"#),
-//        },
-//    ];
-//}

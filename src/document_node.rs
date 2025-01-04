@@ -15,9 +15,26 @@ impl DocumentNode {
         }
     }
 
+    pub fn from_transformations(
+        xml_node: XMLNode,
+        transformations: Vec<DocumentTransformation>
+    ) -> Self {
+        match &xml_node {
+            XMLNode::Element(element_node) => {
+            },
+            XMLNode::Text(text_node) => {
+            },
+            _ => panic!("Unexpected XML node type")
+        }
+    }
+
     pub fn get_fields(&self) -> HashMap<String, String> {
         match &self.data {
-            XMLNode::Element(element_node) => element_node.attributes.clone(),
+            XMLNode::Element(element_node) => {
+                let mut fields = element_node.attributes.clone();
+                fields.insert("tag".to_string(), element_node.name.clone());
+                fields
+            }
             XMLNode::Text(text_node) => HashMap::from([
                 ("text".to_string(), text_node.to_string())
             ]),
@@ -28,7 +45,7 @@ impl DocumentNode {
     pub fn get_description(&self) -> String {
         match &self.data {
             XMLNode::Element(element_node) => {
-                let mut description = format!("{:?}", element_node);
+                let mut description = format!("{}", element_node.to_string());
                 description.truncate(20);
 
                 description
@@ -39,6 +56,18 @@ impl DocumentNode {
 
                 description
             },
+            _ => panic!("Unexpected XML node type")
+        }
+    }
+
+    pub fn get_children(&self, transformations: Vec<DocumentTransformation>) -> Vec<DocumentNode> {
+        match &self.data {
+            XMLNode::Element(element_node) => {
+                element_node.children.iter().map(|child| {
+                    DocumentNode::from_transformations(child.clone(), transformations)
+                }).collect()
+            },
+            XMLNode::Text(text_node) => Vec::new(),
             _ => panic!("Unexpected XML node type")
         }
     }

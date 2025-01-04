@@ -2,21 +2,25 @@ use serde::{Serialize, Deserialize};
 use std::collections::{HashSet};
 
 use crate::prelude::*;
-use crate::transformation::DocumentTransformation;
+use crate::transformation::{
+    DocumentTransformation,
+    HashTransformation
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DocumentProfile {
+pub struct Profile {
     pub id: ID,
     pub description: String,
     pub features: HashSet<Hash>,
-    pub transformations: Vec<DocumentTransformation>,
+    pub document_transformations: Option<Vec<DocumentTransformation>>,
+    pub hash_transformation: Option<HashTransformation>
 }
 
-impl DocumentProfile {
+impl Profile {
     pub fn get_similar_profile(
-        profiles: &Vec<DocumentProfile>,
+        profiles: &Vec<Profile>,
         features: &HashSet<Hash>
-    ) -> Option<DocumentProfile> {
+    ) -> Option<Profile> {
         profiles.iter()
             .find(|profile| {
                 let similarity = jaccard_similarity(features, &profile.features);

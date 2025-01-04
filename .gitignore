@@ -1,11 +1,4 @@
 /target
-
-# Environment variables
 .env
-
-# Settings
 settings.toml
-
-# misc
-resources/
 debug/

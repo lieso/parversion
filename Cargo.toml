@@ -30,7 +30,6 @@ lazy_static = "1.5.0"
 futures = "0.3.30"
 dotenv = "0.15.0"
 fern = "0.7.0"
-pyo3 = { version = "0.17", features = ["extension-module"] }
 async-trait = "0.1.83"
 quick-js = "0.4.1"
 rusqlite = "0.32.1"

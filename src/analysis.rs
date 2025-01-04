@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::data_node::{DataNode};
@@ -6,9 +7,11 @@ use crate::json_node::{JsonNode};
 use crate::basis_graph::{BasisGraph, BasisGraphBuilder};
 use crate::document::{Document, DocumentType};
 use crate::document_format::{DocumentFormat};
-use crate::transformation::{Transformation};
+use crate::transformation::{Transformation, HashTransformation};
 use crate::provider::Provider;
 use crate::context::Context;
+use crate::document_node::DocumentNode;
+use crate::graph_node::{GraphNode, Graph};
 
 pub struct Analysis {
     analysis_mode: AnalysisMode,
@@ -60,43 +63,104 @@ impl Analysis {
     ) -> Result<Self, Errors> {
         log::trace!("In analysis/perform_analysis");
 
-        self.document.perform_analysis(provider).await?;
-        self.document.apply_transformations()?;
+        let profile = self.document.perform_analysis(provider).await?;
 
-        if self.document.document_type != DocumentType::XML {
-            log::info!("Analysis of non-XML documents is unimplemented");
-            unimplemented!();
-        }   
+
+
+
+
 
 
         let mut context = Context::new();
 
-        let document_root = self.document.get_root_node();
-        let context_id = context.register(&document_root);
+        let document_root: DocumentNode = self.document.get_document_node();
 
-        let data_node = DataNode::new(
-            context_id.clone(),
-            document_root.get_fields(),
-            document_root.get_description(),
+        let mut data_nodes: HashMap<ID, DataNode> = HashMap::new();
+
+
+        fn traverse(
+            document_node: DocumentNode,
+            parent_lineage: &Lineage,
+            context: &mut Context,
+            data_nodes: &mut HashMap<ID, DataNode>,
+            profile: &Profile,
+        ) -> Graph {
+            let context_id = context.register(&document_node);
+
+            let data_node = DataNode::new(
+                profile.hash_transformation.unwrap(),
+                context_id.clone(),
+                document_node.get_fields(),
+                document_node.get_description(),
+                parent_lineage,
+            );
+            data_nodes.insert(data_node.id.clone(), data_node.clone());
+
+
+
+
+            let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(&data_node)));
+
+            { 
+                let children: Vec<Arc<RwLock<GraphNode>>> = document_node
+                    .get_children(profile.document_transformations.unwrap())
+                    .iter()
+                    .map(|child| {
+                        traverse(
+                            child.clone(),
+                            &data_node.lineage,
+                            context,
+                            data_nodes,
+                            profile,
+                        )
+                    })
+                    .collect();
+
+                let mut node_write_lock = graph_node.write().unwrap();
+                node_write_lock.children.extend(children);
+            }
+
+            graph_node
+        }
+
+        let graph = traverse(
+            document_root,
             &Lineage::new(),
+            &mut context,
+            &mut data_nodes,
+            &profile,
         );
 
-
-        log::debug!("Initial data node: {:?}", data_node);
-
+        self.data_nodes = data_nodes;
 
 
 
-        //let document_root = self.document.get_root_node(&self.context);
 
-        //let data_nodes: HashMap<ID, DataNode> = HashMap::from(
-        //    vec![
-        //        document_root.0.id.to_string(),
-        //        document_root.0.clone()
-        //    ]
-        //);
 
-        //self.data_nodes = data_nodes;
+        for data_node in self.data_nodes.values() {
+
+            log::debug!("========================================================");
+
+            log::debug!("Data node ID: {}", data_node.id.to_string());
+            log::debug!("Data node description: {}", data_node.description.to_string());
+            log::debug!("Data node context ID: {}", data_node.context_id.to_string());
+            log::debug!("Data node hash: {}", data_node.hash.to_string().unwrap());
+            log::debug!("Data node lineage: {}", data_node.lineage.to_string());
+
+            log::debug!("---");
+            for (key, value) in &data_node.fields {
+                log::debug!("Data node field: {}: {}", key, value);
+            }
+            log::debug!("---");
+
+        }
+
+
+
+
+
+
+
 
         unimplemented!()
     }
@@ -121,32 +185,3 @@ impl Analysis {
         unimplemented!()
     }
 }
-
-
-
-//        fn recurse(
-//            document_data: (DataNode, Vec<DocumentNode>),
-//            parents: Vec<Rc<GraphNode>>
-//        ) {
-//            let data_node = document_data.0;
-//
-//            data_nodes.insert(data_node.id.to_string(), data_node.clone());
-//
-//            let mut graph_node = GraphNode {
-//                id: ID::new(),
-//                parents,
-//                children: Vec::new(),
-//                origin_node_id: document_data.0.id.to_string()
-//            };
-//
-//            let children: document_data.1.iter().map(|child| {
-//                recurse(
-//                    Document::document_to_data(child, Some(nodes.0)),
-//                    Rc::new(graph_node),
-//                )
-//            });
-//
-//            graph_node.children.extend(children);
-//
-//            graph_node
-//        }

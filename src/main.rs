@@ -20,8 +20,8 @@ mod data_node;
 mod document;
 mod document_format;
 mod document_node;
-mod document_profile;
 mod environment;
+mod graph_node;
 mod hash;
 mod id;
 mod lineage;
@@ -29,6 +29,7 @@ mod macros;
 mod model;
 mod normalization;
 mod organization;
+mod profile;
 mod provider;
 mod transformation;
 mod translation;
@@ -39,7 +40,6 @@ mod json_node;
 
 use crate::prelude::*;
 use crate::config::{CONFIG};
-use crate::document_profile::DocumentProfile;
 use crate::provider::{YamlFileProvider};
 use crate::transformation::{
     Runtime,

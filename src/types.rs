@@ -1,5 +1,4 @@
 use crate::basis_graph::{BasisGraph};
-use crate::document_profile::DocumentProfile;
 use crate::transformation::{Transformation};
 
 #[derive(Clone, Debug)]
@@ -30,8 +29,6 @@ pub enum Errors {
 #[derive(Clone, Debug)]
 pub struct Options {
     pub analysis_mode: Option<AnalysisMode>,
-    //pub basis_graph: Option<BasisGraph>,
-    //pub document_profile: Option<DocumentProfile>,
     pub origin: Option<String>,
     pub date: Option<String>,
     pub value_transformations: Option<Vec<Transformation>>
@@ -40,8 +37,6 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Self {
         Options {
-            //basis_graph: None,
-            //document_profile: None,
             analysis_mode: Some(AnalysisMode::COMPLEX),
             origin: None,
             date: None,
