@@ -1,0 +1,3 @@
+/Users/david/dev/parversion/.env
+/Users/david/dev/parversion/devenv.lock
+/Users/david/dev/parversion/devenv.nix
