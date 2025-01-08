@@ -1,6 +1,13 @@
-let
-  pkgs = import ("https://github.com/NixOS/nixpkgs/de1864217bfa9b5845f465e771e0ecb48b30e02d.tar.gz") {};
+{ pkgs ? import <nixpkgs> {} }:
 
-in pkgs.mkShell {
-  buildInputs = [ pkgs.cargo pkgs.rustc ];
+pkgs.mkShell {
+  buildInputs = with pkgs; [
+    pkgs.cargo
+    pkgs.rustc
+  ];
+
+  shellHook = ''
+    rustc --version
+    cargo --version
+  '';
 }
