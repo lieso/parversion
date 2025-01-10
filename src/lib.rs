@@ -16,6 +16,7 @@ pub mod hash;
 pub mod id;
 pub mod lineage;
 pub mod macros;
+pub mod matrix;
 pub mod model;
 pub mod normalization;
 pub mod organization;

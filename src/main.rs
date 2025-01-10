@@ -26,6 +26,7 @@ mod hash;
 mod id;
 mod lineage;
 mod macros;
+mod matrix;
 mod model;
 mod normalization;
 mod organization;

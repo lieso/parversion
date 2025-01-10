@@ -9,5 +9,7 @@ pkgs.mkShell {
   shellHook = ''
     rustc --version
     cargo --version
+
+    export PATH="/usr/bin/:$PATH"
   '';
 }

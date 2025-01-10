@@ -11,9 +11,8 @@ pub async fn organize<P: Provider>(
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize");
 
-    let mut analysis = Analysis::from_document(document, options);
-
-    analysis.perform_analysis(provider).await?;
+    let input = AnalysisInput::from_document(document).await?;
+    let analysis = Analysis::new(input).await?;
 
     Ok(analysis)
 }
