@@ -4,6 +4,7 @@ use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 use crate::prelude::*;
 use crate::data_node::{DataNode};
@@ -84,7 +85,7 @@ impl Document {
 
     pub async fn perform_analysis<P: Provider>(
         &mut self,
-        provider: &P
+        provider: Arc<P>
     ) -> Result<Profile, Errors> {
         log::trace!("In document/perform_analysis");
 

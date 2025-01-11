@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use tokio::task;
+use futures::future;
+use tokio::sync::Semaphore;
 
 use crate::prelude::*;
 use crate::data_node::DataNode;
@@ -15,24 +18,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::profile::Profile;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
-
-pub struct AnalysisInput {
-    document_node: DocumentNode,
-    document_profile: Profile,
-}
-
-struct Dataset {
-    map: HashMap<ID, DataNode>,
-    graph: Arc<RwLock<GraphNode>>,
-}
-
-struct NodeAnalysis {
-    basis_nodes: Vec<BasisNode>,
-}
-
-struct NetworkAnalysis {
-    basis_networks: Vec<BasisNetwork>,
-}
+use crate::config::{CONFIG};
 
 pub struct Analysis {
     context: Context,
@@ -42,14 +28,12 @@ pub struct Analysis {
 }
 
 impl Analysis {
-    pub async fn new<P: Provider>(provider: &P, input: AnalysisInput) -> Result<Self, Errors> {
+    pub async fn new<P: Provider>(provider: Arc<P>, input: AnalysisInput) -> Result<Self, Errors> {
         let mut context = Context::new();
 
-        let dataset = input.to_dataset(provider, &mut context).await;
-
-        let node_analysis = dataset.to_basis_nodes(provider).await;
-
-        let network_analysis = node_analysis.to_basis_networks(provider).await;
+        let dataset = input.to_dataset(provider.clone(), &mut context).await;
+        let node_analysis = dataset.to_basis_nodes(provider.clone()).await;
+        let network_analysis = node_analysis.to_basis_networks(provider.clone()).await;
 
         Ok(Analysis {
             context,
@@ -64,8 +48,13 @@ impl Analysis {
     }
 }
 
+pub struct AnalysisInput {
+    document_node: DocumentNode,
+    document_profile: Profile,
+}
+
 impl AnalysisInput {
-    pub async fn from_document<P: Provider>(provider: &P, mut document: Document) -> Result<Self, Errors> {
+    pub async fn from_document<P: Provider>(provider: Arc<P>, mut document: Document) -> Result<Self, Errors> {
         let profile = document.perform_analysis(provider).await?;
 
         Ok(AnalysisInput {
@@ -74,7 +63,7 @@ impl AnalysisInput {
         })
     }
 
-    pub async fn to_dataset<P: Provider>(self, provider: &P, context: &mut Context) -> Dataset {
+    pub async fn to_dataset<P: Provider>(self, provider: Arc<P>, context: &mut Context) -> Dataset {
         let mut nodes: HashMap<ID, DataNode> = HashMap::new();
 
         let graph = traverse(
@@ -92,16 +81,75 @@ impl AnalysisInput {
     }
 }
 
+struct Dataset {
+    map: HashMap<ID, DataNode>,
+    graph: Arc<RwLock<GraphNode>>,
+}
+
 impl Dataset {
-    pub async fn to_basis_nodes<P: Provider>(&self, provider: &P) -> NodeAnalysis {
+    pub async fn to_basis_nodes<P: Provider>(&self, provider: Arc<P>) -> NodeAnalysis {
+        log::trace!("In to_basis_nodes");
+
+        let mut lineage_groups: HashMap<Lineage, Vec<DataNode>> = HashMap::new();
+
+        for data_node in self.map.values() {
+            let lineage = data_node.lineage.clone();
+
+            lineage_groups
+                .entry(lineage)
+                .or_insert_with(Vec::new)
+                .push(data_node.clone());
+        }
+
+
+
+        let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+        let semaphore = Arc::new(Semaphore::new(max_concurrency));
+
+        let handles: Vec<_> = lineage_groups.into_iter()
+            .map(|(lineage, group)| {
+
+                let semaphore = semaphore.clone();
+                let cloned_provider = provider.clone();
+
+                task::spawn(async move {
+                    let permit = semaphore.acquire_owned().await.unwrap();
+                    make_basis_node(cloned_provider, lineage, group).await
+                })
+
+            })
+            .collect();
+
+
+
+
+
+        let basis_nodes: Vec<BasisNode> = future::join_all(handles)
+            .await
+            .into_iter()
+            .filter_map(|result| result.ok().and_then(Result::ok))
+            .collect();
+
+
+
         unimplemented!()
     }
 }
 
+struct NodeAnalysis {
+    basis_nodes: Vec<BasisNode>,
+}
+
 impl NodeAnalysis {
-    pub async fn to_basis_networks<P: Provider>(&self, provider: &P) -> NetworkAnalysis {
+    pub async fn to_basis_networks<P: Provider>(&self, provider: Arc<P>) -> NetworkAnalysis {
+        log::trace!("In to_basis_networks");
+
         unimplemented!()
     }
+}
+
+struct NetworkAnalysis {
+    basis_networks: Vec<BasisNetwork>,
 }
 
 fn traverse(
@@ -144,4 +192,15 @@ fn traverse(
     }
 
     graph_node
+}
+
+async fn make_basis_node<P: Provider>(
+    provider: Arc<P>,
+    lineage: Lineage,
+    group: Vec<DataNode>
+) -> Result<BasisNode, Errors> {
+    log::trace!("In make_basis_node");
+
+
+    unimplemented!()
 }

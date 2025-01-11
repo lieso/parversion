@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
@@ -6,7 +8,7 @@ use crate::analysis::{Analysis};
 use crate::provider::Provider;
 
 pub async fn translate<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     analysis: Analysis,
     options: &Option<Options>,
     json_schema: &str,
@@ -17,18 +19,18 @@ pub async fn translate<P: Provider>(
 }
 
 pub async fn translate_analysis<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     analysis: Analysis,
     options: &Option<Options>,
     json_schema: &str,
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_analysis");
 
-    translate(provider, analysis, options, json_schema).await
+    translate(Arc::clone(&provider), analysis, options, json_schema).await
 }
 
 pub async fn translate_text_to_analysis<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     text: String,
     options: &Option<Options>,
     json_schema: &str,
@@ -36,13 +38,13 @@ pub async fn translate_text_to_analysis<P: Provider>(
     log::trace!("In translate_text_to_analysis");
 
     let document = Document::from_string(text, options)?;
-    let analysis = organize(provider, document, options).await?;
+    let analysis = organize(Arc::clone(&provider), document, options).await?;
 
-    translate_analysis(provider, analysis, options, json_schema).await
+    translate_analysis(Arc::clone(&provider), analysis, options, json_schema).await
 }
 
 pub async fn translate_text_to_document<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     text: String,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -50,13 +52,13 @@ pub async fn translate_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let analysis = translate_text_to_analysis(provider, text, options, json_schema).await?;
+    let analysis = translate_text_to_analysis(Arc::clone(&provider), text, options, json_schema).await?;
 
     analysis.to_document(document_format)
 }
 
 pub async fn translate_text<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     text: String,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -76,20 +78,20 @@ pub async fn translate_text<P: Provider>(
 }
 
 pub async fn translate_document_to_analysis<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
     json_schema: &str,
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate_document_to_analysis");
 
-    let analysis = organize(provider, document, options).await?;
+    let analysis = organize(Arc::clone(&provider), document, options).await?;
 
-    translate_analysis(provider, analysis, options, json_schema).await
+    translate_analysis(Arc::clone(&provider), analysis, options, json_schema).await
 }
 
 pub async fn translate_document<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -108,7 +110,7 @@ pub async fn translate_document<P: Provider>(
 }
 
 pub async fn translate_document_to_text<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -128,7 +130,7 @@ pub async fn translate_document_to_text<P: Provider>(
 }
 
 pub async fn translate_file_to_analysis<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
     json_schema: &str,
@@ -141,11 +143,11 @@ pub async fn translate_file_to_analysis<P: Provider>(
         Errors::FileInputError
     })?;
 
-    translate_text_to_analysis(provider, text, options, json_schema).await
+    translate_text_to_analysis(Arc::clone(&provider), text, options, json_schema).await
 }
 
 pub async fn translate_file_to_document<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -153,12 +155,12 @@ pub async fn translate_file_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_file_to_document");
 
-    let analysis = translate_file_to_analysis(provider, path, options, json_schema).await?;
+    let analysis = translate_file_to_analysis(Arc::clone(&provider), path, options, json_schema).await?;
     analysis.to_document(document_format)
 }
 
 pub async fn translate_file_to_text<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -178,7 +180,7 @@ pub async fn translate_file_to_text<P: Provider>(
 }
 
 pub async fn translate_file<P: Provider>(
-    provider: &P,
+    provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
@@ -187,7 +189,7 @@ pub async fn translate_file<P: Provider>(
     log::trace!("In translate_file");
     log::debug!("file path: {}", path);
 
-    let text = translate_file_to_text(provider, path, options, document_format, json_schema).await?;
+    let text = translate_file_to_text(Arc::clone(&provider), path, options, document_format, json_schema).await?;
     let new_path = append_to_filename(path, "_translated")?;
 
     write_text_to_file(&new_path, &text).map_err(|err| {

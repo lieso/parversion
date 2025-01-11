@@ -9,7 +9,7 @@ use crate::profile::Profile;
 use crate::basis_node::BasisNode;
 
 #[async_trait]
-pub trait Provider: Send + Sync + Sized {
+pub trait Provider: Send + Sync + Sized + 'static {
     async fn get_profile(
         &self,
         features: &HashSet<Hash>

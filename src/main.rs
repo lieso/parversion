@@ -2,6 +2,7 @@ use std::io::{self, Read};
 use std::collections::{HashMap, HashSet};
 use lazy_static::lazy_static;
 use atty::Stream;
+use std::sync::Arc;
 use clap::{Arg, App};
 use log::LevelFilter;
 use std::fs::File;
@@ -91,7 +92,7 @@ async fn main() {
 
     let document_format = document_format::DocumentFormat::default();
 
-    let provider = YamlFileProvider::new(String::from("provider.yaml"));
+    let provider = Arc::new(YamlFileProvider::new(String::from("provider.yaml")));
 
     log::info!("Using yaml file provider");
 
@@ -106,7 +107,7 @@ async fn main() {
             log::info!("Received data from stdin");
             
             match normalization::normalize_text_to_analysis(
-                &provider,
+                provider.clone(),
                 stdin,
                 &Some(options),
             ).await {
@@ -120,7 +121,7 @@ async fn main() {
             log::info!("Received a file name");
 
             match normalization::normalize_file_to_analysis(
-                &provider,
+                provider.clone(),
                 path,
                 &Some(options),
             ).await {
@@ -134,7 +135,7 @@ async fn main() {
             log::info!("Received a URL");
 
             match normalization::normalize_url_to_analysis(
-                &provider,
+                provider.clone(),
                 url,
                 &Some(options),
             ).await {
