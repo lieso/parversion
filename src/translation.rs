@@ -13,7 +13,7 @@ pub async fn translate<P: Provider>(
 ) -> Result<Analysis, Errors> {
     log::trace!("In translate");
 
-    analysis.transmute(json_schema).await
+    unimplemented!()
 }
 
 pub async fn translate_analysis<P: Provider>(

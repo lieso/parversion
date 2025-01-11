@@ -1,7 +1,8 @@
 use serde::{Serialize, Deserialize};
 use xmltree::{XMLNode};
-
 use std::collections::HashMap;
+
+use crate::transformation::DocumentTransformation;
 
 #[derive(Clone, Debug)]
 pub struct DocumentNode {
@@ -21,8 +22,10 @@ impl DocumentNode {
     ) -> Self {
         match &xml_node {
             XMLNode::Element(element_node) => {
+                unimplemented!()
             },
             XMLNode::Text(text_node) => {
+                unimplemented!()
             },
             _ => panic!("Unexpected XML node type")
         }
@@ -45,10 +48,7 @@ impl DocumentNode {
     pub fn get_description(&self) -> String {
         match &self.data {
             XMLNode::Element(element_node) => {
-                let mut description = format!("{}", element_node.to_string());
-                description.truncate(20);
-
-                description
+                unimplemented!()
             },
             XMLNode::Text(text_node) => {
                 let mut description = text_node.to_string();
@@ -64,7 +64,7 @@ impl DocumentNode {
         match &self.data {
             XMLNode::Element(element_node) => {
                 element_node.children.iter().map(|child| {
-                    DocumentNode::from_transformations(child.clone(), transformations)
+                    DocumentNode::from_transformations(child.clone(), transformations.clone())
                 }).collect()
             },
             XMLNode::Text(text_node) => Vec::new(),

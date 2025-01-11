@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
-use crate::analysis::{Analysis};
+use crate::analysis::{Analysis, AnalysisInput};
 use crate::provider::Provider;
 
 pub async fn organize<P: Provider>(
@@ -11,8 +11,8 @@ pub async fn organize<P: Provider>(
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize");
 
-    let input = AnalysisInput::from_document(document).await?;
-    let analysis = Analysis::new(input).await?;
+    let input = AnalysisInput::from_document(provider, document).await?;
+    let analysis = Analysis::new(provider, input).await?;
 
     Ok(analysis)
 }

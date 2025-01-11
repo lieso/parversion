@@ -2,11 +2,11 @@ use async_trait::async_trait;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use serde_json::Value;
-use rusqlite::{Connection};
 use serde_yaml;
 
 use crate::prelude::*;
 use crate::profile::Profile;
+use crate::basis_node::BasisNode;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized {
@@ -148,25 +148,5 @@ pub struct SqliteProvider {
 impl SqliteProvider {
     pub fn new(db_path: String) -> Self {
         SqliteProvider { db_path }
-    }
-}
-
-#[async_trait]
-impl Provider for SqliteProvider {
-    async fn get_profile(
-        &self,
-        features: &HashSet<Hash>
-    ) -> Result<Option<Profile>, Errors> {
-        let conn = Connection::open(&self.db_path)
-            .map_err(|_| Errors::SqliteDatabaseConnectionError)?;
-
-        unimplemented!()
-    }
-
-    async fn get_basis_node_by_lineage(
-        &self,
-        lineage: &Lineage
-    ) -> Result<Option<BasisNode>, Errors> {
-        Ok(None)
     }
 }

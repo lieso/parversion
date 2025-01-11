@@ -6,20 +6,20 @@ use crate::analysis::{Analysis};
 use crate::model::{Model};
 use crate::provider::{Provider};
 
-// TODO: streaming basis graphs, and text
-
 pub async fn normalize<P: Provider>(
     provider: &P,
     analysis: Analysis,
     options: &Option<Options>,
 ) -> Result<Analysis, Errors> {
     log::trace!("In normalize");
+    
+    unimplemented!()
 
-    let basis_graph = analysis.build_basis_graph()?;
+    //let basis_graph = analysis.build_basis_graph()?;
 
-    let target_model = Model::get_normal_model(&basis_graph).unwrap();
+    //let target_model = Model::get_normal_model(&basis_graph).unwrap();
 
-    analysis.transmute(&target_model.json_schema).await
+    //analysis.transmute(&target_model.json_schema).await
 }
 
 pub async fn normalize_analysis<P: Provider>(
