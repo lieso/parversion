@@ -41,11 +41,6 @@ mod json_node;
 use crate::prelude::*;
 use crate::config::{CONFIG};
 use crate::provider::{YamlFileProvider};
-use crate::transformation::{
-    Runtime,
-    DocumentTransformation,
-    XMLElementTransformation,
-};
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");

@@ -100,21 +100,20 @@ profiles:
       - "32383e286c2de74f3d18c685708607953445423a04ff14e90725a2415b477787"
       - "9779253a9aec746c9af4c6f2a30c140a931b888a636a0fc80e779326f69f1ada"
       - "7f385cac587d673e109b1a0e8231f5ad5d08b8a40ebcb9117fedb1d138ffb12a"
-    document_transformations:
-      - !XMLElementTransformation
-          id: "8d5aa1ed-de34-4bd1-afc3-9740ced4e512"
-          description: "XML element transformation during document preprocessing. Blacklisted elements and attributes are eliminated, unseen by the LLM, reducing token count for inference."
-          runtime: "QuickJS"
-          infix: |
-            const BLACKLISTED_ATTRIBUTES = {style:1, bgcolor:1, border:1, cellpadding:1, cellspacing:1, width:1, height:1, rows:1, cols:1, wrap:1, "aria-hidden":1, size:1, op:1, lang:1, colspan:1, rel:1};
-            const BLACKLISTED_ELEMENTS = {script:1,meta:1,link:1,iframe:1,svg:1,style:1,noscript:1};
-            if (BLACKLISTED_ELEMENTS[element]) element = null;
-            attributes = Object.keys(attributes)
-              .filter(item => !BLACKLISTED_ATTRIBUTES[item])
-              .reduce((acc, key) => {
-                  acc[key] = attributes[key];
-                  return acc;
-              }, {});
+    xml_element_transformation:
+      id: "645d0345-18b4-49b7-bf42-34d022980857"
+      description: "Transforming a set of document fields into a hash. A node with a particular hash is considered unique across all siblings for purposes of interpretation"
+      runtime: "QuickJS"
+      infix: |
+        const BLACKLISTED_ATTRIBUTES = {style:1, bgcolor:1, border:1, cellpadding:1, cellspacing:1, width:1, height:1, rows:1, cols:1, wrap:1, "aria-hidden":1, size:1, op:1, lang:1, colspan:1, rel:1};
+        const BLACKLISTED_ELEMENTS = {script:1,meta:1,link:1,iframe:1,svg:1,style:1,noscript:1};
+        if (BLACKLISTED_ELEMENTS[element]) element = null;
+        attributes = Object.keys(attributes)
+          .filter(item => !BLACKLISTED_ATTRIBUTES[item])
+          .reduce((acc, key) => {
+              acc[key] = attributes[key];
+              return acc;
+          }, {});
     hash_transformation:
       id: "645d0345-18b4-49b7-bf42-34d022980857"
       description: "Transforming a set of document fields into a hash. A node with a particular hash is considered unique across all siblings for purposes of interpretation"

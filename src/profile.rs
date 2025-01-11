@@ -3,7 +3,7 @@ use std::collections::{HashSet};
 
 use crate::prelude::*;
 use crate::transformation::{
-    DocumentTransformation,
+    XMLElementTransformation,
     HashTransformation
 };
 
@@ -12,7 +12,7 @@ pub struct Profile {
     pub id: ID,
     pub description: String,
     pub features: HashSet<Hash>,
-    pub document_transformations: Option<Vec<DocumentTransformation>>,
+    pub xml_element_transformation: Option<XMLElementTransformation>,
     pub hash_transformation: Option<HashTransformation>
 }
 

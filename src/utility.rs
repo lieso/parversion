@@ -79,7 +79,7 @@ pub async fn fetch_url_as_text(url: &str) -> Result<String, Errors> {
 
     let client = ClientBuilder::native()
         .capabilities(caps)
-        .connect("http://localhost:60000")
+        .connect("http://localhost:9515")
         .await
         .map_err(|err| Errors::FetchUrlError(
             format!("Failed to connect to WebDriver: {:?}", err)

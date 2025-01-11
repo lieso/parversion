@@ -69,7 +69,7 @@ impl AnalysisInput {
         let profile = document.perform_analysis(provider).await?;
 
         Ok(AnalysisInput {
-            document_node: document.get_document_node(),
+            document_node: document.get_document_node()?,
             document_profile: profile,
         })
     }
@@ -126,7 +126,7 @@ fn traverse(
 
     {
         let children: Vec<Arc<RwLock<GraphNode>>> = document_node
-            .get_children(profile.document_transformations.clone().unwrap())
+            .get_children(profile.xml_element_transformation.clone().unwrap())
             .into_iter()
             .map(|child| {
                 traverse(

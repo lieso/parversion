@@ -283,8 +283,3 @@ impl XMLElementTransformation {
         }
     }
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum DocumentTransformation {
-    XMLElementTransformation(XMLElementTransformation),
-}

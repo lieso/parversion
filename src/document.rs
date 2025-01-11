@@ -10,11 +10,7 @@ use crate::data_node::{DataNode};
 use crate::document_node::{DocumentNode};
 use crate::provider::Provider;
 use crate::profile::Profile;
-use crate::transformation::{
-    Runtime,
-    DocumentTransformation,
-    XMLElementTransformation,
-};
+use crate::transformation::XMLElementTransformation;
 use crate::hash::{Hash};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -61,12 +57,28 @@ impl Document {
         self.data.clone()
     }
 
-    pub fn get_document_node(&self) -> DocumentNode {
-        let mut reader = std::io::Cursor::new(&self.data);
+    pub fn get_document_node(&self) -> Result<DocumentNode, Errors> {
+        log::trace!("In document/get_document_node");
 
-        match Element::parse(reader) {
-            Ok(element) => DocumentNode::new(xmltree::XMLNode::Element(element)),
-            _ => panic!("Could not parse XML"),
+        if let Some(dom) = self.to_dom() {
+
+            let mut xml = String::from("");
+            walk(&mut xml, &dom.document, 0);
+
+
+
+            let mut reader = std::io::Cursor::new(xml);
+
+            match Element::parse(reader) {
+                Ok(element) => Ok(DocumentNode::new(xmltree::XMLNode::Element(element))),
+                Err(e) => {
+                    log::error!("Could not parse XML: {}", e);
+
+                    Err(Errors::XmlParseError)
+                }
+            }
+        } else {
+            unimplemented!()
         }
     }
 
@@ -98,8 +110,8 @@ impl Document {
             if let Some(profile) = provider.get_profile(&features).await? {
                 log::info!("Found a profile");
 
-                if profile.document_transformations.is_none() {
-                    log::info!("Profile provided but document transformations missing");
+                if profile.xml_element_transformation.is_none() {
+                    log::info!("Profile provided but xml transformation missing");
                     unimplemented!();
                 }
 
@@ -193,33 +205,115 @@ fn get_xml_features(
     }
 }
 
-fn walk_transform(
-    xml: &mut String,
-    node: &Handle,
-    indent_factor: usize,
-    transformations: &Vec<DocumentTransformation>
-) {
-    let indentation = " ".repeat(indent_factor * 2);
+//fn walk_transform(
+//    xml: &mut String,
+//    node: &Handle,
+//    indent_factor: usize,
+//    transformations: &Vec<DocumentTransformation>
+//) {
+//    let indentation = " ".repeat(indent_factor * 2);
+//
+//    let xml_element_transformations: Vec<XMLElementTransformation> = transformations.into_iter().filter_map(|transformation| {
+//        match transformation {
+//            DocumentTransformation::XMLElementTransformation(t) => Some(t.clone()),
+//            _ => None,
+//        }
+//    }).collect();
+//
+//    match node.data {
+//        NodeData::Document => {
+//            for child in node.children.borrow().iter() {
+//                walk_transform(xml, child, indent_factor, transformations);
+//            }
+//        }
+//        NodeData::Text { ref contents } => {
+//            let contents = &contents.borrow();
+//            let text = format!("{}{}\n", indentation, escape_xml(contents.trim()));
+//
+//            if !text.trim().is_empty() {
+//                xml.push_str(&text);
+//            }
+//        },
+//        NodeData::Comment { ref contents } => {
+//            log::warn!("Ignoring HTML comment: {}", contents.escape_default());
+//        },
+//        NodeData::Element {
+//            ref name,
+//            ref attrs,
+//            ..
+//        } => {
+//            let mut element: Option<String> = Some(name.local.to_string());
+//            let mut attributes: HashMap<String, String>  = HashMap::new();
+//
+//            for attr in attrs.borrow().iter() {
+//                let attr_name = attr.name.local.trim().clone();
+//                let attr_value = escape_xml(&attr.value.trim().to_string());
+//
+//                attributes.insert(attr_name.to_string(), attr_value);
+//            }
+//
+//            log::info!("Applying XML element transformations...");
+//
+//            for transformation in xml_element_transformations.iter() {
+//                let (transformed_element, transformed_attributes) = transformation.transform(
+//                    element.unwrap().clone(),
+//                    attributes.clone()
+//                );
+//
+//                attributes = transformed_attributes;
+//
+//                if let Some(transformed_element) = transformed_element {
+//                    element = Some(transformed_element);
+//                } else {
+//                    log::info!("Transformation has eliminated an element, no further transfomations will be applied");
+//                    element = None;
+//                    break;
+//                }
+//            }
+//
+//            log::info!("Done applying XML element transformations.");
+//
+//            if let Some(element) = element {
+//                xml.push_str(&format!("{}<{}", indentation, element));
+//
+//                for (attr_name, attr_value) in &attributes {
+//                    let value = attributes.get(attr_name).unwrap();
+//                    xml.push_str(&format!(" {}=\"{}\"", attr_name, value));
+//                }
+//
+//                xml.push_str(">\n");
+//
+//                for child in node.children.borrow().iter() {
+//                    walk_transform(xml, child, indent_factor + 1, transformations);
+//                }
+//
+//                xml.push_str(&format!("{}</{}>\n", indentation, element));
+//            } else {
+//                for child in node.children.borrow().iter() {
+//                    walk_transform(xml, child, indent_factor + 1, transformations);
+//                }
+//            }
+//        },
+//        _ => {}
+//    }
+//}
 
-    let xml_element_transformations: Vec<XMLElementTransformation> = transformations.into_iter().filter_map(|transformation| {
-        match transformation {
-            DocumentTransformation::XMLElementTransformation(t) => Some(t.clone()),
-            _ => None,
-        }
-    }).collect();
+fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
+    let node = handle;
+    let real_indent = " ".repeat(indent * 2);
 
     match node.data {
         NodeData::Document => {
             for child in node.children.borrow().iter() {
-                walk_transform(xml, child, indent_factor, transformations);
+                walk(xhtml, child, indent);
             }
         }
         NodeData::Text { ref contents } => {
             let contents = &contents.borrow();
-            let text = format!("{}{}\n", indentation, escape_xml(contents.trim()));
+            let text = format!("{}{}\n", real_indent, escape_xml(contents.trim()));
 
             if !text.trim().is_empty() {
-                xml.push_str(&text);
+                xhtml.push_str(&text);
             }
         },
         NodeData::Comment { ref contents } => {
@@ -230,57 +324,24 @@ fn walk_transform(
             ref attrs,
             ..
         } => {
-            let mut element: Option<String> = Some(name.local.to_string());
-            let mut attributes: HashMap<String, String>  = HashMap::new();
+            let tag_name = &name.local;
+
+            xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
 
             for attr in attrs.borrow().iter() {
-                let attr_name = attr.name.local.trim().clone();
-                let attr_value = escape_xml(&attr.value.trim().to_string());
+                let attr_name = &*attr.name.local.trim();
+                let attr_value = escape_xml(&*attr.value.trim());
 
-                attributes.insert(attr_name.to_string(), attr_value);
+                xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
             }
 
-            log::info!("Applying XML element transformations...");
+            xhtml.push_str(">\n");
 
-            for transformation in xml_element_transformations.iter() {
-                let (transformed_element, transformed_attributes) = transformation.transform(
-                    element.unwrap().clone(),
-                    attributes.clone()
-                );
-
-                attributes = transformed_attributes;
-
-                if let Some(transformed_element) = transformed_element {
-                    element = Some(transformed_element);
-                } else {
-                    log::info!("Transformation has eliminated an element, no further transfomations will be applied");
-                    element = None;
-                    break;
-                }
+            for child in node.children.borrow().iter() {
+                walk(xhtml, child, indent + 1);
             }
 
-            log::info!("Done applying XML element transformations.");
-
-            if let Some(element) = element {
-                xml.push_str(&format!("{}<{}", indentation, element));
-
-                for (attr_name, attr_value) in &attributes {
-                    let value = attributes.get(attr_name).unwrap();
-                    xml.push_str(&format!(" {}=\"{}\"", attr_name, value));
-                }
-
-                xml.push_str(">\n");
-
-                for child in node.children.borrow().iter() {
-                    walk_transform(xml, child, indent_factor + 1, transformations);
-                }
-
-                xml.push_str(&format!("{}</{}>\n", indentation, element));
-            } else {
-                for child in node.children.borrow().iter() {
-                    walk_transform(xml, child, indent_factor + 1, transformations);
-                }
-            }
+            xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
         },
         _ => {}
     }
