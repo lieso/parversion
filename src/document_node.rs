@@ -1,18 +1,36 @@
 use serde::{Serialize, Deserialize};
-use xmltree::{XMLNode};
+use xmltree::{XMLNode, Element};
 use std::collections::HashMap;
 
+use crate::prelude::*;
 use crate::transformation::XMLElementTransformation;
 
 #[derive(Clone, Debug)]
 pub struct DocumentNode {
+    pub id: ID,
     data: XMLNode,
 }
 
 impl DocumentNode {
     pub fn new(xml_node: XMLNode) -> Self {
         DocumentNode {
+            id: ID::new(),
             data: xml_node.clone(),
+        }
+    }
+
+    pub fn to_string_components(&self) -> (String, Option<String>) {
+        match &self.data {
+            XMLNode::Element(element_node) => {
+                let opening_tag = DocumentNode::get_opening_tag(&element_node);
+                let closing_tag = DocumentNode::get_closing_tag(&element_node);
+
+                (opening_tag, Some(closing_tag))
+            },
+            XMLNode::Text(text_node) => {
+                (text_node.to_string(), None)
+            },
+            _ => panic!("Unexpected XML node type")
         }
     }
 
@@ -94,21 +112,49 @@ impl DocumentNode {
         }
     }
 
-    pub fn get_children(&self, xml_element_transformation: XMLElementTransformation) -> Vec<DocumentNode> {
+    pub fn get_children(
+        &self,
+        xml_element_transformation: Option<XMLElementTransformation>
+    ) -> Vec<DocumentNode> {
         match &self.data {
             XMLNode::Element(element_node) => {
                 element_node.children
                     .iter()
                     .filter_map(|child| {
-                        DocumentNode::from_transformations(
-                            child.clone(),
-                            xml_element_transformation.clone()
-                        )
+
+                        if let Some(xml_element_transformation) = &xml_element_transformation {
+                            DocumentNode::from_transformations(
+                                child.clone(),
+                                xml_element_transformation.clone()
+                            )
+                        } else {
+                            Some(DocumentNode::new(child.clone()))
+                        }
                     })
                     .collect()
             },
             XMLNode::Text(text_node) => Vec::new(),
             _ => panic!("Unexpected XML node type")
         }
+    }
+
+    fn get_opening_tag(element: &Element) -> String {
+        let mut tag = format!("<{}", element.name);
+
+        let mut attributes: Vec<(&String, &String)> = element.attributes.iter().collect();
+
+        // Sort to ensure deterministic hashing
+        attributes.sort_by(|a, b| a.0.cmp(b.0));
+
+        for (attr, value) in attributes {
+            tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
+        }
+        tag.push('>');
+
+        tag
+    }
+
+    fn get_closing_tag(element: &Element) -> String {
+        format!("</{}>", element.name)
     }
 }

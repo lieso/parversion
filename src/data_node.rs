@@ -9,7 +9,6 @@ pub type DataNodeFields = HashMap<String, String>;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DataNode {
     pub id: ID,
-    pub context_id: ID,
     pub hash: Hash,
     pub lineage: Lineage,
     pub fields: DataNodeFields,
@@ -19,7 +18,6 @@ pub struct DataNode {
 impl DataNode {
     pub fn new(
         hash_transformation: &HashTransformation,
-        context_id: ID,
         fields: DataNodeFields,
         description: String,
         parent_lineage: &Lineage,
@@ -30,7 +28,6 @@ impl DataNode {
         DataNode {
             id: ID::new(),
             hash,
-            context_id,
             fields,
             lineage,
             description,

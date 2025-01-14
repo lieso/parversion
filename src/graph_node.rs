@@ -4,26 +4,28 @@ use std::sync::{Arc, RwLock};
 use crate::prelude::*;
 use crate::data_node::DataNode;
 
+pub type Graph = Arc<RwLock<GraphNode>>;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GraphNode {
     pub id: ID,
+    pub parents: Vec<Graph>,
     pub description: String,
-    pub context_id: ID,
     pub hash: Hash,
     pub lineage: Lineage,
-    pub children: Vec<Arc<RwLock<GraphNode>>>,
+    pub children: Vec<Graph>,
 }
 
-pub type Graph = Arc<RwLock<GraphNode>>;
-
 impl GraphNode {
-    pub fn from_data_node(data_node: &DataNode) -> Self {
+    pub fn from_data_node(data_node: Arc<RwLock<DataNode>>, parents: Vec<Graph>) -> Self {
+        let lock = read_lock!(data_node);
+
         GraphNode {
             id: ID::new(),
-            context_id: data_node.context_id.clone(),
-            description: data_node.description.clone(),
-            hash: data_node.hash.clone(),
-            lineage: data_node.lineage.clone(),
+            parents,
+            description: lock.description.clone(),
+            hash: lock.hash.clone(),
+            lineage: lock.lineage.clone(),
             children: Vec::new(),
         }
     }

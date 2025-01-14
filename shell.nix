@@ -2,8 +2,8 @@
 
 pkgs.mkShell {
   buildInputs = with pkgs; [
-    pkgs.cargo
-    pkgs.rustc
+#pkgs.cargo
+#    pkgs.rustc
   ];
 
   shellHook = ''

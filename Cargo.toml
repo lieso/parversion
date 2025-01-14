@@ -33,6 +33,7 @@ async-trait = "0.1.83"
 quick-js = "0.4.1"
 serde_yaml = "0.9.34"
 fantoccini = "0.21.3"
+langchain-rust = "4.6.0"
 
 [lib]
 name = "parversion"
