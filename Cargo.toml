@@ -38,7 +38,6 @@ langchain-rust = "4.6.0"
 [lib]
 name = "parversion"
 path = "src/lib.rs"
-crate-type = ["cdylib"]
 
 [[bin]]
 name = "parversion"

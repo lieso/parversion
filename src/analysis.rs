@@ -12,7 +12,6 @@ use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::transformation::{Transformation, HashTransformation};
 use crate::provider::Provider;
-use crate::context::Context;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode};
 use crate::profile::Profile;
@@ -21,7 +20,7 @@ use crate::basis_node::BasisNode;
 use crate::config::{CONFIG};
 
 pub struct Analysis {
-    dataset: Dataset,
+    dataset: Arc<Dataset>,
     node_analysis: NodeAnalysis,
     network_analysis: NetworkAnalysis,
 }
@@ -32,14 +31,15 @@ impl Analysis {
         input: AnalysisInput
     ) -> Result<Self, Errors> {
         let dataset = input.to_dataset(Arc::clone(&provider));
+        let dataset = Arc::new(dataset);
 
-        let node_analysis = self.get_basis_nodes(
+        let node_analysis = Analysis::get_basis_nodes(
             Arc::clone(&provider),
-            &dataset
+            Arc::clone(&dataset)
         ).await?;
-        let network_analysis = self.get_basis_networks(
+        let network_analysis = Analysis::get_basis_networks(
             Arc::clone(&provider),
-            &dataset
+            Arc::clone(&dataset)
         ).await?;
 
         let analysis = Analysis {
@@ -55,46 +55,38 @@ impl Analysis {
         unimplemented!()
     }
 
-    fn get_basis_nodes(provider: Arc<P>, dataset: &Dataset) {
-        let mut lineage_groups: HashMap<Lineage, Vec<DataNode>> = HashMap::new();
-
-        for data_node in self.map.values() {
-            let lineage = data_node.lineage.clone();
-
-            lineage_groups
-                .entry(lineage)
-                .or_insert_with(Vec::new)
-                .push(data_node.clone());
-        }
-
-
+    async fn get_basis_nodes<P: Provider>(
+        provider: Arc<P>,
+        dataset: Arc<Dataset>
+    ) -> Result<NodeAnalysis, Errors> {
 
         //let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
         let max_concurrency = 1;
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
-        let handles: Vec<_> = lineage_groups.into_iter()
+        let dataset_ref = Arc::clone(&dataset);
+        let lineage_groups = dataset_ref.lineage_groups.clone();
+
+        let handles: Vec<_> = lineage_groups.iter()
             .map(|(lineage, group)| {
                 let semaphore = semaphore.clone();
+                let cloned_lineage = lineage.clone();
+                let cloned_group = group.clone();
                 let cloned_provider = Arc::clone(&provider);
-                let cloned_context = Arc::clone(&context);
+                let cloned_dataset = Arc::clone(&dataset_ref);
 
                 task::spawn(async move {
                     let permit = semaphore.acquire_owned().await.unwrap();
-                    get_basis_node(
+                    Analysis::get_basis_node(
                         cloned_provider,
-                        cloned_context,
-                        lineage,
-                        group
+                        cloned_dataset,
+                        cloned_lineage,
+                        cloned_group
                     ).await
                 })
 
             })
             .collect();
-
-
-
-
 
         let basis_nodes: Vec<BasisNode> = future::join_all(handles)
             .await
@@ -106,15 +98,18 @@ impl Analysis {
         unimplemented!()
     }
 
-    fn get_basis_networks(provider: Arc<P>, dataset: &Dataset) {
+    async fn get_basis_networks<P: Provider>(
+        provider: Arc<P>,
+        dataset: Arc<Dataset>
+    ) -> Result<NetworkAnalysis, Errors> {
         unimplemented!()
     }
 
     async fn get_basis_node<P: Provider>(
         provider: Arc<P>,
-        context: Arc<Context>,
+        dataset: Arc<Dataset>,
         lineage: Lineage,
-        group: Vec<DataNode>
+        group: Vec<ContextID>,
     ) -> Result<BasisNode, Errors> {
         log::trace!("In get_basis_node");
 
@@ -122,14 +117,7 @@ impl Analysis {
             log::info!("Provider has supplied basis node");
 
             return Ok(basis_node);
-        }
-
-
-        let data_node = group.first().unwrap();
-
-        let c = context.get_snippet(&data_node.context_id);
-
-        log::debug!("snippet: {}", c);
+        };
 
 
         unimplemented!()
@@ -170,7 +158,7 @@ impl AnalysisInput {
 
         let mut lineage_groups: HashMap<Lineage, Vec<ContextID>> = HashMap::new();
 
-        let graph = traverse(
+        traverse(
             &mut document_nodes,
             &mut document_context,
             &mut data_nodes,
@@ -178,14 +166,14 @@ impl AnalysisInput {
             &mut graph_nodes,
             &mut graph_context,
             &mut lineage_groups,
-            Arc::clone(self.document_root),
+            Arc::clone(&self.document_root),
             &Lineage::new(),
             &self.document_profile,
             Vec::new(),
         );
 
         let root_node_document_id = read_lock!(self.document_root).id.clone();
-        let root_node_context_id = data_context.get(&root_node_document_id).unwrap();
+        let root_node_context_id = data_context.get(&root_node_document_id).unwrap().clone();
 
         Dataset {
             data_nodes,
@@ -194,26 +182,26 @@ impl AnalysisInput {
             graph_context,
             document_nodes,
             document_context,
+            lineage_groups,
             root_node_context_id,
         }
     }
 }
 
 type ContextID = ID;
-type GraphID = ID;
+type GraphNodeID = ID;
 type DocumentNodeID = ID;
 type DataNodeID = ID;
 
 struct Dataset {
     data_nodes: HashMap<ContextID, Arc<RwLock<DataNode>>>,
     data_context: HashMap<DataNodeID, ContextID>,
-    graph_nodes: HashMap<ContextID, Arc<RwLock<GraphNode>>,
-    graph_context: HashMap<GraphID, ContextID>,
+    graph_nodes: HashMap<ContextID, Arc<RwLock<GraphNode>>>,
+    graph_context: HashMap<GraphNodeID, ContextID>,
     document_nodes: HashMap<ContextID, Arc<RwLock<DocumentNode>>>, 
     document_context: HashMap<DocumentNodeID, ContextID>,
     lineage_groups: HashMap<Lineage, Vec<ContextID>>,
     root_node_context_id: ContextID,
-    hash_maps: DatasetHashMaps,
 }
 
 struct NodeAnalysis {
@@ -225,43 +213,44 @@ struct NetworkAnalysis {
 }
 
 fn traverse(
-    document_nodes: &mut HashMap<ContextID, Arc<RwLock<DocumentNode>>>, 
+    document_nodes: &mut HashMap<ContextID, Arc<RwLock<DocumentNode>>>,
     document_context: &mut HashMap<DocumentNodeID, ContextID>,
     data_nodes: &mut HashMap<ContextID, Arc<RwLock<DataNode>>>,
     data_context: &mut HashMap<DataNodeID, ContextID>,
-    graph_nodes: &mut HashMap<ContextID, Arc<RwLock<GraphNode>>,
-    graph_context: &mut HashMap<GraphID, ContextID>,
+    graph_nodes: &mut HashMap<ContextID, Arc<RwLock<GraphNode>>>,
+    graph_context: &mut HashMap<GraphNodeID, ContextID>,
     lineage_groups: &mut HashMap<Lineage, Vec<ContextID>>,
-    document_node: Arc<RwLock<DocumentNode>>>,
+    document_node: Arc<RwLock<DocumentNode>>,
     parent_lineage: &Lineage,
     profile: &Profile,
     parents: Vec<Arc<RwLock<GraphNode>>>,
-) {
+) -> Arc<RwLock<GraphNode>> {
+
     let context_id = ID::new();
 
-    document_nodes.insert(context_id.clone(), Arc::clone(document_node));
+    document_nodes.insert(context_id.clone(), Arc::clone(&document_node));
     document_context.insert(read_lock!(document_node).id.clone(), context_id.clone());
 
     let data_node = Arc::new(RwLock::new(DataNode::new(
         &profile.hash_transformation.clone().unwrap(),
-        document_node.get_fields(),
-        document_node.get_description(),
+        read_lock!(document_node).get_fields(),
+        read_lock!(document_node).get_description(),
         parent_lineage,
     )));
-    data_nodes.insert(context_id.clone(), Arc::clone(data_node));
+    data_nodes.insert(context_id.clone(), Arc::clone(&data_node));
     data_context.insert(read_lock!(data_node).id.clone(), context_id.clone());
 
-    let lineage = read_lock!(data_node).lineage.clone();
+    let lineage = &read_lock!(data_node).lineage;
     lineage_groups
-        .entry(lineage)
+        .entry(lineage.clone())
         .or_insert_with(Vec::new)
         .push(context_id.clone());
 
     let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
-        Arc::clone(data_node),
+        Arc::clone(&data_node),
         parents.clone()
     )));
-    graph_nodes.insert(context_id.clone(), Arc::clone(graph_node));
+    graph_nodes.insert(context_id.clone(), Arc::clone(&graph_node));
     graph_context.insert(read_lock!(graph_node).id.clone(), context_id.clone());
 
     {
@@ -277,8 +266,8 @@ fn traverse(
                     graph_nodes,
                     graph_context,
                     lineage_groups,
-                    Arc::clone(child),
-                    &lineage,
+                    Arc::new(RwLock::new(child)),
+                    &lineage.clone(),
                     profile,
                     vec![Arc::clone(&graph_node)]
                 )
@@ -288,4 +277,6 @@ fn traverse(
         let mut node_write_lock = graph_node.write().unwrap();
         node_write_lock.children.extend(children);
     }
+
+    graph_node
 }

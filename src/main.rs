@@ -16,7 +16,6 @@ mod basis_network;
 mod basis_node;
 mod basis_graph;
 mod config;
-mod context;
 mod data_node;
 mod document;
 mod document_format;
