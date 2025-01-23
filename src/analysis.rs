@@ -173,7 +173,7 @@ impl AnalysisInput {
         );
 
         let root_node_document_id = read_lock!(self.document_root).id.clone();
-        let root_node_key_id = data_key.get(&root_node_document_id).unwrap().clone();
+        let root_node_key_id = document_key.get(&root_node_document_id).unwrap().clone();
 
         Dataset {
             data_nodes,
