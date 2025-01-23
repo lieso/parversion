@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 pub mod analysis;
 pub mod basis_network;
 pub mod basis_node;
@@ -26,4 +24,4 @@ pub mod types;
 pub mod prelude;
 pub mod utility;
 pub mod json_node;
-
+pub mod context;

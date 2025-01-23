@@ -1,146 +1,101 @@
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::collections::{HashSet, VecDeque};
 
-use crate::id::{ID};
-use crate::document_node::DocumentNode;
-use crate::graph_node::{Graph, GraphNode};
-use crate::macros::*;
+use crate::prelude::*;
+use crate::analysis::{KeyID, Dataset, GraphNodeID};
+use crate::graph_node::{GraphNode};
 
-type ContextID = ID;
-type GraphID = ID;
-
-pub struct Context {
-}
+pub struct Context {}
 
 impl Context {
-    pub fn get_snippet(
-        &self,
-        context_id: &ContextID,
-        document_nodes: &HashMap<ContextID, Arc<RwLock<DocumentNode>>>, 
-        graph_nodes: &HashMap<ContextID, Arc<RwLock<GraphNode>>,
-        root_context_id: &ID,
+
+    pub fn generate_snippet(
+        dataset: Arc<Dataset>,
+        key: &KeyID
     ) -> String {
-        log::trace!("In get_snippet");
+
+        let root_graph_node: Arc<RwLock<GraphNode>> = dataset.graph_nodes.get(
+            &dataset.root_node_key_id
+        ).unwrap().clone();
+
+        let graph_node = dataset.graph_nodes.get(key).clone().unwrap();
+        let graph_node_id = read_lock!(graph_node).id.clone();
 
 
-        let document_node = document_nodes.get(context_id).unwrap();
 
 
-        let graph_node = graph_nodes.get(context_id).clone().unwrap();
+        let mut neighbour_ids = HashSet::new();
+        Self::traverse_for_neighbours(Arc::clone(graph_node), &mut neighbour_ids);
 
 
-        let mut document_node_ids: HashSet<ID> = HashSet::new();
-        self.traverse_neighbours(
-            Arc::clone(graph_node),
-            &mut document_node_ids,
-            document_nodes
-        );
-
-        log::debug!("document_node_ids: {:?}", document_node_ids);
 
 
         let mut snippet = String::new();
 
-        let root_document_node = document_nodes.get(&root_context_id).unwrap();
-
-        //self.traverse_document(
-        //    &mut snippet,
-        //    &root_document_node,
-        //    &document_node_ids,
-        //    &read_lock!(document_node).id
-        //);
+        Self::traverse_for_snippet(
+            Arc::clone(&dataset),
+            Arc::clone(&root_graph_node),
+            &mut snippet,
+            &neighbour_ids,
+            &graph_node_id
+        );
 
         log::debug!("-----------------------------------------------------------------------------------------------------");
         log::debug!("snippet: {}", snippet);
+        log::debug!("-----------------------------------------------------------------------------------------------------");
+
 
 
         unimplemented!()
     }
 
-    //fn traverse_document(
-    //    &self,
-    //    snippet: &mut String,
-    //    document_node: Arc<RwLock<DocumentNode>>,
-    //    document_node_ids: &HashSet<ID>,
-    //    target_id: &ID
-    //) {
-    //    let document_node = read_lock!(document_node);
-
-    //    let (mut a, b) = document_node.to_string_components();
-
-    //    if document_node.id == *target_id {
-    //        a = Context::mark_text(&a);
-    //    }
-
-    //    let should_render = document_node_ids.contains(&document_node.id);
-
-    //    if let Some(closing_tag) = &b {
-    //        if should_render {
-    //            snippet.push_str(&a);
-    //        }
-
-    //        for child in document_node.get_children(None) {
-    //            self.traverse_document(
-    //                snippet,
-    //                &child,
-    //                document_node_ids,
-    //                target_id
-    //            );
-    //        }
-
-    //        if should_render {
-    //            snippet.push_str(closing_tag);
-    //        }
-    //    } else if should_render {
-    //        snippet.push_str(&a);
-    //    }
-    //}
-
-    fn traverse_neighbours(
-        &self,
-        graph_node: Graph,
-        visited: &mut HashSet<ID>,
-        document_nodes: &HashMap<ContextID, Arc<RwLock<DocumentNode>>>, 
-        graph_context: &HashMap<GraphID, ContextID>,
+    fn traverse_for_snippet(
+        dataset: Arc<Dataset>,
+        current_node: Arc<RwLock<GraphNode>>,
+        snippet: &mut String,
+        neighbour_ids: &HashSet<GraphNodeID>,
+        target_id: &GraphNodeID,
     ) {
-        let mut stack = VecDeque::new();
-        stack.push_back(Arc::clone(&graph_node));
+        let lock = read_lock!(current_node);
+        let current_id = lock.id.clone();
 
-        while let Some(node) = stack.pop_back() {
-            let lock = read_lock!(node);
-            let context_id = graph_context.get(&lock.id).unwrap();
-            let document_node = document_nodes.get(context_id).unwrap();
+        let should_render = if current_id == *target_id {
+            let key_id = dataset.graph_key.get(&current_id).unwrap();
+            let document_node = dataset.document_nodes.get(&key_id).unwrap();
+            let (mut a, b) = read_lock!(document_node).to_string_components();
 
-            if visited.contains(&read_lock!(document_node).id) {
-                continue;
-            }
+            a = Self::mark_text(&a);
+            snippet.push_str(&a);
 
-            visited.insert(read_lock!(document_node).id.clone());
+            true
+        } else if neighbour_ids.contains(&current_id) {
+            let key_id = dataset.graph_key.get(&current_id).unwrap();
+            let document_node = dataset.document_nodes.get(&key_id).unwrap();
+            let (a, b) = read_lock!(document_node).to_string_components();
 
-            if visited.len() > 20 {
-                return;
-            }
+            snippet.push_str(&a);
 
-            for child in lock.children.iter() {
-                let child_id = &read_lock!(child).id;
-                let context_id = graph_context.get(child_id).unwrap();
-                let document_node = document_nodes.get(&context_id).unwrap();
+            true
+        } else {
+            false
+        };
 
-                if !visited.contains(&read_lock!(document_node).id) {
-                    stack.push_back(Arc::clone(child));
-                }
-            }
+        if should_render {
+            let key_id = dataset.graph_key.get(&current_id).unwrap();
+            let document_node = dataset.document_nodes.get(&key_id).unwrap();
+            let (_, b) = read_lock!(document_node).to_string_components();
 
-            if let Some(parent) = lock.parents.first() {
-                let parent_id = &read_lock!(parent).id;
-                let context_id = graph_context.get(parent_id).unwrap();
-                let document_node = document_nodes.get(&context_id).unwrap();
+            snippet.push_str(b.as_deref().unwrap_or(""));
+        }
 
-                if !visited.contains(&read_lock!(document_node).id) {
-                    stack.push_back(Arc::clone(parent));
-                }
-            }
+        for child in &lock.children {
+            Self::traverse_for_snippet(
+                Arc::clone(&dataset),
+                Arc::clone(child),
+                snippet,
+                neighbour_ids,
+                target_id,
+            );
         }
     }
 
@@ -149,5 +104,36 @@ impl Context {
         let marker_suffix = "<!-- Target node: End -->";
 
         format!("{}{}{}", marker_prefix, text, marker_suffix)
+    }
+
+    fn traverse_for_neighbours(
+        start_node: Arc<RwLock<GraphNode>>,
+        visited: &mut HashSet<GraphNodeID>,
+    ) {
+        let mut stack = VecDeque::new();
+        stack.push_back(Arc::clone(&start_node));
+
+        while let Some(node) = stack.pop_back() {
+            let lock = read_lock!(node);
+            let graph_node_id = lock.id.clone();
+
+            if visited.contains(&graph_node_id) {
+                continue;
+            }
+
+            visited.insert(graph_node_id.clone());
+
+            if visited.len() > 20 {
+                return;
+            }
+
+            for child in lock.children.iter() {
+                stack.push_back(Arc::clone(child));
+            }
+
+            for parent in lock.parents.iter() {
+                stack.push_back(Arc::clone(parent));
+            }
+        }
     }
 }

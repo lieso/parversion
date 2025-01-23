@@ -18,6 +18,7 @@ use crate::profile::Profile;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::config::{CONFIG};
+use crate::context::Context;
 
 pub struct Analysis {
     dataset: Arc<Dataset>,
@@ -119,6 +120,12 @@ impl Analysis {
             return Ok(basis_node);
         };
 
+        let key_id = group.first().unwrap().clone();
+
+        let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
+
+        log::debug!("snippet: {}", snippet);
+
 
         unimplemented!()
     }
@@ -188,20 +195,20 @@ impl AnalysisInput {
     }
 }
 
-type KeyID = ID;
-type GraphNodeID = ID;
-type DocumentNodeID = ID;
-type DataNodeID = ID;
+pub type KeyID = ID;
+pub type GraphNodeID = ID;
+pub type DocumentNodeID = ID;
+pub type DataNodeID = ID;
 
-struct Dataset {
-    data_nodes: HashMap<KeyID, Arc<RwLock<DataNode>>>,
-    data_key: HashMap<DataNodeID, KeyID>,
-    graph_nodes: HashMap<KeyID, Arc<RwLock<GraphNode>>>,
-    graph_key: HashMap<GraphNodeID, KeyID>,
-    document_nodes: HashMap<KeyID, Arc<RwLock<DocumentNode>>>, 
-    document_key: HashMap<DocumentNodeID, KeyID>,
-    lineage_groups: HashMap<Lineage, Vec<KeyID>>,
-    root_node_key_id: KeyID,
+pub struct Dataset {
+    pub data_nodes: HashMap<KeyID, Arc<RwLock<DataNode>>>,
+    pub data_key: HashMap<DataNodeID, KeyID>,
+    pub graph_nodes: HashMap<KeyID, Arc<RwLock<GraphNode>>>,
+    pub graph_key: HashMap<GraphNodeID, KeyID>,
+    pub document_nodes: HashMap<KeyID, Arc<RwLock<DocumentNode>>>, 
+    pub document_key: HashMap<DocumentNodeID, KeyID>,
+    pub lineage_groups: HashMap<Lineage, Vec<KeyID>>,
+    pub root_node_key_id: KeyID,
 }
 
 struct NodeAnalysis {
