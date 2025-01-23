@@ -4,6 +4,7 @@ use std::collections::{HashSet, VecDeque};
 use crate::prelude::*;
 use crate::analysis::{KeyID, Dataset, GraphNodeID};
 use crate::graph_node::{GraphNode};
+use crate::document_node::DocumentNode;
 
 pub struct Context {}
 
@@ -40,7 +41,16 @@ impl Context {
             &graph_node_id
         );
 
+
+        let document_node: Arc<RwLock<DocumentNode>> = dataset.document_nodes.get(
+            &dataset.graph_key.get(
+                &graph_node_id
+            ).unwrap()
+        ).unwrap().clone();
+
+
         log::debug!("-----------------------------------------------------------------------------------------------------");
+        log::debug!("document_node: {}", read_lock!(document_node).to_string());
         log::debug!("snippet: {}", snippet);
         log::debug!("-----------------------------------------------------------------------------------------------------");
 
@@ -110,10 +120,10 @@ impl Context {
         start_node: Arc<RwLock<GraphNode>>,
         visited: &mut HashSet<GraphNodeID>,
     ) {
-        let mut stack = VecDeque::new();
-        stack.push_back(Arc::clone(&start_node));
+        let mut queue = VecDeque::new();
+        queue.push_back(Arc::clone(&start_node));
 
-        while let Some(node) = stack.pop_back() {
+        while let Some(node) = queue.pop_front() {
             let lock = read_lock!(node);
             let graph_node_id = lock.id.clone();
 
@@ -128,11 +138,11 @@ impl Context {
             }
 
             for child in lock.children.iter() {
-                stack.push_back(Arc::clone(child));
+                queue.push_back(Arc::clone(child));
             }
 
             for parent in lock.parents.iter() {
-                stack.push_back(Arc::clone(parent));
+                queue.push_back(Arc::clone(parent));
             }
         }
     }

@@ -34,6 +34,12 @@ impl DocumentNode {
         }
     }
 
+    pub fn to_string(&self) -> String {
+        let (a, b) = self.to_string_components();
+
+        format!("{}{}", a, b.unwrap_or("".to_string()))
+    }
+
     pub fn from_transformations(
         xml_node: XMLNode,
         xml_element_transformation: XMLElementTransformation,
