@@ -80,14 +80,6 @@ impl Context {
             false
         };
 
-        if should_render {
-            let key_id = dataset.graph_key.get(&current_id).unwrap();
-            let document_node = dataset.document_nodes.get(&key_id).unwrap();
-            let (_, b) = read_lock!(document_node).to_string_components();
-
-            snippet.push_str(b.as_deref().unwrap_or(""));
-        }
-
         for child in &lock.children {
             Self::traverse_for_snippet(
                 Arc::clone(&dataset),
@@ -96,6 +88,14 @@ impl Context {
                 neighbour_ids,
                 target_id,
             );
+        }
+
+        if should_render {
+            let key_id = dataset.graph_key.get(&current_id).unwrap();
+            let document_node = dataset.document_nodes.get(&key_id).unwrap();
+            let (_, b) = read_lock!(document_node).to_string_components();
+
+            snippet.push_str(b.as_deref().unwrap_or(""));
         }
     }
 
@@ -123,7 +123,7 @@ impl Context {
 
             visited.insert(graph_node_id.clone());
 
-            if visited.len() > 20 {
+            if visited.len() > 50 {
                 return;
             }
 
