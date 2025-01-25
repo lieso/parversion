@@ -9,11 +9,11 @@ use crate::document_node::DocumentNode;
 pub struct Context {}
 
 impl Context {
-
     pub fn generate_snippet(
         dataset: Arc<Dataset>,
         key: &KeyID
     ) -> String {
+        log::trace!("In generate_snippet");
 
         let root_graph_node: Arc<RwLock<GraphNode>> = dataset.graph_nodes.get(
             &dataset.root_node_key_id
@@ -22,14 +22,8 @@ impl Context {
         let graph_node = dataset.graph_nodes.get(key).clone().unwrap();
         let graph_node_id = read_lock!(graph_node).id.clone();
 
-
-
-
         let mut neighbour_ids = HashSet::new();
         Self::traverse_for_neighbours(Arc::clone(graph_node), &mut neighbour_ids);
-
-
-
 
         let mut snippet = String::new();
 
@@ -41,22 +35,7 @@ impl Context {
             &graph_node_id
         );
 
-
-        let document_node: Arc<RwLock<DocumentNode>> = dataset.document_nodes.get(
-            &dataset.graph_key.get(
-                &graph_node_id
-            ).unwrap()
-        ).unwrap().clone();
-
-
-        log::debug!("-----------------------------------------------------------------------------------------------------");
-        log::debug!("document_node: {}", read_lock!(document_node).to_string());
-        log::debug!("snippet: {}", snippet);
-        log::debug!("-----------------------------------------------------------------------------------------------------");
-
-
-
-        unimplemented!()
+        snippet
     }
 
     fn traverse_for_snippet(
