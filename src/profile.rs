@@ -13,7 +13,8 @@ pub struct Profile {
     pub description: String,
     pub features: HashSet<Hash>,
     pub xml_element_transformation: Option<XMLElementTransformation>,
-    pub hash_transformation: Option<HashTransformation>
+    pub hash_transformation: Option<HashTransformation>,
+    pub meaningful_fields: Option<Vec<String>>,
 }
 
 impl Profile {

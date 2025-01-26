@@ -14,7 +14,7 @@ pub async fn organize<P: Provider>(
     log::trace!("In organize");
 
     let input = AnalysisInput::from_document(Arc::clone(&provider), document).await?;
-    let analysis = Analysis::new(Arc::clone(&provider), input).await?;
+    let analysis = Analysis::new(Arc::clone(&provider), &input).await?;
 
     Ok(analysis)
 }

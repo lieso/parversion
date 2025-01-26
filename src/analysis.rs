@@ -29,14 +29,23 @@ pub struct Analysis {
 impl Analysis {
     pub async fn new<P: Provider>(
         provider: Arc<P>,
-        input: AnalysisInput
+        input: &AnalysisInput
     ) -> Result<Self, Errors> {
-        let dataset = input.to_dataset(Arc::clone(&provider));
+        let dataset = input.clone().to_dataset(Arc::clone(&provider));
         let dataset = Arc::new(dataset);
+
+        let meaningful_fields = input
+            .document_profile
+            .meaningful_fields
+            .as_ref()
+            .unwrap()
+            .clone();
+        let meaningful_fields = Arc::new(meaningful_fields);
 
         let node_analysis = Analysis::get_basis_nodes(
             Arc::clone(&provider),
-            Arc::clone(&dataset)
+            Arc::clone(&dataset),
+            Arc::clone(&meaningful_fields)
         ).await?;
         let network_analysis = Analysis::get_basis_networks(
             Arc::clone(&provider),
@@ -58,7 +67,8 @@ impl Analysis {
 
     async fn get_basis_nodes<P: Provider>(
         provider: Arc<P>,
-        dataset: Arc<Dataset>
+        dataset: Arc<Dataset>,
+        meaningful_fields: Arc<Vec<String>>
     ) -> Result<NodeAnalysis, Errors> {
 
         //let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
@@ -75,6 +85,7 @@ impl Analysis {
                 let cloned_group = group.clone();
                 let cloned_provider = Arc::clone(&provider);
                 let cloned_dataset = Arc::clone(&dataset_ref);
+                let cloned_meaningful_fields = Arc::clone(&meaningful_fields);
 
                 task::spawn(async move {
                     let permit = semaphore.acquire_owned().await.unwrap();
@@ -82,7 +93,8 @@ impl Analysis {
                         cloned_provider,
                         cloned_dataset,
                         cloned_lineage,
-                        cloned_group
+                        cloned_group,
+                        cloned_meaningful_fields
                     ).await
                 })
 
@@ -111,6 +123,7 @@ impl Analysis {
         dataset: Arc<Dataset>,
         lineage: Lineage,
         group: Vec<KeyID>,
+        meaningful_fields: Arc<Vec<String>>,
     ) -> Result<BasisNode, Errors> {
         log::trace!("In get_basis_node");
 
@@ -122,18 +135,39 @@ impl Analysis {
 
         let key_id = group.first().unwrap().clone();
 
-        let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
+        let data_node: Arc<RwLock<DataNode>> = dataset.data_nodes.get(&key_id).unwrap().clone();
 
-        log::debug!("snippet: {}", snippet);
+        let meaningful_fields: Vec<String> = read_lock!(data_node)
+            .fields
+            .keys()
+            .filter(|field| meaningful_fields.contains(&field))
+            .cloned()
+            .collect();
+
+        if meaningful_fields.is_empty() {
+
+            log::info!("Data node does not contain any meaningful information");
+
+        } else {
+
+            let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
+
+            log::debug!("-----------------------------------------------------------------------------------------------------");
+            log::debug!("data_node: {:?}", read_lock!(data_node).fields);
+            log::debug!("snippet: {}", snippet);
+            log::debug!("-----------------------------------------------------------------------------------------------------");
+
+        }
 
 
         unimplemented!()
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct AnalysisInput {
-    document_root: Arc<RwLock<DocumentNode>>,
-    document_profile: Profile,
+    pub document_root: Arc<RwLock<DocumentNode>>,
+    pub document_profile: Profile,
 }
 
 impl AnalysisInput {

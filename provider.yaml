@@ -102,7 +102,7 @@ profiles:
       - "7f385cac587d673e109b1a0e8231f5ad5d08b8a40ebcb9117fedb1d138ffb12a"
     xml_element_transformation:
       id: "645d0345-18b4-49b7-bf42-34d022980857"
-      description: "Transforming a set of document fields into a hash. A node with a particular hash is considered unique across all siblings for purposes of interpretation"
+      description: "XML element transformation applied during document preprocessing that blacklists certain elements or attributes to reduce document size and improve interpretation."
       runtime: "QuickJS"
       infix: |
         const BLACKLISTED_ATTRIBUTES = {style:1, bgcolor:1, border:1, cellpadding:1, cellspacing:1, width:1, height:1, rows:1, cols:1, wrap:1, "aria-hidden":1, size:1, op:1, lang:1, colspan:1, rel:1};
@@ -115,9 +115,12 @@ profiles:
               return acc;
           }, {});
     hash_transformation:
-      id: "645d0345-18b4-49b7-bf42-34d022980857"
-      description: "Transforming a set of document fields into a hash. A node with a particular hash is considered unique across all siblings for purposes of interpretation"
+      id: "7e683082-5cba-470f-b04b-dd080392719d"
+      description: "Determines the set of input strings from a node to use in identity hash calculation"
       runtime: "QuickJS"
       infix: |
         let hasherItems = Object.keys(fields).sort()
-
+    meaningful_fields:
+      - "text"
+      - "href"
+      - "title"
