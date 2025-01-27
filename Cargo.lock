@@ -1216,6 +1216,7 @@ dependencies = [
  "log",
  "markup5ever",
  "markup5ever_rcdom",
+ "once_cell",
  "pathetic",
  "quick-js",
  "regex",

@@ -159,8 +159,10 @@ impl Analysis {
             let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
 
 
-            let fields_transform = LLM::get_field_transformations(
-                meaningful_fields,
+            let field = meaningful_fields.first().unwrap();
+
+            let fields_transform = LLM::get_field_transformation(
+                field.clone(),
                 snippet,
             ).await;
 
