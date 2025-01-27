@@ -19,6 +19,7 @@ use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::config::{CONFIG};
 use crate::context::Context;
+use crate::llm::LLM;
 
 pub struct Analysis {
     dataset: Arc<Dataset>,
@@ -105,6 +106,7 @@ impl Analysis {
             .await
             .into_iter()
             .filter_map(|result| result.ok().and_then(Result::ok))
+            .filter_map(|opt| opt)
             .collect();
 
 
@@ -124,18 +126,22 @@ impl Analysis {
         lineage: Lineage,
         group: Vec<KeyID>,
         meaningful_fields: Arc<Vec<String>>,
-    ) -> Result<BasisNode, Errors> {
+    ) -> Result<Option<BasisNode>, Errors> {
         log::trace!("In get_basis_node");
 
         if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
             log::info!("Provider has supplied basis node");
 
-            return Ok(basis_node);
+            return Ok(Some(basis_node));
         };
 
         let key_id = group.first().unwrap().clone();
 
-        let data_node: Arc<RwLock<DataNode>> = dataset.data_nodes.get(&key_id).unwrap().clone();
+        let data_node: Arc<RwLock<DataNode>> = dataset
+            .data_nodes
+            .get(&key_id)
+            .unwrap()
+            .clone();
 
         let meaningful_fields: Vec<String> = read_lock!(data_node)
             .fields
@@ -145,20 +151,26 @@ impl Analysis {
             .collect();
 
         if meaningful_fields.is_empty() {
-
             log::info!("Data node does not contain any meaningful information");
 
+            return Ok(None);
         } else {
-
             let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
 
-            log::debug!("-----------------------------------------------------------------------------------------------------");
-            log::debug!("data_node: {:?}", read_lock!(data_node).fields);
-            log::debug!("snippet: {}", snippet);
-            log::debug!("-----------------------------------------------------------------------------------------------------");
+
+            let fields_transform = LLM::get_field_transformations(
+                meaningful_fields,
+                snippet,
+            );
+
+            log::debug!("#####################################################################################################");
+            log::debug!("#####################################################################################################");
+            log::debug!("#####################################################################################################");
+
+            log::debug!("fields_transform: {:?}", fields_transform);
+
 
         }
-
 
         unimplemented!()
     }

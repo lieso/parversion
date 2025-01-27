@@ -38,6 +38,7 @@ mod prelude;
 mod utility;
 mod json_node;
 mod context;
+mod llm;
 
 use crate::prelude::*;
 use crate::config::{CONFIG};

@@ -283,3 +283,20 @@ impl XMLElementTransformation {
         }
     }
 }
+
+
+
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FieldMetadata {
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FieldTransformation {
+    pub id: ID,
+    pub description: String,
+    pub field: String,
+    pub image: String,
+    pub meta: FieldMetadata,
+}
