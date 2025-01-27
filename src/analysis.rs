@@ -72,8 +72,8 @@ impl Analysis {
         meaningful_fields: Arc<Vec<String>>
     ) -> Result<NodeAnalysis, Errors> {
 
-        //let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-        let max_concurrency = 1;
+        let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+        //let max_concurrency = 1;
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
         let dataset_ref = Arc::clone(&dataset);
@@ -128,6 +128,7 @@ impl Analysis {
         meaningful_fields: Arc<Vec<String>>,
     ) -> Result<Option<BasisNode>, Errors> {
         log::trace!("In get_basis_node");
+        log::debug!("lineage: {}", lineage.to_string());
 
         if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
             log::info!("Provider has supplied basis node");
@@ -161,7 +162,7 @@ impl Analysis {
             let fields_transform = LLM::get_field_transformations(
                 meaningful_fields,
                 snippet,
-            );
+            ).await;
 
             log::debug!("#####################################################################################################");
             log::debug!("#####################################################################################################");
