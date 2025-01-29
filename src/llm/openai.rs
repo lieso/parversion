@@ -1,3 +1,4 @@
+use serde::{Serialize, Deserialize};
 use reqwest::header;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -20,6 +21,11 @@ static DB: Lazy<Arc<Db>> = Lazy::new(|| {
 
 pub struct OpenAI;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct EliminationResponse {
+    pub is_meaningful: bool,
+}
+
 impl OpenAI {
     pub async fn get_field_transformation(
         field: String,
@@ -34,8 +40,76 @@ impl OpenAI {
         log::debug!("field: {:?}", field);
         log::debug!("snippet: {}", snippet);
 
-        // Implement the logic for this function
+
+        if field == "text" {
+            let elimination = Self::should_eliminate_text_field(
+                field.clone(),
+                snippet.clone()
+            ).await.expect("Could not determine if text field should be eliminated");
+        }
+
+
         unimplemented!()
+    }
+
+    async fn should_eliminate_text_field(
+        field: String,
+        snippet: String,
+    ) -> Result<bool, Errors> {
+        log::trace!("In should_eliminate_text_field");
+
+
+        let system_prompt = format!(r##"
+You interpret the contextual meaning of a specific HTML text node, and infer if the text node represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary or presentational text.
+
+The specific text node will be contained/delimited with an HTML comment like so:
+<!-- Target node: Start -->Text node content here<!-- Target node: End -->
+
+Carefully examine the provided HTML text node along with supplementary information providing crucial context, and determine if any of the following applies to it:
+
+1. If the text node represents an advertisement of some kind.
+2. If the text node serves a presentational purpose. For example, a pipe symbol may be used to delineate menu items, other text nodes might represent an icon. Presentational text is not meaningful, semantic content humans consume as part of their core purpose for visiting a website.
+3. If the text node is a label for a UI element meant to assist the user in understanding how to operate the website, as opposed to content that is meant to be consumed
+
+If any of these criteria apply to the text node, please respond false (is_meaningful)
+
+        "##);
+
+        let user_prompt = format!(r##"
+[Text node]
+
+[Surrounding HTML]
+
+
+        "##);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "elimination_response",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "is_meaningful": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": ["is_meaningful"],
+                    "additionalProperties": false
+                }
+            }
+        });
+
+        let response: EliminationResponse = Self::send_openai_request(
+            system_prompt,
+            user_prompt,
+            response_format
+        ).await.expect("Failed to get response from OpenAI");
+
+        log::debug!("response: {:?}", response);
+
+        Ok(true)
     }
 
     async fn send_openai_request<T>(
@@ -51,7 +125,7 @@ impl OpenAI {
         let response = Self::get_or_set_cache(hash.clone(), || async {
             let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
             let request_json = json!({
-                "model": "gpt-4o-2024-08-06",
+                "model": "gpt-4o-mini",
                 "temperature": 0,
                 "messages": [
                     {
@@ -131,100 +205,3 @@ impl OpenAI {
         db.insert(key, value.into_bytes()).expect("Could not store value in cache");
     }
 }
-
-
-
-
-
-
-
-
-
-//async fn interpret_href(examples: String, core_purpose: String) -> NodeData {
-//    log::trace!("In interpret_href");
-//
-//    let system_prompt = format!(r##"
-//Your task is to interpret the meaning of HTML href attributes, provide an appropriate generic name in snake case for these attributes, and to provide additional metadata for these attributes. The attribute may have a variety of possible values so you should attempt to generalize as much as possible across all examples provided.
-//
-//The href attribute to be interpreted will be found in an HTML element delimited with an HTML comment like so:
-//<!--Target node start --><a href="https://www.example.com"><!--Target node end --></a>
-//
-//At least one example of the target node will be provided, along with some surrounding HTML providing necessary context for you to interpret the meaning and purpose of the HTML target href. When multiple examples of a target node each containing an href are provided, treat the href contained within each target node as being the "same" and generalize as much as possible across its values with respect to the surrounding HTML.
-//
-//An example of how to perform this task would be to give the name 'profile_url' to an href when all examples of it appear to be a link to the profile page of a user account.
-//
-//Provide the following information in your response:
-//1. name: A generic name in snake case that could be used to represent href values programmatically.
-//2. is_page_link: Indicate whether these href(s) likely just point to a new page or if they are for performing some sort of action or mutation. An example of a page link is a link to a another page in a website where more content is consumed such as visiting an 'about' page from the landing page. Action/mutation href likely require a login and change something about the state of an item on the website.
-//3. is_peripheral_content: Peripheral content is typically found in headers, footers, sidebars, banners, etc. and does not pertain to the core purpose of the website. Peripheral content is not the primary focus of the website's message or purpose. 
-//4. is_advertisement: Indicates if the value is an advertisement.
-//5. description: Provide a brief description of this text as if it were a field in a JSON schema
-//
-//---
-//"##);
-//    let user_prompt = format!(r##"
-//The core purpose of this website has been summarized as follows:
-//
-//---
-//
-//{}
-//
-//---
-//
-//Use this summary to assist you in determining metadata.
-//
-//Example(s) of the element node:
-//
-//---
-//
-//{}
-//
-//---
-//
-//"##, core_purpose, examples);
-//    log::debug!("prompt:\n{}{}", system_prompt, user_prompt);
-//
-//    let response_format = json!({
-//        "type": "json_schema",
-//        "json_schema": {
-//            "name": "href_interpretation_response",
-//            "strict": true,
-//            "schema": {
-//                "type": "object",
-//                "properties": {
-//                    "name": {
-//                        "type": "string"
-//                    },
-//                    "is_page_link": {
-//                        "type": "boolean"
-//                    },
-//                    "is_peripheral_content": {
-//                        "type": "boolean"
-//                    },
-//                    "is_advertisement": {
-//                        "type": "boolean"
-//                    },
-//                    "description": {
-//                        "type": "string"
-//                    }
-//                },
-//                "required": ["name", "is_page_link", "is_peripheral_content", "is_advertisement", "description"],
-//                "additionalProperties": false
-//            },
-//        },
-//    });
-//
-//    let response: LLMElementDataResponse = send_openai_request(system_prompt, user_prompt, response_format).await.expect("Failed to get response from OpenAI");
-//
-//    NodeData {
-//        name: response.name.clone(),
-//        element: Some(ElementData {
-//            attribute: "href".to_string(),
-//            is_page_link: response.is_page_link.clone(),
-//            is_peripheral_content: response.is_peripheral_content.clone(),
-//            is_advertisement: response.is_advertisement.clone(),
-//            description: response.description.clone(),
-//        }),
-//        text: None,
-//    }
-//}
