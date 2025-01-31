@@ -158,11 +158,15 @@ impl Analysis {
         } else {
             let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
 
-
             let field = meaningful_fields.first().unwrap();
+            let value = {
+                let lock = read_lock!(data_node);
+                lock.fields.get(field.as_str()).unwrap().clone()
+            };
 
             let fields_transform = LLM::get_field_transformation(
                 field.clone(),
+                value.clone(),
                 snippet,
             ).await;
 

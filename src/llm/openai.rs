@@ -14,7 +14,7 @@ use crate::transformation::FieldTransformation;
 use crate::config::{CONFIG};
 
 static DB: Lazy<Arc<Db>> = Lazy::new(|| {
-    let debug_dir = "path_to_debug_dir"; // Replace with actual path or configuration
+    let debug_dir = &read_lock!(CONFIG).dev.debug_dir;
     let db = sled::open(format!("{}/cache", debug_dir)).expect("Could not open cache");
     Arc::new(db)
 });
@@ -23,12 +23,14 @@ pub struct OpenAI;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct EliminationResponse {
-    pub is_meaningful: bool,
+    pub is_unmeaningful: bool,
+    pub justification: String,
 }
 
 impl OpenAI {
     pub async fn get_field_transformation(
         field: String,
+        value: String,
         snippet: String,
     ) -> FieldTransformation {
         log::trace!("In get_field_transformation");
@@ -43,7 +45,7 @@ impl OpenAI {
 
         if field == "text" {
             let elimination = Self::should_eliminate_text_field(
-                field.clone(),
+                value.clone(),
                 snippet.clone()
             ).await.expect("Could not determine if text field should be eliminated");
         }
@@ -53,7 +55,7 @@ impl OpenAI {
     }
 
     async fn should_eliminate_text_field(
-        field: String,
+        value: String,
         snippet: String,
     ) -> Result<bool, Errors> {
         log::trace!("In should_eliminate_text_field");
@@ -71,17 +73,18 @@ Carefully examine the provided HTML text node along with supplementary informati
 2. If the text node serves a presentational purpose. For example, a pipe symbol may be used to delineate menu items, other text nodes might represent an icon. Presentational text is not meaningful, semantic content humans consume as part of their core purpose for visiting a website.
 3. If the text node is a label for a UI element meant to assist the user in understanding how to operate the website, as opposed to content that is meant to be consumed
 
-If any of these criteria apply to the text node, please respond false (is_meaningful)
-
+Include the following in your response:
+1. (is_unmeaningful): if any of the above criteria apply to the text node, respond true
+2. (justification): provide justification for your response
         "##);
 
         let user_prompt = format!(r##"
 [Text node]
+{}
 
 [Surrounding HTML]
-
-
-        "##);
+{}
+        "##, value.trim(), snippet);
 
         let response_format = json!({
             "type": "json_schema",
@@ -91,23 +94,36 @@ If any of these criteria apply to the text node, please respond false (is_meanin
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "is_meaningful": {
+                        "is_unmeaningful": {
                             "type": "boolean"
+                        },
+                        "justification": {
+                            "type": "string"
                         }
                     },
-                    "required": ["is_meaningful"],
+                    "required": ["is_unmeaningful", "justification"],
                     "additionalProperties": false
                 }
             }
         });
 
         let response: EliminationResponse = Self::send_openai_request(
-            system_prompt,
-            user_prompt,
+            system_prompt.clone(),
+            user_prompt.clone(),
             response_format
         ).await.expect("Failed to get response from OpenAI");
 
-        log::debug!("response: {:?}", response);
+        log::debug!("\nn╔════════════════════════════════════════════╗");
+        log::debug!("║    SHOULD ELIMINATE TEXT FIELD START       ║");
+        log::debug!("╚════════════════════════════════════════════╝");
+        
+        log::debug!("***system_prompt***\n{}", system_prompt);
+        log::debug!("***user_prompt***\n{}", user_prompt);
+        log::debug!("***response***\n{:?}", response);
+
+        log::debug!("╔════════════════════════════════════════════╗");
+        log::debug!("║    SHOULD ELIMINATE TEXT FIELD END         ║");
+        log::debug!("╚════════════════════════════════════════════╝\nn");
 
         Ok(true)
     }
@@ -125,7 +141,7 @@ If any of these criteria apply to the text node, please respond false (is_meanin
         let response = Self::get_or_set_cache(hash.clone(), || async {
             let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
             let request_json = json!({
-                "model": "gpt-4o-mini",
+                "model": "gpt-4o",
                 "temperature": 0,
                 "messages": [
                     {
