@@ -9,7 +9,7 @@ impl LLM {
         field: String,
         value: String,
         snippet: String,
-    ) -> FieldTransformation {
+    ) -> Option<FieldTransformation> {
         openai::OpenAI::get_field_transformation(field, value, snippet).await
     }
 }

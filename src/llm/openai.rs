@@ -32,7 +32,7 @@ impl OpenAI {
         field: String,
         value: String,
         snippet: String,
-    ) -> FieldTransformation {
+    ) -> Option<FieldTransformation> {
         log::trace!("In get_field_transformation");
 
         log::debug!("=====================================================================================================");
@@ -56,6 +56,20 @@ impl OpenAI {
             }
         };
         log::debug!("should_eliminate: {}", should_eliminate);
+
+        if should_eliminate {
+            return None;
+        }
+
+
+
+
+
+
+
+
+
+
 
 
         unimplemented!()
