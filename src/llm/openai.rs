@@ -40,20 +40,22 @@ impl OpenAI {
         log::debug!("=====================================================================================================");
 
         log::debug!("field: {:?}", field);
+        log::debug!("value: {:?}", value);
         log::debug!("snippet: {}", snippet);
 
-
-        if field == "text" {
-            let should_eliminate = Self::should_eliminate_text(
-                value.clone(),
-                snippet.clone()
-            ).await.expect("Could not determine if text should be eliminated");
-        } else {
-            let should_eliminate = Self::should_eliminate_attribute(
-                field.clone(),
-                snippet.clone()
-            ).await.expect("Could not determine if attribute should be eliminated");
-        }
+        let should_eliminate = match field.as_str() {
+            "text" => {
+                Self::should_eliminate_text(value.clone(), snippet.clone())
+                    .await
+                    .expect("Could not determine if text should be eliminated")
+            },
+            _ => {
+                Self::should_eliminate_attribute(field.clone(), snippet.clone())
+                    .await
+                    .expect("Could not determine if attribute should be eliminated")
+            }
+        };
+        log::debug!("should_eliminate: {}", should_eliminate);
 
 
         unimplemented!()
