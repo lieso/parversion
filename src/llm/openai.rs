@@ -44,14 +44,13 @@ impl OpenAI {
 
 
         if field == "text" {
-            let elimination = Self::should_eliminate_text(
+            let should_eliminate = Self::should_eliminate_text(
                 value.clone(),
                 snippet.clone()
             ).await.expect("Could not determine if text should be eliminated");
         } else {
-            let elimination = Self::should_eliminate_attribute(
+            let should_eliminate = Self::should_eliminate_attribute(
                 field.clone(),
-                value.clone(),
                 snippet.clone()
             ).await.expect("Could not determine if attribute should be eliminated");
         }
@@ -62,22 +61,19 @@ impl OpenAI {
 
     async fn should_eliminate_attribute(
         field: String,
-        value: String,
         snippet: String,
     ) -> Result<bool, Errors> {
         log::trace!("In should_eliminate_attribute");
 
         let system_prompt = format!(r##"
-You interpret the contextual meaning of a specific HTML attribute, and infer if the attribute represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary or presentational text.
+You interpret the contextual meaning of a specific HTML attribute, and infer if the attribute represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary content.
 
 The attribute will be contained/delimited with an HTML comment like so:
-<!-- Target node: Start --><a href="https://example.com">example<a><!-- Target node: End -->
+<!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->
 
-Carefully examine the provided HTML text node along with supplementary information providing crucial context, and determine if any of the following applies to it:
+Carefully examine the HTML attribute along with supplementary information providing crucial context, and determine if any of the following applies to it:
 
 1. If the attribute represents an advertisement of some kind.
-2. If the attribute serves a presentational purpose. For example, a pipe symbol may be used to delineate menu items, other text nodes might represent an icon. Presentational text is not meaningful, semantic content humans consume as part of their core purpose for visiting a website.
-3. If the text node is a label for a UI element meant to assist the user in understanding how to operate the website, as opposed to content that is meant to be consumed
 
 Include the following in your response:
 1. (is_unmeaningful): if any of the above criteria apply to the text node, respond true
@@ -90,48 +86,10 @@ Include the following in your response:
 
 [Surrounding HTML]
 {}
-        "##, value.trim(), snippet);
+        "##, field.trim(), snippet);
 
-        let response_format = json!({
-            "type": "json_schema",
-            "json_schema": {
-                "name": "elimination_response",
-                "strict": true,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "is_unmeaningful": {
-                            "type": "boolean"
-                        },
-                        "justification": {
-                            "type": "string"
-                        }
-                    },
-                    "required": ["is_unmeaningful", "justification"],
-                    "additionalProperties": false
-                }
-            }
-        });
 
-        let response: EliminationResponse = Self::send_openai_request(
-            system_prompt.clone(),
-            user_prompt.clone(),
-            response_format
-        ).await.expect("Failed to get response from OpenAI");
-
-        log::debug!("\n\n╔════════════════════════════════════════════╗");
-        log::debug!("║    SHOULD ELIMINATE TEXT FIELD START       ║");
-        log::debug!("╚════════════════════════════════════════════╝");
-        
-        log::debug!("***system_prompt***\n{}", system_prompt);
-        log::debug!("***user_prompt***\n{}", user_prompt);
-        log::debug!("***response***\n{:?}", response);
-
-        log::debug!("╔════════════════════════════════════════════╗");
-        log::debug!("║    SHOULD ELIMINATE TEXT FIELD END         ║");
-        log::debug!("╚════════════════════════════════════════════╝\nn");
-
-        Ok(true)
+        Self::should_eliminate(system_prompt, user_prompt).await
     }
 
     async fn should_eliminate_text(
@@ -166,10 +124,19 @@ Include the following in your response:
 {}
         "##, value.trim(), snippet);
 
+        Self::should_eliminate(system_prompt, user_prompt).await
+    }
+
+    async fn should_eliminate(
+        system_prompt: String,
+        user_prompt: String,
+    ) -> Result<bool, Errors> {
+        log::trace!("In should_eliminate");
+
         let response_format = json!({
             "type": "json_schema",
             "json_schema": {
-                "name": "elimination_response",
+                "name": "meaningful_response",
                 "strict": true,
                 "schema": {
                     "type": "object",
@@ -193,19 +160,19 @@ Include the following in your response:
             response_format
         ).await.expect("Failed to get response from OpenAI");
 
-        log::debug!("\n\n╔════════════════════════════════════════════╗");
-        log::debug!("║    SHOULD ELIMINATE TEXT FIELD START       ║");
-        log::debug!("╚════════════════════════════════════════════╝");
+        log::debug!("╔════════════════════════════════════════╗");
+        log::debug!("║    SHOULD ELIMINATE FIELD START        ║");
+        log::debug!("╚════════════════════════════════════════╝");
         
         log::debug!("***system_prompt***\n{}", system_prompt);
         log::debug!("***user_prompt***\n{}", user_prompt);
         log::debug!("***response***\n{:?}", response);
 
-        log::debug!("╔════════════════════════════════════════════╗");
-        log::debug!("║    SHOULD ELIMINATE TEXT FIELD END         ║");
-        log::debug!("╚════════════════════════════════════════════╝\nn");
+        log::debug!("╔═══════════════════════════════════════╗");
+        log::debug!("║    SHOULD ELIMINATE FIELD END         ║");
+        log::debug!("╚═══════════════════════════════════════╝");
 
-        Ok(true)
+        Ok(response.is_unmeaningful)
     }
 
     async fn send_openai_request<T>(
