@@ -165,9 +165,9 @@ impl Analysis {
             };
 
             let fields_transform = LLM::get_field_transformation(
-                field.clone(),
-                value.clone(),
-                snippet,
+                field.as_str(),
+                value.as_str(),
+                snippet.as_str(),
             ).await;
 
             log::debug!("#####################################################################################################");

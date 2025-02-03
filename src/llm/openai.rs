@@ -29,9 +29,9 @@ struct EliminationResponse {
 
 impl OpenAI {
     pub async fn get_field_transformation(
-        field: String,
-        value: String,
-        snippet: String,
+        field: &str,
+        value: &str,
+        snippet: &str,
     ) -> Option<FieldTransformation> {
         log::trace!("In get_field_transformation");
 
@@ -43,14 +43,16 @@ impl OpenAI {
         log::debug!("value: {:?}", value);
         log::debug!("snippet: {}", snippet);
 
-        let should_eliminate = match field.as_str() {
+
+
+        let should_eliminate = match field {
             "text" => {
-                Self::should_eliminate_text(value.clone(), snippet.clone())
+                Self::should_eliminate_text(value, snippet)
                     .await
                     .expect("Could not determine if text should be eliminated")
             },
             _ => {
-                Self::should_eliminate_attribute(field.clone(), snippet.clone())
+                Self::should_eliminate_attribute(field, snippet)
                     .await
                     .expect("Could not determine if attribute should be eliminated")
             }
@@ -65,6 +67,14 @@ impl OpenAI {
 
 
 
+        let peripheral = Self::get_peripheral_if_applicable(
+            field,
+            value,
+            snippet,
+        );
+
+
+
 
 
 
@@ -75,9 +85,17 @@ impl OpenAI {
         unimplemented!()
     }
 
+    async fn get_peripheral_if_applicable(
+        field: &str,
+        value: &str,
+        snippet: &str,
+    ) -> Result<(), Errors> {
+        unimplemented!()
+    }
+
     async fn should_eliminate_attribute(
-        field: String,
-        snippet: String,
+        field: &str,
+        snippet: &str,
     ) -> Result<bool, Errors> {
         log::trace!("In should_eliminate_attribute");
 
@@ -105,12 +123,12 @@ Include the following in your response:
         "##, field.trim(), snippet);
 
 
-        Self::should_eliminate(system_prompt, user_prompt).await
+        Self::should_eliminate(&system_prompt, &user_prompt).await
     }
 
     async fn should_eliminate_text(
-        value: String,
-        snippet: String,
+        value: &str,
+        snippet: &str,
     ) -> Result<bool, Errors> {
         log::trace!("In should_eliminate_text");
 
@@ -140,12 +158,12 @@ Include the following in your response:
 {}
         "##, value.trim(), snippet);
 
-        Self::should_eliminate(system_prompt, user_prompt).await
+        Self::should_eliminate(&system_prompt, &user_prompt).await
     }
 
     async fn should_eliminate(
-        system_prompt: String,
-        user_prompt: String,
+        system_prompt: &str,
+        user_prompt: &str,
     ) -> Result<bool, Errors> {
         log::trace!("In should_eliminate");
 
@@ -192,16 +210,20 @@ Include the following in your response:
     }
 
     async fn send_openai_request<T>(
-        system_prompt: String,
-        user_prompt: String,
+        system_prompt: &str,
+        user_prompt: &str,
         response_format: serde_json::Value,
     ) -> Result<T, Box<dyn std::error::Error>>
     where
         T: DeserializeOwned,
     {
-        let hash = Self::compute_hash(vec![system_prompt.clone(), user_prompt.clone(), response_format.to_string()]);
+        let hash = Self::compute_hash(vec![
+            system_prompt,
+            user_prompt,
+            &response_format.to_string()
+        ]);
 
-        let response = Self::get_or_set_cache(hash.clone(), || async {
+        let response = Self::get_or_set_cache(hash.as_str(), || async {
             let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
             let request_json = json!({
                 "model": "gpt-4o",
@@ -246,13 +268,13 @@ Include the following in your response:
         Ok(parsed_response)
     }
 
-    fn compute_hash(hasher_items: Vec<String>) -> String {
+    fn compute_hash(hasher_items: Vec<&str>) -> String {
         let mut hasher = Sha256::new();
         hasher.update(hasher_items.join(""));
         format!("{:x}", hasher.finalize())
     }
 
-    async fn get_or_set_cache<F, Fut>(hash: String, fetch_data: F) -> Option<String>
+    async fn get_or_set_cache<F, Fut>(hash: &str, fetch_data: F) -> Option<String>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Option<String>>,
@@ -263,7 +285,7 @@ Include the following in your response:
         } else {
             log::info!("Cache miss!");
             if let Some(response) = fetch_data().await {
-                Self::set_cached_response(hash, response.clone());
+                Self::set_cached_response(hash, &response);
                 Some(response)
             } else {
                 None
@@ -271,7 +293,7 @@ Include the following in your response:
         }
     }
 
-    fn get_cached_response(key: String) -> Option<String> {
+    fn get_cached_response(key: &str) -> Option<String> {
         let db = DB.clone();
         match db.get(key).expect("Could not get value from cache") {
             Some(data) => Some(String::from_utf8(data.to_vec()).expect("Could not deserialize data")),
@@ -279,8 +301,8 @@ Include the following in your response:
         }
     }
 
-    fn set_cached_response(key: String, value: String) {
+    fn set_cached_response(key: &str, value: &str) {
         let db = DB.clone();
-        db.insert(key, value.into_bytes()).expect("Could not store value in cache");
+        db.insert(key, value.to_string().into_bytes()).expect("Could not store value in cache");
     }
 }
