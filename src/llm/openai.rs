@@ -27,6 +27,12 @@ struct EliminationResponse {
     pub justification: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct PeripheralResponse {
+    pub is_peripheral: bool,
+    pub justification: String,
+}
+
 impl OpenAI {
     pub async fn get_field_transformation(
         field: &str,
@@ -67,11 +73,12 @@ impl OpenAI {
 
 
 
-        let peripheral = Self::get_peripheral_if_applicable(
+        let is_peripheral = Self::get_peripheral_if_applicable(
             field,
             value,
             snippet,
-        );
+        ).await.expect("Could not determine if field is peripheral");
+        log::debug!("is_peripheral: {}", is_peripheral);
 
 
 
@@ -89,8 +96,72 @@ impl OpenAI {
         field: &str,
         value: &str,
         snippet: &str,
-    ) -> Result<(), Errors> {
-        unimplemented!()
+    ) -> Result<bool, Errors> {
+        log::trace!("In get_peripheral_if_applicable");
+
+        let field_value = if field == "text" { value } else { field };
+
+        let system_prompt = format!(r##"
+You interpret the contextual meaning of HTML attributes or text nodes and infer if it is content pertaining to the core purpose of the website, or if it peripheral/secondary content. Peripheral content is not the primary focus of the website's message or purpose.
+
+Examples of peripheral content include, but are not limited to:
+* Website menu bars or footers that link to related pages
+* Content that may be found in sidebars or banners and complements the primary content with additional information
+* Content embedded alongside primary content such as when search engines will include related searches, summaries, videos, etc. when primary content for a search engine is a list of URLs with some metadata.
+
+Include the following in your response:
+1. (is_peripheral): If this is peripheral content.
+2. (justification): Provide justification for your response
+
+        "##);
+        let user_prompt = format!(r##"
+[attribute/text]
+{}
+
+[Surrounding HTML]
+{}
+        "##, field_value, snippet);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "meaningful_response",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "is_peripheral": {
+                            "type": "boolean"
+                        },
+                        "justification": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["is_peripheral", "justification"],
+                    "additionalProperties": false
+                }
+            }
+        });
+
+        let response: PeripheralResponse = Self::send_openai_request(
+            &system_prompt,
+            &user_prompt,
+            response_format
+        ).await.expect("Failed to get response from OpenAI");
+
+        log::debug!("╔════════════════════════════════════════╗");
+        log::debug!("║          IS PERIPHERAL START           ║");
+        log::debug!("╚════════════════════════════════════════╝");
+        
+        log::debug!("***system_prompt***\n{}", system_prompt);
+        log::debug!("***user_prompt***\n{}", user_prompt);
+        log::debug!("***response***\n{:?}", response);
+
+        log::debug!("╔═══════════════════════════════════════╗");
+        log::debug!("║          IS PERIPHERAL END            ║");
+        log::debug!("╚═══════════════════════════════════════╝");
+
+        Ok(response.is_peripheral)
     }
 
     async fn should_eliminate_attribute(
@@ -189,8 +260,8 @@ Include the following in your response:
         });
 
         let response: EliminationResponse = Self::send_openai_request(
-            system_prompt.clone(),
-            user_prompt.clone(),
+            &system_prompt,
+            &user_prompt,
             response_format
         ).await.expect("Failed to get response from OpenAI");
 
