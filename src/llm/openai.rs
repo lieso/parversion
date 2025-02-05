@@ -10,7 +10,7 @@ use sha2::{Sha256, Digest};
 
 
 use crate::prelude::*;
-use crate::transformation::FieldTransformation;
+use crate::transformation::{FieldTransformation, FieldMetadata};
 use crate::config::{CONFIG};
 
 static DB: Lazy<Arc<Db>> = Lazy::new(|| {
@@ -33,6 +33,13 @@ struct PeripheralResponse {
     pub justification: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct PrimaryResponse {
+    pub name: String,
+    pub description: String,
+    pub justification: String,
+}
+
 impl OpenAI {
     pub async fn get_field_transformation(
         field: &str,
@@ -49,9 +56,9 @@ impl OpenAI {
         log::debug!("value: {:?}", value);
         log::debug!("snippet: {}", snippet);
 
+        log::info!("Determining if field is meaningful...");
 
-
-        let should_eliminate = match field {
+        let elimination = match field {
             "text" => {
                 Self::should_eliminate_text(value, snippet)
                     .await
@@ -63,40 +70,128 @@ impl OpenAI {
                     .expect("Could not determine if attribute should be eliminated")
             }
         };
-        log::debug!("should_eliminate: {}", should_eliminate);
 
-        if should_eliminate {
+        if elimination.is_unmeaningful {
+            log::info!("Eliminating unmeaningful field");
             return None;
         }
 
+        log::info!("Determining if field is peripheral...");
 
-
-
-
-        let is_peripheral = Self::get_peripheral_if_applicable(
+        let peripheral = Self::get_peripheral_if_applicable(
             field,
             value,
             snippet,
         ).await.expect("Could not determine if field is peripheral");
-        log::debug!("is_peripheral: {}", is_peripheral);
 
+        if peripheral.is_peripheral {
+            log::info!("Field identified as secondary/peripheral");
 
+            let transformation = FieldTransformation {
+                id: ID::new(),
+                description: String::from("Related content description"),
+                field: field.to_string(),
+                image: String::from("related_content"),
+                meta: FieldMetadata {}
+            };
 
+            return Some(transformation);
+        }
 
+        log::info!("Determining primary field name and metadata...");
 
+        let primary_content = Self::get_primary_content(
+            field,
+            value,
+            snippet,
+        ).await.expect("Could not obtain primary content");
 
+        let transformation = FieldTransformation {
+            id: ID::new(),
+            description: primary_content.description.clone(),
+            field: field.to_string(),
+            image: primary_content.name.clone(),
+            meta: FieldMetadata {},
+        };
 
+        Some(transformation)
+    }
 
+    async fn get_primary_content(
+        field: &str,
+        value: &str,
+        snippet: &str
+    ) -> Result<PrimaryResponse, Errors> {
+        log::trace!("In get_primary_content");
 
+        let field_value = if field == "text" { value } else { field };
 
-        unimplemented!()
+        let system_prompt = format!(r##"
+You interpret the contextual meaning of HTML attributes or text nodes and reverse engineer the data model that was possibly used when building the website.
+
+Please provide the following information:
+* (name): A variable name in snake case the could be used to represent this text node or attribute programmatically
+* (description): A description of the variable name as it might be found in a JSON schema.
+* (justification): A justification for your response
+        "##);
+        let user_prompt = format!(r##"
+[attribute/text]
+{}
+
+[Surrounding HTML]
+{}
+        "##, field_value, snippet);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "primary",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "description": {
+                            "type": "string"
+                        },
+                        "justification": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["name", "description", "justification"],
+                    "additionalProperties": false
+                }
+            }
+        });
+
+        let response: PrimaryResponse = Self::send_openai_request(
+            &system_prompt,
+            &user_prompt,
+            response_format
+        ).await.expect("Failed to get response from OpenAI");
+
+        log::debug!("╔═════════════════════════════════╗");
+        log::debug!("║          PRIMARY START          ║");
+        log::debug!("╚═════════════════════════════════╝");
+        
+        log::debug!("***system_prompt***\n{}", system_prompt);
+        log::debug!("***user_prompt***\n{}", user_prompt);
+        log::debug!("***response***\n{:?}", response);
+
+        log::debug!("╔══════════════════════════════╗");
+        log::debug!("║          PRIMARY END         ║");
+        log::debug!("╚══════════════════════════════╝");
+
+        Ok(response)
     }
 
     async fn get_peripheral_if_applicable(
         field: &str,
         value: &str,
         snippet: &str,
-    ) -> Result<bool, Errors> {
+    ) -> Result<PeripheralResponse, Errors> {
         log::trace!("In get_peripheral_if_applicable");
 
         let field_value = if field == "text" { value } else { field };
@@ -107,7 +202,7 @@ You interpret the contextual meaning of HTML attributes or text nodes and infer 
 Examples of peripheral content include, but are not limited to:
 * Website menu bars or footers that link to related pages
 * Content that may be found in sidebars or banners and complements the primary content with additional information
-* Content embedded alongside primary content such as when search engines will include related searches, summaries, videos, etc. when primary content for a search engine is a list of URLs with some metadata.
+* Content embedded alongside primary content such as when search engines will include related searches, summaries, videos, etc. when the primary content for a search engine is a list of URLs with some metadata.
 
 Include the following in your response:
 1. (is_peripheral): If this is peripheral content.
@@ -130,7 +225,7 @@ Include the following in your response:
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "is_peripheral": {
+                        "peripheral": {
                             "type": "boolean"
                         },
                         "justification": {
@@ -161,13 +256,13 @@ Include the following in your response:
         log::debug!("║          IS PERIPHERAL END            ║");
         log::debug!("╚═══════════════════════════════════════╝");
 
-        Ok(response.is_peripheral)
+        Ok(response)
     }
 
     async fn should_eliminate_attribute(
         field: &str,
         snippet: &str,
-    ) -> Result<bool, Errors> {
+    ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate_attribute");
 
         let system_prompt = format!(r##"
@@ -200,7 +295,7 @@ Include the following in your response:
     async fn should_eliminate_text(
         value: &str,
         snippet: &str,
-    ) -> Result<bool, Errors> {
+    ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate_text");
 
 
@@ -235,13 +330,13 @@ Include the following in your response:
     async fn should_eliminate(
         system_prompt: &str,
         user_prompt: &str,
-    ) -> Result<bool, Errors> {
+    ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate");
 
         let response_format = json!({
             "type": "json_schema",
             "json_schema": {
-                "name": "meaningful_response",
+                "name": "meaningful",
                 "strict": true,
                 "schema": {
                     "type": "object",
@@ -277,7 +372,7 @@ Include the following in your response:
         log::debug!("║    SHOULD ELIMINATE FIELD END         ║");
         log::debug!("╚═══════════════════════════════════════╝");
 
-        Ok(response.is_unmeaningful)
+        Ok(response)
     }
 
     async fn send_openai_request<T>(
