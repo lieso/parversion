@@ -97,7 +97,6 @@ impl Analysis {
                         cloned_meaningful_fields
                     ).await
                 })
-
             })
             .collect();
 
@@ -108,8 +107,11 @@ impl Analysis {
             .filter_map(|opt| opt)
             .collect();
 
+        let node_analysis = NodeAnalysis {
+            basis_nodes,
+        };
 
-        unimplemented!()
+        Ok(node_analysis)
     }
 
     async fn get_basis_networks<P: Provider>(
@@ -154,31 +156,42 @@ impl Analysis {
             log::info!("Data node does not contain any meaningful information");
 
             return Ok(None);
-        } else {
-            let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
-
-            let field = meaningful_fields.first().unwrap();
-            let value = {
-                let lock = read_lock!(data_node);
-                lock.fields.get(field.as_str()).unwrap().clone()
-            };
-
-            let fields_transform = LLM::get_field_transformation(
-                field.as_str(),
-                value.as_str(),
-                snippet.as_str(),
-            ).await;
-
-            log::debug!("#####################################################################################################");
-            log::debug!("#####################################################################################################");
-            log::debug!("#####################################################################################################");
-
-            log::debug!("fields_transform: {:?}", fields_transform);
-
-
         }
 
-        unimplemented!()
+        let snippet = Context::generate_snippet(Arc::clone(&dataset), &key_id);
+
+        let field = meaningful_fields.first().unwrap();
+        let value = {
+            let lock = read_lock!(data_node);
+            lock.fields.get(field.as_str()).unwrap().clone()
+        };
+
+        let field_transform = LLM::get_field_transformation(
+            field.as_str(),
+            value.as_str(),
+            snippet.as_str(),
+        ).await;
+
+        log::debug!("#####################################################################################################");
+        log::debug!("#####################################################################################################");
+        log::debug!("#####################################################################################################");
+
+        log::debug!("field_transform: {:?}", field_transform);
+
+        if let Some(field_transform) = field_transform {
+            let lock = read_lock!(data_node);
+            let basis_node = BasisNode {
+                id: ID::new(),
+                hash: lock.hash.clone(),
+                lineage: lineage.clone(),
+                description: lock.description.clone(),
+                transformation: field_transform,
+            };
+
+            return Ok(Some(basis_node));
+        } 
+
+        Ok(None)
     }
 }
 

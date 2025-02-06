@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 
 use crate::prelude::*;
-use crate::transformation::{Transformation};
+use crate::transformation::{FieldTransformation};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNode {
@@ -9,5 +9,5 @@ pub struct BasisNode {
     pub hash: Hash,
     pub lineage: Lineage,
     pub description: String,
-    pub transformations: Vec<Transformation>,
+    pub transformation: FieldTransformation,
 }

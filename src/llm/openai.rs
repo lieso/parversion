@@ -157,25 +157,31 @@ Please provide the following information:
             }
         });
 
-        let response: PrimaryResponse = Self::send_openai_request(
+        match Self::send_openai_request(
             &system_prompt,
             &user_prompt,
             response_format
-        ).await.expect("Failed to get response from OpenAI");
+        ).await {
+            Ok(response) => {
+                log::debug!("╔═════════════════════════════════╗");
+                log::debug!("║          PRIMARY START          ║");
+                log::debug!("╚═════════════════════════════════╝");
 
-        log::debug!("╔═════════════════════════════════╗");
-        log::debug!("║          PRIMARY START          ║");
-        log::debug!("╚═════════════════════════════════╝");
-        
-        log::debug!("***system_prompt***\n{}", system_prompt);
-        log::debug!("***user_prompt***\n{}", user_prompt);
-        log::debug!("***response***\n{:?}", response);
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
 
-        log::debug!("╔══════════════════════════════╗");
-        log::debug!("║          PRIMARY END         ║");
-        log::debug!("╚══════════════════════════════╝");
+                log::debug!("╔══════════════════════════════╗");
+                log::debug!("║          PRIMARY END         ║");
+                log::debug!("╚══════════════════════════════╝");
 
-        Ok(response)
+                Ok(response)
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
     }
 
     async fn get_peripheral_if_applicable(
@@ -216,7 +222,7 @@ Include the following in your response:
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "peripheral": {
+                        "is_peripheral": {
                             "type": "boolean"
                         },
                         "justification": {
@@ -229,25 +235,31 @@ Include the following in your response:
             }
         });
 
-        let response: PeripheralResponse = Self::send_openai_request(
+        match Self::send_openai_request(
             &system_prompt,
             &user_prompt,
             response_format
-        ).await.expect("Failed to get response from OpenAI");
+        ).await {
+            Ok(response) => {
+                log::debug!("╔════════════════════════════════════════╗");
+                log::debug!("║          IS PERIPHERAL START           ║");
+                log::debug!("╚════════════════════════════════════════╝");
 
-        log::debug!("╔════════════════════════════════════════╗");
-        log::debug!("║          IS PERIPHERAL START           ║");
-        log::debug!("╚════════════════════════════════════════╝");
-        
-        log::debug!("***system_prompt***\n{}", system_prompt);
-        log::debug!("***user_prompt***\n{}", user_prompt);
-        log::debug!("***response***\n{:?}", response);
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
 
-        log::debug!("╔═══════════════════════════════════════╗");
-        log::debug!("║          IS PERIPHERAL END            ║");
-        log::debug!("╚═══════════════════════════════════════╝");
+                log::debug!("╔═══════════════════════════════════════╗");
+                log::debug!("║          IS PERIPHERAL END            ║");
+                log::debug!("╚═══════════════════════════════════════╝");
 
-        Ok(response)
+                Ok(response)
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
     }
 
     async fn should_eliminate_attribute(
@@ -346,25 +358,31 @@ Include the following in your response:
             }
         });
 
-        let response: EliminationResponse = Self::send_openai_request(
+        match Self::send_openai_request(
             &system_prompt,
             &user_prompt,
             response_format
-        ).await.expect("Failed to get response from OpenAI");
+        ).await {
+            Ok(response) => {
+                log::debug!("╔════════════════════════════════════════╗");
+                log::debug!("║    SHOULD ELIMINATE FIELD START        ║");
+                log::debug!("╚════════════════════════════════════════╝");
 
-        log::debug!("╔════════════════════════════════════════╗");
-        log::debug!("║    SHOULD ELIMINATE FIELD START        ║");
-        log::debug!("╚════════════════════════════════════════╝");
-        
-        log::debug!("***system_prompt***\n{}", system_prompt);
-        log::debug!("***user_prompt***\n{}", user_prompt);
-        log::debug!("***response***\n{:?}", response);
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
 
-        log::debug!("╔═══════════════════════════════════════╗");
-        log::debug!("║    SHOULD ELIMINATE FIELD END         ║");
-        log::debug!("╚═══════════════════════════════════════╝");
+                log::debug!("╔═══════════════════════════════════════╗");
+                log::debug!("║    SHOULD ELIMINATE FIELD END         ║");
+                log::debug!("╚═══════════════════════════════════════╝");
 
-        Ok(response)
+                Ok(response)
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
     }
 
     async fn send_openai_request<T>(
@@ -375,6 +393,8 @@ Include the following in your response:
     where
         T: DeserializeOwned,
     {
+        log::trace!("In send_openai_request");
+
         let hash = Self::compute_hash(vec![
             system_prompt,
             user_prompt,
@@ -383,6 +403,7 @@ Include the following in your response:
 
         let response = Self::get_or_set_cache(hash.as_str(), || async {
             let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
+
             let request_json = json!({
                 "model": "gpt-4o",
                 "temperature": 0,
@@ -412,12 +433,26 @@ Include the following in your response:
                 .await
             {
                 Ok(res) => {
-                    let json_response = res.json::<serde_json::Value>().await.ok()?;
-                    json_response["choices"].as_array().and_then(|choices| {
-                        choices.get(0).and_then(|choice| choice["message"]["content"].as_str().map(String::from))
-                    })
+                    log::trace!("okay response from openai");
+
+                    match res.json::<serde_json::Value>().await {
+                        Ok(json_response) => {
+                            log::trace!("okay json from openai");
+
+                            json_response["choices"].as_array().and_then(|choices| {
+                                choices.get(0).and_then(|choice| choice["message"]["content"].as_str().map(String::from))
+                            })
+                        }
+                        Err(e) => {
+                            log::error!("Failed to parse JSON response: {}", e);
+                            None
+                        }
+                    }
                 }
-                Err(_) => None,
+                Err(e) => {
+                    log::error!("Failed to send request to OpenAI: {}", e);
+                    None
+                }
             }
         }).await;
 
