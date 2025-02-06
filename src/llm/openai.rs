@@ -8,7 +8,6 @@ use sled::Db;
 use once_cell::sync::Lazy;
 use sha2::{Sha256, Digest};
 
-
 use crate::prelude::*;
 use crate::transformation::{FieldTransformation, FieldMetadata};
 use crate::config::{CONFIG};
@@ -266,7 +265,7 @@ Include the following in your response:
         log::trace!("In should_eliminate_attribute");
 
         let system_prompt = format!(r##"
-You interpret the contextual meaning of a specific HTML attribute, and infer if the attribute represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary content.
+You interpret the contextual meaning of a specific HTML attribute, and infer if the attribute represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary content. If a user would intentionally read the attribute's value as part of their usage, it is likely meaningful content.
 
 The attribute will be contained/delimited with an HTML comment like so:
 <!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->
@@ -274,6 +273,7 @@ The attribute will be contained/delimited with an HTML comment like so:
 Carefully examine the HTML attribute along with supplementary information providing crucial context, and determine if any of the following applies to it:
 
 1. If the attribute represents an advertisement of some kind.
+2. If the attribute value contains code of some kind
 
 Include the following in your response:
 1. (is_unmeaningful): if any of the above criteria apply to the text node, respond true
