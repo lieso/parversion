@@ -73,7 +73,6 @@ impl Analysis {
     ) -> Result<NodeAnalysis, Errors> {
 
         let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-        //let max_concurrency = 1;
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
         let dataset_ref = Arc::clone(&dataset);

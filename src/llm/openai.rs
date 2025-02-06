@@ -47,14 +47,6 @@ impl OpenAI {
     ) -> Option<FieldTransformation> {
         log::trace!("In get_field_transformation");
 
-        log::debug!("=====================================================================================================");
-        log::debug!("=====================================================================================================");
-        log::debug!("=====================================================================================================");
-
-        log::debug!("field: {:?}", field);
-        log::debug!("value: {:?}", value);
-        log::debug!("snippet: {}", snippet);
-
         log::info!("Determining if field is meaningful...");
 
         let elimination = match field {

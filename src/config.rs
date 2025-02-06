@@ -14,18 +14,9 @@ enum LlmProvider {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct LlmConfigDataStructureInterpretation {
-    pub target_node_adjacent_xml_length: usize,
-    pub target_node_examples_max_count: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfig {
     pub llm_provider: LlmProvider,
     pub max_concurrency: usize,
-    pub target_node_adjacent_xml_length: usize,
-    pub target_node_examples_max_count: usize,
-    pub data_structure_interpretation: LlmConfigDataStructureInterpretation,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -53,12 +44,6 @@ impl Config {
             llm: LlmConfig {
                 llm_provider: LlmProvider::OpenAI,
                 max_concurrency: 1,
-                target_node_adjacent_xml_length: 2000,
-                target_node_examples_max_count: 3,
-                data_structure_interpretation: LlmConfigDataStructureInterpretation {
-                    target_node_adjacent_xml_length: 3000,
-                    target_node_examples_max_count: 10,
-                },
             },
             dev: DevConfig {
                 debug_dir: get_default_debug_dir(),
@@ -76,10 +61,6 @@ impl Config {
     fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let config_contents = std::fs::read_to_string(path)?;
         let config: Config = toml::from_str(&config_contents)?;
-
-        if config.llm.target_node_examples_max_count < 1 {
-            panic!("It makes no sense for target_node_examples_max_count to be less than 1");
-        }
 
         Ok(config)
     }
