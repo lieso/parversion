@@ -5,7 +5,7 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::analysis::{Analysis, AnalysisInput};
 use crate::provider::Provider;
-use crate::traverse::{traverse_with_context};
+use crate::traverse::{TraversalWithContext, traverse_with_context};
 
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
@@ -22,10 +22,19 @@ pub async fn organize<P: Provider>(
 
     let profile = document.perform_analysis(provider).await?;
 
-    let traversal = traverse_with_context(&profile, document);
+    let TraversalWithContext {
+        data_nodes,
+        meta_context,
+        contexts,
+    } = traverse_with_context(&profile, document).expect("Could not traverse document");
+
+    let analysis = Analysis::new(
+        Arc::clone(&provider),
+        meta_context,
+        contexts,
+    ).await?;
 
     unimplemented!()
-
 }
 
 pub async fn organize_document_to_analysis<P: Provider>(
