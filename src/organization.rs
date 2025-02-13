@@ -5,6 +5,7 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::analysis::{Analysis, AnalysisInput};
 use crate::provider::Provider;
+use crate::traverse::{traverse_with_context};
 
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
@@ -13,10 +14,18 @@ pub async fn organize<P: Provider>(
 ) -> Result<Analysis, Errors> {
     log::trace!("In organize");
 
-    let input = AnalysisInput::from_document(Arc::clone(&provider), document).await?;
-    let analysis = Analysis::new(Arc::clone(&provider), &input).await?;
+    //let input = AnalysisInput::from_document(Arc::clone(&provider), document).await?;
+    //let analysis = Analysis::new(Arc::clone(&provider), &input).await?;
+    //Ok(analysis)
 
-    Ok(analysis)
+    let mut document = document;
+
+    let profile = document.perform_analysis(provider).await?;
+
+    let traversal = traverse_with_context(&profile, document);
+
+    unimplemented!()
+
 }
 
 pub async fn organize_document_to_analysis<P: Provider>(

@@ -117,7 +117,7 @@ impl Document {
                 }
 
                 if profile.hash_transformation.is_none() {
-                    log::info!("Profile provided by hash transformation is missing");
+                    log::info!("Profile provided but hash transformation is missing");
                     unimplemented!();
                 }
 

@@ -17,15 +17,13 @@ pub struct GraphNode {
 }
 
 impl GraphNode {
-    pub fn from_data_node(data_node: Arc<RwLock<DataNode>>, parents: Vec<Graph>) -> Self {
-        let lock = read_lock!(data_node);
-
+    pub fn from_data_node(data_node: Arc<DataNode>, parents: Vec<Graph>) -> Self {
         GraphNode {
             id: ID::new(),
             parents,
-            description: lock.description.clone(),
-            hash: lock.hash.clone(),
-            lineage: lock.lineage.clone(),
+            description: data_node.description.clone(),
+            hash: data_node.hash.clone(),
+            lineage: data_node.lineage.clone(),
             children: Vec::new(),
         }
     }
