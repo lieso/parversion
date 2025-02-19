@@ -8,12 +8,14 @@ use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode};
 use crate::document::{Document, DocumentType};
+use crate::document_format::{DocumentFormat};
 use crate::profile::Profile;
+use crate::provider::Provider;
 
 pub struct TraversalWithContext {
-    data_nodes: HashMap<ID, Arc<DataNode>>,
-    meta_context: MetaContext,
-    contexts: HashMap<ContextID, Arc<Context>>,
+    pub nodeset: NodeSet,
+    pub meta_context: MetaContext,
+    pub contexts: HashMap<ContextID, Arc<Context>>,
 }
 
 pub fn traverse_with_context(
@@ -111,10 +113,22 @@ pub fn traverse_with_context(
     };
 
     let traversal = TraversalWithContext {
-        data_nodes,
+        nodeset: NodeSet {
+            data_nodes: data_nodes.values().cloned().collect()
+        },
         meta_context,
         contexts,
     };
 
     Ok(traversal)
+}
+
+pub fn build_document_from_nodeset<P: Provider>(
+    provider: Arc<P>,
+    nodeset: NodeSet,
+    document_format: &Option<DocumentFormat>,
+) -> Result<Document, Errors> {
+    log::trace!("In build_document_from_nodeset");
+
+    unimplemented!()
 }

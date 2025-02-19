@@ -40,6 +40,7 @@ mod json_node;
 mod context;
 mod llm;
 mod traverse;
+mod meta_context;
 
 use crate::prelude::*;
 use crate::config::{CONFIG};
@@ -104,16 +105,17 @@ async fn main() {
 
     log::debug!("options: {:?}", options);
 
-    let analysis = {
+    let document = {
         if let Ok(stdin) = load_stdin() {
             log::info!("Received data from stdin");
             
-            match normalization::normalize_text_to_analysis(
+            match normalization::normalize_text_to_document(
                 provider.clone(),
                 stdin,
                 &Some(options),
+                &Some(document_format),
             ).await {
-                Ok(analysis) => analysis,
+                Ok(document) => document,
                 Err(err) => {
                     eprintln!("Failed to normalize text from stdin: {:?}", err);
                     std::process::exit(1);
@@ -122,12 +124,13 @@ async fn main() {
         } else if let Some(path) = matches.value_of("file") {
             log::info!("Received a file name");
 
-            match normalization::normalize_file_to_analysis(
+            match normalization::normalize_file_to_document(
                 provider.clone(),
                 path,
                 &Some(options),
+                &Some(document_format),
             ).await {
-                Ok(analysis) => analysis,
+                Ok(document) => document,
                 Err(err) => {
                     eprintln!("Failed to normalize URL: {:?}", err);
                     std::process::exit(1);
@@ -136,12 +139,13 @@ async fn main() {
         } else if let Some(url) = matches.value_of("url") {
             log::info!("Received a URL");
 
-            match normalization::normalize_url_to_analysis(
+            match normalization::normalize_url_to_document(
                 provider.clone(),
                 url,
                 &Some(options),
+                &Some(document_format),
             ).await {
-                Ok(analysis) => analysis,
+                Ok(document) => document,
                 Err(err) => {
                     eprintln!("Failed to normalize URL: {:?}", err);
                     std::process::exit(1);
@@ -153,17 +157,9 @@ async fn main() {
         }
     };
 
-    log::info!("Successfully completed analysis");
+    log::info!("Successfully processed document");
 
-    match analysis.to_document(&Some(document_format)) {
-        Ok(document) => {
-            println!("{}", document.to_string());
-        },
-        Err(err) => {
-            eprintln!("Failed to generate normalized document: {:?}", err);
-            std::process::exit(1);
-        }
-    }
+    println!("{}", document.to_string());
 
     std::process::exit(0);
 }

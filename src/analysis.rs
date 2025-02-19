@@ -18,8 +18,9 @@ use crate::profile::Profile;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::config::{CONFIG};
-use crate::context::Context;
+use crate::context::{Context, ContextID};
 use crate::llm::LLM;
+use crate::meta_context::MetaContext;
 
 pub struct Analysis {
     node_analysis: NodeAnalysis,
@@ -27,7 +28,7 @@ pub struct Analysis {
 }
 
 impl Analysis {
-    pub async fn new<P: Provider>(
+    pub async fn start<P: Provider>(
         provider: Arc<P>,
         meta_context: MetaContext,
         contexts: HashMap<ContextID, Arc<Context>>

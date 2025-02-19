@@ -7,7 +7,7 @@ use crate::document_node::DocumentNode;
 use crate::context::ContextID;
 
 pub struct MetaContext {
-    context_ids: HashMap<ID, ContextID>,
-    document_root: Arc<RwLock<DocumentNode>>,
-    graph_root: Arc<RwLock<GraphNode>>,
+    pub context_ids: HashMap<ID, ContextID>,
+    pub document_root: Arc<RwLock<DocumentNode>>,
+    pub graph_root: Arc<RwLock<GraphNode>>,
 }

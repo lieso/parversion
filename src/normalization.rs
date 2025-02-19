@@ -4,47 +4,47 @@ use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::organization::{organize};
-use crate::analysis::{Analysis};
 use crate::model::{Model};
 use crate::provider::{Provider};
+use crate::traverse::{build_document_from_nodeset};
 
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
-    analysis: Analysis,
+    nodeset: NodeSet,
     options: &Option<Options>,
-) -> Result<Analysis, Errors> {
+) -> Result<NodeSet, Errors> {
     log::trace!("In normalize");
     
     unimplemented!()
 
-    //let basis_graph = analysis.build_basis_graph()?;
+    //let basis_graph = nodeset.build_basis_graph()?;
 
     //let target_model = Model::get_normal_model(&basis_graph).unwrap();
 
-    //analysis.transmute(&target_model.json_schema).await
+    //nodeset.transmute(&target_model.json_schema).await
 }
 
-pub async fn normalize_analysis<P: Provider>(
+pub async fn normalize_nodeset<P: Provider>(
     provider: Arc<P>,
-    analysis: Analysis,
+    nodeset: NodeSet,
     options: &Option<Options>,
-) -> Result<Analysis, Errors> {
-    log::trace!("In normalize_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In normalize_nodeset");
 
-    normalize(Arc::clone(&provider), analysis, options).await
+    normalize(Arc::clone(&provider), nodeset, options).await
 }
 
-pub async fn normalize_text_to_analysis<P: Provider>(
+pub async fn normalize_text_to_nodeset<P: Provider>(
     provider: Arc<P>,
     text: String,
     options: &Option<Options>,
-) -> Result<Analysis, Errors> {
-    log::trace!("In normalize_text_to_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In normalize_text_to_nodeset");
 
     let document = Document::from_string(text, options)?;
-    let analysis = organize(Arc::clone(&provider), document, options).await?;
+    let nodeset = organize(Arc::clone(&provider), document, options).await?;
 
-    normalize_analysis(Arc::clone(&provider), analysis, options).await
+    normalize_nodeset(Arc::clone(&provider), nodeset, options).await
 }
 
 pub async fn normalize_text_to_document<P: Provider>(
@@ -55,9 +55,13 @@ pub async fn normalize_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_text_to_document");
 
-    let analysis = normalize_text_to_analysis(Arc::clone(&provider), text, options).await?;
+    let nodeset = normalize_text_to_nodeset(Arc::clone(&provider), text, options).await?;
 
-    analysis.to_document(document_format)
+    build_document_from_nodeset(
+        provider,
+        nodeset,
+        document_format,
+    )
 }
 
 pub async fn normalize_text<P: Provider>(
@@ -68,21 +72,26 @@ pub async fn normalize_text<P: Provider>(
 ) -> Result<String, Errors> {
     log::trace!("In normalize_text");
 
-    let document = normalize_text_to_document(Arc::clone(&provider), text, options, document_format).await?;
+    let document = normalize_text_to_document(
+        Arc::clone(&provider),
+        text,
+        options,
+        document_format
+    ).await?;
 
     Ok(document.to_string())
 }
 
-pub async fn normalize_document_to_analysis<P: Provider>(
+pub async fn normalize_document_to_nodeset<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
-) -> Result<Analysis, Errors> {
-    log::trace!("In normalize_document_to_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In normalize_document_to_nodeset");
 
-    let analysis = organize(Arc::clone(&provider), document, options).await?;
+    let nodeset = organize(Arc::clone(&provider), document, options).await?;
 
-    normalize_analysis(Arc::clone(&provider), analysis, options).await
+    normalize_nodeset(Arc::clone(&provider), nodeset, options).await
 }
 
 pub async fn normalize_document<P: Provider>(
@@ -93,9 +102,13 @@ pub async fn normalize_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_document");
 
-    let analysis = normalize_document_to_analysis(Arc::clone(&provider), document, options).await?;
+    let nodeset = normalize_document_to_nodeset(Arc::clone(&provider), document, options).await?;
 
-    analysis.to_document(document_format)
+    build_document_from_nodeset(
+        provider,
+        nodeset,
+        document_format,
+    )
 }
 
 pub async fn normalize_document_to_text<P: Provider>(
@@ -111,17 +124,17 @@ pub async fn normalize_document_to_text<P: Provider>(
     Ok(document.to_string())
 }
 
-pub async fn normalize_file_to_analysis<P: Provider>(
+pub async fn normalize_file_to_nodeset<P: Provider>(
     provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
-) -> Result<Analysis, Errors> {
-    log::trace!("In normalize_file_to_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In normalize_file_to_nodeset");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path)?;
 
-    normalize_text_to_analysis(Arc::clone(&provider), text, options).await
+    normalize_text_to_nodeset(Arc::clone(&provider), text, options).await
 }
 
 pub async fn normalize_file_to_document<P: Provider>(
@@ -133,9 +146,13 @@ pub async fn normalize_file_to_document<P: Provider>(
     log::trace!("In normalize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let analysis = normalize_file_to_analysis(Arc::clone(&provider), path, options).await?;
+    let nodeset = normalize_file_to_nodeset(Arc::clone(&provider), path, options).await?;
 
-    analysis.to_document(document_format)
+    build_document_from_nodeset(
+        provider,
+        nodeset,
+        document_format,
+    )
 }
 
 pub async fn normalize_file_to_text<P: Provider>(
@@ -170,17 +187,17 @@ pub async fn normalize_file<P: Provider>(
     })
 }
 
-pub async fn normalize_url_to_analysis<P: Provider>(
+pub async fn normalize_url_to_nodeset<P: Provider>(
     provider: Arc<P>,
     url: &str,
     options: &Option<Options>,
-) -> Result<Analysis, Errors> {
-    log::trace!("In normalize_url_to_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In normalize_url_to_nodeset");
     log::debug!("URL: {}", url);
 
     let text = fetch_url_as_text(url).await?;
 
-    normalize_text_to_analysis(Arc::clone(&provider), text, options).await
+    normalize_text_to_nodeset(Arc::clone(&provider), text, options).await
 }
 
 pub async fn normalize_url_to_document<P: Provider>(
@@ -192,9 +209,13 @@ pub async fn normalize_url_to_document<P: Provider>(
     log::trace!("In normalize_url_to_document");
     log::debug!("URL: {}", url);
 
-    let analysis = normalize_url_to_analysis(Arc::clone(&provider), url, options).await?;
+    let nodeset = normalize_url_to_nodeset(Arc::clone(&provider), url, options).await?;
 
-    analysis.to_document(document_format)
+    build_document_from_nodeset(
+        provider,
+        nodeset,
+        document_format,
+    )
 }
 
 pub async fn normalize_url_to_text<P: Provider>(

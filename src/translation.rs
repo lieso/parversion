@@ -4,43 +4,43 @@ use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::organization::organize;
-use crate::analysis::{Analysis};
 use crate::provider::Provider;
+use crate::traverse::{build_document_from_nodeset};
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
-    analysis: Analysis,
+    nodeset: NodeSet,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<Analysis, Errors> {
+) -> Result<NodeSet, Errors> {
     log::trace!("In translate");
 
     unimplemented!()
 }
 
-pub async fn translate_analysis<P: Provider>(
+pub async fn translate_nodeset<P: Provider>(
     provider: Arc<P>,
-    analysis: Analysis,
+    nodeset: NodeSet,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<Analysis, Errors> {
-    log::trace!("In translate_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In translate_nodeset");
 
-    translate(Arc::clone(&provider), analysis, options, json_schema).await
+    translate(Arc::clone(&provider), nodeset, options, json_schema).await
 }
 
-pub async fn translate_text_to_analysis<P: Provider>(
+pub async fn translate_text_to_nodeset<P: Provider>(
     provider: Arc<P>,
     text: String,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<Analysis, Errors> {
-    log::trace!("In translate_text_to_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In translate_text_to_nodeset");
 
     let document = Document::from_string(text, options)?;
-    let analysis = organize(Arc::clone(&provider), document, options).await?;
+    let nodeset = organize(Arc::clone(&provider), document, options).await?;
 
-    translate_analysis(Arc::clone(&provider), analysis, options, json_schema).await
+    translate_nodeset(Arc::clone(&provider), nodeset, options, json_schema).await
 }
 
 pub async fn translate_text_to_document<P: Provider>(
@@ -52,9 +52,13 @@ pub async fn translate_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let analysis = translate_text_to_analysis(Arc::clone(&provider), text, options, json_schema).await?;
+    let nodeset = translate_text_to_nodeset(Arc::clone(&provider), text, options, json_schema).await?;
 
-    analysis.to_document(document_format)
+    build_document_from_nodeset(
+        provider,
+        nodeset,
+        document_format,
+    )
 }
 
 pub async fn translate_text<P: Provider>(
@@ -77,17 +81,17 @@ pub async fn translate_text<P: Provider>(
     Ok(document.to_string())
 }
 
-pub async fn translate_document_to_analysis<P: Provider>(
+pub async fn translate_document_to_nodeset<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<Analysis, Errors> {
-    log::trace!("In translate_document_to_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In translate_document_to_nodeset");
 
-    let analysis = organize(Arc::clone(&provider), document, options).await?;
+    let nodeset = organize(Arc::clone(&provider), document, options).await?;
 
-    translate_analysis(Arc::clone(&provider), analysis, options, json_schema).await
+    translate_nodeset(Arc::clone(&provider), nodeset, options, json_schema).await
 }
 
 pub async fn translate_document<P: Provider>(
@@ -99,14 +103,18 @@ pub async fn translate_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_document");
 
-    let analysis = translate_document_to_analysis(
-        provider,
+    let nodeset = translate_document_to_nodeset(
+        provider.clone(),
         document,
         options,
         json_schema
     ).await?;
 
-    analysis.to_document(document_format)
+    build_document_from_nodeset(
+        provider,
+        nodeset,
+        document_format,
+    )
 }
 
 pub async fn translate_document_to_text<P: Provider>(
@@ -129,13 +137,13 @@ pub async fn translate_document_to_text<P: Provider>(
     Ok(document.to_string())
 }
 
-pub async fn translate_file_to_analysis<P: Provider>(
+pub async fn translate_file_to_nodeset<P: Provider>(
     provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<Analysis, Errors> {
-    log::trace!("In translate_file_to_analysis");
+) -> Result<NodeSet, Errors> {
+    log::trace!("In translate_file_to_nodeset");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path).map_err(|err| {
@@ -143,7 +151,7 @@ pub async fn translate_file_to_analysis<P: Provider>(
         Errors::FileInputError
     })?;
 
-    translate_text_to_analysis(Arc::clone(&provider), text, options, json_schema).await
+    translate_text_to_nodeset(Arc::clone(&provider), text, options, json_schema).await
 }
 
 pub async fn translate_file_to_document<P: Provider>(
@@ -155,8 +163,13 @@ pub async fn translate_file_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_file_to_document");
 
-    let analysis = translate_file_to_analysis(Arc::clone(&provider), path, options, json_schema).await?;
-    analysis.to_document(document_format)
+    let nodeset = translate_file_to_nodeset(Arc::clone(&provider), path, options, json_schema).await?;
+
+    build_document_from_nodeset(
+        provider,
+        nodeset,
+        document_format,
+    )
 }
 
 pub async fn translate_file_to_text<P: Provider>(
