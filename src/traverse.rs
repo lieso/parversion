@@ -62,6 +62,7 @@ pub fn traverse_with_context(
             context_id.clone(),
             Arc::new(Context {
                 id: context_id.clone(),
+                lineage: data_node.lineage.clone(),
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),

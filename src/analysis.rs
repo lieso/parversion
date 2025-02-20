@@ -33,12 +33,41 @@ impl Analysis {
         meta_context: MetaContext,
         contexts: HashMap<ContextID, Arc<Context>>
     ) -> Result<Self, Errors> {
+
+        let meta_context = Arc::new(meta_context);
+        let contexts = Arc::new(contexts);
+
+
+
+
+        let node_analysis = NodeAnalysis::new(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context),
+            Arc::clone(&contexts)
+        ).await?;
+
+
+
+
+
         unimplemented!()
     }
 }
 
 struct NodeAnalysis {
     basis_nodes: Vec<BasisNode>,
+}
+
+impl NodeAnalysis {
+    pub async fn new<P: Provider>(
+        provider: Arc<P>,
+        meta_context: Arc<MetaContext>,
+        contexts: Arc<HashMap<ContextID, Arc<Context>>>
+    ) -> Result<NodeAnalysis, Errors> {
+
+        unimplemented!()
+
+    }
 }
 
 struct NetworkAnalysis {
