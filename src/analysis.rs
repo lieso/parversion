@@ -3,6 +3,7 @@ use std::sync::{Arc, RwLock};
 use tokio::task;
 use futures::future;
 use tokio::sync::Semaphore;
+use futures::future::try_join_all;
 
 use crate::prelude::*;
 use crate::data_node::DataNode;
@@ -65,8 +66,74 @@ impl NodeAnalysis {
         contexts: Arc<HashMap<ContextID, Arc<Context>>>
     ) -> Result<NodeAnalysis, Errors> {
 
-        unimplemented!()
+        log::info!("Performing node analysis");
 
+
+        let basis_nodes: Vec<BasisNode> = Self::get_basis_nodes(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context),
+            Arc::clone(&contexts),
+        ).await?;
+
+
+
+        let node_analysis = NodeAnalysis {
+            basis_nodes,
+        };
+
+        Ok(node_analysis)
+    }
+
+    async fn get_basis_nodes<P: Provider>(
+        provider: Arc<P>,
+        meta_context: Arc<MetaContext>,
+        contexts: Arc<HashMap<ContextID, Arc<Context>>>
+    ) -> Result<Vec<BasisNode>, Errors> {
+        log::trace!("In get_basis_nodes");
+
+        let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+        let semaphore = Arc::new(Semaphore::new(max_concurrency));
+
+        let mut context_groups: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+
+        for context in contexts.values() {
+            context_groups.entry(context.lineage.clone())
+                .or_insert_with(Vec::new)
+                .push(context.clone());
+        }
+
+        let mut handles = Vec::new();
+        for (lineage, context_group) in context_groups {
+            let _permit = semaphore.clone().acquire_owned().await.unwrap();
+            let cloned_provider = Arc::clone(&provider);
+            let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_lineage = lineage.clone();
+
+            let handle = task::spawn(async move {
+                Self::get_basis_node(
+                    cloned_provider,
+                    cloned_meta_context,
+                    lineage,
+                    context_group.clone()
+                ).await
+            });
+            handles.push(handle);
+        }
+
+        let results: Vec<Result<BasisNode, Errors>> = try_join_all(handles).await?;
+
+        results.into_iter().collect::<Result<Vec<BasisNode>, Errors>>()
+    }
+
+    async fn get_basis_node<P: Provider>(
+        provider: Arc<P>,
+        meta_context: Arc<MetaContext>,
+        lineage: Lineage,
+        context_group: Vec<Arc<Context>>,
+    ) -> Result<BasisNode, Errors> {
+        log::trace!("In get_basis_node");
+
+        unimplemented!()
     }
 }
 

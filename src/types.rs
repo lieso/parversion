@@ -1,4 +1,5 @@
 use std::sync::{Arc};
+use tokio::task::JoinError;
 
 use crate::basis_graph::{BasisGraph};
 use crate::transformation::{Transformation};
@@ -31,6 +32,12 @@ pub enum Errors {
     SqliteDatabaseConnectionError,
     YamlParseError,
     FetchUrlError(String),
+}
+
+impl From<JoinError> for Errors {
+    fn from(_: JoinError) -> Self {
+        Errors::UnexpectedError
+    }
 }
 
 #[derive(Clone, Debug)]
