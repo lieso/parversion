@@ -18,6 +18,11 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineage: &Lineage
     ) -> Result<Option<BasisNode>, Errors>;
+    async fn save_basis_node(
+        &self,
+        lineage: &Lineage,
+        basis_node: BasisNode,
+    ) -> Result<(), Errors>;
 }
 
 pub struct VoidProvider;
@@ -36,6 +41,15 @@ impl Provider for VoidProvider {
         lineage: &Lineage
     ) -> Result<Option<BasisNode>, Errors> {
         Ok(None)
+    }
+
+    async fn save_basis_node(
+        &self,
+        _lineage: &Lineage,
+        _basis_node: BasisNode,
+    ) -> Result<(), Errors> {
+        // Unimplemented for VoidProvider
+        Ok(())
     }
 }
 
@@ -95,6 +109,37 @@ impl Provider for YamlFileProvider {
     ) -> Result<Option<BasisNode>, Errors> {
         Ok(None)
     }
+
+    async fn save_basis_node(
+         &self,
+         lineage: &Lineage,
+         basis_node: BasisNode,
+    ) -> Result<(), Errors> {
+        let data = fs::read_to_string(&self.file_path)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        let mut yaml: serde_yaml::Value = serde_yaml::from_str(&data)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        let serialized_basis_node = serde_yaml::to_value(&basis_node)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        if let Some(basis_nodes) = yaml.get_mut("basis_nodes") {
+            basis_nodes.as_sequence_mut()
+                .ok_or(Errors::YamlParseError)?
+                .push(serialized_basis_node);
+            } else {
+                yaml["basis_nodes"] = serde_yaml::Value::Sequence(vec![serialized_basis_node]);
+        }
+
+        let new_yaml_str = serde_yaml::to_string(&yaml)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        fs::write(&self.file_path, new_yaml_str)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        Ok(())
+    }
 }
 
 pub struct JsonFileProvider {
@@ -139,6 +184,16 @@ impl Provider for JsonFileProvider {
     ) -> Result<Option<BasisNode>, Errors> {
         Ok(None)
     }
+
+    async fn save_basis_node(
+        &self,
+        _lineage: &Lineage,
+        _basis_node: BasisNode,
+    ) -> Result<(), Errors> {
+        // Unimplemented for JsonFileProvider
+        Ok(())
+    }
+
 }
 
 pub struct SqliteProvider {
@@ -149,4 +204,6 @@ impl SqliteProvider {
     pub fn new(db_path: String) -> Self {
         SqliteProvider { db_path }
     }
+
+
 }

@@ -8,6 +8,7 @@ use futures::future::try_join_all;
 use crate::prelude::*;
 use crate::data_node::DataNode;
 use crate::json_node::JsonNode;
+use crate::basis_node::BasisNode;
 use crate::basis_graph::{BasisGraph, BasisGraphBuilder};
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
@@ -17,11 +18,11 @@ use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode};
 use crate::profile::Profile;
 use crate::basis_network::BasisNetwork;
-use crate::basis_node::BasisNode;
 use crate::config::{CONFIG};
 use crate::context::{Context, ContextID};
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
+use crate::transformation::{FieldTransformation};
 
 pub struct Analysis {
     node_analysis: NodeAnalysis,
@@ -133,7 +134,37 @@ impl NodeAnalysis {
     ) -> Result<BasisNode, Errors> {
         log::trace!("In get_basis_node");
 
-        unimplemented!()
+        let data_node = &context_group.first().unwrap().data_node.clone();
+        let hash = data_node.hash.clone();
+        let description = data_node.description.clone();
+
+        if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
+            log::info!("Provider has supplied basis node");
+
+            return Ok(basis_node);
+        };
+
+        let field_transformation: Option<FieldTransformation> = LLM::get_field_transformation(
+            Arc::clone(&meta_context),
+            context_group.clone()
+        ).await?;
+
+        log::info!("Obtained field transformation");
+
+        let basis_node = BasisNode {
+            id: ID::new(),
+            hash,
+            description,
+            lineage: lineage.clone(),
+            transformation: field_transformation,
+        };
+
+        provider.save_basis_node(
+            &lineage,
+            basis_node.clone(),
+        ).await?;
+
+        Ok(basis_node)
     }
 }
 
