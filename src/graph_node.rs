@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::data_node::DataNode;
 
 pub type Graph = Arc<RwLock<GraphNode>>;
+pub type GraphNodeID = ID;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GraphNode {
