@@ -28,13 +28,13 @@ pub async fn organize<P: Provider>(
 
 
 
-    let TraversalWithContext { nodeset, meta_context, contexts, .. } =   
+    let TraversalWithContext { nodeset, meta_context, .. } =   
         traverse_with_context(&profile, document)
             .expect("Could not traverse document");
 
 
 
-    Analysis::start(Arc::clone(&provider), meta_context, contexts).await?;
+    Analysis::start(Arc::clone(&provider), meta_context).await?;
 
 
 

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 use futures::future;
@@ -33,11 +33,9 @@ impl Analysis {
     pub async fn start<P: Provider>(
         provider: Arc<P>,
         meta_context: MetaContext,
-        contexts: HashMap<ContextID, Arc<Context>>
     ) -> Result<Self, Errors> {
 
         let meta_context = Arc::new(meta_context);
-        let contexts = Arc::new(contexts);
 
 
 
@@ -45,7 +43,6 @@ impl Analysis {
         let node_analysis = NodeAnalysis::new(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
-            Arc::clone(&contexts)
         ).await?;
 
 
@@ -64,7 +61,6 @@ impl NodeAnalysis {
     pub async fn new<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
-        contexts: Arc<HashMap<ContextID, Arc<Context>>>
     ) -> Result<NodeAnalysis, Errors> {
 
         log::info!("Performing node analysis");
@@ -73,7 +69,6 @@ impl NodeAnalysis {
         let basis_nodes: Vec<BasisNode> = Self::get_basis_nodes(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
-            Arc::clone(&contexts),
         ).await?;
 
 
@@ -88,7 +83,6 @@ impl NodeAnalysis {
     async fn get_basis_nodes<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
-        contexts: Arc<HashMap<ContextID, Arc<Context>>>
     ) -> Result<Vec<BasisNode>, Errors> {
         log::trace!("In get_basis_nodes");
 
@@ -96,11 +90,15 @@ impl NodeAnalysis {
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
         let mut context_groups: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+        let mut seen_context_ids: HashSet<ID> = HashSet::new();
 
-        for context in contexts.values() {
-            context_groups.entry(context.lineage.clone())
-                .or_insert_with(Vec::new)
-                .push(context.clone());
+        for context in meta_context.contexts.values() {
+            if seen_context_ids.insert(context.id.clone()) {
+                context_groups
+                    .entry(context.lineage.clone())
+                    .or_insert_with(Vec::new)
+                    .push(context.clone());
+                }
         }
 
         let mut handles = Vec::new();

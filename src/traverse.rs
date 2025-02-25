@@ -15,7 +15,6 @@ use crate::provider::Provider;
 pub struct TraversalWithContext {
     pub nodeset: NodeSet,
     pub meta_context: MetaContext,
-    pub contexts: HashMap<ContextID, Arc<Context>>,
 }
 
 pub fn traverse_with_context(
@@ -28,15 +27,13 @@ pub fn traverse_with_context(
     let document_root = Arc::new(RwLock::new(document_root.clone()));
 
     let mut data_nodes: HashMap<ID, Arc<DataNode>> = HashMap::new();
-    let mut contexts: HashMap<ContextID, Arc<Context>> = HashMap::new();
-    let mut context_ids: HashMap<ID, ContextID> = HashMap::new();
+    let mut contexts: HashMap<ID, Arc<Context>> = HashMap::new();
 
     fn recurse(
         document_node: Arc<RwLock<DocumentNode>>,
         data_nodes: &mut HashMap<ID, Arc<DataNode>>,
         parent_lineage: &Lineage,
-        contexts: &mut HashMap<ContextID, Arc<Context>>,
-        context_ids: &mut HashMap<ID, ContextID>,
+        contexts: &mut HashMap<ID, Arc<Context>>,
         parents: Vec<Arc<RwLock<GraphNode>>>,
         profile: &Profile,
     ) -> Arc<RwLock<GraphNode>> {
@@ -48,7 +45,6 @@ pub fn traverse_with_context(
                 parent_lineage,
             )
         );
-        data_nodes.insert(data_node.id.clone(), Arc::clone(&data_node));
 
         let graph_node = Arc::new(RwLock::new(
             GraphNode::from_data_node(
@@ -57,21 +53,19 @@ pub fn traverse_with_context(
             )
         ));
 
-        let context_id: ContextID = ID::new();
-        contexts.insert(
-            context_id.clone(),
-            Arc::new(Context {
-                id: context_id.clone(),
-                lineage: data_node.lineage.clone(),
-                document_node: Arc::clone(&document_node),
-                graph_node: Arc::clone(&graph_node),
-                data_node: Arc::clone(&data_node),
-            })
-        );
+        let context = Arc::new(Context {
+            id: ID::new(),
+            lineage: data_node.lineage.clone(),
+            document_node: Arc::clone(&document_node),
+            graph_node: Arc::clone(&graph_node),
+            data_node: Arc::clone(&data_node),
+        });
 
-        context_ids.insert(data_node.id.clone(), context_id.clone());
-        context_ids.insert(read_lock!(document_node).id.clone(), context_id.clone());
-        context_ids.insert(read_lock!(graph_node).id.clone(), context_id.clone());
+        data_nodes.insert(data_node.id.clone(), Arc::clone(&data_node));
+
+        contexts.insert(data_node.id.clone(), Arc::clone(&context));
+        contexts.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
+        contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
 
         {
             let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
@@ -83,7 +77,6 @@ pub fn traverse_with_context(
                         data_nodes,
                         &data_node.lineage,
                         contexts,
-                        context_ids,
                         vec![Arc::clone(&graph_node)],
                         profile
                     )
@@ -102,13 +95,12 @@ pub fn traverse_with_context(
         &mut data_nodes,
         &Lineage::new(),
         &mut contexts,
-        &mut context_ids,
         Vec::new(),
         &profile
     );
 
     let meta_context = MetaContext {
-        context_ids,
+        contexts,
         graph_root,
         document_root,
     };
@@ -118,7 +110,6 @@ pub fn traverse_with_context(
             data_nodes: data_nodes.values().cloned().collect()
         },
         meta_context,
-        contexts,
     };
 
     Ok(traversal)
