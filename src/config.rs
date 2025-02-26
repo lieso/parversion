@@ -17,6 +17,7 @@ enum LlmProvider {
 pub struct LlmConfig {
     pub llm_provider: LlmProvider,
     pub max_concurrency: usize,
+    pub example_snippet_count: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,6 +45,7 @@ impl Config {
             llm: LlmConfig {
                 llm_provider: LlmProvider::OpenAI,
                 max_concurrency: 1,
+                example_snippet_count: 3,
             },
             dev: DevConfig {
                 debug_dir: get_default_debug_dir(),

@@ -6,9 +6,9 @@ use crate::transformation::FieldTransformation;
 use crate::meta_context::MetaContext;
 use crate::context::{Context, ContextID};
 use crate::graph_node::{GraphNode, GraphNodeID};
+use crate::config::{CONFIG};
 
 mod openai;
-
 
 pub struct LLM {}
 
@@ -19,11 +19,13 @@ impl LLM {
     ) -> Result<Option<FieldTransformation>, Errors> {
         log::trace!("In get_field_transformation");
 
-        let snippets: Vec<String> = context_group.iter().map(|context| {
-            context.generate_snippet(
-                Arc::clone(&meta_context),
-            )
-        }).collect();
+        let example_snippet_count = read_lock!(CONFIG).llm.example_snippet_count;
+
+        let snippets: Vec<String> = context_group
+            .iter()
+            .take(example_snippet_count)
+            .map(|context| context.generate_snippet(Arc::clone(&meta_context)))
+            .collect();
 
 
         unimplemented!()

@@ -34,20 +34,12 @@ impl Analysis {
         provider: Arc<P>,
         meta_context: MetaContext,
     ) -> Result<Self, Errors> {
-
         let meta_context = Arc::new(meta_context);
-
-
-
 
         let node_analysis = NodeAnalysis::new(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
         ).await?;
-
-
-
-
 
         unimplemented!()
     }
