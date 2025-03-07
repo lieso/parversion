@@ -43,7 +43,7 @@ impl OpenAI {
     pub async fn get_field_transformation(
         field: &str,
         value: &str,
-        snippet: &str,
+        snippets: Vec<String>,
     ) -> Option<FieldTransformation> {
         log::trace!("In get_field_transformation");
 
@@ -51,12 +51,12 @@ impl OpenAI {
 
         let elimination = match field {
             "text" => {
-                Self::should_eliminate_text(value, snippet)
+                Self::should_eliminate_text(value, snippets.clone())
                     .await
                     .expect("Could not determine if text should be eliminated")
             },
             _ => {
-                Self::should_eliminate_attribute(field, snippet)
+                Self::should_eliminate_attribute(field, snippets.clone())
                     .await
                     .expect("Could not determine if attribute should be eliminated")
             }
@@ -72,7 +72,7 @@ impl OpenAI {
         let peripheral = Self::get_peripheral_if_applicable(
             field,
             value,
-            snippet,
+            snippets.clone(),
         ).await.expect("Could not determine if field is peripheral");
 
         if peripheral.is_peripheral {
@@ -94,7 +94,7 @@ impl OpenAI {
         let primary_content = Self::get_primary_content(
             field,
             value,
-            snippet,
+            snippets.clone(),
         ).await.expect("Could not obtain primary content");
 
         let transformation = FieldTransformation {
@@ -111,7 +111,7 @@ impl OpenAI {
     async fn get_primary_content(
         field: &str,
         value: &str,
-        snippet: &str
+        snippets: Vec<String>,
     ) -> Result<PrimaryResponse, Errors> {
         log::trace!("In get_primary_content");
 
@@ -121,17 +121,34 @@ impl OpenAI {
 You interpret the contextual meaning of HTML attributes or text nodes and reverse engineer the data model that was possibly used when building the website.
 
 Please provide the following information:
-* (name): A variable name in snake case the could be used to represent this text node or attribute programmatically
+* (name): A variable name in snake case that could be used to represent this text node or attribute programmatically
 * (description): A description of the variable name as it might be found in a JSON schema.
 * (justification): A justification for your response
+
+One or more examples of the attribute or text node will be provided, contained within an HTML snippet, providing crucial context for you to use. 
+
+The target attribute or text node will be delimited with an HTML comment like so:
+<!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->.
+
+When providing your response, you must generalize across all possible values for the text node or attribute, which are not limited to just the set of values in the example snippets. 
         "##);
+        let examples = snippets.iter().enumerate().fold(
+            String::new(),
+            |mut acc, (index, snippet)| {
+                acc.push_str(&format!(r##"
+Example {}:
+{}
+"##, index + 1, snippet));
+                acc
+            }
+        );
         let user_prompt = format!(r##"
 [attribute/text]
 {}
 
-[Surrounding HTML]
+[Examples]
 {}
-        "##, field_value, snippet);
+        "##, field_value, examples);
 
         let response_format = json!({
             "type": "json_schema",
@@ -187,7 +204,7 @@ Please provide the following information:
     async fn get_peripheral_if_applicable(
         field: &str,
         value: &str,
-        snippet: &str,
+        snippets: Vec<String>,
     ) -> Result<PeripheralResponse, Errors> {
         log::trace!("In get_peripheral_if_applicable");
 
@@ -205,14 +222,30 @@ Include the following in your response:
 1. (is_peripheral): If this is peripheral content.
 2. (justification): Provide justification for your response
 
+One or more examples of the attribute or text node will be provided, contained within an HTML snippet, providing crucial context for you to use. 
+
+The target attribute or text node will be delimited with an HTML comment like so:
+<!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->.
+
+When providing your response, you must generalize across all possible values for the text node or attribute, which are not limited to just the set of values in the example snippets. 
         "##);
+        let examples = snippets.iter().enumerate().fold(
+            String::new(),
+            |mut acc, (index, snippet)| {
+                acc.push_str(&format!(r##"
+Example {}:
+{}
+"##, index + 1, snippet));
+                acc
+            }
+        );
         let user_prompt = format!(r##"
 [attribute/text]
 {}
 
-[Surrounding HTML]
+[Examples]
 {}
-        "##, field_value, snippet);
+        "##, field_value, examples);
 
         let response_format = json!({
             "type": "json_schema",

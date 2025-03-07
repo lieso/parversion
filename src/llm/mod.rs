@@ -27,7 +27,6 @@ impl LLM {
             .map(|context| context.generate_snippet(Arc::clone(&meta_context)))
             .collect();
 
-
         unimplemented!()
         //openai::OpenAI::get_field_transformation(field, value, snippet).await
     }
