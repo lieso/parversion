@@ -51,7 +51,7 @@ impl OpenAI {
 
         let elimination = match field {
             "text" => {
-                Self::should_eliminate_text(value, snippets.clone())
+                Self::should_eliminate_text(snippets.clone())
                     .await
                     .expect("Could not determine if text should be eliminated")
             },
@@ -297,17 +297,14 @@ Example {}:
 
     async fn should_eliminate_attribute(
         field: &str,
-        snippet: &str,
+        snippets: Vec<String>
     ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate_attribute");
 
         let system_prompt = format!(r##"
 You interpret the contextual meaning of a specific HTML attribute, and infer if the attribute represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary content. If a user would intentionally read the attribute's value as part of their usage, it is likely meaningful content.
 
-The attribute will be contained/delimited with an HTML comment like so:
-<!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->
-
-Carefully examine the HTML attribute along with supplementary information providing crucial context, and determine if any of the following applies to it:
+Carefully examine the HTML attribute along with its surrounding content providing crucial context, and determine if any of the following applies to it:
 
 1. If the attribute represents an advertisement of some kind.
 2. If the attribute value contains code of some kind
@@ -315,32 +312,43 @@ Carefully examine the HTML attribute along with supplementary information provid
 Include the following in your response:
 1. (is_unmeaningful): if any of the above criteria apply to the text node, respond true
 2. (justification): provide justification for your response
-        "##);
 
+One or more examples of the attribute will be provided, contained within an HTML snippet, providing crucial context for you to use. 
+
+The attribute will be contained/delimited with an HTML comment like so:
+<!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->
+
+When providing your response, you must generalize across all possible values for the attribute, which is not limited to just the set of values in the example snippets. 
+        "##);
+        let examples = snippets.iter().enumerate().fold(
+            String::new(),
+            |mut acc, (index, snippet)| {
+                acc.push_str(&format!(r##"
+Example {}:
+{}
+"##, index + 1, snippet));
+                acc
+            }
+        );
         let user_prompt = format!(r##"
 [Attribute]
 {}
 
-[Surrounding HTML]
+[Examples]
 {}
-        "##, field.trim(), snippet);
+        "##, field.trim(), examples);
 
 
         Self::should_eliminate(&system_prompt, &user_prompt).await
     }
 
     async fn should_eliminate_text(
-        value: &str,
-        snippet: &str,
+        snippets: Vec<String>
     ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate_text");
 
-
         let system_prompt = format!(r##"
-You interpret the contextual meaning of a specific HTML text node, and infer if the text node represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary or presentational text.
-
-The specific text node will be contained/delimited with an HTML comment like so:
-<!-- Target node: Start -->Text node content here<!-- Target node: End -->
+You interpret the contextual meaning of a type of HTML text node, and infer if the text node represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary or presentational text.
 
 Carefully examine the provided HTML text node along with supplementary information providing crucial context, and determine if any of the following applies to it:
 
@@ -351,15 +359,28 @@ Carefully examine the provided HTML text node along with supplementary informati
 Include the following in your response:
 1. (is_unmeaningful): if any of the above criteria apply to the text node, respond true
 2. (justification): provide justification for your response
+
+One or more examples of the text node will be provided, contained within an HTML snippet, providing crucial context for you to use. 
+
+The text nodes will be contained/delimited with an HTML comment like so:
+<!-- Target node: Start -->Text node content here<!-- Target node: End -->
+
+When providing your response, you must generalize across all possible values for the text node, which is not limited to just the set of values in the example snippets. 
         "##);
-
+        let examples = snippets.iter().enumerate().fold(
+            String::new(),
+            |mut acc, (index, snippet)| {
+                acc.push_str(&format!(r##"
+Example {}:
+{}
+"##, index + 1, snippet));
+                acc
+            }
+        );
         let user_prompt = format!(r##"
-[Text node]
+[Examples]
 {}
-
-[Surrounding HTML]
-{}
-        "##, value.trim(), snippet);
+        "##, examples);
 
         Self::should_eliminate(&system_prompt, &user_prompt).await
     }
