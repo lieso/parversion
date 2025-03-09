@@ -39,6 +39,7 @@ pub fn traverse_with_context(
     ) -> Arc<RwLock<GraphNode>> {
         let data_node = Arc::new(
             DataNode::new(
+                profile.meaningful_fields.clone().unwrap(),
                 &profile.hash_transformation.clone().unwrap(),
                 read_lock!(document_node).get_fields(),
                 read_lock!(document_node).get_description(),
