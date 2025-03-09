@@ -9,5 +9,5 @@ pub struct BasisNode {
     pub hash: Hash,
     pub lineage: Lineage,
     pub description: String,
-    pub transformation: Option<FieldTransformation>,
+    pub transformations: Vec<FieldTransformation>,
 }

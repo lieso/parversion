@@ -134,7 +134,7 @@ impl NodeAnalysis {
             return Ok(basis_node);
         };
 
-        let field_transformation: Option<FieldTransformation> = LLM::get_field_transformation(
+        let field_transformations: Vec<FieldTransformation> = LLM::get_field_transformations(
             Arc::clone(&meta_context),
             context_group.clone()
         ).await?;
@@ -146,7 +146,7 @@ impl NodeAnalysis {
             hash,
             description,
             lineage: lineage.clone(),
-            transformation: field_transformation,
+            transformations: field_transformations,
         };
 
         provider.save_basis_node(
