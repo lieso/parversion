@@ -9,6 +9,7 @@ use crate::meta_context::MetaContext;
 
 pub type ContextID = ID;
 
+#[derive(Clone, Debug)]
 pub struct Context {
     pub id: ContextID,
     pub lineage: Lineage,

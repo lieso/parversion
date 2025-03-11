@@ -25,6 +25,7 @@ pub mod prelude;
 pub mod utility;
 pub mod json_node;
 pub mod context;
+pub mod context_group;
 pub mod llm;
 pub mod traverse;
 pub mod meta_context;

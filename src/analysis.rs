@@ -20,6 +20,7 @@ use crate::profile::Profile;
 use crate::basis_network::BasisNetwork;
 use crate::config::{CONFIG};
 use crate::context::{Context, ContextID};
+use crate::context_group::ContextGroup;
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::transformation::{FieldTransformation};
@@ -78,33 +79,21 @@ impl NodeAnalysis {
     ) -> Result<Vec<BasisNode>, Errors> {
         log::trace!("In get_basis_nodes");
 
+        let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
+
         let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
-        let mut context_groups: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
-        let mut seen_context_ids: HashSet<ID> = HashSet::new();
-
-        for context in meta_context.contexts.values() {
-            if seen_context_ids.insert(context.id.clone()) {
-                context_groups
-                    .entry(context.lineage.clone())
-                    .or_insert_with(Vec::new)
-                    .push(context.clone());
-                }
-        }
-
         let mut handles = Vec::new();
-        for (lineage, context_group) in context_groups {
+        for context_group in context_groups {
             let _permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
-            let cloned_lineage = lineage.clone();
 
             let handle = task::spawn(async move {
                 Self::get_basis_node(
                     cloned_provider,
                     cloned_meta_context,
-                    lineage,
                     context_group.clone()
                 ).await
             });
@@ -119,12 +108,12 @@ impl NodeAnalysis {
     async fn get_basis_node<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
-        lineage: Lineage,
-        context_group: Vec<Arc<Context>>,
+        context_group: ContextGroup,
     ) -> Result<BasisNode, Errors> {
         log::trace!("In get_basis_node");
 
-        let data_node = &context_group.first().unwrap().data_node.clone();
+        let lineage = &context_group.lineage.clone();
+        let data_node = &context_group.contexts.first().unwrap().data_node.clone();
         let hash = data_node.hash.clone();
         let description = data_node.description.clone();
 
