@@ -31,10 +31,11 @@ impl Context {
         );
 
         let mut snippet = String::new();
+        let root_node = meta_context.graph_root.clone();
 
         Self::traverse_for_snippet(
             Arc::clone(&meta_context),
-            Arc::clone(&graph_node),
+            Arc::clone(&root_node),
             &neighbour_ids,
             &read_lock!(graph_node).id,
             &mut snippet
@@ -106,7 +107,7 @@ impl Context {
 
             visited.insert(graph_node_id.clone());
 
-            if visited.len() > 50 {
+            if visited.len() > 20 {
                 return;
             }
 
