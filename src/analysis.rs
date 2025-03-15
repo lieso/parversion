@@ -58,13 +58,10 @@ impl NodeAnalysis {
 
         log::info!("Performing node analysis");
 
-
         let basis_nodes: Vec<BasisNode> = Self::get_basis_nodes(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
         ).await?;
-
-
 
         let node_analysis = NodeAnalysis {
             basis_nodes,

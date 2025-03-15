@@ -18,25 +18,15 @@ pub async fn organize<P: Provider>(
 ) -> Result<NodeSet, Errors> {
     log::trace!("In organize");
 
-    //let input = NodeSetInput::from_document(Arc::clone(&provider), document).await?;
-    //let analysis = NodeSet::new(Arc::clone(&provider), &input).await?;
-    //Ok(analysis)
-
     let mut document = document;
 
     let profile = document.perform_analysis(provider.clone()).await?;
-
-
 
     let TraversalWithContext { nodeset, meta_context, .. } =   
         traverse_with_context(&profile, document)
             .expect("Could not traverse document");
 
-
-
     Analysis::start(Arc::clone(&provider), meta_context).await?;
-
-
 
     Ok(nodeset)
 }
