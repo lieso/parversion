@@ -58,7 +58,7 @@ pub async fn translate_text_to_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn translate_text<P: Provider>(
@@ -114,7 +114,7 @@ pub async fn translate_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn translate_document_to_text<P: Provider>(
@@ -169,7 +169,7 @@ pub async fn translate_file_to_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn translate_file_to_text<P: Provider>(

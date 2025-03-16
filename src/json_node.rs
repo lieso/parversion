@@ -9,7 +9,7 @@ pub struct JsonNode {
     pub lineage: Lineage,
     pub description: String,
     pub parent_id: Option<String>,
-    pub json: Vec<Json>,
+    pub json: Json,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

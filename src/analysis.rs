@@ -42,7 +42,16 @@ impl Analysis {
             Arc::clone(&meta_context),
         ).await?;
 
-        unimplemented!()
+        let network_analysis = NetworkAnalysis {
+            basis_networks: Vec::new(),
+        };
+
+        let analysis = Analysis {
+            node_analysis,
+            network_analysis,
+        };
+
+        Ok(analysis)
     }
 }
 
@@ -147,4 +156,3 @@ impl NodeAnalysis {
 struct NetworkAnalysis {
     basis_networks: Vec<BasisNetwork>,
 }
-

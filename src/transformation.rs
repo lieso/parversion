@@ -1,3 +1,4 @@
+use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -5,6 +6,8 @@ use quick_js::{Context as QuickContext, JsValue};
 
 use crate::prelude::*;
 use crate::id::{ID};
+use crate::json_node::{Json, JsonNode, JsonMetadata};
+use crate::data_node::DataNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -299,4 +302,35 @@ pub struct FieldTransformation {
     pub field: String,
     pub image: String,
     pub meta: FieldMetadata,
+}
+
+impl FieldTransformation {
+    pub fn transform(&self, data_node: Arc<DataNode>) -> Result<JsonNode, Errors> {
+        log::trace!("In transform");
+
+        if let Some(data_node_field) = data_node.fields.get(&self.field) {
+            let value = data_node.fields.get(&self.field).clone().unwrap();
+
+            let json = Json {
+                key: self.image.clone(),
+                value: value.to_string(),
+                meta: JsonMetadata {
+                    is_primary_content: false,
+                },
+            };
+
+            let json_node = JsonNode {
+                id: ID::new(),
+                hash: data_node.hash.clone(),
+                lineage: data_node.lineage.clone(),
+                description: data_node.description.clone(),
+                parent_id: None,
+                json,
+            };
+
+            Ok(json_node)
+        } else {
+            Err(Errors::FieldTransformationFieldNotFound)
+        }
+    }
 }

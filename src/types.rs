@@ -32,6 +32,8 @@ pub enum Errors {
     SqliteDatabaseConnectionError,
     YamlParseError,
     FetchUrlError(String),
+    BasisNodeNotFound,
+    FieldTransformationFieldNotFound
 }
 
 impl From<JoinError> for Errors {

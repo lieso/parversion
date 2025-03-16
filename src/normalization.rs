@@ -61,7 +61,7 @@ pub async fn normalize_text_to_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn normalize_text<P: Provider>(
@@ -108,7 +108,7 @@ pub async fn normalize_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn normalize_document_to_text<P: Provider>(
@@ -152,7 +152,7 @@ pub async fn normalize_file_to_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn normalize_file_to_text<P: Provider>(
@@ -215,7 +215,7 @@ pub async fn normalize_url_to_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn normalize_url_to_text<P: Provider>(

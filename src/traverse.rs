@@ -11,6 +11,7 @@ use crate::document::{Document, DocumentType};
 use crate::document_format::{DocumentFormat};
 use crate::profile::Profile;
 use crate::provider::Provider;
+use crate::json_node::JsonNode;
 
 pub struct TraversalWithContext {
     pub nodeset: NodeSet,
@@ -116,12 +117,37 @@ pub fn traverse_with_context(
     Ok(traversal)
 }
 
-pub fn build_document_from_nodeset<P: Provider>(
+pub async fn build_document_from_nodeset<P: Provider>(
     provider: Arc<P>,
     nodeset: NodeSet,
     document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In build_document_from_nodeset");
+
+    let data_nodes = nodeset.data_nodes;
+
+    for data_node in data_nodes.into_iter() {
+        let lineage = &data_node.lineage;
+
+        if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
+            log::info!("Found basis node with id: {}", basis_node.id.to_string());
+
+            let json_nodes: Vec<JsonNode> = basis_node.transformations
+                .into_iter()
+                .map(|transformation| {
+                    transformation.transform(Arc::clone(&data_node))
+                        .expect("Could not transform data node field")
+                })
+                .collect();
+
+            log::debug!("json_nodes: {:?}", json_nodes);
+
+        } else {
+            return Err(Errors::BasisNodeNotFound);
+        }
+
+
+    }
 
     unimplemented!()
 }

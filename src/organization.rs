@@ -49,7 +49,7 @@ pub async fn organize_document<P: Provider>(
         provider,
         nodeset,
         document_format,
-    )
+    ).await
 }
 
 pub async fn organize_document_to_string<P: Provider>(
@@ -92,7 +92,7 @@ pub async fn organize_text_to_document<P: Provider>(
 
     let nodeset = organize_text(Arc::clone(&provider), text, options).await?;
 
-    build_document_from_nodeset(provider, nodeset, document_format)
+    build_document_from_nodeset(provider, nodeset, document_format).await
 }
 
 pub async fn organize_file<P: Provider>(
@@ -122,7 +122,7 @@ pub async fn organize_file_to_document<P: Provider>(
 
     let nodeset = organize_file(Arc::clone(&provider), path, options).await?;
 
-    build_document_from_nodeset(provider, nodeset, document_format)
+    build_document_from_nodeset(provider, nodeset, document_format).await
 }
 
 pub async fn organize_file_to_string<P: Provider>(
