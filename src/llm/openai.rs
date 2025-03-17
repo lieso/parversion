@@ -41,6 +41,7 @@ struct PrimaryResponse {
 
 impl OpenAI {
     pub async fn get_field_transformation(
+        lineage: &Lineage,
         field: &str,
         value: &str,
         snippets: Vec<String>,
@@ -51,12 +52,12 @@ impl OpenAI {
 
         let elimination = match field {
             "text" => {
-                Self::should_eliminate_text(snippets.clone())
+                Self::should_eliminate_text(lineage, snippets.clone())
                     .await
                     .expect("Could not determine if text should be eliminated")
             },
             _ => {
-                Self::should_eliminate_attribute(field, snippets.clone())
+                Self::should_eliminate_attribute(lineage, field, snippets.clone())
                     .await
                     .expect("Could not determine if attribute should be eliminated")
             }
@@ -70,6 +71,7 @@ impl OpenAI {
         log::info!("Determining if field is peripheral...");
 
         let peripheral = Self::get_peripheral_if_applicable(
+            lineage,
             field,
             value,
             snippets.clone(),
@@ -92,6 +94,7 @@ impl OpenAI {
         log::info!("Determining primary field name and metadata...");
 
         let primary_content = Self::get_primary_content(
+            lineage,
             field,
             value,
             snippets.clone(),
@@ -109,6 +112,7 @@ impl OpenAI {
     }
 
     async fn get_primary_content(
+        lineage: &Lineage,
         field: &str,
         value: &str,
         snippets: Vec<String>,
@@ -184,6 +188,7 @@ Example {}:
                 log::debug!("║          PRIMARY START          ║");
                 log::debug!("╚═════════════════════════════════╝");
 
+                log::debug!("***lineage***\n{}", lineage.to_string());
                 log::debug!("***system_prompt***\n{}", system_prompt);
                 log::debug!("***user_prompt***\n{}", user_prompt);
                 log::debug!("***response***\n{:?}", response);
@@ -202,6 +207,7 @@ Example {}:
     }
 
     async fn get_peripheral_if_applicable(
+        lineage: &Lineage,
         field: &str,
         value: &str,
         snippets: Vec<String>,
@@ -278,6 +284,7 @@ Example {}:
                 log::debug!("║          IS PERIPHERAL START           ║");
                 log::debug!("╚════════════════════════════════════════╝");
 
+                log::debug!("***lineage***\n{}", lineage.to_string());
                 log::debug!("***system_prompt***\n{}", system_prompt);
                 log::debug!("***user_prompt***\n{}", user_prompt);
                 log::debug!("***response***\n{:?}", response);
@@ -296,6 +303,7 @@ Example {}:
     }
 
     async fn should_eliminate_attribute(
+        lineage: &Lineage,
         field: &str,
         snippets: Vec<String>
     ) -> Result<EliminationResponse, Errors> {
@@ -339,10 +347,11 @@ Example {}:
         "##, field.trim(), examples);
 
 
-        Self::should_eliminate(&system_prompt, &user_prompt).await
+        Self::should_eliminate(lineage, &system_prompt, &user_prompt).await
     }
 
     async fn should_eliminate_text(
+        lineage: &Lineage,
         snippets: Vec<String>
     ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate_text");
@@ -382,10 +391,11 @@ Example {}:
 {}
         "##, examples);
 
-        Self::should_eliminate(&system_prompt, &user_prompt).await
+        Self::should_eliminate(lineage, &system_prompt, &user_prompt).await
     }
 
     async fn should_eliminate(
+        lineage: &Lineage,
         system_prompt: &str,
         user_prompt: &str,
     ) -> Result<EliminationResponse, Errors> {
@@ -422,6 +432,7 @@ Example {}:
                 log::debug!("║    SHOULD ELIMINATE FIELD START        ║");
                 log::debug!("╚════════════════════════════════════════╝");
 
+                log::debug!("***lineage***\n{}", lineage.to_string());
                 log::debug!("***system_prompt***\n{}", system_prompt);
                 log::debug!("***user_prompt***\n{}", user_prompt);
                 log::debug!("***response***\n{:?}", response);
@@ -526,6 +537,8 @@ Example {}:
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Option<String>>,
     {
+        log::debug!("hash for cache: {}", hash);
+
         if let Some(cached_response) = Self::get_cached_response(hash.clone()) {
             log::info!("Cache hit!");
             Some(cached_response)

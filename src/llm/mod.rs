@@ -26,6 +26,7 @@ impl LLM {
 
         for (field, value) in context_group.fields.into_iter() {
             match openai::OpenAI::get_field_transformation(
+                &context_group.lineage,
                 &field,
                 &value,
                 context_group.snippets.clone()
