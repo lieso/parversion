@@ -25,13 +25,20 @@ impl LLM {
         let mut field_transformations = Vec::new();
 
         for (field, value) in context_group.fields.into_iter() {
-            let transformation = openai::OpenAI::get_field_transformation(
+            match openai::OpenAI::get_field_transformation(
                 &field,
                 &value,
                 context_group.snippets.clone()
-            ).await.expect("Could not obtain fields transformation");
-
-            field_transformations.push(transformation);
+            ).await {
+                Some(transformation) => field_transformations.push(transformation),
+                None => {
+                    log::error!(
+                        "Failed to obtain field transformation for field: {}",
+                        field
+                    );
+                    return Err(Errors::UnexpectedError);
+                }
+            }
         }
 
         Ok(field_transformations)
