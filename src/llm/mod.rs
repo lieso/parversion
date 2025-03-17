@@ -33,11 +33,7 @@ impl LLM {
             ).await {
                 Some(transformation) => field_transformations.push(transformation),
                 None => {
-                    log::error!(
-                        "Failed to obtain field transformation for field: {}",
-                        field
-                    );
-                    return Err(Errors::UnexpectedError);
+                    log::info!("Field eliminated");
                 }
             }
         }
