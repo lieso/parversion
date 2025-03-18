@@ -23,6 +23,7 @@ pub struct LlmConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DevConfig {
     pub debug_dir: String,
+    pub debug_lineages: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -49,6 +50,7 @@ impl Config {
             },
             dev: DevConfig {
                 debug_dir: get_default_debug_dir(),
+                debug_lineages: vec![]
             }
         }
     }

@@ -143,7 +143,8 @@ pub async fn build_document_from_nodeset<P: Provider>(
             log::debug!("json_nodes: {:?}", json_nodes);
 
         } else {
-            return Err(Errors::BasisNodeNotFound);
+            log::warn!("basis node not found");
+            //return Err(Errors::BasisNodeNotFound);
         }
 
 

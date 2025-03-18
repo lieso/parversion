@@ -67,7 +67,7 @@ impl NodeAnalysis {
 
         log::info!("Performing node analysis");
 
-        let basis_nodes: Vec<BasisNode> = Self::get_basis_nodes_sequential(
+        let basis_nodes: Vec<BasisNode> = Self::get_basis_nodes_debug(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
         ).await?;
@@ -79,7 +79,7 @@ impl NodeAnalysis {
         Ok(node_analysis)
     }
 
-    async fn get_basis_nodes_sequential<P: Provider>(
+    async fn get_basis_nodes_debug<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
     ) -> Result<Vec<BasisNode>, Errors> {
@@ -87,8 +87,21 @@ impl NodeAnalysis {
 
         let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
 
+        let debug_lineages = read_lock!(CONFIG).dev.debug_lineages.clone();
+
+        let filtered_context_groups: Vec<_> = if debug_lineages.is_empty() {
+            context_groups
+        } else {
+            context_groups
+                .into_iter()
+                .filter(|context_group| {
+                    debug_lineages.contains(&context_group.lineage.to_string())
+                })
+                .collect()
+        };
+
         let mut results = Vec::new();
-        for context_group in context_groups {
+        for context_group in filtered_context_groups {
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
 

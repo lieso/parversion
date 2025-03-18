@@ -14,6 +14,12 @@ pub async fn normalize<P: Provider>(
     options: &Option<Options>,
 ) -> Result<NodeSet, Errors> {
     log::trace!("In normalize");
+
+    let document = build_document_from_nodeset(
+        Arc::clone(&provider),
+        nodeset,
+        &None
+    ).await.expect("Failed to build document from nodeset");
     
     unimplemented!()
 
