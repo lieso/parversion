@@ -1,11 +1,11 @@
 use uuid::Uuid;
-use serde::{Serialize};
+use serde::ser::{Serialize, Serializer};
 use serde::de::{self, Deserialize, Deserializer, Visitor, Error as SerdeError};
 use std::fmt;
 use std::str::FromStr;
 
 
-#[derive(Clone, Debug, Serialize, Hash)]
+#[derive(Clone, Debug, Hash)]
 pub struct ID {
     value: String
 }
@@ -59,5 +59,14 @@ impl<'de> Deserialize<'de> for ID {
         }
 
         deserializer.deserialize_str(IDVisitor)
+    }
+}
+
+impl Serialize for ID {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.value)
     }
 }

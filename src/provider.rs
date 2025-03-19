@@ -107,13 +107,39 @@ impl Provider for YamlFileProvider {
         &self,
         lineage: &Lineage
     ) -> Result<Option<BasisNode>, Errors> {
+        let data = fs::read_to_string(&self.file_path)
+            .map_err(|_| Errors::FileReadError)?;
+
+        let yaml_result: Result<serde_yaml::Value, _> = serde_yaml::from_str(&data);
+        if let Err(e) = yaml_result {
+            log::error!("Failed to parse YAML: {:?}", e);
+            return Err(Errors::YamlParseError);
+        }
+        let yaml = yaml_result.unwrap();
+
+        let basis_nodes: Vec<BasisNode> = yaml.get("basis_nodes")
+            .and_then(|bn| {
+                let deserialized: Result<Vec<BasisNode>, _> = serde_yaml::from_value(bn.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(Vec::new);
+
+        for basis_node in basis_nodes {
+            if &basis_node.lineage == lineage {
+                return Ok(Some(basis_node));
+            }
+        }
+
         Ok(None)
     }
 
     async fn save_basis_node(
-         &self,
-         lineage: &Lineage,
-         basis_node: BasisNode,
+        &self,
+        lineage: &Lineage,
+        basis_node: BasisNode,
     ) -> Result<(), Errors> {
         let data = fs::read_to_string(&self.file_path)
             .map_err(|_| Errors::UnexpectedError)?;
@@ -128,8 +154,9 @@ impl Provider for YamlFileProvider {
             basis_nodes.as_sequence_mut()
                 .ok_or(Errors::YamlParseError)?
                 .push(serialized_basis_node);
-            } else {
-                yaml["basis_nodes"] = serde_yaml::Value::Sequence(vec![serialized_basis_node]);
+        } else {
+            // Initialize basis_nodes as a sequence if it doesn't exist
+            yaml["basis_nodes"] = serde_yaml::Value::Sequence(vec![serialized_basis_node]);
         }
 
         let new_yaml_str = serde_yaml::to_string(&yaml)

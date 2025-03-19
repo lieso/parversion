@@ -130,7 +130,7 @@ pub async fn build_document_from_nodeset<P: Provider>(
         let lineage = &data_node.lineage;
 
         if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
-            log::info!("Found basis node with id: {}", basis_node.id.to_string());
+            log::info!("Found basis node with lineage: {}", basis_node.lineage.to_string());
 
             let json_nodes: Vec<JsonNode> = basis_node.transformations
                 .into_iter()

@@ -125,8 +125,7 @@ profiles:
   - href
   - title
 basis_nodes:
-- id:
-    value: 5ced9d80-9473-4acd-b114-38c7e0ac8300
+- id: 737c55b7-b034-4336-b196-f90d9ba59a3a
   hash: f8dd4381183a11030bd0bd1b59e09721161607d8d4b475ab83fd72da9940afd1
   lineage:
     source_hashes:
@@ -146,9 +145,8 @@ basis_nodes:
     identity_hash: 9011905c37934c4242c29f506b3baecf13b45c32a8bae830006af7167b82eee1
   description: a
   transformations:
-  - id:
-      value: 1e9fdef6-72dc-46fd-8b64-d7b21b5c26e6
-    description: A URL that the hyperlink points to, typically used to navigate to a different webpage or resource.
+  - id: 09cc438d-9bfd-49d3-971b-aa859db54d1f
+    description: A URL that the hyperlink points to, representing the destination of the link.
     field: href
-    image: hyperlink_url
+    image: link_url
     meta: {}
