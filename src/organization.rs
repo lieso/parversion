@@ -5,30 +5,34 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::provider::Provider;
 use crate::traverse::{
-    TraversalWithContext,
     traverse_with_context,
-    build_document_from_nodeset
+    build_document_from_meta_context
 };
 use crate::analysis::{Analysis};
+use crate::meta_context::MetaContext;
 
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
+) -> Result<Arc<MetaContext>, Errors> {
     log::trace!("In organize");
 
     let mut document = document;
 
     let profile = document.perform_analysis(provider.clone()).await?;
 
-    let TraversalWithContext { nodeset, meta_context, .. } =   
-        traverse_with_context(&profile, document)
-            .expect("Could not traverse document");
+    let meta_context = traverse_with_context(&profile, document)
+        .expect("Could not traverse document");
 
-    Analysis::start(Arc::clone(&provider), meta_context).await?;
+    let meta_context = Arc::new(meta_context);
 
-    Ok(nodeset)
+    Analysis::start(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context)
+    ).await?;
+
+    Ok(meta_context)
 }
 
 pub async fn organize_document<P: Provider>(
@@ -39,15 +43,15 @@ pub async fn organize_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In organize_document");
 
-    let nodeset = organize(
+    let meta_context = organize(
         Arc::clone(&provider),
         document,
         options
     ).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }
@@ -74,7 +78,7 @@ pub async fn organize_text<P: Provider>(
     provider: Arc<P>,
     text: String,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
+) -> Result<Arc<MetaContext>, Errors> {
     log::trace!("In organize_text");
 
     let document = Document::from_string(text, options)?;
@@ -90,16 +94,16 @@ pub async fn organize_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In organize_text_to_document");
 
-    let nodeset = organize_text(Arc::clone(&provider), text, options).await?;
+    let meta_context = organize_text(Arc::clone(&provider), text, options).await?;
 
-    build_document_from_nodeset(provider, nodeset, document_format).await
+    build_document_from_meta_context(provider, meta_context, document_format).await
 }
 
 pub async fn organize_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
+) -> Result<Arc<MetaContext>, Errors> {
     log::trace!("In organize_file");
     log::debug!("file path: {}", path);
 
@@ -120,9 +124,9 @@ pub async fn organize_file_to_document<P: Provider>(
     log::trace!("In organize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let nodeset = organize_file(Arc::clone(&provider), path, options).await?;
+    let meta_context = organize_file(Arc::clone(&provider), path, options).await?;
 
-    build_document_from_nodeset(provider, nodeset, document_format).await
+    build_document_from_meta_context(provider, meta_context, document_format).await
 }
 
 pub async fn organize_file_to_string<P: Provider>(

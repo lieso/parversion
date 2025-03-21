@@ -33,18 +33,22 @@ pub struct Analysis {
 impl Analysis {
     pub async fn start<P: Provider>(
         provider: Arc<P>,
-        meta_context: MetaContext,
+        meta_context: Arc<MetaContext>,
     ) -> Result<Self, Errors> {
-        let meta_context = Arc::new(meta_context);
+        log::info!("Starting analysis...");
 
         let node_analysis = NodeAnalysis::new(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
         ).await?;
 
+        log::info!("Completed node analysis");
+
         let network_analysis = NetworkAnalysis {
             basis_networks: Vec::new(),
         };
+
+        log::info!("Completed network analysis");
 
         let analysis = Analysis {
             node_analysis,

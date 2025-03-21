@@ -5,42 +5,43 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::organization::organize;
 use crate::provider::Provider;
-use crate::traverse::{build_document_from_nodeset};
+use crate::traverse::{build_document_from_meta_context};
+use crate::meta_context::MetaContext;
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
-    nodeset: NodeSet,
+    meta_context: Arc<MetaContext>,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<NodeSet, Errors> {
+) -> Result<Arc<MetaContext>, Errors> {
     log::trace!("In translate");
 
     unimplemented!()
 }
 
-pub async fn translate_nodeset<P: Provider>(
+pub async fn translate_meta_context<P: Provider>(
     provider: Arc<P>,
-    nodeset: NodeSet,
+    meta_context: Arc<MetaContext>,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In translate_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In translate_meta_context");
 
-    translate(Arc::clone(&provider), nodeset, options, json_schema).await
+    translate(Arc::clone(&provider), meta_context, options, json_schema).await
 }
 
-pub async fn translate_text_to_nodeset<P: Provider>(
+pub async fn translate_text_to_meta_context<P: Provider>(
     provider: Arc<P>,
     text: String,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In translate_text_to_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In translate_text_to_meta_context");
 
     let document = Document::from_string(text, options)?;
-    let nodeset = organize(Arc::clone(&provider), document, options).await?;
+    let meta_context = organize(Arc::clone(&provider), document, options).await?;
 
-    translate_nodeset(Arc::clone(&provider), nodeset, options, json_schema).await
+    translate_meta_context(Arc::clone(&provider), meta_context, options, json_schema).await
 }
 
 pub async fn translate_text_to_document<P: Provider>(
@@ -52,11 +53,11 @@ pub async fn translate_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let nodeset = translate_text_to_nodeset(Arc::clone(&provider), text, options, json_schema).await?;
+    let meta_context = translate_text_to_meta_context(Arc::clone(&provider), text, options, json_schema).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }
@@ -81,17 +82,17 @@ pub async fn translate_text<P: Provider>(
     Ok(document.to_string())
 }
 
-pub async fn translate_document_to_nodeset<P: Provider>(
+pub async fn translate_document_to_meta_context<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In translate_document_to_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In translate_document_to_meta_context");
 
-    let nodeset = organize(Arc::clone(&provider), document, options).await?;
+    let meta_context = organize(Arc::clone(&provider), document, options).await?;
 
-    translate_nodeset(Arc::clone(&provider), nodeset, options, json_schema).await
+    translate_meta_context(Arc::clone(&provider), meta_context, options, json_schema).await
 }
 
 pub async fn translate_document<P: Provider>(
@@ -103,16 +104,16 @@ pub async fn translate_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_document");
 
-    let nodeset = translate_document_to_nodeset(
+    let meta_context = translate_document_to_meta_context(
         provider.clone(),
         document,
         options,
         json_schema
     ).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }
@@ -137,13 +138,13 @@ pub async fn translate_document_to_text<P: Provider>(
     Ok(document.to_string())
 }
 
-pub async fn translate_file_to_nodeset<P: Provider>(
+pub async fn translate_file_to_meta_context<P: Provider>(
     provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
     json_schema: &str,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In translate_file_to_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In translate_file_to_meta_context");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path).map_err(|err| {
@@ -151,7 +152,7 @@ pub async fn translate_file_to_nodeset<P: Provider>(
         Errors::FileInputError
     })?;
 
-    translate_text_to_nodeset(Arc::clone(&provider), text, options, json_schema).await
+    translate_text_to_meta_context(Arc::clone(&provider), text, options, json_schema).await
 }
 
 pub async fn translate_file_to_document<P: Provider>(
@@ -163,11 +164,11 @@ pub async fn translate_file_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_file_to_document");
 
-    let nodeset = translate_file_to_nodeset(Arc::clone(&provider), path, options, json_schema).await?;
+    let meta_context = translate_file_to_meta_context(Arc::clone(&provider), path, options, json_schema).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }

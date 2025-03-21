@@ -5,10 +5,6 @@ use crate::basis_graph::{BasisGraph};
 use crate::transformation::{Transformation};
 use crate::data_node::DataNode;
 
-pub struct NodeSet {
-    pub data_nodes: Vec<Arc<DataNode>>,
-}
-
 #[derive(Clone, Debug)]
 pub enum AnalysisMode {
     DISABLED,

@@ -13,15 +13,10 @@ use crate::profile::Profile;
 use crate::provider::Provider;
 use crate::json_node::JsonNode;
 
-pub struct TraversalWithContext {
-    pub nodeset: NodeSet,
-    pub meta_context: MetaContext,
-}
-
 pub fn traverse_with_context(
     profile: &Profile,
     document: Document
-) -> Result<TraversalWithContext, Errors> {
+) -> Result<MetaContext, Errors> {
     log::trace!("In traverse_with_context");
 
     let document_root = document.get_document_node()?;
@@ -105,26 +100,20 @@ pub fn traverse_with_context(
         contexts,
         graph_root,
         document_root,
+        data_nodes,
     };
 
-    let traversal = TraversalWithContext {
-        nodeset: NodeSet {
-            data_nodes: data_nodes.values().cloned().collect()
-        },
-        meta_context,
-    };
-
-    Ok(traversal)
+    Ok(meta_context)
 }
 
-pub async fn build_document_from_nodeset<P: Provider>(
+pub async fn build_document_from_meta_context<P: Provider>(
     provider: Arc<P>,
-    nodeset: NodeSet,
+    meta_context: Arc<MetaContext>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
-    log::trace!("In build_document_from_nodeset");
+    log::trace!("In build_document_from_meta_context");
 
-    let data_nodes = nodeset.data_nodes;
+    let data_nodes: Vec<Arc<DataNode>> = meta_context.data_nodes.values().cloned().collect();
 
     for data_node in data_nodes.into_iter() {
         let lineage = &data_node.lineage;

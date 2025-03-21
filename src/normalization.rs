@@ -6,51 +6,52 @@ use crate::document_format::{DocumentFormat};
 use crate::organization::{organize};
 use crate::model::{Model};
 use crate::provider::{Provider};
-use crate::traverse::{build_document_from_nodeset};
+use crate::traverse::{build_document_from_meta_context};
+use crate::meta_context::MetaContext;
 
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
-    nodeset: NodeSet,
+    meta_context: Arc<MetaContext>,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
+) -> Result<Arc<MetaContext>, Errors> {
     log::trace!("In normalize");
 
-    let document = build_document_from_nodeset(
+    let document = build_document_from_meta_context(
         Arc::clone(&provider),
-        nodeset,
+        meta_context,
         &None
-    ).await.expect("Failed to build document from nodeset");
+    ).await.expect("Failed to build document from meta_context");
     
     unimplemented!()
 
-    //let basis_graph = nodeset.build_basis_graph()?;
+    //let basis_graph = meta_context.build_basis_graph()?;
 
     //let target_model = Model::get_normal_model(&basis_graph).unwrap();
 
-    //nodeset.transmute(&target_model.json_schema).await
+    //meta_context.transmute(&target_model.json_schema).await
 }
 
-pub async fn normalize_nodeset<P: Provider>(
+pub async fn normalize_meta_context<P: Provider>(
     provider: Arc<P>,
-    nodeset: NodeSet,
+    meta_context: Arc<MetaContext>,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In normalize_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In normalize_meta_context");
 
-    normalize(Arc::clone(&provider), nodeset, options).await
+    normalize(Arc::clone(&provider), meta_context, options).await
 }
 
-pub async fn normalize_text_to_nodeset<P: Provider>(
+pub async fn normalize_text_to_meta_context<P: Provider>(
     provider: Arc<P>,
     text: String,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In normalize_text_to_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In normalize_text_to_meta_context");
 
     let document = Document::from_string(text, options)?;
-    let nodeset = organize(Arc::clone(&provider), document, options).await?;
+    let meta_context = organize(Arc::clone(&provider), document, options).await?;
 
-    normalize_nodeset(Arc::clone(&provider), nodeset, options).await
+    normalize_meta_context(Arc::clone(&provider), meta_context, options).await
 }
 
 pub async fn normalize_text_to_document<P: Provider>(
@@ -61,11 +62,11 @@ pub async fn normalize_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_text_to_document");
 
-    let nodeset = normalize_text_to_nodeset(Arc::clone(&provider), text, options).await?;
+    let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, options).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }
@@ -88,16 +89,16 @@ pub async fn normalize_text<P: Provider>(
     Ok(document.to_string())
 }
 
-pub async fn normalize_document_to_nodeset<P: Provider>(
+pub async fn normalize_document_to_meta_context<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In normalize_document_to_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In normalize_document_to_meta_context");
 
-    let nodeset = organize(Arc::clone(&provider), document, options).await?;
+    let meta_context = organize(Arc::clone(&provider), document, options).await?;
 
-    normalize_nodeset(Arc::clone(&provider), nodeset, options).await
+    normalize_meta_context(Arc::clone(&provider), meta_context, options).await
 }
 
 pub async fn normalize_document<P: Provider>(
@@ -108,11 +109,11 @@ pub async fn normalize_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_document");
 
-    let nodeset = normalize_document_to_nodeset(Arc::clone(&provider), document, options).await?;
+    let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, options).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }
@@ -130,17 +131,17 @@ pub async fn normalize_document_to_text<P: Provider>(
     Ok(document.to_string())
 }
 
-pub async fn normalize_file_to_nodeset<P: Provider>(
+pub async fn normalize_file_to_meta_context<P: Provider>(
     provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In normalize_file_to_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In normalize_file_to_meta_context");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path)?;
 
-    normalize_text_to_nodeset(Arc::clone(&provider), text, options).await
+    normalize_text_to_meta_context(Arc::clone(&provider), text, options).await
 }
 
 pub async fn normalize_file_to_document<P: Provider>(
@@ -152,11 +153,11 @@ pub async fn normalize_file_to_document<P: Provider>(
     log::trace!("In normalize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let nodeset = normalize_file_to_nodeset(Arc::clone(&provider), path, options).await?;
+    let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, options).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }
@@ -193,17 +194,17 @@ pub async fn normalize_file<P: Provider>(
     })
 }
 
-pub async fn normalize_url_to_nodeset<P: Provider>(
+pub async fn normalize_url_to_meta_context<P: Provider>(
     provider: Arc<P>,
     url: &str,
     options: &Option<Options>,
-) -> Result<NodeSet, Errors> {
-    log::trace!("In normalize_url_to_nodeset");
+) -> Result<Arc<MetaContext>, Errors> {
+    log::trace!("In normalize_url_to_meta_context");
     log::debug!("URL: {}", url);
 
     let text = fetch_url_as_text(url).await?;
 
-    normalize_text_to_nodeset(Arc::clone(&provider), text, options).await
+    normalize_text_to_meta_context(Arc::clone(&provider), text, options).await
 }
 
 pub async fn normalize_url_to_document<P: Provider>(
@@ -215,11 +216,11 @@ pub async fn normalize_url_to_document<P: Provider>(
     log::trace!("In normalize_url_to_document");
     log::debug!("URL: {}", url);
 
-    let nodeset = normalize_url_to_nodeset(Arc::clone(&provider), url, options).await?;
+    let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, options).await?;
 
-    build_document_from_nodeset(
+    build_document_from_meta_context(
         provider,
-        nodeset,
+        meta_context,
         document_format,
     ).await
 }
