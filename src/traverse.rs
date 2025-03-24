@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use serde_json::{json, Value};
 
 use crate::prelude::*;
 use crate::meta_context::MetaContext;
@@ -113,6 +114,8 @@ pub async fn build_document_from_meta_context<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In build_document_from_meta_context");
 
+    let mut result: HashMap<String, Value> = HashMap::new();
+
     let data_nodes: Vec<Arc<DataNode>> = meta_context.data_nodes.values().cloned().collect();
 
     for data_node in data_nodes.into_iter() {
@@ -120,6 +123,13 @@ pub async fn build_document_from_meta_context<P: Provider>(
 
         if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
             log::info!("Found basis node with lineage: {}", basis_node.lineage.to_string());
+
+
+
+            // Check membership basis networks
+            
+            
+            
 
             let json_nodes: Vec<JsonNode> = basis_node.transformations
                 .into_iter()
@@ -131,13 +141,33 @@ pub async fn build_document_from_meta_context<P: Provider>(
 
             log::debug!("json_nodes: {:?}", json_nodes);
 
+            for json_node in json_nodes.into_iter() {
+                let json = json_node.json;
+
+                let trimmed_value = json!(json.value.trim().to_string());
+
+                if let Some(existing_value) = result.get_mut(&json.key) {
+                    if let Value::Array(ref mut arr) = existing_value {
+                        arr.push(trimmed_value);
+                    } else {
+                        *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
+                    }
+                } else {
+                    result.insert(json.key, trimmed_value);
+                }
+            }
+
         } else {
             log::warn!("basis node not found");
-            //return Err(Errors::BasisNodeNotFound);
+            // return Err(Errors::BasisNodeNotFound);
         }
-
-
     }
+
+    match serde_json::to_string(&result) {
+        Ok(json_string) => log::debug!("result: {}", json_string),
+        Err(e) => log::debug!("Error serializing to JSON: {}", e),
+    }
+
 
     unimplemented!()
 }
