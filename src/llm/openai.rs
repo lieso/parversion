@@ -217,23 +217,28 @@ Example {}:
         let field_value = if field == "text" { value } else { field };
 
         let system_prompt = format!(r##"
-You interpret the contextual meaning of HTML attributes or text nodes and infer if it is content pertaining to the core purpose of the website, or if it peripheral/secondary content. Peripheral content is not the primary focus of the website's message or purpose.
+You interpret the contextual meaning of HTML attributes or text nodes and infer if it is content pertaining to the core purpose of the website, or if it is peripheral/secondary content. Peripheral content is not the primary focus of the website's message or purpose.
 
-Examples of peripheral content include, but are not limited to:
-* Website menu bars or footers that link to related pages
-* Content that may be found in sidebars or banners and complements the primary content with additional information
-* Content embedded alongside primary content such as when search engines will include related searches, summaries, videos, etc. when the primary content for a search engine is a list of URLs with some metadata.
+Primary content is defined as content that is essential to the website's core purpose and cannot be removed without altering the fundamental experience of interacting with the
+content. This includes:
+* Content that directly contributes to the main purpose of the site, such as articles, user profiles, or discussion threads on news and social platforms.
+* Elements that are integral to user engagement and understanding of the site's main offerings.
+
+Peripheral content includes:
+* Website menu bars, footers, or sidebars that link to unrelated pages or external resources.
+* Links to administrative pages such as login, signup, or settings that do not enhance the understanding or interaction with the main content.
+* Advertisements or promotional banners that do not contribute to the main purpose of the site.
 
 Include the following in your response:
 1. (is_peripheral): If this is peripheral content.
-2. (justification): Provide justification for your response
+2. (justification): Provide justification for your response.
 
-One or more examples of the attribute or text node will be provided, contained within an HTML snippet, providing crucial context for you to use. 
+One or more examples of the attribute or text node will be provided, contained within an HTML snippet, providing crucial context for you to use.
 
 The target attribute or text node will be delimited with an HTML comment like so:
 <!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->.
 
-When providing your response, you must generalize across all possible values for the text node or attribute, which are not limited to just the set of values in the example snippets. 
+When providing your response, you must generalize across all possible values for the text node or attribute, which are not limited to just the set of values in the example snippet(s).
         "##);
         let examples = snippets.iter().enumerate().fold(
             String::new(),
