@@ -1,4 +1,7 @@
 use async_trait::async_trait;
+use std::sync::Arc;
+use tokio::fs as async_fs;
+use tokio::sync::RwLock as AsyncRwLock;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use serde_json::Value;
@@ -55,11 +58,35 @@ impl Provider for VoidProvider {
 
 pub struct YamlFileProvider {
     file_path: String,
+    cache: Arc<AsyncRwLock<Option<serde_yaml::Value>>>,
 }
 
 impl YamlFileProvider {
     pub fn new(file_path: String) -> Self {
-        YamlFileProvider { file_path }
+        Self {
+            file_path,
+            cache: Arc::new(AsyncRwLock::new(None)),
+        }
+    }
+
+    async fn load_data(&self) -> Result<serde_yaml::Value, Errors> {
+        let mut cache = self.cache.write().await;
+        if cache.is_none() {
+            let data = async_fs::read_to_string(&self.file_path).await.map_err(|_| Errors::FileReadError)?;
+            let yaml: serde_yaml::Value = serde_yaml::from_str(&data).map_err(|_| Errors::YamlParseError)?;
+            *cache = Some(yaml.clone());
+            Ok(yaml)
+        } else {
+            Ok(cache.clone().unwrap())
+        }
+    }
+
+    async fn save_data(&self, yaml: &serde_yaml::Value) -> Result<(), Errors> {
+        let new_yaml_str = serde_yaml::to_string(yaml).map_err(|_| Errors::UnexpectedError)?;
+        async_fs::write(&self.file_path, new_yaml_str).await.map_err(|_| Errors::UnexpectedError)?;
+        let mut cache = self.cache.write().await;
+        *cache = Some(yaml.clone());
+        Ok(())
     }
 }
 
@@ -69,19 +96,7 @@ impl Provider for YamlFileProvider {
         &self,
         features: &HashSet<Hash>
     ) -> Result<Option<Profile>, Errors> {
-        let data = fs::read_to_string(&self.file_path)
-            .map_err(|_| Errors::FileReadError)?;
-
-        let serialized_features = serde_yaml::to_string(features).expect("Could not serialize to yaml");
-
-        log::debug!("serialized_features: {}", serialized_features);
-
-        let yaml_result: Result<serde_yaml::Value, _> = serde_yaml::from_str(&data);
-        if let Err(e) = yaml_result {
-            log::error!("Failed to parse YAML: {:?}", e);
-            return Err(Errors::YamlParseError);
-        }
-        let yaml = yaml_result.unwrap();
+        let yaml = self.load_data().await?;
 
         let profiles: Vec<Profile> = yaml.get("profiles")
             .and_then(|dp| {
@@ -107,15 +122,7 @@ impl Provider for YamlFileProvider {
         &self,
         lineage: &Lineage
     ) -> Result<Option<BasisNode>, Errors> {
-        let data = fs::read_to_string(&self.file_path)
-            .map_err(|_| Errors::FileReadError)?;
-
-        let yaml_result: Result<serde_yaml::Value, _> = serde_yaml::from_str(&data);
-        if let Err(e) = yaml_result {
-            log::error!("Failed to parse YAML: {:?}", e);
-            return Err(Errors::YamlParseError);
-        }
-        let yaml = yaml_result.unwrap();
+        let yaml = self.load_data().await?;
 
         let basis_nodes: Vec<BasisNode> = yaml.get("basis_nodes")
             .and_then(|bn| {
@@ -141,11 +148,7 @@ impl Provider for YamlFileProvider {
         lineage: &Lineage,
         basis_node: BasisNode,
     ) -> Result<(), Errors> {
-        let data = fs::read_to_string(&self.file_path)
-            .map_err(|_| Errors::UnexpectedError)?;
-
-        let mut yaml: serde_yaml::Value = serde_yaml::from_str(&data)
-            .map_err(|_| Errors::UnexpectedError)?;
+        let mut yaml = self.load_data().await?;
 
         let serialized_basis_node = serde_yaml::to_value(&basis_node)
             .map_err(|_| Errors::UnexpectedError)?;
@@ -155,17 +158,12 @@ impl Provider for YamlFileProvider {
                 .ok_or(Errors::YamlParseError)?
                 .push(serialized_basis_node);
         } else {
-            // Initialize basis_nodes as a sequence if it doesn't exist
-            yaml["basis_nodes"] = serde_yaml::Value::Sequence(vec![serialized_basis_node]);
+            yaml["basis_nodes"] = serde_yaml::Value::Sequence(
+                vec![serialized_basis_node]
+            );
         }
 
-        let new_yaml_str = serde_yaml::to_string(&yaml)
-            .map_err(|_| Errors::UnexpectedError)?;
-
-        fs::write(&self.file_path, new_yaml_str)
-            .map_err(|_| Errors::UnexpectedError)?;
-
-        Ok(())
+        self.save_data(&yaml).await
     }
 }
 
