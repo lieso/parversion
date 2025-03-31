@@ -44,9 +44,10 @@ impl Analysis {
 
         log::info!("Completed node analysis");
 
-        let network_analysis = NetworkAnalysis {
-            basis_networks: Vec::new(),
-        };
+        let network_analysis = NetworkAnalysis::new(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context),
+        ).await?;
 
         log::info!("Completed network analysis");
 
@@ -68,10 +69,9 @@ impl NodeAnalysis {
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
     ) -> Result<NodeAnalysis, Errors> {
-
         log::info!("Performing node analysis");
 
-        let basis_nodes: Vec<BasisNode> = Self::get_basis_nodes_debug(
+        let basis_nodes: Vec<BasisNode> = Self::get_basis_nodes(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
         ).await?;
@@ -87,7 +87,7 @@ impl NodeAnalysis {
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
     ) -> Result<Vec<BasisNode>, Errors> {
-        log::trace!("In get_basis_nodes");
+        log::trace!("In get_basis_nodes_debug");
 
         let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
 
@@ -197,4 +197,31 @@ impl NodeAnalysis {
 
 struct NetworkAnalysis {
     basis_networks: Vec<BasisNetwork>,
+}
+
+impl NetworkAnalysis {
+    pub async fn new<P: Provider>(
+        provider: Arc<P>,
+        meta_context: Arc<MetaContext>,
+    ) -> Result<NetworkAnalysis, Errors> {
+        log::info!("Performing network analysis");
+
+        let basis_networks: Vec<BasisNetwork> = Self::get_basis_networks_debug(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context),
+        ).await?;
+
+
+
+        unimplemented!()
+    }
+
+    async fn get_basis_networks_debug<P: Provider>(
+        provider: Arc<P>,
+        meta_context: Arc<MetaContext>,
+    ) -> Result<Vec<BasisNetwork>, Errors> {
+        log::trace!("In get_basis_networks_debug");
+
+        unimplemented!()
+    }
 }
