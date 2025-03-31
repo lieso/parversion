@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashSet, HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 use futures::future;
@@ -221,6 +221,33 @@ impl NetworkAnalysis {
         meta_context: Arc<MetaContext>,
     ) -> Result<Vec<BasisNetwork>, Errors> {
         log::trace!("In get_basis_networks_debug");
+
+
+        let graph_root = Arc::clone(&meta_context.graph_root);
+
+        let mut queue = VecDeque::new();
+
+        queue.push_back(graph_root);
+
+
+        while let Some(current) = queue.pop_front() {
+
+
+
+            log::info!("graph_node: {}", read_lock!(current).description);
+
+
+
+            for child in read_lock!(current).children.iter() {
+                queue.push_back(child.clone());
+            }
+        }
+
+
+
+
+
+
 
         unimplemented!()
     }
