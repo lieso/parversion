@@ -222,34 +222,66 @@ impl NetworkAnalysis {
     ) -> Result<Vec<BasisNetwork>, Errors> {
         log::trace!("In get_basis_networks");
 
-
         let graph_root = Arc::clone(&meta_context.graph_root);
 
         let mut queue = VecDeque::new();
+        let mut unique_subgraphs = HashMap::new();
 
         queue.push_back(graph_root);
 
-
         while let Some(current) = queue.pop_front() {
+            let current_read = read_lock!(current);
 
-            log::info!("graph_node: {}", read_lock!(current).description);
-            log::info!("subgraph_hash: {}", read_lock!(current).subgraph_hash);
+            log::info!("graph_node: {}", current_read.description);
+            log::info!("subgraph_hash: {}", current_read.subgraph_hash);
 
+            if current_read.children.is_empty() {
+                log::info!("Current node is leaf node. Not proceeding further.");
+                continue;
+            }
 
+            if !unique_subgraphs.contains_key(&current_read.subgraph_hash) {
+                unique_subgraphs.insert(current_read.subgraph_hash.clone(), current.clone());
+            }
 
-
-
-            for child in read_lock!(current).children.iter() {
+            for child in &current_read.children {
                 queue.push_back(child.clone());
             }
         }
 
+        log::info!("Number of unique subgraphs: {:?}", unique_subgraphs.len());
 
+        let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+        let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
+        let mut handles = Vec::new();
+        for subgraph in unique_subgraphs.values().cloned() {
+            let _permit = semaphore.clone().acquire_owned().await.unwrap();
+            let cloned_provider = Arc::clone(&provider);
+            let cloned_meta_context = Arc::clone(&meta_context);
 
+            let handle = task::spawn(async move {
+                Self::get_basis_network(
+                    cloned_provider,
+                    cloned_meta_context,
+                    subgraph.clone()
+                ).await
+            });
+            handles.push(handle);
+        }
 
+        let results: Vec<Result<BasisNetwork, Errors>> = try_join_all(handles).await?;
 
+        results.into_iter().collect::<Result<Vec<BasisNetwork>, Errors>>()
+    }
 
-        unimplemented!()
+    async fn get_basis_network<P: Provider>(
+        provider: Arc<P>,
+        meta_context: Arc<MetaContext>,
+        graph: Graph
+    ) -> Result<BasisNetwork, Errors> {
+        log::trace!("In get_basis_network");
+
+        unimplemented!();
     }
 }
