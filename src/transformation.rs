@@ -48,9 +48,9 @@ impl Transform for JsonSchemaTransform {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DataNodeFieldsTransform {
-    id: ID,
-    runtime: Runtime,
-    code: String,
+    pub id: ID,
+    pub runtime: Runtime,
+    pub code: String,
 }
 
 impl Transform for DataNodeFieldsTransform {

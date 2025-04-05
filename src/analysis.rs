@@ -1,4 +1,5 @@
 use std::collections::{HashSet, HashMap, VecDeque};
+use serde_json::{json, Value};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 use futures::future;
@@ -17,13 +18,21 @@ use crate::provider::Provider;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode};
 use crate::profile::Profile;
-use crate::basis_network::BasisNetwork;
+use crate::basis_network::{
+    BasisNetwork,
+    NetworkRelationship,
+    Recursion
+};
 use crate::config::{CONFIG};
 use crate::context::{Context, ContextID};
 use crate::context_group::ContextGroup;
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
-use crate::transformation::{FieldTransformation};
+use crate::transformation::{
+    FieldTransformation,
+    DataNodeFieldsTransform,
+    Runtime
+};
 
 pub struct Analysis {
     node_analysis: NodeAnalysis,
@@ -282,6 +291,79 @@ impl NetworkAnalysis {
     ) -> Result<BasisNetwork, Errors> {
         log::trace!("In get_basis_network");
 
-        unimplemented!();
+        let mut result: HashMap<String, Value> = HashMap::new();
+
+        let mut queue = VecDeque::new();
+        queue.push_back(graph);
+        
+        while let Some(current) = queue.pop_front() {
+            for child in &read_lock!(current).children {
+                queue.push_back(child.clone());
+            }
+
+
+
+            let context = meta_context.contexts.get(&read_lock!(current).id).unwrap().clone();
+            let data_node = &context.data_node;
+
+
+            if let Some(basis_node) = provider.get_basis_node_by_lineage(&context.lineage).await? {
+
+                let json_nodes: Vec<JsonNode> = basis_node.transformations
+                    .into_iter()
+                    .map(|transformation| {
+                        transformation.transform(Arc::clone(&data_node))
+                            .expect("Could not transform data node field")
+                    })
+                    .collect();
+
+                for json_node in json_nodes.into_iter() {
+                    let json = json_node.json;
+
+                    let trimmed_value = json!(json.value.trim().to_string());
+
+
+                    if let Some(existing_value) = result.get_mut(&json.key) {
+                        if let Value::Array(ref mut arr) = existing_value {
+                            arr.push(trimmed_value);
+                        } else {
+                            *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
+                        }
+                    } else {
+                        result.insert(json.key, trimmed_value);
+                    }
+                }
+
+            } else {
+                log::warn!("Basis node not found");
+            }
+
+
+        }
+
+
+        log::debug!("=====================================================================================================");
+        log::debug!("=====================================================================================================");
+        log::debug!("=====================================================================================================");
+
+        log::debug!("result: {:?}", result);
+
+
+
+
+        let basis_network = BasisNetwork {
+            id: ID::new(),
+            description: "Placeholder Description".to_string(),
+            relationship: NetworkRelationship::Recursion(Recursion {
+                lineage: Lineage::new(),
+                transformation: DataNodeFieldsTransform {
+                    id: ID::new(),
+                    runtime: Runtime::QuickJS,
+                    code: "".to_string(),
+                },
+            }),
+        };
+
+        Ok(basis_network)
     }
 }
