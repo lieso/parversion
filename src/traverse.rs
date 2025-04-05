@@ -82,6 +82,18 @@ pub fn traverse_with_context(
                 .collect();
 
             let mut write_lock = graph_node.write().unwrap();
+
+            let child_hashes: Vec<Hash> = children.iter()
+                .map(|child| read_lock!(child).hash.clone())
+                .collect();
+
+            let mut subgraph_hash = Hash::from_items(child_hashes.clone());
+            let subgraph_hash = subgraph_hash
+                .sort()
+                .push(write_lock.hash.clone())
+                .finalize();
+
+            write_lock.subgraph_hash = subgraph_hash.clone();
             write_lock.children.extend(children);
         }
 

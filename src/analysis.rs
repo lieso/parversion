@@ -206,7 +206,7 @@ impl NetworkAnalysis {
     ) -> Result<NetworkAnalysis, Errors> {
         log::info!("Performing network analysis");
 
-        let basis_networks: Vec<BasisNetwork> = Self::get_basis_networks_debug(
+        let basis_networks: Vec<BasisNetwork> = Self::get_basis_networks(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
         ).await?;
@@ -216,11 +216,11 @@ impl NetworkAnalysis {
         unimplemented!()
     }
 
-    async fn get_basis_networks_debug<P: Provider>(
+    async fn get_basis_networks<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
     ) -> Result<Vec<BasisNetwork>, Errors> {
-        log::trace!("In get_basis_networks_debug");
+        log::trace!("In get_basis_networks");
 
 
         let graph_root = Arc::clone(&meta_context.graph_root);
@@ -232,9 +232,10 @@ impl NetworkAnalysis {
 
         while let Some(current) = queue.pop_front() {
 
-
-
             log::info!("graph_node: {}", read_lock!(current).description);
+            log::info!("subgraph_hash: {}", read_lock!(current).subgraph_hash);
+
+
 
 
 
