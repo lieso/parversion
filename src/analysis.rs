@@ -291,62 +291,22 @@ impl NetworkAnalysis {
     ) -> Result<BasisNetwork, Errors> {
         log::trace!("In get_basis_network");
 
-        let mut result: HashMap<String, Value> = HashMap::new();
 
-        let mut queue = VecDeque::new();
-        queue.push_back(graph);
+        let current_context = meta_context.contexts
+            .get(&read_lock!(graph).id)
+            .unwrap()
+            .clone();
         
-        while let Some(current) = queue.pop_front() {
-            for child in &read_lock!(current).children {
-                queue.push_back(child.clone());
-            }
-
-
-
-            let context = meta_context.contexts.get(&read_lock!(current).id).unwrap().clone();
-            let data_node = &context.data_node;
-
-
-            if let Some(basis_node) = provider.get_basis_node_by_lineage(&context.lineage).await? {
-
-                let json_nodes: Vec<JsonNode> = basis_node.transformations
-                    .into_iter()
-                    .map(|transformation| {
-                        transformation.transform(Arc::clone(&data_node))
-                            .expect("Could not transform data node field")
-                    })
-                    .collect();
-
-                for json_node in json_nodes.into_iter() {
-                    let json = json_node.json;
-
-                    let trimmed_value = json!(json.value.trim().to_string());
-
-
-                    if let Some(existing_value) = result.get_mut(&json.key) {
-                        if let Value::Array(ref mut arr) = existing_value {
-                            arr.push(trimmed_value);
-                        } else {
-                            *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
-                        }
-                    } else {
-                        result.insert(json.key, trimmed_value);
-                    }
-                }
-
-            } else {
-                log::warn!("Basis node not found");
-            }
-
-
-        }
-
+        let current_json = current_context.generate_json(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context)
+        ).await;
 
         log::debug!("=====================================================================================================");
         log::debug!("=====================================================================================================");
         log::debug!("=====================================================================================================");
 
-        log::debug!("result: {:?}", result);
+        log::debug!("current_json: {:?}", current_json);
 
 
 

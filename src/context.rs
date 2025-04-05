@@ -1,11 +1,14 @@
 use std::sync::{Arc, RwLock};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
+use serde_json::{json, Value};
 
 use crate::prelude::*;
 use crate::data_node::DataNode;
 use crate::graph_node::{GraphNode, GraphNodeID};
 use crate::document_node::DocumentNode;
 use crate::meta_context::MetaContext;
+use crate::provider::Provider;
+use crate::json_node::JsonNode;
 
 pub type ContextID = ID;
 
@@ -19,6 +22,65 @@ pub struct Context {
 }
 
 impl Context {
+    pub async fn generate_json<P: Provider>(
+        &self,
+        provider: Arc<P>,
+        meta_context: Arc<MetaContext>,
+    ) -> Result<String, Errors> {
+        log::trace!("In generate_json");
+
+        let mut result: HashMap<String, Value> = HashMap::new();
+
+        let mut queue = VecDeque::new();
+        queue.push_back(self.graph_node.clone());
+        
+        while let Some(current) = queue.pop_front() {
+            for child in &read_lock!(current).children {
+                queue.push_back(child.clone());
+            }
+
+            let context = meta_context.contexts
+                .get(&read_lock!(current).id)
+                .unwrap()
+                .clone();
+
+            let data_node = &context.data_node;
+
+            if let Some(basis_node) = provider.get_basis_node_by_lineage(&context.lineage).await? {
+
+                let json_nodes: Vec<JsonNode> = basis_node.transformations
+                    .into_iter()
+                    .map(|transformation| {
+                        transformation.transform(Arc::clone(&data_node))
+                            .expect("Could not transform data node field")
+                    })
+                    .collect();
+
+                for json_node in json_nodes.into_iter() {
+                    let json = json_node.json;
+
+                    let trimmed_value = json!(json.value.trim().to_string());
+
+                    if let Some(existing_value) = result.get_mut(&json.key) {
+                        if let Value::Array(ref mut arr) = existing_value {
+                            arr.push(trimmed_value);
+                        } else {
+                            *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
+                        }
+                    } else {
+                        result.insert(json.key, trimmed_value);
+                    }
+                }
+            } else {
+                log::warn!("Basis node not found");
+            }
+        }
+
+        let json_string = serde_json::to_string(&result).expect("Could not convert to json string");
+
+        Ok(json_string)
+    }
+
     pub fn generate_snippet(&self, meta_context: Arc<MetaContext>) -> String {
         log::trace!("In generate_snippet");
 
