@@ -302,11 +302,40 @@ impl NetworkAnalysis {
             Arc::clone(&meta_context)
         ).await;
 
-        log::debug!("=====================================================================================================");
-        log::debug!("=====================================================================================================");
-        log::debug!("=====================================================================================================");
 
         log::debug!("current_json: {:?}", current_json);
+
+
+        
+
+
+
+
+        let parent: Graph = read_lock!(graph).parents
+            .first()
+            .unwrap()
+            .clone();
+        let sibling_contexts: Vec<_> = read_lock!(parent).children
+            .iter()
+            .filter(|child| read_lock!(child).id != read_lock!(graph).id)
+            .map(|sibling| {
+                meta_context.contexts
+                    .get(&read_lock!(sibling).id)
+                    .unwrap()
+                    .clone()
+            })
+        .collect();
+
+        for sibling_context in sibling_contexts {
+            let sibling_json = sibling_context.generate_json(
+                Arc::clone(&provider),
+                Arc::clone(&meta_context)
+            ).await;
+
+            log::debug!("sibling_json: {:?}", sibling_json);
+        }
+
+
 
 
 
