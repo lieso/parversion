@@ -40,4 +40,18 @@ impl LLM {
 
         Ok(field_transformations)
     }
+
+    pub async fn get_relationships(
+        target_json: String,
+        other_subgraphs: Vec<String>
+    ) -> Result<(), Errors> {
+        log::trace!("In get_relationships");
+
+        openai::OpenAI::get_relationships(
+            target_json.clone(),
+            other_subgraphs.clone(),
+        ).await;
+
+        Ok(())
+    }
 }

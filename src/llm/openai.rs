@@ -39,6 +39,12 @@ struct PrimaryResponse {
     pub justification: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct AssociationsResponse {
+    pub matching_fragments: Vec<String>,
+    pub justification: String,
+}
+
 impl OpenAI {
     pub async fn get_field_transformation(
         lineage: &Lineage,
@@ -109,6 +115,134 @@ impl OpenAI {
         };
 
         Some(transformation)
+    }
+
+    pub async fn get_relationships(
+        target_json: String,
+        other_subgraphs: Vec<String>,
+    ) -> Result<(), Errors> {
+        log::trace!("In get_relationships");
+
+        if other_subgraphs.is_empty() {
+            panic!("Expected at least one subgraph");
+        }
+
+        let system_prompt = format!(r##"
+You interpret JSON fragments and indicate which ones match a target fragment such that the fields could be merged together to create a coherent object representing some specific type or resource.
+
+For example, if this is the target JSON:
+{{
+   "id": 123,
+   "title": "The Great Gatsby",
+   "author": "F. Scott Fitzgerald",
+   "publishedYear": 1925,
+   "isbn": "9780743273565",
+   "genre": "Fiction",
+   "availableCopies": 3,
+   "totalCopies": 5
+ }}
+
+And the following fragments are provided:
+
+1.
+{{
+   "location": {{
+     "section": "Fiction",
+     "shelf": "F3"
+   }},
+   "links": {{
+     "self": "/api/books/123",
+     "borrow": "/api/books/123/borrow",
+     "return": "/api/books/123/return"
+   }}
+ }}
+
+2.
+{{
+  "city": "New York",
+  "date": "2023-10-05",
+  "temperature": {{
+    "current": 68,
+    "high": 72,
+    "low": 55
+  }}
+}}
+
+3.
+{{
+  "eventId": 321,
+  "title": "Tech Conference 2023"
+}}
+
+Your response should indicate fragment number 1 as its keys and values seem to contextually match the target fragment.
+
+Zero or multiple fragments may match the target fragment. Please provide an array of matches and a justification too.
+"##);
+
+        let fragments = other_subgraphs.iter().enumerate().fold(
+            String::new(),
+            |mut acc, (index, json)| {
+                acc.push_str(&format!(r##"
+Fragment {}:
+{}
+    "##, index + 1, json));
+                acc
+            },
+        );
+
+        let user_prompt = format!(r##"
+[Target fragment]
+{}
+
+[Fragments]
+{}
+"##, target_json, fragments);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "matching_fragments",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "matching_fragments": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "justification": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["matching_fragments", "justification"],
+                    "additionalProperties": false
+                }
+            }
+        });
+
+        match Self::send_openai_request::<AssociationsResponse>(&system_prompt, &user_prompt, response_format).await {
+            Ok(response) => {
+                log::debug!("╔══════════════════════════════╗");
+                log::debug!("║       ASSOCIATIONS START     ║");
+                log::debug!("╚══════════════════════════════╝");
+
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
+
+                log::debug!("╔═══════════════════════════╗");
+                log::debug!("║       ASSOCIATIONS END    ║");
+                log::debug!("╚═══════════════════════════╝");
+
+                Ok(())
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
     }
 
     async fn get_primary_content(

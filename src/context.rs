@@ -76,9 +76,12 @@ impl Context {
             }
         }
 
-        let json_string = serde_json::to_string(&result).expect("Could not convert to json string");
-
-        Ok(json_string)
+        if result.is_empty() {
+            Ok(String::new())
+        } else {
+            let json_string = serde_json::to_string(&result).expect("Could not convert to json string");
+            Ok(json_string)
+        }
     }
 
     pub fn generate_snippet(&self, meta_context: Arc<MetaContext>) -> String {

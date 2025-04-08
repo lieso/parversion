@@ -261,27 +261,36 @@ impl NetworkAnalysis {
         log::info!("Number of unique subgraphs: {:?}", unique_subgraphs.len());
 
         let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-        let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
-        let mut handles = Vec::new();
-        for subgraph in unique_subgraphs.values().cloned() {
-            let _permit = semaphore.clone().acquire_owned().await.unwrap();
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
+        if max_concurrency == 1 {
+            let mut results = Vec::new();
+            for subgraph in unique_subgraphs.values().cloned() {
+                let cloned_provider = Arc::clone(&provider);
+                let cloned_meta_context = Arc::clone(&meta_context);
+                let result = Self::get_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await;
+                results.push(result);
+            }
+            results.into_iter().collect::<Result<Vec<BasisNetwork>, Errors>>()
+        } else {
+            let semaphore = Arc::new(Semaphore::new(max_concurrency));
+            let mut handles = Vec::new();
+            for subgraph in unique_subgraphs.values().cloned() {
+                let _permit = semaphore.clone().acquire_owned().await.unwrap();
+                let cloned_provider = Arc::clone(&provider);
+                let cloned_meta_context = Arc::clone(&meta_context);
 
-            let handle = task::spawn(async move {
-                Self::get_basis_network(
-                    cloned_provider,
-                    cloned_meta_context,
-                    subgraph.clone()
-                ).await
-            });
-            handles.push(handle);
+                let handle = task::spawn(async move {
+                    Self::get_basis_network(
+                        cloned_provider,
+                        cloned_meta_context,
+                        subgraph.clone()
+                    ).await
+                });
+                handles.push(handle);
+            }
+            let results: Vec<Result<BasisNetwork, Errors>> = try_join_all(handles).await?;
+            results.into_iter().collect::<Result<Vec<BasisNetwork>, Errors>>()
         }
-
-        let results: Vec<Result<BasisNetwork, Errors>> = try_join_all(handles).await?;
-
-        results.into_iter().collect::<Result<Vec<BasisNetwork>, Errors>>()
     }
 
     async fn get_basis_network<P: Provider>(
@@ -300,41 +309,76 @@ impl NetworkAnalysis {
         let current_json = current_context.generate_json(
             Arc::clone(&provider),
             Arc::clone(&meta_context)
-        ).await;
+        ).await?;
 
 
-        log::debug!("current_json: {:?}", current_json);
 
 
         
 
 
 
+        if !current_json.is_empty() {
 
-        let parent: Graph = read_lock!(graph).parents
-            .first()
-            .unwrap()
-            .clone();
-        let sibling_contexts: Vec<_> = read_lock!(parent).children
-            .iter()
-            .filter(|child| read_lock!(child).id != read_lock!(graph).id)
-            .map(|sibling| {
-                meta_context.contexts
-                    .get(&read_lock!(sibling).id)
+
+            if read_lock!(graph).parents.is_empty() {
+
+
+                log::info!("Skipping root node");
+
+
+
+            } else {
+
+
+                let parent: Graph = read_lock!(graph).parents
+                    .first()
                     .unwrap()
-                    .clone()
-            })
-        .collect();
+                    .clone();
+                let sibling_contexts: Vec<_> = read_lock!(parent).children
+                    .iter()
+                    .filter(|child| read_lock!(child).id != read_lock!(graph).id)
+                    .map(|sibling| {
+                        meta_context.contexts
+                            .get(&read_lock!(sibling).id)
+                            .unwrap()
+                            .clone()
+                    })
+                    .collect();
 
-        for sibling_context in sibling_contexts {
-            let sibling_json = sibling_context.generate_json(
-                Arc::clone(&provider),
-                Arc::clone(&meta_context)
-            ).await;
 
-            log::debug!("sibling_json: {:?}", sibling_json);
+                let mut sibling_jsons = Vec::new();
+
+
+                for sibling_context in sibling_contexts {
+                    let sibling_json = sibling_context.generate_json(
+                        Arc::clone(&provider),
+                        Arc::clone(&meta_context)
+                    ).await?;
+
+                    log::debug!("sibling_json: {:?}", sibling_json);
+
+                    if !sibling_json.is_empty() {
+                        sibling_jsons.push(sibling_json);
+                    }
+                }
+
+                log::debug!("current_json: {:?}", current_json);
+
+
+                if !sibling_jsons.is_empty() {
+
+                    LLM::get_relationships(
+                        current_json.clone(),
+                        sibling_jsons.clone()
+                    ).await?;
+
+                }
+
+
+            }
+
         }
-
 
 
 
