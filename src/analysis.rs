@@ -311,6 +311,8 @@ impl NetworkAnalysis {
             Arc::clone(&meta_context)
         ).await?;
 
+        let target_subgraph_hash = read_lock!(current_context.graph_node).subgraph_hash().to_string().unwrap();
+
 
 
 
@@ -337,7 +339,6 @@ impl NetworkAnalysis {
                     .clone();
                 let sibling_contexts: Vec<_> = read_lock!(parent).children
                     .iter()
-                    .filter(|child| read_lock!(child).id != read_lock!(graph).id)
                     .map(|sibling| {
                         meta_context.contexts
                             .get(&read_lock!(sibling).id)
@@ -358,18 +359,20 @@ impl NetworkAnalysis {
 
                     log::debug!("sibling_json: {:?}", sibling_json);
 
+                    let subgraph_hash: String = read_lock!(sibling_context.graph_node).subgraph_hash().to_string().unwrap();
+
                     if !sibling_json.is_empty() {
-                        sibling_jsons.push(sibling_json);
+                        sibling_jsons.push((subgraph_hash, sibling_json));
                     }
                 }
 
                 log::debug!("current_json: {:?}", current_json);
 
 
-                if !sibling_jsons.is_empty() {
+                if sibling_jsons.len() > 1 {
 
                     LLM::get_relationships(
-                        current_json.clone(),
+                        target_subgraph_hash.clone(),
                         sibling_jsons.clone()
                     ).await?;
 

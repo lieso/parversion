@@ -42,14 +42,14 @@ impl LLM {
     }
 
     pub async fn get_relationships(
-        target_json: String,
-        other_subgraphs: Vec<String>
+        target_subgraph_hash: String,
+        subgraphs: Vec<(String, String)>
     ) -> Result<(), Errors> {
         log::trace!("In get_relationships");
 
         openai::OpenAI::get_relationships(
-            target_json.clone(),
-            other_subgraphs.clone(),
+            target_subgraph_hash.clone(),
+            subgraphs.clone(),
         ).await;
 
         Ok(())

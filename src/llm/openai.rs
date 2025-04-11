@@ -118,85 +118,103 @@ impl OpenAI {
     }
 
     pub async fn get_relationships(
-        target_json: String,
-        other_subgraphs: Vec<String>,
+        target_subgraph_hash: String,
+        subgraphs: Vec<(String, String)>,
     ) -> Result<(), Errors> {
         log::trace!("In get_relationships");
 
-        if other_subgraphs.is_empty() {
+        if subgraphs.is_empty() {
             panic!("Expected at least one subgraph");
         }
 
         let system_prompt = format!(r##"
-You interpret JSON fragments and indicate which ones match a target fragment such that the fields could be merged together to create a coherent object representing some specific type or resource.
+The data model for a website has been fragmented into distinct objects. You must interpret JSON fragments and attempt to reconstitute the original objects by matching fragment IDs to other fragment IDs.
 
-For example, if this is the target JSON:
+A target fragment ID will be provided, and a list of fragments with corresponding fragment ID. Attempt to determine what other fragment IDs may match the target fragment ID by considering the contextual meaning of JSON values and their potential relationship to other fragments of particular type IDs.
+
+If objects with the target fragment type ID would be merged with other objects of another type ID, the resulting JSON should be a coherent object representing a particular type in the data model for a website.
+
+Zero or multiple fragments may match the target fragment. Please provide an array of fragment ID matches and a justification too.
+
+Do not consider the keys or structure of the object, only the values.
+
+Only provide a unique list of fragment IDs that does not include the target fragment ID.
+
+The following is an example of how to perform this task:
+
+
+Target fragment ID: 1
+
+Fragment ID: 1
 {{
-   "id": 123,
-   "title": "The Great Gatsby",
-   "author": "F. Scott Fitzgerald",
-   "publishedYear": 1925,
-   "isbn": "9780743273565",
-   "genre": "Fiction",
-   "availableCopies": 3,
-   "totalCopies": 5
- }}
-
-And the following fragments are provided:
-
-1.
-{{
-   "location": {{
-     "section": "Fiction",
-     "shelf": "F3"
-   }},
-   "links": {{
-     "self": "/api/books/123",
-     "borrow": "/api/books/123/borrow",
-     "return": "/api/books/123/return"
-   }}
- }}
-
-2.
-{{
-  "city": "New York",
-  "date": "2023-10-05",
-  "temperature": {{
-    "current": 68,
-    "high": 72,
-    "low": 55
-  }}
+  "id": 1,
+  "username": "alice_smith",
+  "email": "alice.smith@example.com",
+  "firstName": "Alice"
 }}
 
-3.
+Fragment ID: 2
 {{
-  "eventId": 321,
-  "title": "Tech Conference 2023"
+  "lastName": "Smith",
+  "createdAt": "2023-01-10T09:00:00Z",
+  "roles": ["user"],
+  "isActive": true
 }}
 
-Your response should indicate fragment number 1 as its keys and values seem to contextually match the target fragment.
+Fragment ID: 1
+{{
+  "id": 2,
+  "username": "bob_jones",
+  "email": "bob.jones@example.com",
+  "firstName": "Bob"
+}}
 
-Zero or multiple fragments may match the target fragment. Please provide an array of matches and a justification too.
+Fragment ID: 2
+{{
+  "lastName": "Jones",
+  "createdAt": "2023-01-12T11:15:00Z",
+  "roles": ["user", "moderator"],
+  "isActive": true
+}}
+
+Fragment ID: 1
+{{
+  "id": 3,
+  "username": "carol_white",
+  "email": "carol.white@example.com",
+  "firstName": "Carol"
+}}
+
+Fragment ID: 2
+{{
+  "lastName": "White",
+  "createdAt": "2023-01-14T13:30:00Z",
+  "roles": ["user"],
+  "isActive": false
+}}
+
+The response should indicate that fragment ID 2 matches the target fragment ID 1, as we can merge pairs of fragments with IDs 1 and 2 to get coherent typed objects representing user accounts.
+
 "##);
 
-        let fragments = other_subgraphs.iter().enumerate().fold(
+        let fragments = subgraphs.iter().enumerate().fold(
             String::new(),
-            |mut acc, (index, json)| {
+            |mut acc, (index, (subgraph_hash, json))| {
                 acc.push_str(&format!(r##"
-Fragment {}:
+Fragment ID: {}:
 {}
-    "##, index + 1, json));
+    "##, subgraph_hash, json));
                 acc
             },
         );
 
         let user_prompt = format!(r##"
-[Target fragment]
+[Target fragment ID]
 {}
 
 [Fragments]
 {}
-"##, target_json, fragments);
+"##, target_subgraph_hash, fragments);
 
         let response_format = json!({
             "type": "json_schema",

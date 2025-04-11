@@ -32,4 +32,21 @@ impl GraphNode {
             children: Vec::new(),
         }
     }
+
+    pub fn subgraph_hash(&self) -> Hash {
+        let mut combined_hash = Hash::new();
+
+        combined_hash.push(self.hash.to_string().unwrap_or_default());
+
+        for child in &self.children {
+            let child_read = read_lock!(child);
+            let child_subgraph_hash = child_read.subgraph_hash();
+            combined_hash.push(child_subgraph_hash.to_string().unwrap_or_default());
+        }
+
+        combined_hash.sort();
+        combined_hash.finalize();
+
+        combined_hash
+    }
 }
