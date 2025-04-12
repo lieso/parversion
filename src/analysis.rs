@@ -261,9 +261,8 @@ impl NetworkAnalysis {
             for subgraph in unique_subgraphs.values().cloned() {
                 let cloned_provider = Arc::clone(&provider);
                 let cloned_meta_context = Arc::clone(&meta_context);
-                if let Some(result) = Self::get_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await? {
-                    results.push(result);
-                }
+                let result = Self::get_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await?;
+                results.push(result);
             }
 
             Ok(results.into_iter().collect::<Vec<BasisNetwork>>())
@@ -284,16 +283,8 @@ impl NetworkAnalysis {
                 });
                 handles.push(handle);
             }
-            let results: Vec<Result<Option<BasisNetwork>, Errors>> = try_join_all(handles).await?;
-
-            let networks: Vec<BasisNetwork> = results.into_iter()
-                .filter_map(|res| match res {
-                    Ok(Some(network)) => Some(network),
-                    _ => None,
-                })
-                .collect();
-
-            Ok(networks)
+            let results: Vec<Result<BasisNetwork, Errors>> = try_join_all(handles).await?;
+            results.into_iter().collect::<Result<Vec<BasisNetwork>, Errors>>()
         }
     }
 
@@ -301,27 +292,30 @@ impl NetworkAnalysis {
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
         graph: Graph
-    ) -> Result<Option<BasisNetwork>, Errors> {
+    ) -> Result<BasisNetwork, Errors> {
         log::trace!("In get_basis_network");
-
 
         let current_context = meta_context.contexts
             .get(&read_lock!(graph).id)
             .unwrap()
             .clone();
+
+        let target_subgraph_hash = read_lock!(current_context.graph_node).subgraph_hash().to_string().unwrap();
+        
+
+
+        if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(&target_subgraph_hash).await? {
+            log::info!("Provider has supplied basis network");
+
+            return Ok(basis_network);
+        };
+
+
         
         let current_json = current_context.generate_json(
             Arc::clone(&provider),
             Arc::clone(&meta_context)
         ).await?;
-
-        let target_subgraph_hash = read_lock!(current_context.graph_node).subgraph_hash().to_string().unwrap();
-
-
-
-        let overall_context = meta_context.get_summary().await?;
-
-        
 
 
 
@@ -376,6 +370,7 @@ impl NetworkAnalysis {
 
                 if sibling_jsons.len() > 1 {
 
+                    let overall_context = meta_context.get_summary().await?;
                     let matches = LLM::get_relationships(
                         overall_context.clone(),
                         target_subgraph_hash.clone(),
@@ -393,10 +388,16 @@ impl NetworkAnalysis {
                         let basis_network = BasisNetwork {
                             id: ID::new(),
                             description: "Placeholder Description".to_string(),
+                            subgraph_hash: target_subgraph_hash.clone(),
                             relationship: NetworkRelationship::Association(associated_subgraphs),
                         };
 
-                        return Ok(Some(basis_network));
+                        provider.save_basis_network(
+                            target_subgraph_hash.clone(),
+                            basis_network.clone(),
+                        ).await?;
+
+                        return Ok(basis_network);
                     }
 
 
@@ -409,22 +410,25 @@ impl NetworkAnalysis {
         }
 
 
-
-
-
         let basis_network = BasisNetwork {
             id: ID::new(),
-            description: "Placeholder Description".to_string(),
-            relationship: NetworkRelationship::Recursion(Recursion {
-                lineage: Lineage::new(),
-                transformation: DataNodeFieldsTransform {
-                    id: ID::new(),
-                    runtime: Runtime::QuickJS,
-                    code: "".to_string(),
-                },
-            }),
+            description: "Null network".to_string(),
+            subgraph_hash: target_subgraph_hash.clone(),
+            relationship: NetworkRelationship::Null,
         };
 
-        Ok(None)
+
+
+
+        provider.save_basis_network(
+            target_subgraph_hash.clone(),
+            basis_network.clone(),
+        ).await?;
+
+
+
+
+
+        Ok(basis_network)
     }
 }

@@ -10,6 +10,7 @@ pub struct BasisNetwork {
     pub id: ID,
     pub description: String,
     pub relationship: NetworkRelationship,
+    pub subgraph_hash: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -24,4 +25,5 @@ pub type Association = Vec<String>; // subgraph hashes
 pub enum NetworkRelationship {
     Recursion(Recursion),
     Association(Association),
+    Null,
 }

@@ -10,6 +10,7 @@ use serde_yaml;
 use crate::prelude::*;
 use crate::profile::Profile;
 use crate::basis_node::BasisNode;
+use crate::basis_network::BasisNetwork;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
@@ -25,6 +26,15 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineage: &Lineage,
         basis_node: BasisNode,
+    ) -> Result<(), Errors>;
+    async fn get_basis_network_by_subgraph_hash(
+        &self,
+        subgraph_hash: &String
+    ) -> Result<Option<BasisNetwork>, Errors>;
+    async fn save_basis_network(
+        &self,
+        subgraph_hash: String,
+        basis_network: BasisNetwork
     ) -> Result<(), Errors>;
 }
 
@@ -51,7 +61,21 @@ impl Provider for VoidProvider {
         _lineage: &Lineage,
         _basis_node: BasisNode,
     ) -> Result<(), Errors> {
-        // Unimplemented for VoidProvider
+        Ok(())
+    }
+
+    async fn get_basis_network_by_subgraph_hash(
+        &self,
+        _subgraph_hash: &String
+    ) -> Result<Option<BasisNetwork>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_basis_network(
+        &self,
+        _subgraph_hash: String,
+        _basis_network: BasisNetwork
+    ) -> Result<(), Errors> {
         Ok(())
     }
 }
@@ -165,70 +189,52 @@ impl Provider for YamlFileProvider {
 
         self.save_data(&yaml).await
     }
-}
 
-pub struct JsonFileProvider {
-    file_path: String,
-}
-
-impl JsonFileProvider {
-    pub fn new(file_path: String) -> Self {
-        JsonFileProvider { file_path }
-    }
-}
-
-#[async_trait]
-impl Provider for JsonFileProvider {
-    async fn get_profile(
+    async fn get_basis_network_by_subgraph_hash(
         &self,
-        features: &HashSet<Hash>
-    ) -> Result<Option<Profile>, Errors> {
-        let data = fs::read_to_string(&self.file_path)
-            .map_err(|_| Errors::FileReadError)?;
+        subgraph_hash: &String
+    ) -> Result<Option<BasisNetwork>, Errors> {
+        let yaml = self.load_data().await?;
 
-        let json: Value = serde_json::from_str(&data)
-            .map_err(|_| Errors::JsonParseError)?;
+        let basis_networks: Vec<BasisNetwork> = yaml.get("basis_networks")
+            .and_then(|bn| {
+                let deserialized: Result<Vec<BasisNetwork>, _> = serde_yaml::from_value(bn.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(Vec::new);
 
-        let profiles: Vec<Profile> = json.get("profiles")
-            .and_then(|dp| serde_json::from_value(dp.clone()).ok())
-            .ok_or(Errors::JsonParseError)?;
-
-        if let Some(target_profile) = Profile::get_similar_profile(
-            &profiles,
-            features
-        ) {
-            Ok(Some(target_profile))
-        } else {
-            Ok(None)
+        for basis_network in basis_networks {
+            if basis_network.subgraph_hash == *subgraph_hash {
+                return Ok(Some(basis_network));
+            }
         }
-    }
 
-    async fn get_basis_node_by_lineage(
-        &self,
-        lineage: &Lineage
-    ) -> Result<Option<BasisNode>, Errors> {
         Ok(None)
     }
 
-    async fn save_basis_node(
+    async fn save_basis_network(
         &self,
-        _lineage: &Lineage,
-        _basis_node: BasisNode,
+        subgraph_hash: String,
+        basis_network: BasisNetwork
     ) -> Result<(), Errors> {
-        // Unimplemented for JsonFileProvider
-        Ok(())
+        let mut yaml = self.load_data().await?;
+
+        let serialized_basis_network = serde_yaml::to_value(&basis_network)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        if let Some(basis_networks) = yaml.get_mut("basis_networks") {
+            basis_networks.as_sequence_mut()
+                .ok_or(Errors::YamlParseError)?
+                .push(serialized_basis_network);
+        } else {
+            yaml["basis_networks"] = serde_yaml::Value::Sequence(
+                vec![serialized_basis_network]
+            );
+        }
+
+        self.save_data(&yaml).await
     }
-
-}
-
-pub struct SqliteProvider {
-    db_path: String,
-}
-
-impl SqliteProvider {
-    pub fn new(db_path: String) -> Self {
-        SqliteProvider { db_path }
-    }
-
-
 }

@@ -1517,3 +1517,168 @@ basis_nodes:
 
                       S
   transformations: []
+basis_networks:
+- id: d516a99c-4119-400a-a6b4-54678e07ff0d
+  description: Placeholder Description
+  relationship: !Association
+  - 01894a9b9967632a82dbb497db6fd98f9a74d474cc7d5865c35a62dda855ce9a
+  - 389c84618cfa59e3c1a8a0bbe7d8771336805f76eb00ac8e8100fed5fc710216
+  subgraph_hash: 389c84618cfa59e3c1a8a0bbe7d8771336805f76eb00ac8e8100fed5fc710216
+- id: 6c90e15f-8fbf-40f7-a215-332c1f6b9480
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: ecadac548566da3b974c1850aa61b9579b00a1a87fd8e05fc5c7b438238d7c68
+- id: 766a442b-a0f0-490d-9f4c-43d98a705292
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: cfb37c70110b9a20984eca30c421b7fb8769cd861e6cec01f4ea4fa976407eac
+- id: 22925285-9f26-4035-a998-f0af4848fb0e
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 38e274a7405be16dfc12d15ad0e3bb1bf831695758aacb0f770d2dbd58241b0a
+- id: 564f24e9-b5c6-43ed-8ffe-4bb829c91f68
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: f2bc548eab383bacf5d64053ef90721173edf06b0cdd07e800e2f56453be775a
+- id: e8d82e47-cb40-49c6-a2fd-ef9b77df07e7
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 4974276e5531538c8d1bce21ab45f30f6e4d440621a8ebe740cbc033fb78c5c9
+- id: 2ea63eef-87d7-426b-8449-b52b1c4d1565
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 790aa092d1350ed1161c543ca73e55c76dd22186c5ab1b997d4f93e7eda48384
+- id: 6eb820cb-ab56-4b54-8390-4532f900e6f3
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 5e6f74b0cbc6723332aa33f657421fcb7d49cb371c3ce6d36779f53843d59b9b
+- id: 5191ec85-9eab-4ad1-9c23-73c12038c81c
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 9e40b45142e22cde52330872665d2f2cbb3dab6b91b35a23849602c91c1efe7e
+- id: 6747e175-4e77-40bb-8445-092d3c6ce33d
+  description: Placeholder Description
+  relationship: !Association
+  - 01894a9b9967632a82dbb497db6fd98f9a74d474cc7d5865c35a62dda855ce9a
+  - 4918a4718291c8883798b0a614844a6e17633103147e27122ae69d4495b2a7ae
+  subgraph_hash: 4918a4718291c8883798b0a614844a6e17633103147e27122ae69d4495b2a7ae
+- id: e923330a-1e25-4f0d-afdb-ce6c24dde69d
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 4b9d3d7d69d9491d30942e7f2e87255f3e50df4cd6e151c1e29368960e17afa9
+- id: f01885bb-7a2a-475d-8743-697d4d873f02
+  description: Placeholder Description
+  relationship: !Association
+  - 389c84618cfa59e3c1a8a0bbe7d8771336805f76eb00ac8e8100fed5fc710216
+  - 01894a9b9967632a82dbb497db6fd98f9a74d474cc7d5865c35a62dda855ce9a
+  subgraph_hash: 01894a9b9967632a82dbb497db6fd98f9a74d474cc7d5865c35a62dda855ce9a
+- id: 5177f43c-7a59-416d-9cf0-ff9496034b7c
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 71d38a48e0aed0a18ceffa729ed57220d72d248313bcfef24ece15f0209ffd76
+- id: 709f2f06-564c-4073-a652-9288d06252e1
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 84b361e51e9820dc6e503effb46d2c305eec6149c0249c9b9c2572b23e00f014
+- id: 43eb30e3-d64a-44a4-ae7b-8ebb105f2805
+  description: Placeholder Description
+  relationship: !Association
+  - f3426fe41e91f518dc03a82b68eb0318c1bb9593ed16551d45c46262187951aa
+  - 3a56e26c29591d1603cb9a7d7411275205402e3473b29c3799b49bf9d4f71f05
+  subgraph_hash: 3a56e26c29591d1603cb9a7d7411275205402e3473b29c3799b49bf9d4f71f05
+- id: 5cf542c4-e66c-42fc-b676-b01ebe52b674
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 28a7ab72945f36d11cf454ab7537ad23a07c0f02afc1e52ae0be68ff72cc8786
+- id: 67c0bb8e-ce51-45c9-8a27-172df42213b8
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 0e893514a9b79e8a45b92568ce4f258d406b82f017d99bf90c8f4d6fcd800c66
+- id: 70f811bf-a530-4fa3-9272-aff774e83ea5
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 37acbb29802d57aa25dbd2801fea857af7bd7d80000850ac06795a4efb150aef
+- id: f0194d89-b83b-421b-833f-8c3a0bdbcf55
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: f3aab87ac0b7bec3dd2f726edceab49fb688bb64cdbda2214b9366e4d4e2b4d8
+- id: 36261639-2507-48a8-8fd7-3e5ad0317fba
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: e8f4ca2529f4a95348df532ae699bffeac5829f1533513ed589334fded15f33c
+- id: 1d73ca7d-f0e2-4be7-8d33-628358a4b130
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 8ac314cd5847acf409554a99479a4e6dcddc057818c97617d37f7a3433e6c13c
+- id: 73535f50-a02b-44be-bf64-fc60053890b4
+  description: Placeholder Description
+  relationship: !Association
+  - 28a7ab72945f36d11cf454ab7537ad23a07c0f02afc1e52ae0be68ff72cc8786
+  - 910122ce06c24c636a95ed3c53b715fe4ece4ba66bec11513d011e5fa26f1229
+  subgraph_hash: 910122ce06c24c636a95ed3c53b715fe4ece4ba66bec11513d011e5fa26f1229
+- id: dd070ac2-514e-4ce3-abeb-b50475462834
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: a7c41a507edbb9e905c8e3424d542181c1a7143cad366ffbd93cc663ccb72f35
+- id: e9f9ab46-d782-488d-a034-6403dc6c0cb9
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ecfe99a92fa8e9a123589f9d40cc563aff55da7d35d614f78bcfd852fb1f5ae
+- id: dfab330a-d60c-4f16-b454-efcb0ed34fca
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 0b90f1d63ee4db8a9aabfe23f980b4d760d8e9f070d4cdb31f5dbb77fe4b18c7
+- id: 97895c5c-1f4c-4b07-b4e0-5df3c0ee1d19
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 40efb865900bf41047ed0d5e80550148e5b1a1751819a3a168c04c0cf3b84c9c
+- id: 513a6c25-f0e2-48bc-8ea2-92cd7621bbab
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: ef3dc2814d8c936a4b0367fdf3f498e1e23886acdc1303c0f54c581aaa915bde
+- id: 85297cd8-58c4-4f5a-97ce-3e4527d9a248
+  description: Placeholder Description
+  relationship: !Association
+  - 28a7ab72945f36d11cf454ab7537ad23a07c0f02afc1e52ae0be68ff72cc8786
+  - 2e53b00d0c4753ac6a174f7b9e28703eebe997756e0dde396568609e5c93b0c8
+  subgraph_hash: 2e53b00d0c4753ac6a174f7b9e28703eebe997756e0dde396568609e5c93b0c8
+- id: 21e95609-0702-406b-967d-38f3cb454837
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: f00aaf1b781e41dd639951e88f60867ce32fd3c8742fe1829b12477d007d7f8d
+- id: b5051871-e3c8-40a7-bfe0-43959a692759
+  description: Placeholder Description
+  relationship: !Association
+  - f9516de71d6438efce20321f217f908f7670dff724110dfbbe24c06ae890381f
+  - 50272bacca0f716cb304eea5e87e81fb2a2d5e9993d15bf00980fca703b7c11f
+  subgraph_hash: 50272bacca0f716cb304eea5e87e81fb2a2d5e9993d15bf00980fca703b7c11f
+- id: 6fa388fb-2d1c-4324-a60b-64fcd803f8ff
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: b7194fc38fe22070a67be803155c907d5b31cd605e036e2fdf3cf95743b90ac6
+- id: 3684ed1c-e050-480c-a91a-f843e97ace98
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: de3b61fba76e7d7baa262ad7e7debfb42f502228e15503329954b206b2b8540b
+- id: 6072a9db-e3e1-4101-bf01-c3a05705a82c
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: c9c7c07d0d9741667351bdb03fd87cb29a06079ba4ef7fade559111b19bea867
+- id: aad7a76a-4005-4f8d-b0c0-5f9b3f9d1aa5
+  description: Placeholder Description
+  relationship: !Association
+  - 50272bacca0f716cb304eea5e87e81fb2a2d5e9993d15bf00980fca703b7c11f
+  - f9516de71d6438efce20321f217f908f7670dff724110dfbbe24c06ae890381f
+  subgraph_hash: f9516de71d6438efce20321f217f908f7670dff724110dfbbe24c06ae890381f
+- id: b31c8f0e-823b-4cdd-b167-9994e2aa8382
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: b5b36692d6c4e11659fca71e98af6abc13217202da9e8f6c958a9f940f50767f
+- id: 7785f52f-00f7-49d8-9995-4d8a824ea182
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: a0023a9e6f0755b454ad79549a9efb1f4afe7ce7c30e8ca91f201ff53f87c0e2
+- id: ad13de72-b2e6-4c20-bf63-91588997cd07
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 60424222258624aad18b489c14c352bf1764941224a663260ba653dd49b13469
