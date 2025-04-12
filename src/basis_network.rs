@@ -18,13 +18,7 @@ pub struct Recursion {
     pub transformation: DataNodeFieldsTransform,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LineageSubgraph {
-    pub lineage: Lineage,
-    pub subgraph: Hash,
-}
-
-pub type Association = Vec<LineageSubgraph>;
+pub type Association = Vec<String>; // subgraph hashes
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NetworkRelationship {

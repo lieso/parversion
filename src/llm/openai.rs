@@ -126,7 +126,7 @@ impl OpenAI {
         log::trace!("In get_summary");
 
         let system_prompt = format!(r##"
- Summarize the following condensed web document and emphasize in your description the structure and organisation of content.
+ Summarize the following web document and emphasize in your description the structure and organisation of content.
      "##);
         let user_prompt = format!(r##"
  [Document]
@@ -182,7 +182,7 @@ impl OpenAI {
         overall_context: String,
         target_subgraph_hash: String,
         subgraphs: Vec<(String, String)>,
-    ) -> Result<(), Errors> {
+    ) -> Result<Vec<String>, Errors> {
         log::trace!("In get_relationships");
 
         if subgraphs.is_empty() {
@@ -326,7 +326,7 @@ Consider this website context when deciding how to match fragment type IDs:
                 log::debug!("║       ASSOCIATIONS END    ║");
                 log::debug!("╚═══════════════════════════╝");
 
-                Ok(())
+                Ok(response.matching_fragments)
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);

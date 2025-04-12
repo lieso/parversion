@@ -47,15 +47,14 @@ impl Analysis {
         log::info!("Starting analysis...");
 
 
+
         // preparation
 
         let summary = meta_context.get_summary().await?;
         log::info!("Document summary: {}", summary);
 
 
-
-
-        unimplemented!();
+        //
 
 
 
@@ -107,44 +106,6 @@ impl NodeAnalysis {
         Ok(node_analysis)
     }
 
-    async fn get_basis_nodes_debug<P: Provider>(
-        provider: Arc<P>,
-        meta_context: Arc<MetaContext>,
-    ) -> Result<Vec<BasisNode>, Errors> {
-        log::trace!("In get_basis_nodes_debug");
-
-        let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
-
-        let debug_lineages = read_lock!(CONFIG).dev.debug_lineages.clone();
-
-        let filtered_context_groups: Vec<_> = if debug_lineages.is_empty() {
-            context_groups
-        } else {
-            context_groups
-                .into_iter()
-                .filter(|context_group| {
-                    debug_lineages.contains(&context_group.lineage.to_string())
-                })
-                .collect()
-        };
-
-        let mut results = Vec::new();
-        for context_group in filtered_context_groups {
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
-
-            let result = Self::get_basis_node(
-                cloned_provider,
-                cloned_meta_context,
-                context_group.clone()
-            ).await;
-
-            results.push(result);
-        }
-
-        results.into_iter().collect::<Result<Vec<BasisNode>, Errors>>()
-    }
-
     async fn get_basis_nodes<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
@@ -154,27 +115,43 @@ impl NodeAnalysis {
         let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
 
         let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-        let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
-        let mut handles = Vec::new();
-        for context_group in context_groups {
-            let _permit = semaphore.clone().acquire_owned().await.unwrap();
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
-
-            let handle = task::spawn(async move {
-                Self::get_basis_node(
+        if max_concurrency == 1 {
+            let mut results = Vec::new();
+            for context_group in context_groups {
+                let cloned_provider = Arc::clone(&provider);
+                let cloned_meta_context = Arc::clone(&meta_context);
+                let result = Self::get_basis_node(
                     cloned_provider,
                     cloned_meta_context,
                     context_group.clone()
-                ).await
-            });
-            handles.push(handle);
+                ).await;
+                results.push(result);
+            }
+            results.into_iter().collect::<Result<Vec<BasisNode>, Errors>>()
+        } else {
+            let semaphore = Arc::new(Semaphore::new(max_concurrency));
+            let mut handles = Vec::new();
+
+            for context_group in context_groups {
+                let permit = semaphore.clone().acquire_owned().await.unwrap();
+                let cloned_provider = Arc::clone(&provider);
+                let cloned_meta_context = Arc::clone(&meta_context);
+
+                let handle = task::spawn(async move {
+                    let _permit = permit; // Ensure permit is held until task completion
+                    Self::get_basis_node(
+                        cloned_provider,
+                        cloned_meta_context,
+                        context_group.clone()
+                    ).await
+                });
+                handles.push(handle);
+            }
+
+            let results: Vec<Result<BasisNode, Errors>> = try_join_all(handles).await?;
+            results.into_iter().collect::<Result<Vec<BasisNode>, Errors>>()
         }
-
-        let results: Vec<Result<BasisNode, Errors>> = try_join_all(handles).await?;
-
-        results.into_iter().collect::<Result<Vec<BasisNode>, Errors>>()
     }
 
     async fn get_basis_node<P: Provider>(
@@ -235,9 +212,11 @@ impl NetworkAnalysis {
             Arc::clone(&meta_context),
         ).await?;
 
+        let network_analysis = NetworkAnalysis {
+            basis_networks,
+        };
 
-
-        unimplemented!()
+        Ok(network_analysis)
     }
 
     async fn get_basis_networks<P: Provider>(
@@ -282,10 +261,12 @@ impl NetworkAnalysis {
             for subgraph in unique_subgraphs.values().cloned() {
                 let cloned_provider = Arc::clone(&provider);
                 let cloned_meta_context = Arc::clone(&meta_context);
-                let result = Self::get_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await;
-                results.push(result);
+                if let Some(result) = Self::get_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await? {
+                    results.push(result);
+                }
             }
-            results.into_iter().collect::<Result<Vec<BasisNetwork>, Errors>>()
+
+            Ok(results.into_iter().collect::<Vec<BasisNetwork>>())
         } else {
             let semaphore = Arc::new(Semaphore::new(max_concurrency));
             let mut handles = Vec::new();
@@ -303,8 +284,16 @@ impl NetworkAnalysis {
                 });
                 handles.push(handle);
             }
-            let results: Vec<Result<BasisNetwork, Errors>> = try_join_all(handles).await?;
-            results.into_iter().collect::<Result<Vec<BasisNetwork>, Errors>>()
+            let results: Vec<Result<Option<BasisNetwork>, Errors>> = try_join_all(handles).await?;
+
+            let networks: Vec<BasisNetwork> = results.into_iter()
+                .filter_map(|res| match res {
+                    Ok(Some(network)) => Some(network),
+                    _ => None,
+                })
+                .collect();
+
+            Ok(networks)
         }
     }
 
@@ -312,7 +301,7 @@ impl NetworkAnalysis {
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
         graph: Graph
-    ) -> Result<BasisNetwork, Errors> {
+    ) -> Result<Option<BasisNetwork>, Errors> {
         log::trace!("In get_basis_network");
 
 
@@ -387,11 +376,30 @@ impl NetworkAnalysis {
 
                 if sibling_jsons.len() > 1 {
 
-                    LLM::get_relationships(
+                    let matches = LLM::get_relationships(
                         overall_context.clone(),
                         target_subgraph_hash.clone(),
                         sibling_jsons.clone()
                     ).await?;
+
+
+
+                    if matches.len() > 0 {
+
+                        let associated_subgraphs = matches.iter().cloned()
+                            .chain(std::iter::once(target_subgraph_hash.clone()))
+                            .collect();
+
+                        let basis_network = BasisNetwork {
+                            id: ID::new(),
+                            description: "Placeholder Description".to_string(),
+                            relationship: NetworkRelationship::Association(associated_subgraphs),
+                        };
+
+                        return Ok(Some(basis_network));
+                    }
+
+
 
                 }
 
@@ -417,6 +425,6 @@ impl NetworkAnalysis {
             }),
         };
 
-        Ok(basis_network)
+        Ok(None)
     }
 }

@@ -45,16 +45,16 @@ impl LLM {
         overall_context: String,
         target_subgraph_hash: String,
         subgraphs: Vec<(String, String)>
-    ) -> Result<(), Errors> {
+    ) -> Result<Vec<String>, Errors> {
         log::trace!("In get_relationships");
 
-        openai::OpenAI::get_relationships(
+        let matches = openai::OpenAI::get_relationships(
             overall_context.clone(),
             target_subgraph_hash.clone(),
             subgraphs.clone(),
-        ).await;
+        ).await?;
 
-        Ok(())
+        Ok(matches)
     }
 
     pub async fn get_summary(
