@@ -114,6 +114,7 @@ pub fn traverse_with_context(
         graph_root,
         document_root,
         data_nodes,
+        summary: RwLock::new(None),
     };
 
     Ok(meta_context)

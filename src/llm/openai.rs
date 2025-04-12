@@ -45,6 +45,11 @@ struct AssociationsResponse {
     pub justification: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct SummaryResponse {
+    pub summary: String,
+}
+
 impl OpenAI {
     pub async fn get_field_transformation(
         lineage: &Lineage,
@@ -117,7 +122,64 @@ impl OpenAI {
         Some(transformation)
     }
 
+    pub async fn get_summary(document: String) -> Result<String, Errors> {
+        log::trace!("In get_summary");
+
+        let system_prompt = format!(r##"
+ Summarize the following condensed web document and emphasize in your description the structure and organisation of content.
+     "##);
+        let user_prompt = format!(r##"
+ [Document]
+ {}
+     "##, document);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "document_summary",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["summary"],
+                    "additionalProperties": false
+                }
+            }
+        });
+
+        match Self::send_openai_request::<SummaryResponse>(
+            &system_prompt,
+            &user_prompt,
+            response_format
+        ).await {
+            Ok(response) => {
+                log::debug!("╔════════════════════════════╗");
+                log::debug!("║       SUMMARY START        ║");
+                log::debug!("╚════════════════════════════╝");
+
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
+
+                log::debug!("╔═══════════════════════════╗");
+                log::debug!("║      SUMMARY END          ║");
+                log::debug!("╚═══════════════════════════╝");
+
+                Ok(response.summary)
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
     pub async fn get_relationships(
+        overall_context: String,
         target_subgraph_hash: String,
         subgraphs: Vec<(String, String)>,
     ) -> Result<(), Errors> {
@@ -209,12 +271,22 @@ Fragment ID: {}:
         );
 
         let user_prompt = format!(r##"
+===================================================
+
+Consider this website context when deciding how to match fragment type IDs:
+
+
+{}
+
+
+===================================================
+
 [Target fragment ID]
 {}
 
 [Fragments]
 {}
-"##, target_subgraph_hash, fragments);
+"##, overall_context, target_subgraph_hash, fragments);
 
         let response_format = json!({
             "type": "json_schema",

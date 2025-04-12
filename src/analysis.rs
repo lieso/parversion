@@ -46,6 +46,21 @@ impl Analysis {
     ) -> Result<Self, Errors> {
         log::info!("Starting analysis...");
 
+
+        // preparation
+
+        let summary = meta_context.get_summary().await?;
+        log::info!("Document summary: {}", summary);
+
+
+
+
+        unimplemented!();
+
+
+
+
+
         let node_analysis = NodeAnalysis::new(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
@@ -315,6 +330,7 @@ impl NetworkAnalysis {
 
 
 
+        let overall_context = meta_context.get_summary().await?;
 
         
 
@@ -372,6 +388,7 @@ impl NetworkAnalysis {
                 if sibling_jsons.len() > 1 {
 
                     LLM::get_relationships(
+                        overall_context.clone(),
                         target_subgraph_hash.clone(),
                         sibling_jsons.clone()
                     ).await?;

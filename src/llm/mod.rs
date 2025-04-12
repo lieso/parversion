@@ -42,16 +42,32 @@ impl LLM {
     }
 
     pub async fn get_relationships(
+        overall_context: String,
         target_subgraph_hash: String,
         subgraphs: Vec<(String, String)>
     ) -> Result<(), Errors> {
         log::trace!("In get_relationships");
 
         openai::OpenAI::get_relationships(
+            overall_context.clone(),
             target_subgraph_hash.clone(),
             subgraphs.clone(),
         ).await;
 
         Ok(())
+    }
+
+    pub async fn get_summary(
+        meta_context: &MetaContext,
+    ) -> Result<String, Errors> {
+        log::trace!("In get_summary");
+
+        let compact_document = meta_context.get_original_document();
+
+        let summary = openai::OpenAI::get_summary(
+            compact_document.clone(),
+        ).await?;
+
+        Ok(summary)
     }
 }
