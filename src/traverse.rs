@@ -1,3 +1,4 @@
+use uuid::Uuid;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use serde_json::{json, Value};
@@ -170,7 +171,32 @@ async fn process_network<P: Provider>(
         ).await?;
 
         for child in &read_lock.children {
-            queue.push_back(child.clone());
+            let child_lock = read_lock!(child);
+
+            if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(
+                &child_lock.subgraph_hash.to_string().unwrap()
+            ).await? {
+                log::trace!("Found basis network");
+
+                let mut inner_result: HashMap<String, Value> = HashMap::new();
+
+                process_network(
+                    provider.clone(),
+                    meta_context.clone(),
+                    child.clone(),
+                    &mut inner_result
+                );
+
+                let temp_key = Uuid::new_v4().to_string();
+
+                let inner_result_value = serde_json::to_value(inner_result)
+                    .expect("Failed to serialize inner result");
+
+                result.insert(temp_key, inner_result_value);
+
+            } else {
+                queue.push_back(child.clone());
+            }
         }
     }
 
