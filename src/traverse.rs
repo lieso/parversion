@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use serde_json::{json, Value};
 
@@ -129,58 +129,86 @@ pub async fn build_document_from_meta_context<P: Provider>(
 
     let mut result: HashMap<String, Value> = HashMap::new();
 
-    let data_nodes: Vec<Arc<DataNode>> = meta_context.data_nodes.values().cloned().collect();
-
-    for data_node in data_nodes.into_iter() {
-        let lineage = &data_node.lineage;
-
-        if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
-            log::info!("Found basis node with lineage: {}", basis_node.lineage.to_string());
-
-
-
-            // Check membership basis networks
-            
-            
-            
-
-            let json_nodes: Vec<JsonNode> = basis_node.transformations
-                .into_iter()
-                .map(|transformation| {
-                    transformation.transform(Arc::clone(&data_node))
-                        .expect("Could not transform data node field")
-                })
-                .collect();
-
-            log::debug!("json_nodes: {:?}", json_nodes);
-
-            for json_node in json_nodes.into_iter() {
-                let json = json_node.json;
-
-                let trimmed_value = json!(json.value.trim().to_string());
-
-                if let Some(existing_value) = result.get_mut(&json.key) {
-                    if let Value::Array(ref mut arr) = existing_value {
-                        arr.push(trimmed_value);
-                    } else {
-                        *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
-                    }
-                } else {
-                    result.insert(json.key, trimmed_value);
-                }
-            }
-
-        } else {
-            log::warn!("basis node not found");
-            // return Err(Errors::BasisNodeNotFound);
-        }
-    }
+    process_network(
+        provider.clone(),
+        meta_context.clone(),
+        meta_context.graph_root.clone(),
+        &mut result
+    ).await?;
 
     match serde_json::to_string(&result) {
         Ok(json_string) => log::debug!("result: {}", json_string),
         Err(e) => log::debug!("Error serializing to JSON: {}", e),
     }
 
-
     unimplemented!()
+}
+
+async fn process_network<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<MetaContext>,
+    graph_node: Graph,
+    result: &mut HashMap<String, Value>
+) -> Result<(), Errors> {
+    log::trace!("In process_network");
+
+    let mut queue = VecDeque::new();
+    queue.push_back(graph_node.clone());
+
+    while let Some(current) = queue.pop_front() {
+        let read_lock = read_lock!(current);
+
+        let context = meta_context.contexts
+            .get(&read_lock.id)
+            .unwrap()
+            .clone();
+
+        process_node(
+            provider.clone(),
+            context.clone(),
+            result
+        ).await?;
+
+        for child in &read_lock.children {
+            queue.push_back(child.clone());
+        }
+    }
+
+    Ok(())
+}
+
+async fn process_node<P: Provider>(
+    provider: Arc<P>,
+    context: Arc<Context>,
+    result: &mut HashMap<String, Value>
+) -> Result<(), Errors> {
+    log::trace!("In process_node");
+
+    if let Some(basis_node) = provider.get_basis_node_by_lineage(&context.lineage).await? {
+        let json_nodes: Vec<JsonNode> = basis_node.transformations
+            .into_iter()
+            .map(|transformation| {
+                transformation.transform(Arc::clone(&context.data_node))
+                    .expect("Could not transform data node")
+            })
+            .collect();
+
+        for json_node in json_nodes.into_iter() {
+            let json = json_node.json;
+
+            let trimmed_value = json!(json.value.trim().to_string());
+
+            if let Some(existing_value) = result.get_mut(&json.key) {
+                if let Value::Array(ref mut arr) = existing_value {
+                    arr.push(trimmed_value);
+                } else {
+                    *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
+                }
+            } else {
+                result.insert(json.key, trimmed_value);
+            }
+        }
+    }
+
+    Ok(())
 }
