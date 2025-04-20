@@ -27,3 +27,14 @@ pub enum NetworkRelationship {
     Association(Association),
     Null,
 }
+
+impl BasisNetwork {
+    pub fn new_null_network(subgraph_hash: &str) -> Self {
+        BasisNetwork {
+            id: ID::new(),
+            description: "Null network".to_string(),
+            subgraph_hash: subgraph_hash.to_string().clone(),
+            relationship: NetworkRelationship::Null,
+        }
+    }
+}

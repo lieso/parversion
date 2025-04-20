@@ -148,13 +148,13 @@ pub async fn build_document_from_meta_context<P: Provider>(
 async fn process_network<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<MetaContext>,
-    graph_node: Graph,
+    graph: Graph,
     result: &mut HashMap<String, Value>
 ) -> Result<(), Errors> {
     log::trace!("In process_network");
 
     let mut queue = VecDeque::new();
-    queue.push_back(graph_node.clone());
+    queue.push_back(graph.clone());
 
     while let Some(current) = queue.pop_front() {
         let read_lock = read_lock!(current);

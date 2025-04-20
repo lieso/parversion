@@ -207,7 +207,7 @@ impl NetworkAnalysis {
     ) -> Result<NetworkAnalysis, Errors> {
         log::info!("Performing network analysis");
 
-        let basis_networks: Vec<BasisNetwork> = Self::get_basis_networks(
+        let basis_networks: Vec<BasisNetwork> = Self::generate_basis_networks(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
         ).await?;
@@ -219,11 +219,11 @@ impl NetworkAnalysis {
         Ok(network_analysis)
     }
 
-    async fn get_basis_networks<P: Provider>(
+    async fn generate_basis_networks<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
     ) -> Result<Vec<BasisNetwork>, Errors> {
-        log::trace!("In get_basis_networks");
+        log::trace!("In generate_basis_networks");
 
         let graph_root = Arc::clone(&meta_context.graph_root);
 
@@ -235,11 +235,9 @@ impl NetworkAnalysis {
         while let Some(current) = queue.pop_front() {
             let current_read = read_lock!(current);
 
-            log::info!("graph_node: {}", current_read.description);
             log::info!("subgraph_hash: {}", current_read.subgraph_hash);
 
             if current_read.children.is_empty() {
-                log::info!("Current node is leaf node. Not proceeding further.");
                 continue;
             }
 
@@ -261,7 +259,7 @@ impl NetworkAnalysis {
             for subgraph in unique_subgraphs.values().cloned() {
                 let cloned_provider = Arc::clone(&provider);
                 let cloned_meta_context = Arc::clone(&meta_context);
-                let result = Self::get_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await?;
+                let result = Self::generate_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await?;
                 results.push(result);
             }
 
@@ -275,7 +273,7 @@ impl NetworkAnalysis {
                 let cloned_meta_context = Arc::clone(&meta_context);
 
                 let handle = task::spawn(async move {
-                    Self::get_basis_network(
+                    Self::generate_basis_network(
                         cloned_provider,
                         cloned_meta_context,
                         subgraph.clone()
@@ -288,146 +286,128 @@ impl NetworkAnalysis {
         }
     }
 
-    async fn get_basis_network<P: Provider>(
+    async fn generate_basis_network<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<MetaContext>,
         graph: Graph
     ) -> Result<BasisNetwork, Errors> {
-        log::trace!("In get_basis_network");
+        log::trace!("In generate_basis_network");
+
+        let target_subgraph_hash = read_lock!(graph).subgraph_hash.clone();
+        log::debug!("target_subgraph_hash: {}", target_subgraph_hash.to_string().unwrap());
+
+        if read_lock!(graph).parents.is_empty() {
+            log::info!("Node is root node; going to create null network for this node");
+
+            return Ok(Self::add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
+        }
 
         let current_context = meta_context.contexts
             .get(&read_lock!(graph).id)
             .unwrap()
             .clone();
 
-        let target_subgraph_hash = read_lock!(current_context.graph_node).subgraph_hash().to_string().unwrap();
-        
-
-
-        if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(&target_subgraph_hash).await? {
+        if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(&target_subgraph_hash.to_string().unwrap()).await? {
             log::info!("Provider has supplied basis network");
 
             return Ok(basis_network);
         };
 
+        log::info!("Generating json for siblings...");
 
-        
-        let current_json = current_context.generate_json(
-            Arc::clone(&provider),
-            Arc::clone(&meta_context)
-        ).await?;
-
-
-
-        if !current_json.is_empty() {
-
-
-            if read_lock!(graph).parents.is_empty() {
-
-
-                log::info!("Skipping root node");
-
-
-
-            } else {
-
-
-                let parent: Graph = read_lock!(graph).parents
-                    .first()
+        let parent: Graph = read_lock!(graph).parents
+            .first()
+            .unwrap()
+            .clone();
+        let sibling_contexts: Vec<_> = read_lock!(parent).children
+            .iter()
+            .map(|sibling| {
+                meta_context.contexts
+                    .get(&read_lock!(sibling).id)
                     .unwrap()
-                    .clone();
-                let sibling_contexts: Vec<_> = read_lock!(parent).children
-                    .iter()
-                    .map(|sibling| {
-                        meta_context.contexts
-                            .get(&read_lock!(sibling).id)
-                            .unwrap()
-                            .clone()
-                    })
-                    .collect();
+                    .clone()
+            })
+            .collect();
 
+        let mut sibling_jsons = Vec::new();
 
-                let mut sibling_jsons = Vec::new();
+        for sibling_context in sibling_contexts {
+            let sibling_json = sibling_context.generate_json(
+                Arc::clone(&provider),
+                Arc::clone(&meta_context)
+            ).await?;
 
+            let subgraph_hash = read_lock!(sibling_context.graph_node).subgraph_hash.clone();
+            log::debug!("other subgraph hash: {}", subgraph_hash);
 
-                for sibling_context in sibling_contexts {
-                    let sibling_json = sibling_context.generate_json(
-                        Arc::clone(&provider),
-                        Arc::clone(&meta_context)
-                    ).await?;
+            if sibling_json.is_empty() && subgraph_hash == target_subgraph_hash {
+                log::info!("Target subgraph does not result in any meaningful JSON; we will not investigate it further.");
 
-                    log::debug!("sibling_json: {:?}", sibling_json);
-
-                    let subgraph_hash: String = read_lock!(sibling_context.graph_node).subgraph_hash().to_string().unwrap();
-
-                    if !sibling_json.is_empty() {
-                        sibling_jsons.push((subgraph_hash, sibling_json));
-                    }
-                }
-
-                log::debug!("current_json: {:?}", current_json);
-
-
-                if sibling_jsons.len() > 1 {
-
-                    let overall_context = meta_context.get_summary().await?;
-                    let matches = LLM::get_relationships(
-                        overall_context.clone(),
-                        target_subgraph_hash.clone(),
-                        sibling_jsons.clone()
-                    ).await?;
-
-
-
-                    if matches.len() > 0 {
-
-                        let associated_subgraphs = matches.iter().cloned()
-                            .chain(std::iter::once(target_subgraph_hash.clone()))
-                            .collect();
-
-                        let basis_network = BasisNetwork {
-                            id: ID::new(),
-                            description: "Placeholder Description".to_string(),
-                            subgraph_hash: target_subgraph_hash.clone(),
-                            relationship: NetworkRelationship::Association(associated_subgraphs),
-                        };
-
-                        provider.save_basis_network(
-                            target_subgraph_hash.clone(),
-                            basis_network.clone(),
-                        ).await?;
-
-                        return Ok(basis_network);
-                    }
-
-
-
-                }
-
-
+                return Ok(Self::add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
             }
 
+            if !sibling_json.is_empty() {
+                sibling_jsons.push((subgraph_hash.to_string().unwrap().clone(), sibling_json));
+            }
         }
 
+        if sibling_jsons.len() <= 1 {
+            log::info!("Only one subgraph contains meaningful JSON; we will not investigate it further.");
+
+            return Ok(Self::add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
+        }
+
+        log::info!("Going to consult LLM for relationships between subgraphs...");
+
+        let overall_context = meta_context.get_summary().await?;
+
+        let matches = LLM::get_relationships(
+            overall_context.clone(),
+            target_subgraph_hash.to_string().unwrap().clone(),
+            sibling_jsons.clone()
+        ).await?;
+
+        log::info!("Done asking LLM for relationships");
+
+        if matches.is_empty() {
+            log::info!("LLM did not find any relationships between subgraphs");
+
+            return Ok(Self::add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
+        }
+
+        log::info!("LLM determined subgraphs are associated: {:?}", matches);
+
+        let associated_subgraphs = matches.iter().cloned()
+            .chain(std::iter::once(target_subgraph_hash.to_string().unwrap().clone()))
+            .collect();
 
         let basis_network = BasisNetwork {
             id: ID::new(),
-            description: "Null network".to_string(),
-            subgraph_hash: target_subgraph_hash.clone(),
-            relationship: NetworkRelationship::Null,
+            description: "Placeholder Description".to_string(),
+            subgraph_hash: target_subgraph_hash.to_string().unwrap().clone(),
+            relationship: NetworkRelationship::Association(associated_subgraphs),
         };
 
-
-
-
         provider.save_basis_network(
-            target_subgraph_hash.clone(),
+            target_subgraph_hash.to_string().unwrap().clone(),
             basis_network.clone(),
         ).await?;
 
+        Ok(basis_network)
+    }
 
+    async fn add_null_network<P: Provider>(
+        provider: Arc<P>,
+        target_subgraph_hash: Hash,
+    ) -> Result<BasisNetwork, Errors> {
+        let basis_network = BasisNetwork::new_null_network(
+            &target_subgraph_hash.to_string().unwrap()
+        );
 
-
+        provider.save_basis_network(
+            target_subgraph_hash.to_string().unwrap().clone(),
+            basis_network.clone(),
+        ).await?;
 
         Ok(basis_network)
     }
