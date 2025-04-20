@@ -145,62 +145,70 @@ pub async fn build_document_from_meta_context<P: Provider>(
     unimplemented!()
 }
 
-async fn process_network<P: Provider>(
+fn process_network<'a, P: Provider + 'a>(
     provider: Arc<P>,
     meta_context: Arc<MetaContext>,
     graph: Graph,
-    result: &mut HashMap<String, Value>
-) -> Result<(), Errors> {
-    log::trace!("In process_network");
+    result: &'a mut HashMap<String, Value>,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Errors>> + Send + 'a>> {
+    Box::pin(async move {
+        log::trace!("In process_network");
 
-    let mut queue = VecDeque::new();
-    queue.push_back(graph.clone());
+        let mut queue = VecDeque::new();
+        queue.push_back(graph.clone());
 
-    while let Some(current) = queue.pop_front() {
-        let read_lock = read_lock!(current);
+        while let Some(current) = queue.pop_front() {
+            let (context_id, children) = {
+                let read_lock = read_lock!(current);
+                (read_lock.id.clone(), read_lock.children.clone())
+            };
 
-        let context = meta_context.contexts
-            .get(&read_lock.id)
-            .unwrap()
-            .clone();
+            let context = meta_context.contexts.get(&context_id).unwrap().clone();
 
-        process_node(
-            provider.clone(),
-            context.clone(),
-            result
-        ).await?;
+            process_node(
+                provider.clone(),
+                context.clone(),
+                result,
+            ).await?;
 
-        for child in &read_lock.children {
-            let child_lock = read_lock!(child);
+            for child in children {
+                let child_subgraph_hash = {
+                    let child_lock = read_lock!(child);
+                    child_lock.subgraph_hash.clone()
+                };
 
-            if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(
-                &child_lock.subgraph_hash.to_string().unwrap()
-            ).await? {
-                log::trace!("Found basis network");
+                if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(
+                    &child_subgraph_hash.to_string().unwrap()
+                ).await? {
+                    log::trace!("Found basis network");
 
-                let mut inner_result: HashMap<String, Value> = HashMap::new();
+                    if !basis_network.is_null_network() {
+                        let mut inner_result: HashMap<String, Value> = HashMap::new();
 
-                process_network(
-                    provider.clone(),
-                    meta_context.clone(),
-                    child.clone(),
-                    &mut inner_result
-                );
+                        process_network(
+                            provider.clone(),
+                            meta_context.clone(),
+                            child.clone(),
+                            &mut inner_result,
+                        ).await?;
 
-                let temp_key = Uuid::new_v4().to_string();
+                        let temp_key = Uuid::new_v4().to_string();
 
-                let inner_result_value = serde_json::to_value(inner_result)
-                    .expect("Failed to serialize inner result");
+                        let inner_result_value = serde_json::to_value(inner_result)
+                            .expect("Failed to serialize inner result");
 
-                result.insert(temp_key, inner_result_value);
-
-            } else {
-                queue.push_back(child.clone());
+                        result.insert(temp_key, inner_result_value);
+                    } else {
+                        queue.push_back(child.clone());
+                    }
+                } else {
+                    queue.push_back(child.clone());
+                }
             }
         }
-    }
 
-    Ok(())
+        Ok(())
+    })
 }
 
 async fn process_node<P: Provider>(

@@ -37,4 +37,8 @@ impl BasisNetwork {
             relationship: NetworkRelationship::Null,
         }
     }
+
+    pub fn is_null_network(&self) -> bool {
+        matches!(self.relationship, NetworkRelationship::Null)
+    }
 }
