@@ -41,6 +41,7 @@ struct PrimaryResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct AssociationsResponse {
+    pub name: String,
     pub matching_fragments: Vec<String>,
     pub justification: String,
 }
@@ -182,7 +183,7 @@ impl OpenAI {
         overall_context: String,
         target_subgraph_hash: String,
         subgraphs: Vec<(String, String)>,
-    ) -> Result<Vec<String>, Errors> {
+    ) -> Result<(String, Vec<String>), Errors> {
         log::trace!("In get_relationships");
 
         if subgraphs.is_empty() {
@@ -201,6 +202,8 @@ Zero or multiple fragments may match the target fragment. Please provide an arra
 Do not consider the keys or structure of the object, only the values.
 
 Only provide a unique list of fragment IDs that does not include the target fragment ID.
+
+Please also suggest a name in snake case that could be used for programmatically representing objects that result after merging matching fragments (name). Leave blank if zero fragments match.
 
 The following is an example of how to perform this task:
 
@@ -296,6 +299,9 @@ Consider this website context when deciding how to match fragment type IDs:
                 "schema": {
                     "type": "object",
                     "properties": {
+                        "name": {
+                            "type": "string"
+                        },
                         "matching_fragments": {
                             "type": "array",
                             "items": {
@@ -306,7 +312,7 @@ Consider this website context when deciding how to match fragment type IDs:
                             "type": "string"
                         }
                     },
-                    "required": ["matching_fragments", "justification"],
+                    "required": ["name", "matching_fragments", "justification"],
                     "additionalProperties": false
                 }
             }
@@ -326,7 +332,7 @@ Consider this website context when deciding how to match fragment type IDs:
                 log::debug!("║       ASSOCIATIONS END    ║");
                 log::debug!("╚═══════════════════════════╝");
 
-                Ok(response.matching_fragments)
+                Ok((response.name, response.matching_fragments))
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);

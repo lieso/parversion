@@ -8,6 +8,7 @@ use crate::transformation::{
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetwork {
     pub id: ID,
+    pub name: String,
     pub description: String,
     pub relationship: NetworkRelationship,
     pub subgraph_hash: String,
@@ -32,6 +33,7 @@ impl BasisNetwork {
     pub fn new_null_network(subgraph_hash: &str) -> Self {
         BasisNetwork {
             id: ID::new(),
+            name: "null".to_string(),
             description: "Null network".to_string(),
             subgraph_hash: subgraph_hash.to_string().clone(),
             relationship: NetworkRelationship::Null,

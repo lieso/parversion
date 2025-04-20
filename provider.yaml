@@ -1518,159 +1518,207 @@ basis_nodes:
                       S
   transformations: []
 basis_networks:
-- id: 42e56939-28af-4e23-b3d6-f4ca00e43ee8
-  description: Placeholder Description
-  relationship: !Association
-  - 80d5ecf62f0c685a0e29d73500d8193eea501ec9359a1bbb443e0bf88a0f5569
-  subgraph_hash: 0e1e3c4928788ea6d93c6de221f3d9db68298babe9d06e398144d05b7513d195
-- id: 847c3d42-113c-44f6-b219-03f0fe570d6f
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: f74a5580b1ec6ec44941304dffcea7bb3e49c23bbe3eece4fc11f5a597f12226
-- id: 96693e5b-476d-40f4-96b4-29ebea4049d5
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 0e8c687c82ae69e7c77403e9d13f21be0730ec0bf81b33cce575f1e27759b0b4
-- id: b81425c7-469c-4550-8cc6-7d67a45246e0
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 98589ed446d446f25db9f33a46b15674a43cc6977c3e3e04f344c21305df5476
-- id: b577e545-40cc-402a-b508-dc6c9c3172da
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 9b2e9c0fde4a65f187f24efb6da48aa156b3db6d34865646e7e33d38d457b92f
-- id: 5989c46f-cb07-489e-94f2-dcbcee54039a
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 922c74a0b2822a242ca649226c66634ff73c621e952f68c5dcbb3e4962711b78
-- id: b196f42b-9748-4423-aae4-cd09f35327c5
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 07ed323192afbddd06bf6a32c1fe1bcfb8ec1ed7e150dcd8d63ec0f8a172681a
-- id: c47b4fc4-ef69-4419-b3d5-e518842923f0
+- id: 7d66049e-77e0-436c-b5c5-58f5121f505b
+  name: 'null'
   description: Null network
   relationship: 'Null'
   subgraph_hash: ccf44c12f8042cb20ff9ba2474f665e9cf22f586ba0c4679e29a581a6657a2e9
-- id: 114eb083-e191-4135-8a42-8304fa603018
+- id: 711d23c7-0808-4163-9729-7c60edb86683
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 11d00b2c7418e992806a4eb932e5d150edc9ff979b5a42932ae29bc268c82dd4
-- id: c4b9c9a7-4c37-41e6-9139-9aaca3694e5a
+  subgraph_hash: 0e8c687c82ae69e7c77403e9d13f21be0730ec0bf81b33cce575f1e27759b0b4
+- id: f414455a-defb-49d2-9ae3-b137664d8c32
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 3c2194db3659276917ddf7dd061cde23943b6d216ccef8a8117a93db76b2104d
-- id: 20aca7b8-f6f7-42c2-a10a-05fa23409799
+  subgraph_hash: 5d44fcca983bab653a511e8d6caefb9c56612305e249c8d0af975d7fc74f68e5
+- id: 74aa2359-c1c6-4808-8c28-a7b0e5d51ccf
+  name: story_subtext
   description: Placeholder Description
   relationship: !Association
   - 11d00b2c7418e992806a4eb932e5d150edc9ff979b5a42932ae29bc268c82dd4
   subgraph_hash: f8130853a95ddc51f4aae69ea7bef9a8b582b76ce035d6833510748b6e797316
-- id: c36cfea0-7254-4451-a105-17f6120d01ec
+- id: c98926b2-ce14-45f6-b4aa-f02c3977d157
+  name: 'null'
   description: Null network
   relationship: 'Null'
   subgraph_hash: f8d2d3468844c44f00364c53359a129f7f39dd6b10ad28c0af973f5456408900
-- id: 7c00e026-dca6-45a9-9fb6-0f374f068cef
+- id: ccbab28c-aef1-41fa-a7ee-36c17b6f4df2
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 81c1a28e2383dab6de251c7a5ef528c298352fded9d10dcab8c75d829a571d2d
-- id: 95bd632d-bfb6-4287-9161-3ba1efd2a6ab
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: c56834d14ccf6c0007864150cd0e629b3f157f8a921529a7fc491cc5012d1426
-- id: 03b69a2e-2d8f-423f-941c-8d90faa4b5a2
-  description: Placeholder Description
-  relationship: !Association
-  - 0e1e3c4928788ea6d93c6de221f3d9db68298babe9d06e398144d05b7513d195
-  subgraph_hash: 80d5ecf62f0c685a0e29d73500d8193eea501ec9359a1bbb443e0bf88a0f5569
-- id: a2656812-32e7-4f0e-ac61-f831f5a29e0d
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 6f4f88f61d31d418a2900e11e6ea149df4dbdf9b61191fde7a4e5bee03b016b7
-- id: 06723200-cc9d-4deb-8e6f-6beaa0991afc
+  subgraph_hash: 3c2194db3659276917ddf7dd061cde23943b6d216ccef8a8117a93db76b2104d
+- id: ffffa0d5-99c9-4444-961e-dc2c28c6bb9e
+  name: post_metadata
   description: Placeholder Description
   relationship: !Association
   - ccf44c12f8042cb20ff9ba2474f665e9cf22f586ba0c4679e29a581a6657a2e9
   subgraph_hash: ab02db21da67fd0fa5e21e8771d6b3f52bb0f34c90357e8e5a3f295227a3897e
-- id: eae9066f-7374-46a2-8896-6af334f57836
+- id: 1f2fb33d-15da-443e-8acc-6079906b3d13
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 12d9a872cac906670f436ddebbf46cef30d68137479e51491ece9d5eaa2e9484
+- id: 5afe5479-54ec-49c4-99ce-0494308de986
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: d8299d0b6fb3fcadb45688ec23d421f11757aa0302fc52a4270939839ca16cae
+- id: 7770fe5d-8fcc-45c7-897f-25e81c486909
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 693339b7cbd56878cd49ea013555bf7e1ed532d83a00757eda86506ffa572281
+- id: 1fcf7bb1-180f-4d56-801f-1541156c718d
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 2b2d051b459d7aa91c3dd9018ad99b6f1389ecfd55e0af2798fd108a940b75b0
+- id: 565a83e0-07bb-4930-bb11-0d3f777fcd08
+  name: navigation_links
+  description: Placeholder Description
+  relationship: !Association
+  - 0e1e3c4928788ea6d93c6de221f3d9db68298babe9d06e398144d05b7513d195
+  subgraph_hash: 80d5ecf62f0c685a0e29d73500d8193eea501ec9359a1bbb443e0bf88a0f5569
+- id: 44970d94-2671-4b6c-a9e6-1d4fc6fdf0ad
+  name: news_story
   description: Placeholder Description
   relationship: !Association
   - ccf44c12f8042cb20ff9ba2474f665e9cf22f586ba0c4679e29a581a6657a2e9
   subgraph_hash: 41d082eccfe71fc0bbfe7121764be6330ed1a33a9338864f97ba6eae9afd8082
-- id: 2e35c700-46a1-40f7-8f16-f9cf7e0a8a88
+- id: 1a9f6d29-e5bf-4e1d-8bc6-46c2aee33c10
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 12d9a872cac906670f436ddebbf46cef30d68137479e51491ece9d5eaa2e9484
-- id: c92aa7f7-0fec-4198-9446-1408c216c8b2
+  subgraph_hash: f87735eeae0373de4c6c988cc2af197e7c471cdb21e76f143e8040951a194155
+- id: ef27ae90-43a2-4f1e-a5b9-3566d16f660c
+  name: 'null'
   description: Null network
   relationship: 'Null'
+  subgraph_hash: ffca1affbfa41eb00aa3ea056edf6e77d35748991dabe577d0ad0cf8f45794a5
+- id: d3610839-6df1-49da-9f10-dfef023f90d4
+  name: hacker_news_page
+  description: Placeholder Description
+  relationship: !Association
+  - 33ad7542ec12c25642acf4b47030cb68182c47e84d4f73e6452a79ebe404672a
   subgraph_hash: 33ad7542ec12c25642acf4b47030cb68182c47e84d4f73e6452a79ebe404672a
-- id: fcef5257-14c0-4e57-9b24-09ae5e7401d3
+- id: 86c876b7-820e-46bd-bd2b-058a2d1df5e9
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 5e4105f607a778e35aa2010d3e12d892432335f19dca008dd2a91bba38a4ebd9
-- id: bd04ee86-ddf0-441e-94c7-192144def9c5
+  subgraph_hash: a20f86f5449c348592ce732f7a2de3d38744f2ee82f95ff725d0a5ac42bd41ea
+- id: de8ffe73-f6cd-425d-bfd6-9ac25d0c7871
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 81c1a28e2383dab6de251c7a5ef528c298352fded9d10dcab8c75d829a571d2d
+- id: 1268fa80-fa87-4738-aee2-3a270dd3f860
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 11d00b2c7418e992806a4eb932e5d150edc9ff979b5a42932ae29bc268c82dd4
+- id: 9655f1ef-c4b8-41d5-8b91-5c1427ec990e
+  name: hacker_news_navigation
+  description: Placeholder Description
+  relationship: !Association
+  - 80d5ecf62f0c685a0e29d73500d8193eea501ec9359a1bbb443e0bf88a0f5569
+  subgraph_hash: 0e1e3c4928788ea6d93c6de221f3d9db68298babe9d06e398144d05b7513d195
+- id: cee3445f-41a0-4c8b-a332-5e76ec7632ac
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: f74a5580b1ec6ec44941304dffcea7bb3e49c23bbe3eece4fc11f5a597f12226
+- id: 57ca2e6c-4584-4a1f-8832-44af6dd8d8d5
+  name: hacker_news_story
   description: Placeholder Description
   relationship: !Association
   - ca6b31896eac2e2e865a26f1a4f3f0ac781b112a43f82352ad2334f8058d428f
   subgraph_hash: afe6287f0fc19140568ddda137996836b42f3eca3ee68a31f4e5af402b47e971
-- id: 7ab2da61-aa36-4c09-b767-49ec5de2e578
+- id: 59d6fdf3-e504-44ab-9beb-30d464a40a45
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 5d44fcca983bab653a511e8d6caefb9c56612305e249c8d0af975d7fc74f68e5
-- id: 263eb794-e49d-4adc-b0b8-42431bc55698
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 693339b7cbd56878cd49ea013555bf7e1ed532d83a00757eda86506ffa572281
-- id: 4db3f1da-ec59-4e0f-9eea-1cf503fe6868
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
-- id: 06b10f8f-d94e-46f4-b984-722113339d6f
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: d8299d0b6fb3fcadb45688ec23d421f11757aa0302fc52a4270939839ca16cae
-- id: 573fcdca-57a3-4850-83a9-6a402fe627f7
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: ffca1affbfa41eb00aa3ea056edf6e77d35748991dabe577d0ad0cf8f45794a5
-- id: 5de241db-10c2-420b-89a2-f98489c223d3
+  subgraph_hash: 9b2e9c0fde4a65f187f24efb6da48aa156b3db6d34865646e7e33d38d457b92f
+- id: 561ef0e0-d740-463c-b4fd-8549acb1bb4c
+  name: 'null'
   description: Null network
   relationship: 'Null'
   subgraph_hash: 246b4037243d0bb9fcb7e7e367d18c1395864a40032d6f1797fce6df97d8f4a7
-- id: 6f80b830-9f22-4155-878c-b4ad82ae8a73
+- id: 4cf6774f-e357-4324-81bc-9da6c5788913
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 6f4f88f61d31d418a2900e11e6ea149df4dbdf9b61191fde7a4e5bee03b016b7
+- id: c672dd4a-7ec8-477c-81f8-6f036aeb0e0a
+  name: hacker_news_story
   description: Placeholder Description
   relationship: !Association
   - afe6287f0fc19140568ddda137996836b42f3eca3ee68a31f4e5af402b47e971
   subgraph_hash: ca6b31896eac2e2e865a26f1a4f3f0ac781b112a43f82352ad2334f8058d428f
-- id: 5112b540-3e4f-4dae-a48d-12779a6e23cc
+- id: 0a8c1234-5792-47e6-b058-1bbbc023a9b8
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 64b4ce7df7257c3960e36f89d0c09f6f63c73ce0c25b19f54f0b462aebb8f897
-- id: e2eff586-587f-481b-9591-55aa57d01084
+  subgraph_hash: 07ed323192afbddd06bf6a32c1fe1bcfb8ec1ed7e150dcd8d63ec0f8a172681a
+- id: aea247be-2841-4302-9be8-a79dd6941c03
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: f87735eeae0373de4c6c988cc2af197e7c471cdb21e76f143e8040951a194155
-- id: 7a8e6e52-5b39-4b79-87c2-28d02fa9d4a2
+  subgraph_hash: c56834d14ccf6c0007864150cd0e629b3f157f8a921529a7fc491cc5012d1426
+- id: 6cb59c35-599c-4c2f-90c8-3097c9a22b93
+  name: 'null'
   description: Null network
   relationship: 'Null'
   subgraph_hash: 6cc6daf6f7f059860177e20904a84464cd0f4fa7800e51e834e6d423c30c70ff
-- id: 0aa08d84-7901-4510-8d0e-26dfd9b09412
+- id: 9f9b54be-a506-4752-8137-81301bb628ef
+  name: 'null'
   description: Null network
   relationship: 'Null'
-  subgraph_hash: 2b2d051b459d7aa91c3dd9018ad99b6f1389ecfd55e0af2798fd108a940b75b0
-- id: a288142f-b8b5-46a3-88fc-7df9b0a2b32c
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: a20f86f5449c348592ce732f7a2de3d38744f2ee82f95ff725d0a5ac42bd41ea
-- id: 4ee9e4df-2c39-4e91-b0a7-decbc787497a
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 852a4523b06a382d1df49caac2ca59c97a30890f84a7479c6cf7e6851b163e45
-- id: 0462c2b0-5324-43bf-82b9-658a3cafa68c
-  description: Null network
-  relationship: 'Null'
-  subgraph_hash: 46f0e1b076816ed154a9b8fe7c3c6db46c9439d412e00d41679c0e9d94cc5ca0
-- id: d86fbdaa-56e2-4e7b-a442-8249ea54977a
+  subgraph_hash: 64b4ce7df7257c3960e36f89d0c09f6f63c73ce0c25b19f54f0b462aebb8f897
+- id: a93c31b2-7ccb-4337-bc78-2d5272486ae6
+  name: news_story
   description: Placeholder Description
   relationship: !Association
   - ca6b31896eac2e2e865a26f1a4f3f0ac781b112a43f82352ad2334f8058d428f
   subgraph_hash: 360b0e323253239b5cc1826361a7566b87d15b72b1c8ac3570dc6ae60f2b6201
+- id: 4769a0e8-4465-4477-be33-6676e528d757
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 922c74a0b2822a242ca649226c66634ff73c621e952f68c5dcbb3e4962711b78
+- id: 32b7efe9-91eb-46a5-ab26-48329680000c
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 5e4105f607a778e35aa2010d3e12d892432335f19dca008dd2a91bba38a4ebd9
+- id: 8b45e9cf-ef7a-4514-aac4-d7313486e205
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
+- id: a0a8785d-7192-4c56-9fec-560a1815380d
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 98589ed446d446f25db9f33a46b15674a43cc6977c3e3e04f344c21305df5476
+- id: 733a0f26-07c7-4a11-a9a5-9f2d0d218ddf
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 852a4523b06a382d1df49caac2ca59c97a30890f84a7479c6cf7e6851b163e45
+- id: 21539430-383d-4411-b181-32715969fb75
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 46f0e1b076816ed154a9b8fe7c3c6db46c9439d412e00d41679c0e9d94cc5ca0
+- id: 14715339-bc78-4e3f-b888-1787b66f35c8
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
+- id: 1c614efc-a6a9-43bc-85c9-f8478f84a70a
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923

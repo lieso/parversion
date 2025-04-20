@@ -361,7 +361,7 @@ impl NetworkAnalysis {
 
         let overall_context = meta_context.get_summary().await?;
 
-        let matches = LLM::get_relationships(
+        let (name, matches) = LLM::get_relationships(
             overall_context.clone(),
             target_subgraph_hash.to_string().unwrap().clone(),
             sibling_jsons.clone()
@@ -385,6 +385,7 @@ impl NetworkAnalysis {
             id: ID::new(),
             description: "Placeholder Description".to_string(),
             subgraph_hash: target_subgraph_hash.to_string().unwrap().clone(),
+            name: name.clone(),
             relationship: NetworkRelationship::Association(associated_subgraphs),
         };
 

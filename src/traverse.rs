@@ -1,4 +1,3 @@
-use uuid::Uuid;
 use std::collections::{HashSet, HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use serde_json::{json, Value};
@@ -237,12 +236,25 @@ fn process_network<'a, P: Provider + 'a>(
                             &mut inner_result,
                         ).await?;
 
-                        let temp_key = Uuid::new_v4().to_string();
-
                         let inner_result_value = serde_json::to_value(inner_result)
                             .expect("Failed to serialize inner result");
 
-                        result.insert(temp_key, inner_result_value);
+                        let object_name = basis_network.name.clone();
+
+                        if let Some(existing_object) = result.get_mut(&object_name) {
+
+                            if let Value::Array(ref mut arr) = existing_object {
+                                arr.push(inner_result_value);
+                            } else {
+                                *existing_object = json!(vec![
+                                    existing_object.clone(),
+                                    inner_result_value
+                                ]);
+                            }
+
+                        } else {
+                            result.insert(object_name, inner_result_value);
+                        }
 
                         processed_child_ids.insert(child_id);
                     } else {
