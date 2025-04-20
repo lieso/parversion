@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashSet, HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use serde_json::{json, Value};
 
@@ -14,6 +14,7 @@ use crate::document_format::{DocumentFormat};
 use crate::profile::Profile;
 use crate::provider::Provider;
 use crate::json_node::JsonNode;
+use crate::basis_network::{NetworkRelationship};
 
 pub fn traverse_with_context(
     profile: &Profile,
@@ -157,6 +158,8 @@ fn process_network<'a, P: Provider + 'a>(
         let mut queue = VecDeque::new();
         queue.push_back(graph.clone());
 
+        let mut processed_child_ids = HashSet::new();
+
         while let Some(current) = queue.pop_front() {
             let (context_id, children) = {
                 let read_lock = read_lock!(current);
@@ -171,7 +174,16 @@ fn process_network<'a, P: Provider + 'a>(
                 result,
             ).await?;
 
-            for child in children {
+            for (index, child) in children.iter().enumerate() {
+                let child_id = {
+                    let child_lock = read_lock!(child);
+                    child_lock.id.clone()
+                };
+
+                if processed_child_ids.contains(&child_id) {
+                    continue; // Skip if already processed
+                }
+
                 let child_subgraph_hash = {
                     let child_lock = read_lock!(child);
                     child_lock.subgraph_hash.clone()
@@ -184,6 +196,39 @@ fn process_network<'a, P: Provider + 'a>(
 
                     if !basis_network.is_null_network() {
                         let mut inner_result: HashMap<String, Value> = HashMap::new();
+
+                        let mut associated_graphs = match &basis_network.relationship {
+                            NetworkRelationship::Association(assoc) => assoc.clone(),
+                            _ => Vec::new(),
+                        };
+
+                        for subsequent_child in children.iter().skip(index + 1) {
+                            let subsequent_child_id = {
+                                let subsequent_lock = read_lock!(subsequent_child);
+                                subsequent_lock.id.clone()
+                            };
+
+                            if processed_child_ids.contains(&subsequent_child_id) {
+                                continue;
+                            }
+
+                            let subsequent_subgraph_hash = {
+                                let subsequent_lock = read_lock!(subsequent_child);
+                                subsequent_lock.subgraph_hash.clone()
+                            };
+
+                            if associated_graphs.contains(&subsequent_subgraph_hash.to_string().unwrap()) {
+                                process_network(
+                                    provider.clone(),
+                                    meta_context.clone(),
+                                    subsequent_child.clone(),
+                                    &mut inner_result,
+                                ).await?;
+
+                                associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
+                                processed_child_ids.insert(subsequent_child_id);
+                            }
+                        }
 
                         process_network(
                             provider.clone(),
@@ -198,6 +243,8 @@ fn process_network<'a, P: Provider + 'a>(
                             .expect("Failed to serialize inner result");
 
                         result.insert(temp_key, inner_result_value);
+
+                        processed_child_ids.insert(child_id);
                     } else {
                         queue.push_back(child.clone());
                     }

@@ -378,7 +378,7 @@ impl NetworkAnalysis {
         log::info!("LLM determined subgraphs are associated: {:?}", matches);
 
         let associated_subgraphs = matches.iter().cloned()
-            .chain(std::iter::once(target_subgraph_hash.to_string().unwrap().clone()))
+            //.chain(std::iter::once(target_subgraph_hash.to_string().unwrap().clone()))
             .collect();
 
         let basis_network = BasisNetwork {
