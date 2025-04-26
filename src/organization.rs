@@ -11,6 +11,7 @@ use crate::traverse::{
 use crate::analysis::{Analysis};
 use crate::meta_context::MetaContext;
 
+#[allow(dead_code)]
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -35,6 +36,7 @@ pub async fn organize<P: Provider>(
     Ok(meta_context)
 }
 
+#[allow(dead_code)]
 pub async fn organize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -56,6 +58,7 @@ pub async fn organize_document<P: Provider>(
     ).await
 }
 
+#[allow(dead_code)]
 pub async fn organize_document_to_string<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -74,6 +77,7 @@ pub async fn organize_document_to_string<P: Provider>(
     Ok(document.to_string())
 }
 
+#[allow(dead_code)]
 pub async fn organize_text<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -86,6 +90,7 @@ pub async fn organize_text<P: Provider>(
     organize(Arc::clone(&provider), document, options).await
 }
 
+#[allow(dead_code)]
 pub async fn organize_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -99,6 +104,7 @@ pub async fn organize_text_to_document<P: Provider>(
     build_document_from_meta_context(provider, meta_context, document_format).await
 }
 
+#[allow(dead_code)]
 pub async fn organize_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -115,6 +121,7 @@ pub async fn organize_file<P: Provider>(
     organize_text(Arc::clone(&provider), text, options).await
 }
 
+#[allow(dead_code)]
 pub async fn organize_file_to_document<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -129,6 +136,7 @@ pub async fn organize_file_to_document<P: Provider>(
     build_document_from_meta_context(provider, meta_context, document_format).await
 }
 
+#[allow(dead_code)]
 pub async fn organize_file_to_string<P: Provider>(
     provider: Arc<P>,
     path: &str,

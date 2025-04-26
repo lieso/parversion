@@ -1,8 +1,8 @@
 use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
-use quick_js::{Context as QuickContext, JsValue};
+use std::collections::{HashMap};
+use quick_js::{Context as QuickContext};
 
 use crate::prelude::*;
 use crate::id::{ID};

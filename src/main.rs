@@ -1,5 +1,4 @@
 use std::io::{self, Read};
-use std::collections::{HashMap, HashSet};
 use lazy_static::lazy_static;
 use atty::Stream;
 use std::sync::Arc;
@@ -8,8 +7,6 @@ use log::LevelFilter;
 use std::fs::File;
 use std::io::stdout;
 use fern::Dispatch;
-use async_trait::async_trait;
-use quick_js::{Context, JsValue};
 
 mod analysis;
 mod basis_network;
@@ -26,7 +23,6 @@ mod hash;
 mod id;
 mod lineage;
 mod macros;
-mod model;
 mod normalization;
 mod organization;
 mod profile;

@@ -1,6 +1,6 @@
 use uuid::Uuid;
 use serde::ser::{Serialize, Serializer};
-use serde::de::{self, Deserialize, Deserializer, Visitor, Error as SerdeError};
+use serde::de::{Deserialize, Deserializer, Visitor, Error as SerdeError};
 use std::fmt;
 use std::str::FromStr;
 

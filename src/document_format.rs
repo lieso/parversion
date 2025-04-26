@@ -8,6 +8,7 @@ enum FormatStrategy {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DocumentFormat {
     format_type: DocumentType,
     encoding: Option<String>,
@@ -23,7 +24,7 @@ pub struct DocumentFormat {
 impl Default for DocumentFormat {
     fn default() -> Self {
         DocumentFormat {
-            format_type: DocumentType::JSON,
+            format_type: DocumentType::Json,
             encoding: Some(String::from("UTF-8")),
             strategy: None,
             indent: None,

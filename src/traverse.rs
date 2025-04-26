@@ -4,7 +4,7 @@ use serde_json::{json, Value};
 
 use crate::prelude::*;
 use crate::meta_context::MetaContext;
-use crate::context::{Context, ContextID};
+use crate::context::{Context};
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode};
@@ -113,8 +113,6 @@ pub fn traverse_with_context(
     let meta_context = MetaContext {
         contexts,
         graph_root,
-        document_root,
-        data_nodes,
         summary: RwLock::new(None),
     };
 
