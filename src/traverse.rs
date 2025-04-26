@@ -180,7 +180,7 @@ fn process_network<'a, P: Provider + 'a>(
                 };
 
                 if processed_child_ids.contains(&child_id) {
-                    continue; // Skip if already processed
+                    continue;
                 }
 
                 let child_subgraph_hash = {

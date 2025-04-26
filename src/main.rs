@@ -47,6 +47,8 @@ use crate::prelude::*;
 use crate::config::{CONFIG};
 use crate::provider::{YamlFileProvider};
 
+const VERSION: &str = "1.0.0";
+
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
 
@@ -82,6 +84,7 @@ async fn main() {
     setup();
 
     let matches = App::new("parversion")
+        .version(VERSION)
         .arg(Arg::with_name("file")
              .short('f')
              .long("file")
@@ -92,7 +95,16 @@ async fn main() {
             .long("url")
             .value_name("URL")
             .help("Provide url as document for processing"))
+        .arg(Arg::with_name("version")
+            .short('v')
+            .long("version")
+            .help("Display program version"))
         .get_matches();
+
+    if matches.is_present("version") {
+        println!("parversion {}", VERSION);
+        return;
+    }
 
     let document_format = document_format::DocumentFormat::default();
 
