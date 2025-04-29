@@ -2,6 +2,7 @@ use std::io::{self, Read, Write};
 use std::fs::File;
 use std::path::{Path};
 use fantoccini::{error::CmdError, ClientBuilder, Locator};
+use reqwest::Client;
 
 use crate::types::*;
 
@@ -60,6 +61,25 @@ impl From<CmdError> for Errors {
 }
 
 pub async fn fetch_url_as_text(url: &str) -> Result<String, Errors> {
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36")
+        .build()
+        .map_err(|err| Errors::FetchUrlError(format!("Failed to build client: {:?}", err)))?;
+
+    let response = client.get(url)
+        .send()
+        .await
+        .map_err(|err| Errors::FetchUrlError(format!("Failed to send request: {:?}", err)))?;
+
+    let text = response.text().await.map_err(|err| Errors::FetchUrlError(format!("Could not get response as text: {:?}", err)))?;
+
+    let preview = &text[..std::cmp::min(2000, text.len())];
+    log::debug!("Fetched text preview: {}", preview);
+
+    Ok(text)
+}
+
+pub async fn fetch_url_as_text_complex(url: &str) -> Result<String, Errors> {
     let mut caps: serde_json::Map<String, serde_json::Value> = serde_json::Map::new();
     caps.insert("browserName".to_string(), serde_json::Value::String("chrome".to_string()));
 
