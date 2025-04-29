@@ -173,7 +173,7 @@ impl OpenAI {
                 Ok(response.summary)
             }
             Err(e) => {
-                log::error!("Failed to get response from OpenAI: {}", e);
+                log::error!("Failed to send openai request: {}", e);
                 Err(Errors::UnexpectedError)
             }
         }
@@ -698,7 +698,7 @@ Example {}:
         let hash = Self::compute_hash(vec![
             system_prompt,
             user_prompt,
-            &response_format.to_string()
+            &response_format.to_string(),
         ]);
 
         let response = Self::get_or_set_cache(hash.as_str(), || async {
@@ -724,29 +724,40 @@ Example {}:
             let authorization = format!("Bearer {}", openai_api_key);
             let client = reqwest::Client::new();
 
-            match client
+            let res = client
                 .post(url)
                 .json(&request_json)
                 .header(header::CONTENT_TYPE, "application/json")
                 .header(header::AUTHORIZATION, authorization)
                 .send()
-                .await
-            {
+                .await;
+
+            match res {
                 Ok(res) => {
-                    log::trace!("okay response from openai");
+                    log::trace!("Received response from OpenAI");
 
-                    match res.json::<serde_json::Value>().await {
-                        Ok(json_response) => {
-                            log::trace!("okay json from openai");
+                    let status = res.status();
+                    let text = res.text().await.unwrap_or_else(|_| "Failed to read response body".to_string());
 
-                            json_response["choices"].as_array().and_then(|choices| {
-                                choices.get(0).and_then(|choice| choice["message"]["content"].as_str().map(String::from))
-                            })
+                    if status.is_success() {
+                        match serde_json::from_str::<serde_json::Value>(&text) {
+                            Ok(json_response) => {
+                                log::trace!("Parsed JSON response from OpenAI");
+
+                                json_response["choices"].as_array().and_then(|choices| {
+                                    choices.get(0).and_then(|choice| choice["message"]["content"].as_str().map(String::from))
+                                })
+                            }
+                            Err(e) => {
+                                log::error!("Failed to parse JSON response: {}", e);
+                                log::error!("Response text: {}", text);
+                                None
+                            }
                         }
-                        Err(e) => {
-                            log::error!("Failed to parse JSON response: {}", e);
-                            None
-                        }
+                    } else {
+                        log::error!("Request to OpenAI failed with status: {}", status);
+                        log::error!("Response text: {}", text);
+                        None
                     }
                 }
                 Err(e) => {
@@ -754,7 +765,8 @@ Example {}:
                     None
                 }
             }
-        }).await;
+        })
+        .await;
 
         let json_response = response.ok_or("Failed to get response from OpenAI")?;
         let parsed_response: T = serde_json::from_str(&json_response)?;
