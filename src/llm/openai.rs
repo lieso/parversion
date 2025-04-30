@@ -136,19 +136,17 @@ impl OpenAI {
 
         let response_format = json!({
             "type": "json_schema",
-            "json_schema": {
-                "name": "document_summary",
-                "strict": true,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "summary": {
-                            "type": "string"
-                        }
-                    },
-                    "required": ["summary"],
-                    "additionalProperties": false
-                }
+            "name": "document_summary",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string"
+                    }
+                },
+                "required": ["summary"],
+                "additionalProperties": false
             }
         });
 
@@ -293,28 +291,26 @@ Consider this website context when deciding how to match fragment type IDs:
 
         let response_format = json!({
             "type": "json_schema",
-            "json_schema": {
-                "name": "matching_fragments",
-                "strict": true,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "matching_fragments": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        "justification": {
+            "name": "matching_fragments",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "matching_fragments": {
+                        "type": "array",
+                        "items": {
                             "type": "string"
                         }
                     },
-                    "required": ["name", "matching_fragments", "justification"],
-                    "additionalProperties": false
-                }
+                    "justification": {
+                        "type": "string"
+                    }
+                },
+                "required": ["name", "matching_fragments", "justification"],
+                "additionalProperties": false
             }
         });
 
@@ -386,25 +382,23 @@ Example {}:
 
         let response_format = json!({
             "type": "json_schema",
-            "json_schema": {
-                "name": "primary",
-                "strict": true,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "description": {
-                            "type": "string"
-                        },
-                        "justification": {
-                            "type": "string"
-                        }
+            "name": "primary",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
                     },
-                    "required": ["name", "description", "justification"],
-                    "additionalProperties": false
-                }
+                    "description": {
+                        "type": "string"
+                    },
+                    "justification": {
+                        "type": "string"
+                    }
+                },
+                "required": ["name", "description", "justification"],
+                "additionalProperties": false
             }
         });
 
@@ -490,22 +484,20 @@ Example {}:
 
         let response_format = json!({
             "type": "json_schema",
-            "json_schema": {
-                "name": "meaningful_response",
-                "strict": true,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "is_peripheral": {
-                            "type": "boolean"
-                        },
-                        "justification": {
-                            "type": "string"
-                        }
+            "name": "meaningful_response",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "is_peripheral": {
+                        "type": "boolean"
                     },
-                    "required": ["is_peripheral", "justification"],
-                    "additionalProperties": false
-                }
+                    "justification": {
+                        "type": "string"
+                    }
+                },
+                "required": ["is_peripheral", "justification"],
+                "additionalProperties": false
             }
         });
 
@@ -638,22 +630,20 @@ Example {}:
 
         let response_format = json!({
             "type": "json_schema",
-            "json_schema": {
-                "name": "meaningful",
-                "strict": true,
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "is_unmeaningful": {
-                            "type": "boolean"
-                        },
-                        "justification": {
-                            "type": "string"
-                        }
+            "name": "meaningful",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "is_unmeaningful": {
+                        "type": "boolean"
                     },
-                    "required": ["is_unmeaningful", "justification"],
-                    "additionalProperties": false
-                }
+                    "justification": {
+                        "type": "string"
+                    }
+                },
+                "required": ["is_unmeaningful", "justification"],
+                "additionalProperties": false
             }
         });
 
@@ -705,9 +695,9 @@ Example {}:
             let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
 
             let request_json = json!({
-                "model": "gpt-4o",
+                "model": "gpt-4o-2024-08-06",
                 "temperature": 0,
-                "messages": [
+                "input": [
                     {
                         "role": "system",
                         "content": system_prompt
@@ -717,10 +707,12 @@ Example {}:
                         "content": user_prompt
                     }
                 ],
-                "response_format": response_format,
+                "text": {
+                    "format": response_format,
+                }
             });
 
-            let url = "https://api.openai.com/v1/chat/completions";
+            let url = "https://api.openai.com/v1/responses";
             let authorization = format!("Bearer {}", openai_api_key);
             let client = reqwest::Client::new();
 
@@ -734,14 +726,16 @@ Example {}:
             {
                 Ok(res) => {
                     log::trace!("okay response from openai");
+                    log::debug!("res: {:?}", res);
 
                     match res.json::<serde_json::Value>().await {
                         Ok(json_response) => {
                             log::trace!("okay json from openai");
+                            log::debug!("json_response: {:?}", json_response);
 
-                            json_response["choices"].as_array().and_then(|choices| {
-                                choices.get(0).and_then(|choice| choice["message"]["content"].as_str().map(String::from))
-                            })
+                            json_response["output"][0]["content"][0]["text"]
+                                .as_str()
+                                .map(String::from)
                         }
                         Err(e) => {
                             log::error!("Failed to parse JSON response: {}", e);
