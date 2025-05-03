@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use serde::de::{self, Visitor};
 use sha2::{Sha256, Digest};
+use std::collections::HashSet;
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -76,6 +77,27 @@ impl Hash {
         hasher.update(data);
         format!("{:x}", hasher.finalize())
     }
+
+    fn permute_hash(&self, permutation_index: usize) -> String {
+        let hash_value = match &self.value {
+            Some(value) => value.clone(),
+            None => panic!("Hash must be finalized before permutation."),
+        };
+
+        let hash_bytes = hex::decode(&hash_value).expect("Invalid hex in hash value");
+
+        let mut hasher = Sha256::new();
+        hasher.update(permutation_index.to_le_bytes());
+        let seed_bytes = hasher.finalize();
+
+        let permuted_bytes: Vec<u8> = hash_bytes
+            .iter()
+            .zip(seed_bytes.iter().cycle())
+            .map(|(hash_byte, seed_byte)| hash_byte ^ seed_byte)
+            .collect();
+
+        hex::encode(permuted_bytes)
+    }
 }
 
 impl PartialEq for Hash {
@@ -142,4 +164,35 @@ impl<'de> Deserialize<'de> for Hash {
 
         deserializer.deserialize_str(HashVisitor)
     }
+}
+
+pub fn minhash_signature(features: &HashSet<Hash>) -> Vec<String> {
+    let num_permutations = 100;
+
+    let mut signature = vec![String::new(); num_permutations];
+    for i in 0..num_permutations {
+        let mut min_hash = String::from("f".repeat(64));
+        for feature in features {
+            let permuted_hash = feature.permute_hash(i);
+            if permuted_hash < min_hash {
+                min_hash = permuted_hash;
+            }
+        }
+        signature[i] = min_hash;
+    }
+    signature
+}
+
+pub fn hash_band(band: &[String]) -> String {
+    let concatenated = band.join("");
+    Hash::hash(concatenated.as_bytes())
+}
+
+pub fn lsh_buckets(signature: &[String]) -> Vec<String> {
+    let bands = 20;
+    let rows_per_band = 5;
+
+    signature.chunks(rows_per_band)
+        .map(|band| hash_band(band))
+        .collect()
 }

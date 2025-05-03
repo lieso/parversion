@@ -10,7 +10,11 @@ use crate::prelude::*;
 use crate::document_node::{DocumentNode};
 use crate::provider::Provider;
 use crate::profile::Profile;
-use crate::hash::{Hash};
+use crate::hash::{
+    Hash,
+    minhash_signature,
+    lsh_buckets
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -105,6 +109,31 @@ impl Document {
                 hash.push(feature).finalize().clear_items();
                 hash.clone()
             }).collect();
+
+
+
+
+
+
+            log::debug!("=====================================================================================================");
+            log::debug!("=====================================================================================================");
+            log::debug!("=====================================================================================================");
+            log::debug!("=====================================================================================================");
+            log::debug!("=====================================================================================================");
+
+
+            let signature = minhash_signature(&features);
+
+            log::debug!("signature: {:?}", signature);
+
+            let buckets = lsh_buckets(&signature);
+
+            log::debug!("buckets: {:?}", buckets);
+
+
+
+
+
 
             if let Some(profile) = provider.get_profile(&features).await? {
                 log::info!("Found a profile");
