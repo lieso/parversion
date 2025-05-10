@@ -127,7 +127,7 @@ impl NodeAnalysis {
                 let cloned_meta_context = Arc::clone(&meta_context);
 
                 let handle = task::spawn(async move {
-                    let _permit = permit; // Ensure permit is held until task completion
+                    let _permit = permit;
                     Self::get_basis_node(
                         cloned_provider,
                         cloned_meta_context,
@@ -307,6 +307,7 @@ impl NetworkAnalysis {
             .first()
             .unwrap()
             .clone();
+
         let sibling_contexts: Vec<_> = read_lock!(parent).children
             .iter()
             .map(|sibling| {
@@ -317,16 +318,20 @@ impl NetworkAnalysis {
             })
             .collect();
 
+        log::info!("Number of sibling contexts: {}", sibling_contexts.len());
+
         let mut sibling_jsons = Vec::new();
 
-        for sibling_context in sibling_contexts {
+        for (index, sibling_context) in sibling_contexts.iter().enumerate() {
+            log::debug!("Processing sibling context {}/{}", index + 1, sibling_contexts.len());
+
             let sibling_json = sibling_context.generate_json(
                 Arc::clone(&provider),
                 Arc::clone(&meta_context)
             ).await?;
 
             let subgraph_hash = read_lock!(sibling_context.graph_node).subgraph_hash.clone();
-            log::debug!("other subgraph hash: {}", subgraph_hash);
+            log::debug!("Other subgraph hash: {}", subgraph_hash);
 
             if sibling_json.is_empty() && subgraph_hash == target_subgraph_hash {
                 log::info!("Target subgraph does not result in any meaningful JSON; we will not investigate it further.");
@@ -338,6 +343,8 @@ impl NetworkAnalysis {
                 sibling_jsons.push((subgraph_hash.to_string().unwrap().clone(), sibling_json));
             }
         }
+
+        log::info!("Completed processing all sibling contexts.");
 
         if sibling_jsons.len() <= 1 {
             log::info!("Only one subgraph contains meaningful JSON; we will not investigate it further.");

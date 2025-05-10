@@ -3183,3 +3183,8 @@ basis_networks:
   description: Null network
   relationship: 'Null'
   subgraph_hash: 4cd43561ca8729b9efa8ee38fdeddb59397c62889464808108e865560eddf7b7
+- id: 50a3482e-e7a7-490e-a612-90601d1f2714
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
