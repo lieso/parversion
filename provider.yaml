@@ -2948,6 +2948,25 @@ basis_nodes:
     identity_hash: acd9c3bf48a934f36f5c9a1feefaaa56e8ef0a4e009c2c91789744a29fb67fdd
   description: span
   transformations: []
+- id: 1726efae-2b44-448c-b5ae-c672489eb7cc
+  hash: 982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1
+  lineage:
+    source_hashes:
+    - c83252ee821f1ad6d294d7d88f74ef1b7f2d8fe514f7321d85c89a02c7443f5d
+    - 2a1073a6e67f0e5f09a5957c659503c690efe7272be8313df872556a9a684d8c
+    - 2a1073a6e67f0e5f09a5957c659503c690efe7272be8313df872556a9a684d8c
+    - 30225795f9bef467530b8d005d59384b041e87f0973a725b0d0b98dddf598223
+    - 2a1073a6e67f0e5f09a5957c659503c690efe7272be8313df872556a9a684d8c
+    - 2a1073a6e67f0e5f09a5957c659503c690efe7272be8313df872556a9a684d8c
+    - 2a1073a6e67f0e5f09a5957c659503c690efe7272be8313df872556a9a684d8c
+    - 2a1073a6e67f0e5f09a5957c659503c690efe7272be8313df872556a9a684d8c
+    - f8dd4381183a11030bd0bd1b59e09721161607d8d4b475ab83fd72da9940afd1
+    - 982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1
+    identity_hash: fd69c6fc881b97c65387686d9650af7bb9178fa590eeec0ff75db0813ddbf517
+  description: |2-
+
+                      C
+  transformations: []
 basis_networks:
 - id: 102b1a1d-4c5b-459c-bb97-bab5e2060f9c
   name: 'null'
@@ -3159,3 +3178,8 @@ basis_networks:
   description: Null network
   relationship: 'Null'
   subgraph_hash: 80aead3a77ff8ca3b190fd85ad56d621285ff0772725abcf9f55456565ab06e0
+- id: bb4afb0f-23f2-4886-97c2-680e6d530563
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 4cd43561ca8729b9efa8ee38fdeddb59397c62889464808108e865560eddf7b7

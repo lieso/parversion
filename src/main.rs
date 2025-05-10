@@ -59,10 +59,21 @@ fn load_stdin() -> io::Result<String> {
 fn init_logging() {
     log::info!("Initializing logging...");
 
-    let path = format!("{}/{}", read_lock!(CONFIG).dev.debug_dir, "debug.log");
+    let lock = CONFIG.read().unwrap();
+    let path = format!("{}/{}", lock.dev.debug_dir, "debug.log");
     let log_file = File::create(path).expect("Could not create log file");
 
     Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "{date} [{level}] {file}:{line} - {message}",
+                date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                level = record.level(),
+                file = record.file().unwrap_or("unknown"),
+                line = record.line().unwrap_or(0),
+                message = message
+            ))
+        })
         .level(LevelFilter::Off)
         .level_for("parversion", LevelFilter::Trace)
         .chain(stdout())
