@@ -16,13 +16,7 @@ pub async fn normalize<P: Provider>(
 ) -> Result<Arc<MetaContext>, Errors> {
     log::trace!("In normalize");
 
-    let document = build_document_from_meta_context(
-        Arc::clone(&provider),
-        meta_context,
-        &None
-    ).await.expect("Failed to build document from meta_context");
-    
-    unimplemented!()
+    Ok(meta_context)
 }
 
 #[allow(dead_code)]

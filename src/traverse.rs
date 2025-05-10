@@ -8,7 +8,7 @@ use crate::context::{Context};
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode};
-use crate::document::{Document, DocumentType};
+use crate::document::{Document, DocumentType, DocumentMetadata};
 use crate::document_format::{DocumentFormat};
 use crate::profile::Profile;
 use crate::provider::Provider;
@@ -135,12 +135,23 @@ pub async fn build_document_from_meta_context<P: Provider>(
         &mut result
     ).await?;
 
-    match serde_json::to_string(&result) {
-        Ok(json_string) => log::debug!("result: {}", json_string),
-        Err(e) => log::debug!("Error serializing to JSON: {}", e),
-    }
+    let data = {
+        match serde_json::to_string(&result) {
+            Ok(json_string) => json_string,
+            Err(e) => panic!("Error serializing to JSON: {}", e),
+        }
+    };
 
-    unimplemented!()
+    let document = Document {
+        document_type: DocumentType::Json,
+        metadata: DocumentMetadata {
+            origin: None,
+            date: None,
+        },
+        data,
+    };
+
+    Ok(document)
 }
 
 fn process_network<'a, P: Provider + 'a>(
