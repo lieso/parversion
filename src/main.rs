@@ -59,10 +59,6 @@ fn load_stdin() -> io::Result<String> {
 fn init_logging() {
     log::info!("Initializing logging...");
 
-    let lock = CONFIG.read().unwrap();
-    let path = format!("{}/{}", lock.dev.debug_dir, "debug.log");
-    let log_file = File::create(path).expect("Could not create log file");
-
     Dispatch::new()
         .format(|out, message, record| {
             out.finish(format_args!(
@@ -77,7 +73,6 @@ fn init_logging() {
         .level(LevelFilter::Off)
         .level_for("parversion", LevelFilter::Trace)
         .chain(stdout())
-        .chain(log_file)
         .apply()
         .expect("Could not initialize logging");
 }
