@@ -3,20 +3,10 @@ use reqwest::header;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use std::env;
-use std::sync::Arc;
-use sled::Db;
-use once_cell::sync::Lazy;
-use sha2::{Sha256, Digest};
 
 use crate::prelude::*;
 use crate::transformation::{FieldTransformation, FieldMetadata};
-use crate::config::{CONFIG};
-
-static DB: Lazy<Arc<Db>> = Lazy::new(|| {
-    let debug_dir = &read_lock!(CONFIG).dev.debug_dir;
-    let db = sled::open(format!("{}/cache", debug_dir)).expect("Could not open cache");
-    Arc::new(db)
-});
+use crate::cache::Cache;
 
 pub struct OpenAI;
 
@@ -685,13 +675,14 @@ Example {}:
     {
         log::trace!("In send_openai_request");
 
-        let hash = Self::compute_hash(vec![
+        let mut hash = Hash::from_items(vec![
             system_prompt,
             user_prompt,
             &response_format.to_string()
         ]);
+        let hash = hash.finalize();
 
-        let response = Self::get_or_set_cache(hash.as_str(), || async {
+        let response = Cache::get_or_set_cache(hash.clone(), || async {
             let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
 
             let request_json = json!({
@@ -753,45 +744,5 @@ Example {}:
         let json_response = response.ok_or("Failed to get response from OpenAI")?;
         let parsed_response: T = serde_json::from_str(&json_response)?;
         Ok(parsed_response)
-    }
-
-    fn compute_hash(hasher_items: Vec<&str>) -> String {
-        let mut hasher = Sha256::new();
-        hasher.update(hasher_items.join(""));
-        format!("{:x}", hasher.finalize())
-    }
-
-    async fn get_or_set_cache<F, Fut>(hash: &str, fetch_data: F) -> Option<String>
-    where
-        F: FnOnce() -> Fut,
-        Fut: std::future::Future<Output = Option<String>>,
-    {
-        log::debug!("hash for cache: {}", hash);
-
-        if let Some(cached_response) = Self::get_cached_response(hash.clone()) {
-            log::info!("Cache hit!");
-            Some(cached_response)
-        } else {
-            log::info!("Cache miss!");
-            if let Some(response) = fetch_data().await {
-                Self::set_cached_response(hash, &response);
-                Some(response)
-            } else {
-                None
-            }
-        }
-    }
-
-    fn get_cached_response(key: &str) -> Option<String> {
-        let db = DB.clone();
-        match db.get(key).expect("Could not get value from cache") {
-            Some(data) => Some(String::from_utf8(data.to_vec()).expect("Could not deserialize data")),
-            None => None,
-        }
-    }
-
-    fn set_cached_response(key: &str, value: &str) {
-        let db = DB.clone();
-        db.insert(key, value.to_string().into_bytes()).expect("Could not store value in cache");
     }
 }

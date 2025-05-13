@@ -12,6 +12,7 @@ mod analysis;
 mod basis_network;
 mod basis_node;
 mod basis_graph;
+mod cache;
 mod config;
 mod data_node;
 mod document;
