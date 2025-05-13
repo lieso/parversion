@@ -12,6 +12,7 @@ mod analysis;
 mod basis_network;
 mod basis_node;
 mod basis_graph;
+#[cfg(feature = "caching")]
 mod cache;
 mod config;
 mod data_node;

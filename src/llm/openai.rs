@@ -6,6 +6,7 @@ use std::env;
 
 use crate::prelude::*;
 use crate::transformation::{FieldTransformation, FieldMetadata};
+#[cfg(feature = "caching")]
 use crate::cache::Cache;
 
 pub struct OpenAI;
@@ -682,7 +683,7 @@ Example {}:
         ]);
         let hash = hash.finalize();
 
-        let response = Cache::get_or_set_cache(hash.clone(), || async {
+        let response = Self::get_or_set_cache(hash.clone(), || async {
             let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
 
             let request_json = json!({
@@ -744,5 +745,22 @@ Example {}:
         let json_response = response.ok_or("Failed to get response from OpenAI")?;
         let parsed_response: T = serde_json::from_str(&json_response)?;
         Ok(parsed_response)
+    }
+
+    async fn get_or_set_cache<F, Fut>(hash: Hash, fetch_data: F) -> Option<String>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = Option<String>>,
+    {
+        #[cfg(feature = "caching")]
+        {
+            Cache::get_or_set_cache(hash, fetch_data).await
+        }
+
+        #[cfg(not(feature = "caching"))]
+        {
+            log::debug!("caching is disabled");
+            fetch_data().await
+        }
     }
 }

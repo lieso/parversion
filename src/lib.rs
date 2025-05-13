@@ -2,6 +2,7 @@ pub mod analysis;
 pub mod basis_network;
 pub mod basis_node;
 pub mod basis_graph;
+#[cfg(feature = "caching")]
 pub mod cache;
 pub mod config;
 pub mod data_node;

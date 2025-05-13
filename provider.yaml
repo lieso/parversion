@@ -3213,3 +3213,18 @@ basis_networks:
   description: Null network
   relationship: 'Null'
   subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
+- id: 2597d019-e2cf-4ee2-8880-686b08bbe686
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
+- id: 2f07e9d3-7793-40e8-b52e-3c5ff4b5e477
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
+- id: b3378dff-2242-41c1-9e43-2512e3596801
+  name: 'null'
+  description: Null network
+  relationship: 'Null'
+  subgraph_hash: 1ba32417fc2bc03497be36a8186f190f3cd622fabb67434ce686cd49db396923
