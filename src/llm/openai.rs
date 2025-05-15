@@ -8,6 +8,7 @@ use crate::prelude::*;
 use crate::transformation::{FieldTransformation, FieldMetadata};
 #[cfg(feature = "caching")]
 use crate::cache::Cache;
+use crate::environment::{get_env_variable};
 
 pub struct OpenAI;
 
@@ -684,7 +685,7 @@ Example {}:
         let hash = hash.finalize();
 
         let response = Self::get_or_set_cache(hash.clone(), || async {
-            let openai_api_key = env::var("OPENAI_API_KEY").ok()?;
+            let openai_api_key = get_env_variable("OPENAI_API_KEY");
 
             let request_json = json!({
                 "model": "gpt-4o-2024-08-06",

@@ -1,23 +1,7 @@
-use std::env;
 use dotenv::dotenv;
 
-#[derive(PartialEq)]
-pub enum Environment {
-    Local,
-    Production,
-}
-
-pub fn is_local() -> bool {
+pub fn get_env_variable(key: &str) -> String {
     dotenv().ok();
-    let value = env::var("ENVIRONMENT").unwrap_or_else(|_| "production".to_string());
-    Environment::from_str(&value) == Environment::Local
-}
 
-impl Environment {
-    fn from_str(env: &str) -> Self {
-        match env {
-            "local" => Environment::Local,
-            _ => Environment::Production,
-        }
-    }
+    std::env::var(key).unwrap().to_string()
 }
