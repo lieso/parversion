@@ -3,7 +3,6 @@ use lazy_static::lazy_static;
 use std::sync::RwLock;
 use std::path::Path;
 use std::fs;
-use std::io::Write;
 use std::env;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -22,13 +21,22 @@ pub struct LlmConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DevConfig {
+    #[serde(default = "get_default_debug_dir")]
     pub debug_dir: String,
-    pub debug_lineages: Vec<String>,
+}
+
+impl Default for DevConfig {
+    fn default() -> Self {
+        DevConfig {
+            debug_dir: get_default_debug_dir(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub llm: LlmConfig,
+    #[serde(default)]
     pub dev: DevConfig,
 }
 
@@ -48,18 +56,8 @@ impl Config {
                 max_concurrency: 1,
                 example_snippet_count: 3,
             },
-            dev: DevConfig {
-                debug_dir: get_default_debug_dir(),
-                debug_lineages: vec![]
-            }
+            dev: DevConfig::default(),
         }
-    }
-
-    fn save_to_file(&self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let toml = toml::to_string(self)?;
-        let mut file = fs::File::create(path)?;
-        file.write_all(toml.as_bytes())?;
-        Ok(())
     }
 
     fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
@@ -71,11 +69,9 @@ impl Config {
 
     fn load_or_create_default(path: &str) -> Config {
         if Path::new(path).exists() {
-            Config::load_from_file(path).expect("Failed to load configuration")
+            Config::load_from_file(path).unwrap_or_else(|_| Config::default())
         } else {
-            let default_config = Config::default();
-            default_config.save_to_file(path).expect("Failed to save default configutation");
-            default_config
+            Config::default()
         }
     }
 }
