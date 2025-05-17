@@ -223,8 +223,6 @@ impl NetworkAnalysis {
         while let Some(current) = queue.pop_front() {
             let current_read = read_lock!(current);
 
-            log::info!("subgraph_hash: {}", current_read.subgraph_hash);
-
             if current_read.children.is_empty() {
                 continue;
             }
