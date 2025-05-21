@@ -124,7 +124,12 @@ impl Document {
                 Ok(profile)
             } else {
                 log::info!("Profile not provided, we will create a new one");
-                unimplemented!();
+
+                let profile = Profile::create_profile(&features).await?;
+
+                provider.save_profile(&profile).await?;
+
+                Ok(profile)
             }
         } else {
              Err(Errors::UnexpectedDocumentType)

@@ -16,6 +16,10 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         features: &HashSet<Hash>
     ) -> Result<Option<Profile>, Errors>;
+    async fn save_profile(
+        &self,
+        profile: &Profile
+    ) -> Result<(), Errors>;
     async fn get_basis_node_by_lineage(
         &self,
         lineage: &Lineage
@@ -34,48 +38,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         subgraph_hash: String,
         basis_network: BasisNetwork
     ) -> Result<(), Errors>;
-}
-
-pub struct VoidProvider;
-
-#[async_trait]
-impl Provider for VoidProvider {
-    async fn get_profile(
-        &self,
-        _features: &HashSet<Hash>
-    ) -> Result<Option<Profile>, Errors> {
-        Ok(None)
-    }
-
-    async fn get_basis_node_by_lineage(
-        &self,
-        lineage: &Lineage
-    ) -> Result<Option<BasisNode>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_basis_node(
-        &self,
-        _lineage: &Lineage,
-        _basis_node: BasisNode,
-    ) -> Result<(), Errors> {
-        Ok(())
-    }
-
-    async fn get_basis_network_by_subgraph_hash(
-        &self,
-        _subgraph_hash: &String
-    ) -> Result<Option<BasisNetwork>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_basis_network(
-        &self,
-        _subgraph_hash: String,
-        _basis_network: BasisNetwork
-    ) -> Result<(), Errors> {
-        Ok(())
-    }
 }
 
 pub struct YamlFileProvider {
@@ -138,6 +100,22 @@ impl Provider for YamlFileProvider {
         } else {
             Ok(None)
         }
+    }
+
+    async fn save_profile(
+        &self,
+        profile: &Profile
+    ) -> Result<(), Errors> {
+        let mut yaml = self.load_data().await?;
+
+        let profiles = yaml.get_mut("profiles")
+            .and_then(|profiles_value| profiles_value.as_sequence_mut())
+            .ok_or(Errors::YamlParseError)?;
+
+        let new_profile_yaml = serde_yaml::to_value(&profile).map_err(|_| Errors::UnexpectedError)?;
+        profiles.push(new_profile_yaml);
+
+        self.save_data(&yaml).await
     }
 
     async fn get_basis_node_by_lineage(
@@ -236,3 +214,53 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 }
+
+pub struct VoidProvider;
+
+#[async_trait]
+impl Provider for VoidProvider {
+    async fn get_profile(
+        &self,
+        _features: &HashSet<Hash>
+    ) -> Result<Option<Profile>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_profile(
+        &self,
+        profile: &Profile
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_basis_node_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<BasisNode>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_basis_node(
+        &self,
+        _lineage: &Lineage,
+        _basis_node: BasisNode,
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_basis_network_by_subgraph_hash(
+        &self,
+        _subgraph_hash: &String
+    ) -> Result<Option<BasisNetwork>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_basis_network(
+        &self,
+        _subgraph_hash: String,
+        _basis_network: BasisNetwork
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+}
+

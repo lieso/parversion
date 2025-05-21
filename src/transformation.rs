@@ -229,7 +229,10 @@ impl XMLElementTransformation {
         let attributes_code = {
             let attributes_list: Vec<String> = attributes
                 .into_iter()
-                .map(|(key, value)| format!("'{}': '{}'", key, value))
+                .map(|(key, value)| {
+                    let escaped_value = serde_json::to_string(&value).unwrap();
+                    format!("'{}': {}", key, escaped_value)
+                })
                 .collect();
             format!("let attributes = {{ {} }};", attributes_list.join(", "))
         };

@@ -110,7 +110,9 @@ impl DocumentNode {
             },
             XMLNode::Text(text_node) => {
                 let mut description = text_node.to_string();
-                description.truncate(20);
+
+                let truncate_at = description.char_indices().nth(20).map_or(description.len(), |(idx, _)| idx);
+                description.truncate(truncate_at);
 
                 description
             },
