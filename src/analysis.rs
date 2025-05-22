@@ -323,10 +323,17 @@ impl NetworkAnalysis {
         for (index, sibling_context) in sibling_contexts.iter().enumerate() {
             log::debug!("Processing sibling context {}/{}", index + 1, sibling_contexts.len());
 
-            let sibling_json = sibling_context.generate_json(
+            let mut sibling_json = sibling_context.generate_json(
                 Arc::clone(&provider),
                 Arc::clone(&meta_context)
             ).await?;
+
+            
+
+            let truncate_at = sibling_json.char_indices().nth(2000).map_or(sibling_json.len(), |(idx, _)| idx);
+            sibling_json.truncate(truncate_at);
+
+
 
             let subgraph_hash = read_lock!(sibling_context.graph_node).subgraph_hash.clone();
             log::debug!("Other subgraph hash: {}", subgraph_hash);
