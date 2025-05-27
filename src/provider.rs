@@ -2,16 +2,34 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::fs as async_fs;
 use tokio::sync::RwLock as AsyncRwLock;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use serde_yaml;
 
 use crate::prelude::*;
 use crate::profile::Profile;
 use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
+use crate::interface_type::InterfaceType;
+use crate::schema::Schema;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
+    async fn list_interfaces(
+        &self,
+    ) -> Result<Vec<Interface>, Errors>;
+    async fn save_interface(
+        &self,
+        interface: &Interface,
+    ) -> Result<(), Errors>;
+    async fn get_schema_by_interface(
+        &self,
+        interface: &Interface
+    ) -> Result<Option<Schema>, Errors>;
+    async fn save_schema_for_interface(
+        &self,
+        interface: &Interface,
+        schema: &Schema
+    ) -> Result<(), Errors>;
     async fn get_profile(
         &self,
         features: &HashSet<Hash>
@@ -145,7 +163,7 @@ impl Provider for YamlFileProvider {
 
     async fn save_basis_node(
         &self,
-        lineage: &Lineage,
+        _lineage: &Lineage,
         basis_node: BasisNode,
     ) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
@@ -193,7 +211,7 @@ impl Provider for YamlFileProvider {
 
     async fn save_basis_network(
         &self,
-        subgraph_hash: String,
+        _subgraph_hash: String,
         basis_network: BasisNetwork
     ) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
@@ -228,14 +246,14 @@ impl Provider for VoidProvider {
 
     async fn save_profile(
         &self,
-        profile: &Profile
+        _profile: &Profile
     ) -> Result<(), Errors> {
         Ok(())
     }
 
     async fn get_basis_node_by_lineage(
         &self,
-        lineage: &Lineage
+        _lineage: &Lineage
     ) -> Result<Option<BasisNode>, Errors> {
         Ok(None)
     }

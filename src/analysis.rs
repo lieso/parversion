@@ -34,20 +34,6 @@ impl Analysis {
     ) -> Result<Self, Errors> {
         log::info!("Starting analysis...");
 
-
-
-        // preparation
-
-        let summary = meta_context.get_summary().await?;
-        log::info!("Document summary: {}", summary);
-
-
-        //
-
-
-
-
-
         let node_analysis = NodeAnalysis::new(
             Arc::clone(&provider),
             Arc::clone(&meta_context),

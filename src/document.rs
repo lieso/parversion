@@ -31,8 +31,8 @@ pub struct DocumentMetadata {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Document {
     pub document_type: DocumentType,
-    pub metadata: DocumentMetadata,
     pub data: String,
+    pub metadata: DocumentMetadata,
 }
 
 impl Document {
@@ -66,9 +66,7 @@ impl Document {
             let mut xml = String::from("");
             walk(&mut xml, &dom.document, 0);
 
-
-
-            let mut reader = std::io::Cursor::new(xml);
+            let reader = std::io::Cursor::new(xml);
 
             match Element::parse(reader) {
                 Ok(element) => Ok(DocumentNode::new(xmltree::XMLNode::Element(element))),

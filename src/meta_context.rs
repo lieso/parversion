@@ -5,11 +5,12 @@ use crate::prelude::*;
 use crate::graph_node::{Graph, GraphNode};
 use crate::context::{Context};
 use crate::llm::LLM;
+use crate::interface_type::InterfaceType;
 
 pub struct MetaContext {
     pub contexts: HashMap<ID, Arc<Context>>,
     pub graph_root: Arc<RwLock<GraphNode>>,
-    pub summary: RwLock<Option<String>>,
+    pub interface_type: Arc<InterfaceType>,
 }
 
 impl MetaContext {

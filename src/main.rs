@@ -40,6 +40,8 @@ mod context_group;
 mod llm;
 mod traverse;
 mod meta_context;
+mod schema;
+mod interface_type;
 
 use crate::prelude::*;
 use crate::config::{CONFIG};

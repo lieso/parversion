@@ -28,6 +28,13 @@ pub async fn organize<P: Provider>(
 
     let meta_context = Arc::new(meta_context);
 
+    let interface_type = InterfaceType::get_interface_type(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context),
+    ).await?;
+
+    meta_context.interface_type = Some(interface_type);
+
     Analysis::start(
         Arc::clone(&provider),
         Arc::clone(&meta_context)

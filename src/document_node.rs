@@ -1,4 +1,3 @@
-use serde::{Serialize, Deserialize};
 use xmltree::{XMLNode, Element};
 use std::collections::HashMap;
 
@@ -141,7 +140,7 @@ impl DocumentNode {
                     })
                     .collect()
             },
-            XMLNode::Text(text_node) => Vec::new(),
+            XMLNode::Text(_text_node) => Vec::new(),
             _ => panic!("Unexpected XML node type")
         }
     }

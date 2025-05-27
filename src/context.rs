@@ -122,14 +122,14 @@ impl Context {
         let document_node = current_context.document_node.clone();
 
         let should_render = if current_id == *target_id {
-            let (mut a, b) = read_lock!(document_node).to_string_components();
+            let (mut a, _b) = read_lock!(document_node).to_string_components();
 
             a = Self::mark_text(&a);
             snippet.push_str(&a);
 
             true
         } else if neighbour_ids.contains(&current_id) {
-            let (a, b) = read_lock!(document_node).to_string_components();
+            let (a, _b) = read_lock!(document_node).to_string_components();
 
             snippet.push_str(&a);
 

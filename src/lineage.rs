@@ -61,33 +61,8 @@ fn derive_identity(source_hashes: Vec<Hash>) -> Hash {
         }
     }
 
-    let unique_hashes = remove_duplicate_sequences(hashes.clone());
-
     let mut identity_hash = Hash::from_items(hashes);
     identity_hash.finalize();
 
     identity_hash
-}
-
-fn remove_duplicate_sequences(vec: Vec<Hash>) -> Vec<Hash> {
-    if vec.is_empty() {
-        return vec;
-    }
-
-    let mut result = Vec::new();
-    let mut iter = vec.into_iter().peekable();
-
-    while let Some(current) = iter.next() {
-        result.push(current.clone());
-
-        while let Some(next) = iter.peek() {
-            if next == &current {
-                iter.next();
-            } else {
-                break;
-            }
-        }
-    }
-
-    result
 }

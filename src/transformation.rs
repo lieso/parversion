@@ -311,9 +311,7 @@ impl FieldTransformation {
     pub fn transform(&self, data_node: Arc<DataNode>) -> Result<JsonNode, Errors> {
         log::trace!("In transform");
 
-        if let Some(data_node_field) = data_node.fields.get(&self.field) {
-            let value = data_node.fields.get(&self.field).clone().unwrap();
-
+        if let Some(value) = data_node.fields.get(&self.field) {
             let json = Json {
                 key: self.image.clone(),
                 value: value.to_string(),
