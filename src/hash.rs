@@ -1,7 +1,6 @@
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use serde::de::{self, Visitor};
 use sha2::{Sha256, Digest};
-use std::collections::HashSet;
 use std::fmt;
 
 #[derive(Clone, Debug)]

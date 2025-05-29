@@ -5,35 +5,15 @@ use crate::prelude::*;
 use crate::graph_node::{Graph, GraphNode};
 use crate::context::{Context};
 use crate::llm::LLM;
-use crate::interface_type::InterfaceType;
+use crate::interface::Interface;
 
 pub struct MetaContext {
     pub contexts: HashMap<ID, Arc<Context>>,
     pub graph_root: Arc<RwLock<GraphNode>>,
-    pub interface_type: Arc<InterfaceType>,
+    pub interface: Arc<Interface>,
 }
 
 impl MetaContext {
-    pub async fn get_summary(&self) -> Result<String, Errors> {
-        log::trace!("In get_summary");
-
-        {
-            let lock = read_lock!(self.summary);
-            if let Some(summary) = &*lock {
-                return Ok(summary.clone());
-            }
-        }
-
-        let summary = LLM::get_summary(self).await?;
-
-        {
-            let mut write_lock = write_lock!(self.summary);
-            *write_lock = Some(summary.clone());
-        }
-
-        Ok(summary)
-    }
-
     pub fn get_original_document(&self) -> String {
         log::trace!("In get_original_document");
 

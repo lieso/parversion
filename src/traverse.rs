@@ -15,11 +15,14 @@ use crate::provider::Provider;
 use crate::json_node::JsonNode;
 use crate::basis_network::{NetworkRelationship};
 
-pub fn traverse_with_context(
+pub fn traverse_document(
     profile: &Profile,
     document: Document
-) -> Result<MetaContext, Errors> {
-    log::trace!("In traverse_with_context");
+) -> Result<(
+    HashMap<ID, Arc<Context>>, // context
+    Arc<RwLock<GraphNode>> // graph root
+), Errors> {
+    log::trace!("In traverse_document");
 
     let document_root = document.get_document_node()?;
     let document_root = Arc::new(RwLock::new(document_root.clone()));
@@ -110,13 +113,7 @@ pub fn traverse_with_context(
         &profile
     );
 
-    let meta_context = MetaContext {
-        contexts,
-        graph_root,
-        summary: RwLock::new(None),
-    };
-
-    Ok(meta_context)
+    Ok((contexts, graph_root))
 }
 
 pub async fn build_document_from_meta_context<P: Provider>(

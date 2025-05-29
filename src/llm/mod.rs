@@ -3,7 +3,6 @@ use std::sync::{Arc};
 use crate::prelude::*;
 use crate::transformation::FieldTransformation;
 use crate::meta_context::MetaContext;
-use crate::graph_node::{GraphNode, GraphNodeID};
 use crate::config::{CONFIG};
 use crate::context_group::ContextGroup;
 
@@ -53,19 +52,5 @@ impl LLM {
         ).await?;
 
         Ok((name, matches))
-    }
-
-    pub async fn get_summary(
-        meta_context: &MetaContext,
-    ) -> Result<String, Errors> {
-        log::trace!("In get_summary");
-
-        let compact_document = meta_context.get_original_document();
-
-        let summary = openai::OpenAI::get_summary(
-            compact_document.clone(),
-        ).await?;
-
-        Ok(summary)
     }
 }

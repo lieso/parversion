@@ -5,35 +5,37 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::provider::Provider;
 use crate::traverse::{
-    traverse_with_context,
+    traverse_document,
     build_document_from_meta_context
 };
 use crate::analysis::{Analysis};
 use crate::meta_context::MetaContext;
+use crate::interface::Interface;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
-    document: Document,
+    mut document: Document,
     options: &Option<Options>,
 ) -> Result<Arc<MetaContext>, Errors> {
     log::trace!("In organize");
 
-    let mut document = document;
-
     let profile = document.perform_analysis(provider.clone()).await?;
 
-    let meta_context = traverse_with_context(&profile, document)
+    let (contexts, graph_root) = traverse_document(&profile, document)
         .expect("Could not traverse document");
 
-    let meta_context = Arc::new(meta_context);
-
-    let interface_type = InterfaceType::get_interface_type(
+    let interface = Interface::get_interface(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
+        &contexts,
+        &graph_root
     ).await?;
 
-    meta_context.interface_type = Some(interface_type);
+    let meta_context = Arc::new(MetaContext {
+        contexts,
+        graph_root,
+        interface
+    });
 
     Analysis::start(
         Arc::clone(&provider),

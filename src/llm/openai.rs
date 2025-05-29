@@ -2,7 +2,6 @@ use serde::{Serialize, Deserialize};
 use reqwest::header;
 use serde::de::DeserializeOwned;
 use serde_json::json;
-use std::env;
 
 use crate::prelude::*;
 use crate::transformation::{FieldTransformation, FieldMetadata};

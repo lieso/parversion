@@ -2,7 +2,6 @@ use serde::{Serialize, Deserialize};
 use lazy_static::lazy_static;
 use std::sync::RwLock;
 use std::path::Path;
-use std::fs;
 use std::env;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
