@@ -128,7 +128,7 @@ impl NodeAnalysis {
 
     async fn get_basis_node<P: Provider>(
         provider: Arc<P>,
-        meta_context: Arc<MetaContext>,
+        _meta_context: Arc<MetaContext>,
         context_group: ContextGroup,
     ) -> Result<BasisNode, Errors> {
         log::trace!("In get_basis_node");
@@ -145,7 +145,6 @@ impl NodeAnalysis {
         };
 
         let field_transformations: Vec<FieldTransformation> = LLM::get_field_transformations(
-            Arc::clone(&meta_context),
             context_group.clone()
         ).await?;
 

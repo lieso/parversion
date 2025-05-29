@@ -37,7 +37,7 @@ impl BasisGraphBuilder {
         }
     }
 
-    pub fn from_basis_graph(basis_graph: &BasisGraph) -> Self {
+    pub fn from_basis_graph(_basis_graph: &BasisGraph) -> Self {
         unimplemented!()
         //BasisGraphBuilder {
         //    id: basis_graph.id.clone(),

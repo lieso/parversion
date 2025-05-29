@@ -2,8 +2,6 @@ use uuid::Uuid;
 use serde::ser::{Serialize, Serializer};
 use serde::de::{Deserialize, Deserializer, Visitor, Error as SerdeError};
 use std::fmt;
-use std::str::FromStr;
-
 
 #[derive(Clone, Debug, Hash)]
 pub struct ID {

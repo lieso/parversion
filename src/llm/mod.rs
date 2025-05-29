@@ -1,9 +1,5 @@
-use std::sync::{Arc};
-
 use crate::prelude::*;
 use crate::transformation::FieldTransformation;
-use crate::meta_context::MetaContext;
-use crate::config::{CONFIG};
 use crate::context_group::ContextGroup;
 
 mod openai;
@@ -12,12 +8,9 @@ pub struct LLM {}
 
 impl LLM {
     pub async fn get_field_transformations(
-        meta_context: Arc<MetaContext>,
         context_group: ContextGroup,
     ) -> Result<Vec<FieldTransformation>, Errors> {
         log::trace!("In get_field_transformation");
-
-        let example_snippet_count = read_lock!(CONFIG).llm.example_snippet_count;
 
         let mut field_transformations = Vec::new();
 
