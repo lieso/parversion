@@ -14,12 +14,22 @@ use crate::basis_network::{
 use crate::config::{CONFIG};
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
+use crate::basis_graph::BasisGraph;
 
-pub async fn generate_basis_networks<P: Provider>(
+pub async fn get_basis_graph<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<MetaContext>,
+) -> Result<Vec<Basisgraph>, Errors> {
+    log::trace!("In get_basis_graph");
+    
+    unimplemented!()
+}
+
+pub async fn get_basis_networks<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<MetaContext>,
 ) -> Result<Vec<BasisNetwork>, Errors> {
-    log::trace!("In generate_basis_networks");
+    log::trace!("In get_basis_networks");
 
     let graph_root = Arc::clone(&meta_context.graph_root);
 
@@ -53,7 +63,7 @@ pub async fn generate_basis_networks<P: Provider>(
         for subgraph in unique_subgraphs.values().cloned() {
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
-            let result = generate_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await?;
+            let result = get_basis_network(cloned_provider, cloned_meta_context, subgraph.clone()).await?;
             results.push(result);
         }
 
@@ -67,7 +77,7 @@ pub async fn generate_basis_networks<P: Provider>(
             let cloned_meta_context = Arc::clone(&meta_context);
 
             let handle = task::spawn(async move {
-                generate_basis_network(
+                get_basis_network(
                     cloned_provider,
                     cloned_meta_context,
                     subgraph.clone()
@@ -80,12 +90,12 @@ pub async fn generate_basis_networks<P: Provider>(
     }
 }
 
-async fn generate_basis_network<P: Provider>(
+async fn get_basis_network<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<MetaContext>,
     graph: Graph
 ) -> Result<BasisNetwork, Errors> {
-    log::trace!("In generate_basis_network");
+    log::trace!("In get_basis_network");
 
     let target_subgraph_hash = read_lock!(graph).subgraph_hash.clone();
     log::debug!("target_subgraph_hash: {}", target_subgraph_hash.to_string().unwrap());

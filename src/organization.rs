@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::document::{Document};
@@ -11,7 +11,7 @@ use crate::traverse::{
 use crate::meta_context::MetaContext;
 use crate::interface::Interface;
 use crate::node_analysis::{get_basis_nodes};
-use crate::network_analysis::{generate_basis_networks};
+use crate::network_analysis::{get_basis_networks, get_basis_graph};
 use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 
@@ -20,35 +20,39 @@ pub async fn organize<P: Provider>(
     provider: Arc<P>,
     mut document: Document,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
 
-    let profile = document.perform_analysis(provider.clone()).await?;
+    let meta_context = Arc::new(RwLock::new(MetaContext::new()));
 
-    let (contexts, graph_root) = traverse_document(&profile, document)
-        .expect("Could not traverse document");
+    log::info!("Performing document analysis");
+    let profile = document.perform_analysis(Arc::clone(&provider)).await?;
+    meta_context.update_profile(profile);
 
-    let interface = Interface::get_interface(
+    log::info!("Traversing document using profile");
+    let (contexts, graph_root) = traverse_document(&profile, document)?;
+    meta_context.update_data_structures(contexts, graph_root);
+
+    log::info!("Getting basis graph");
+    let basis_graph = get_basis_graph(
         Arc::clone(&provider),
-        &contexts,
-        &graph_root
+        Arc::clone(&meta_context)
     ).await?;
+    meta_context.update_basis_graph(basis_graph);
 
-    let meta_context = Arc::new(MetaContext {
-        contexts,
-        graph_root,
-        interface
-    });
-
-    let _basis_nodes: Vec<BasisNode> = get_basis_nodes(
+    log::info!("Getting basis nodes");
+    let basis_nodes = get_basis_nodes(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
+        Arc::clone(&meta_context)
     ).await?;
+    meta_context.update_basis_nodes(basis_nodes);
 
-    let _basis_networks: Vec<BasisNetwork> = generate_basis_networks(
+    log::info!("Generating basis networks");
+    let basis_networks = get_basis_networks(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
+        Arc::clone(&meta_context)
     ).await?;
+    meta_context.update_basis_networks(basis_networks);
 
     Ok(meta_context)
 }
