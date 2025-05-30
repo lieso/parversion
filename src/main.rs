@@ -8,7 +8,6 @@ use std::fs::File;
 use std::io::stdout;
 use fern::Dispatch;
 
-mod analysis;
 mod basis_network;
 mod basis_node;
 mod basis_graph;
@@ -42,6 +41,8 @@ mod traverse;
 mod meta_context;
 mod schema;
 mod interface;
+mod network_analysis;
+mod node_analysis;
 
 use crate::prelude::*;
 use crate::config::{CONFIG};

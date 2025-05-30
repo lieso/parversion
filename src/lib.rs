@@ -1,4 +1,3 @@
-pub mod analysis;
 pub mod basis_network;
 pub mod basis_node;
 pub mod basis_graph;
@@ -32,3 +31,5 @@ pub mod traverse;
 pub mod meta_context;
 pub mod schema;
 pub mod interface;
+pub mod network_analysis;
+pub mod node_analysis;

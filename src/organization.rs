@@ -8,9 +8,12 @@ use crate::traverse::{
     traverse_document,
     build_document_from_meta_context
 };
-use crate::analysis::{Analysis};
 use crate::meta_context::MetaContext;
 use crate::interface::Interface;
+use crate::node_analysis::{get_basis_nodes};
+use crate::network_analysis::{generate_basis_networks};
+use crate::basis_node::BasisNode;
+use crate::basis_network::BasisNetwork;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -37,9 +40,14 @@ pub async fn organize<P: Provider>(
         interface
     });
 
-    Analysis::start(
+    let _basis_nodes: Vec<BasisNode> = get_basis_nodes(
         Arc::clone(&provider),
-        Arc::clone(&meta_context)
+        Arc::clone(&meta_context),
+    ).await?;
+
+    let _basis_networks: Vec<BasisNetwork> = generate_basis_networks(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context),
     ).await?;
 
     Ok(meta_context)
