@@ -14,8 +14,8 @@ pub struct MetaContext {
     pub graph_root: Option<Graph>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
-    pub basis_graph: Option<BasisGraph>,
-    pub profile: Option<Profile>,
+    pub basis_graph: Option<Arc<BasisGraph>>,
+    pub profile: Option<Arc<Profile>>,
 }
 
 impl MetaContext {
@@ -30,7 +30,7 @@ impl MetaContext {
         }
     }
 
-    pub fn update_profile(&mut self, profile: Profile) {
+    pub fn update_profile(&mut self, profile: Arc<Profile>) {
         self.profile = Some(profile);
     }
 
@@ -39,7 +39,7 @@ impl MetaContext {
         self.graph_root = Some(graph_root);
     }
 
-    pub fn update_basis_graph(&mut self, graph: BasisGraph) {
+    pub fn update_basis_graph(&mut self, graph: Arc<BasisGraph>) {
         self.basis_graph = Some(graph);
     }
 
@@ -47,8 +47,8 @@ impl MetaContext {
         self.basis_nodes = Some(nodes);
     }
 
-    pub fn update_basis_networks(&mut self, networks: Vec<BasisNetwork>) {
-        self.basis_networks = Some(networks.into_iter().map(|n| (n.id.clone(), Arc::new(n))).collect());
+    pub fn update_basis_networks(&mut self, networks: HashMap<ID, Arc<BasisNetwork>>) {
+        self.basis_networks = Some(networks);
     }
 
     pub fn get_original_document(&self) -> String {
@@ -77,7 +77,7 @@ fn traverse_for_condensed_document(
 ) {
     let lock = read_lock!(current_node);
     let current_id = lock.id.clone();
-    let current_context = meta_context.contexts.unwrap();
+    let current_context = meta_context.contexts.clone().unwrap();
     let current_context = current_context.get(&current_id).unwrap();
     let current_lineage = current_context.lineage.clone();
     let document_node = current_context.document_node.clone();

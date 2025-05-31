@@ -19,7 +19,7 @@ use crate::basis_graph::BasisGraph;
 pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-) -> Result<BasisGraph, Errors> {
+) -> Result<Arc<BasisGraph>, Errors> {
     log::trace!("In get_basis_graph");
     
     unimplemented!()
@@ -31,9 +31,10 @@ pub async fn get_basis_networks<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In get_basis_networks");
 
-    let lock = read_lock!(meta_context);
-
-    let graph_root = lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
+    let graph_root = {
+        let lock = read_lock!(meta_context);
+        lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?
+    };
 
     let mut queue = VecDeque::new();
     let mut unique_subgraphs = HashMap::new();
@@ -58,7 +59,10 @@ pub async fn get_basis_networks<P: Provider>(
 
     log::info!("Number of unique subgraphs: {:?}", unique_subgraphs.len());
 
-    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    let max_concurrency = {
+        let config_lock = read_lock!(CONFIG);
+        config_lock.llm.max_concurrency
+    };
 
     if max_concurrency == 1 {
         let mut results = HashMap::new();
@@ -81,11 +85,12 @@ pub async fn get_basis_networks<P: Provider>(
         let mut handles = Vec::new();
 
         for subgraph in unique_subgraphs.values().cloned() {
-            let _permit = semaphore.clone().acquire_owned().await.unwrap();
+            let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
 
             let handle = task::spawn(async move {
+                let _permit = permit;
                 let basis_network = get_basis_network(
                     cloned_provider,
                     cloned_meta_context,
@@ -98,7 +103,7 @@ pub async fn get_basis_networks<P: Provider>(
         }
 
         let results: Vec<Result<(ID, Arc<BasisNetwork>), Errors>> = try_join_all(handles).await?;
-        let hashmap_results: HashMap<ID, Arc<BasisNetwork>> = results.into_iter().collect::<Result<_, _>>?;
+        let hashmap_results: HashMap<ID, Arc<BasisNetwork>> = results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }
@@ -111,8 +116,14 @@ async fn get_basis_network<P: Provider>(
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
 
-    let lock = read_lock!(meta_context);
-    let contexts = lock.contexts.ok_or(Errors::ContextsNotProvided)?;
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts.clone().ok_or(Errors::ContextsNotProvided)?
+    };
+    let basis_graph = {
+        let lock = read_lock!(meta_context);
+        lock.basis_graph.clone().ok_or(Errors::BasisGraphNotProvided)?
+    };
 
     let target_subgraph_hash = read_lock!(graph).subgraph_hash.clone();
     log::debug!("target_subgraph_hash: {}", target_subgraph_hash.to_string().unwrap());
@@ -194,7 +205,6 @@ async fn get_basis_network<P: Provider>(
 
     log::info!("Going to consult LLM for relationships between subgraphs...");
 
-    let basis_graph = lock.basis_graph.ok_or(Errors::BasisGraphNotProvided)?;
     let overall_context = basis_graph.description.clone();
 
     let (name, matches) = LLM::get_relationships(

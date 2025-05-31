@@ -25,7 +25,7 @@ pub fn traverse_document(
     log::trace!("In traverse_document");
 
     let lock = read_lock!(meta_context);
-    let profile = lock.profile.ok_or(Errors::ProfileNotProvided)?;
+    let profile = lock.profile.as_ref().ok_or(Errors::ProfileNotProvided)?;
 
     let document_root = document.get_document_node()?;
     let document_root = Arc::new(RwLock::new(document_root.clone()));
@@ -121,17 +121,20 @@ pub fn traverse_document(
 
 pub async fn build_document_from_meta_context<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<MetaContext>,
+    meta_context: Arc<RwLock<MetaContext>>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In build_document_from_meta_context");
+
+    let lock = read_lock!(meta_context);
+    let graph_root = lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
 
     let mut result: HashMap<String, Value> = HashMap::new();
 
     process_network(
         provider.clone(),
         meta_context.clone(),
-        meta_context.graph_root.clone(),
+        graph_root,
         &mut result
     ).await?;
 
@@ -156,12 +159,17 @@ pub async fn build_document_from_meta_context<P: Provider>(
 
 fn process_network<'a, P: Provider + 'a>(
     provider: Arc<P>,
-    meta_context: Arc<MetaContext>,
+    meta_context: Arc<RwLock<MetaContext>>,
     graph: Graph,
     result: &'a mut HashMap<String, Value>,
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), Errors>> + Send + 'a>> {
     Box::pin(async move {
         log::trace!("In process_network");
+
+        let contexts = {
+            let lock = read_lock!(meta_context);
+            lock.contexts.clone().unwrap()
+        };
 
         let mut queue = VecDeque::new();
         queue.push_back(graph.clone());
@@ -174,7 +182,7 @@ fn process_network<'a, P: Provider + 'a>(
                 (read_lock.id.clone(), read_lock.children.clone())
             };
 
-            let context = meta_context.contexts.get(&context_id).unwrap().clone();
+            let context = contexts.get(&context_id).unwrap().clone();
 
             process_node(
                 provider.clone(),

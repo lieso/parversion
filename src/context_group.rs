@@ -20,12 +20,12 @@ impl ContextGroup {
         log::trace!("In from_meta_context");
 
         let lock = read_lock!(meta_context);
-        let contexts = lock.contexts.ok_or(Errors::ContextsNotProvided)?;
+        let contexts = lock.contexts.as_ref().unwrap();
 
         let mut context_groups: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
         let mut seen_context_ids: HashSet<ID> = HashSet::new();
 
-        for context in meta_context.contexts.values() {
+        for context in contexts.values() {
             if seen_context_ids.insert(context.id.clone()) {
                 context_groups
                     .entry(context.lineage.clone())

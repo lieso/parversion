@@ -29,8 +29,10 @@ impl Context {
     ) -> Result<String, Errors> {
         log::trace!("In generate_json");
 
-        let lock = read_lock!(meta_context);
-        let contexts = lock.contexts.ok_or(Errors::ContextsNotProvided)?;
+        let contexts = {
+            let lock = read_lock!(meta_context);
+            lock.contexts.clone().ok_or(Errors::ContextsNotProvided)?
+        };
 
         let mut result: HashMap<String, Value> = HashMap::new();
 
@@ -99,11 +101,12 @@ impl Context {
         );
 
         let mut snippet = String::new();
-        let root_node = meta_context.graph_root.clone();
+        let lock = read_lock!(meta_context);
+        let graph_root = lock.graph_root.clone().unwrap();
 
         Self::traverse_for_snippet(
             Arc::clone(&meta_context),
-            Arc::clone(&root_node),
+            Arc::clone(&graph_root),
             &neighbour_ids,
             &read_lock!(graph_node).id,
             &mut snippet
@@ -113,15 +116,17 @@ impl Context {
     }
 
     fn traverse_for_snippet(
-        meta_context: Arc<MetaContext>,
+        meta_context: Arc<RwLock<MetaContext>>,
         current_node: Arc<RwLock<GraphNode>>,
         neighbour_ids: &HashSet<GraphNodeID>,
         target_id: &GraphNodeID,
         snippet: &mut String,
     ) {
+        let meta_context_lock = read_lock!(meta_context);
         let lock = read_lock!(current_node);
         let current_id = lock.id.clone();
-        let current_context = meta_context.contexts.get(&current_id).unwrap();
+        let contexts = meta_context_lock.contexts.as_ref().unwrap();
+        let current_context = contexts.get(&current_id).unwrap();
         let document_node = current_context.document_node.clone();
 
         let should_render = if current_id == *target_id {

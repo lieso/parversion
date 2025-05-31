@@ -16,7 +16,7 @@ use crate::network_analysis::{get_basis_networks, get_basis_graph};
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
     mut document: Document,
-    options: &Option<Options>,
+    _options: &Option<Options>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
 
@@ -24,13 +24,14 @@ pub async fn organize<P: Provider>(
 
     log::info!("Performing document analysis");
     let profile = document.perform_analysis(Arc::clone(&provider)).await?;
+    let profile = Arc::new(profile);
 
     {
         let mut lock = write_lock!(meta_context);
         lock.update_profile(profile);
     }
 
-    log::info!("Traversing document using profile");
+    log::info!("Traversing document");
     let (contexts, graph_root) = traverse_document(document, meta_context.clone())?;
 
     {
@@ -78,7 +79,7 @@ pub async fn organize<P: Provider>(
 pub async fn organize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
-    options: &Option<Options>,
+    _options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_document");
@@ -86,7 +87,7 @@ pub async fn organize_document<P: Provider>(
     let meta_context = organize(
         Arc::clone(&provider),
         document,
-        options
+        _options
     ).await?;
 
     build_document_from_meta_context(
@@ -100,7 +101,7 @@ pub async fn organize_document<P: Provider>(
 pub async fn organize_document_to_string<P: Provider>(
     provider: Arc<P>,
     document: Document,
-    options: &Option<Options>,
+    _options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In organize_document_to_string");
@@ -108,7 +109,7 @@ pub async fn organize_document_to_string<P: Provider>(
     let document = organize_document(
         Arc::clone(&provider),
         document,
-        options,
+        _options,
         document_format
     ).await?;
 
@@ -119,25 +120,25 @@ pub async fn organize_document_to_string<P: Provider>(
 pub async fn organize_text<P: Provider>(
     provider: Arc<P>,
     text: String,
-    options: &Option<Options>,
+    _options: &Option<Options>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_text");
 
-    let document = Document::from_string(text, options)?;
+    let document = Document::from_string(text, _options)?;
 
-    organize(Arc::clone(&provider), document, options).await
+    organize(Arc::clone(&provider), document, _options).await
 }
 
 #[allow(dead_code)]
 pub async fn organize_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
-    options: &Option<Options>,
+    _options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_text_to_document");
 
-    let meta_context = organize_text(Arc::clone(&provider), text, options).await?;
+    let meta_context = organize_text(Arc::clone(&provider), text, _options).await?;
 
     build_document_from_meta_context(provider, meta_context, document_format).await
 }
@@ -146,7 +147,7 @@ pub async fn organize_text_to_document<P: Provider>(
 pub async fn organize_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
-    options: &Option<Options>,
+    _options: &Option<Options>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_file");
     log::debug!("file path: {}", path);
@@ -156,20 +157,20 @@ pub async fn organize_file<P: Provider>(
         Errors::FileInputError
     })?;
 
-    organize_text(Arc::clone(&provider), text, options).await
+    organize_text(Arc::clone(&provider), text, _options).await
 }
 
 #[allow(dead_code)]
 pub async fn organize_file_to_document<P: Provider>(
     provider: Arc<P>,
     path: &str,
-    options: &Option<Options>,
+    _options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let meta_context = organize_file(Arc::clone(&provider), path, options).await?;
+    let meta_context = organize_file(Arc::clone(&provider), path, _options).await?;
 
     build_document_from_meta_context(provider, meta_context, document_format).await
 }
@@ -178,13 +179,13 @@ pub async fn organize_file_to_document<P: Provider>(
 pub async fn organize_file_to_string<P: Provider>(
     provider: Arc<P>,
     path: &str,
-    options: &Option<Options>,
+    _options: &Option<Options>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In organize_file_to_string");
     log::debug!("file path: {}", path);
 
-    let document = organize_file_to_document(Arc::clone(&provider), path, options, document_format).await?;
+    let document = organize_file_to_document(Arc::clone(&provider), path, _options, document_format).await?;
 
     Ok(document.to_string())
 }
