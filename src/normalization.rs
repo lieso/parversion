@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::document::{Document};
@@ -11,9 +11,9 @@ use crate::meta_context::MetaContext;
 #[allow(dead_code)]
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<MetaContext>,
+    meta_context: Arc<RwLock<MetaContext>>,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
 
     Ok(meta_context)
@@ -22,9 +22,9 @@ pub async fn normalize<P: Provider>(
 #[allow(dead_code)]
 pub async fn normalize_meta_context<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<MetaContext>,
+    meta_context: Arc<RwLock<MetaContext>>,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_meta_context");
 
     normalize(Arc::clone(&provider), meta_context, options).await
@@ -35,7 +35,7 @@ pub async fn normalize_text_to_meta_context<P: Provider>(
     provider: Arc<P>,
     text: String,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_text_to_meta_context");
 
     let document = Document::from_string(text, options)?;
@@ -86,7 +86,7 @@ pub async fn normalize_document_to_meta_context<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_document_to_meta_context");
 
     let meta_context = organize(Arc::clone(&provider), document, options).await?;
@@ -131,7 +131,7 @@ pub async fn normalize_file_to_meta_context<P: Provider>(
     provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_file_to_meta_context");
     log::debug!("file path: {}", path);
 
@@ -198,7 +198,7 @@ pub async fn normalize_url_to_meta_context<P: Provider>(
     provider: Arc<P>,
     url: &str,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_url_to_meta_context");
     log::debug!("URL: {}", url);
 

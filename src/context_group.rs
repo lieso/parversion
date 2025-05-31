@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::sync::{Arc, RwLock};
 use std::collections::{HashSet, HashMap};
 
 use crate::prelude::*;
@@ -16,8 +16,11 @@ pub struct ContextGroup {
 }
 
 impl ContextGroup {
-    pub fn from_meta_context(meta_context: Arc<MetaContext>) -> Vec<Self> {
+    pub fn from_meta_context(meta_context: Arc<RwLock<MetaContext>>) -> Vec<Self> {
         log::trace!("In from_meta_context");
+
+        let lock = read_lock!(meta_context);
+        let contexts = lock.contexts.ok_or(Errors::ContextsNotProvided)?;
 
         let mut context_groups: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
         let mut seen_context_ids: HashSet<ID> = HashSet::new();

@@ -25,9 +25,12 @@ impl Context {
     pub async fn generate_json<P: Provider>(
         &self,
         provider: Arc<P>,
-        meta_context: Arc<MetaContext>,
+        meta_context: Arc<RwLock<MetaContext>>,
     ) -> Result<String, Errors> {
         log::trace!("In generate_json");
+
+        let lock = read_lock!(meta_context);
+        let contexts = lock.contexts.ok_or(Errors::ContextsNotProvided)?;
 
         let mut result: HashMap<String, Value> = HashMap::new();
 
@@ -39,7 +42,7 @@ impl Context {
                 queue.push_back(child.clone());
             }
 
-            let context = meta_context.contexts
+            let context = contexts
                 .get(&read_lock!(current).id)
                 .unwrap()
                 .clone();
@@ -84,7 +87,7 @@ impl Context {
         }
     }
 
-    pub fn generate_snippet(&self, meta_context: Arc<MetaContext>) -> String {
+    pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {
         log::trace!("In generate_snippet");
 
         let mut neighbour_ids = HashSet::new();

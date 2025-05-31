@@ -9,11 +9,8 @@ use crate::traverse::{
     build_document_from_meta_context
 };
 use crate::meta_context::MetaContext;
-use crate::interface::Interface;
 use crate::node_analysis::{get_basis_nodes};
 use crate::network_analysis::{get_basis_networks, get_basis_graph};
-use crate::basis_node::BasisNode;
-use crate::basis_network::BasisNetwork;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -27,32 +24,52 @@ pub async fn organize<P: Provider>(
 
     log::info!("Performing document analysis");
     let profile = document.perform_analysis(Arc::clone(&provider)).await?;
-    meta_context.update_profile(profile);
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_profile(profile);
+    }
 
     log::info!("Traversing document using profile");
-    let (contexts, graph_root) = traverse_document(&profile, document)?;
-    meta_context.update_data_structures(contexts, graph_root);
+    let (contexts, graph_root) = traverse_document(document, meta_context.clone())?;
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_data_structures(contexts, graph_root);
+    }
 
     log::info!("Getting basis graph");
     let basis_graph = get_basis_graph(
         Arc::clone(&provider),
-        Arc::clone(&meta_context)
+        meta_context.clone(),
     ).await?;
-    meta_context.update_basis_graph(basis_graph);
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_basis_graph(basis_graph);
+    }
 
     log::info!("Getting basis nodes");
     let basis_nodes = get_basis_nodes(
         Arc::clone(&provider),
-        Arc::clone(&meta_context)
+        meta_context.clone(),
     ).await?;
-    meta_context.update_basis_nodes(basis_nodes);
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_basis_nodes(basis_nodes);
+    }
 
     log::info!("Generating basis networks");
     let basis_networks = get_basis_networks(
         Arc::clone(&provider),
-        Arc::clone(&meta_context)
+        meta_context.clone(),
     ).await?;
-    meta_context.update_basis_networks(basis_networks);
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_basis_networks(basis_networks);
+    }
 
     Ok(meta_context)
 }
@@ -103,7 +120,7 @@ pub async fn organize_text<P: Provider>(
     provider: Arc<P>,
     text: String,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_text");
 
     let document = Document::from_string(text, options)?;
@@ -130,7 +147,7 @@ pub async fn organize_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
     options: &Option<Options>,
-) -> Result<Arc<MetaContext>, Errors> {
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_file");
     log::debug!("file path: {}", path);
 

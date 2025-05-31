@@ -23,7 +23,11 @@ pub enum Errors {
     YamlParseError,
     FetchUrlError(String),
     BasisNodeNotFound,
-    FieldTransformationFieldNotFound
+    FieldTransformationFieldNotFound,
+    GraphRootNotProvided,
+    ProfileNotProvided,
+    ContextsNotProvided,
+    BasisGraphNotProvided,
 }
 
 impl From<JoinError> for Errors {

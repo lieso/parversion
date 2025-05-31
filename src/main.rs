@@ -40,7 +40,6 @@ mod llm;
 mod traverse;
 mod meta_context;
 mod schema;
-mod interface;
 mod network_analysis;
 mod node_analysis;
 

@@ -1,7 +1,8 @@
-use std::sync::{Arc};
+use std::sync::{Arc, RwLock};
 use tokio::task;
 use tokio::sync::Semaphore;
 use futures::future::try_join_all;
+use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::basis_node::BasisNode;
@@ -16,8 +17,8 @@ use crate::transformation::{
 
 pub async fn get_basis_nodes<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<MetaContext>,
-) -> Result<Vec<BasisNode>, Errors> {
+    meta_context: Arc<RwLock<MetaContext>>,
+) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
 
     let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
@@ -25,7 +26,8 @@ pub async fn get_basis_nodes<P: Provider>(
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
     if max_concurrency == 1 {
-        let mut results = Vec::new();
+        let mut results = HashMap::new();
+
         for context_group in context_groups {
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
@@ -33,10 +35,12 @@ pub async fn get_basis_nodes<P: Provider>(
                 cloned_provider,
                 cloned_meta_context,
                 context_group.clone()
-            ).await;
-            results.push(result);
+            ).await?;
+
+            results.insert(result.id.clone(), Arc::new(result));
         }
-        results.into_iter().collect::<Result<Vec<BasisNode>, Errors>>()
+
+        Ok(results)
     } else {
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
         let mut handles = Vec::new();
@@ -48,23 +52,28 @@ pub async fn get_basis_nodes<P: Provider>(
 
             let handle = task::spawn(async move {
                 let _permit = permit;
-                get_basis_node(
+                let basis_node = get_basis_node(
                     cloned_provider,
                     cloned_meta_context,
                     context_group.clone()
-                ).await
+                ).await?;
+
+                Ok((basis_node.id.clone(), Arc::new(basis_node)))
             });
             handles.push(handle);
         }
 
-        let results: Vec<Result<BasisNode, Errors>> = try_join_all(handles).await?;
-        results.into_iter().collect::<Result<Vec<BasisNode>, Errors>>()
+        let results: Vec<Result<(ID, Arc<BasisNode>), Errors>> = try_join_all(handles).await?;
+
+        let hashmap_results: HashMap<ID, Arc<BasisNode>> = results.into_iter().collect::<Result<_, _>>()?;
+
+        Ok(hashmap_results)
     }
 }
 
 async fn get_basis_node<P: Provider>(
     provider: Arc<P>,
-    _meta_context: Arc<MetaContext>,
+    _meta_context: Arc<RwLock<MetaContext>>,
     context_group: ContextGroup,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");

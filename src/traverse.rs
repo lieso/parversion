@@ -16,13 +16,16 @@ use crate::json_node::JsonNode;
 use crate::basis_network::{NetworkRelationship};
 
 pub fn traverse_document(
-    profile: &Profile,
-    document: Document
+    document: Document,
+    meta_context: Arc<RwLock<MetaContext>>,
 ) -> Result<(
     HashMap<ID, Arc<Context>>, // context
     Arc<RwLock<GraphNode>> // graph root
 ), Errors> {
     log::trace!("In traverse_document");
+
+    let lock = read_lock!(meta_context);
+    let profile = lock.profile.ok_or(Errors::ProfileNotProvided)?;
 
     let document_root = document.get_document_node()?;
     let document_root = Arc::new(RwLock::new(document_root.clone()));

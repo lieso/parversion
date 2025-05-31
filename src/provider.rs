@@ -9,21 +9,21 @@ use crate::prelude::*;
 use crate::profile::Profile;
 use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
-use crate::interface::Interface;
+use crate::basis_graph::BasisGraph;
 use crate::schema::Schema;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
-    async fn list_interfaces(
+    async fn list_basis_graphs(
         &self,
-    ) -> Result<Vec<Interface>, Errors>;
-    async fn get_schema_by_interface(
+    ) -> Result<Vec<BasisGraph>, Errors>;
+    async fn get_schema_by_basis_graph(
         &self,
-        interface: &Interface
+        basis_graph: &BasisGraph
     ) -> Result<Option<Schema>, Errors>;
-    async fn save_schema_for_interface(
+    async fn save_schema_for_basis_graph(
         &self,
-        interface: &Interface,
+        basis_graph: &BasisGraph,
         schema: &Schema
     ) -> Result<(), Errors>;
     async fn get_profile(
@@ -90,30 +90,30 @@ impl YamlFileProvider {
 
 #[async_trait]
 impl Provider for YamlFileProvider {
-    async fn list_interfaces(
+    async fn list_basis_graphs(
         &self
-    ) -> Result<Vec<Interface>, Errors> {
-        let interfaces = vec![
-            Interface {
+    ) -> Result<Vec<BasisGraph>, Errors> {
+        let basis_graphs = vec![
+            BasisGraph {
                 id: ID::new(),
                 name: "digest".to_string(),
                 description: "A digest is a collection or summary of information, often curated or aggregated from various sources. It may be algorithmically curated or user generated.".to_string(),
             },
         ];
 
-        Ok(interfaces)
+        Ok(basis_graphs)
     }
 
-    async fn get_schema_by_interface(
+    async fn get_schema_by_basis_graph(
         &self,
-        _interface: &Interface
+        _basis_graph: &BasisGraph
     ) -> Result<Option<Schema>, Errors> {
         unimplemented!()
     }
 
-    async fn save_schema_for_interface(
+    async fn save_schema_for_basis_graph(
         &self,
-        _interface: &Interface,
+        _basis_graph: &BasisGraph,
         _schema: &Schema
     ) -> Result<(), Errors> {
         unimplemented!()
@@ -262,22 +262,22 @@ pub struct VoidProvider;
 
 #[async_trait]
 impl Provider for VoidProvider {
-    async fn list_interfaces(
+    async fn list_basis_graphs(
         &self
-    ) -> Result<Vec<Interface>, Errors> {
+    ) -> Result<Vec<BasisGraph>, Errors> {
         Ok(Vec::new())
     }
 
-    async fn get_schema_by_interface(
+    async fn get_schema_by_basis_graph(
         &self,
-        _interface: &Interface
+        _basis_graph: &BasisGraph
     ) -> Result<Option<Schema>, Errors> {
         Ok(None)
     }
 
-    async fn save_schema_for_interface(
+    async fn save_schema_for_basis_graph(
         &self,
-        _interface: &Interface,
+        _basis_graph: &BasisGraph,
         _schema: &Schema
     ) -> Result<(), Errors> {
         Ok(())
