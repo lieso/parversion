@@ -21,8 +21,14 @@ pub async fn get_basis_graph<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
 ) -> Result<Arc<BasisGraph>, Errors> {
     log::trace!("In get_basis_graph");
+
+    let basis_graph = BasisGraph {
+        id: ID::new(),
+        name: "digest".to_string(),
+        description: "A collection or summary of information, often curated or aggregated from various sources. It may be algorithmically curated or user generated.".to_string(),
+    };
     
-    unimplemented!()
+    Ok(Arc::new(basis_graph))
 }
 
 pub async fn get_basis_networks<P: Provider>(
