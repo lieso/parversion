@@ -1,8 +1,8 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc};
 use std::collections::{HashMap, HashSet};
 
 use crate::prelude::*;
-use crate::graph_node::{Graph, GraphNode};
+use crate::graph_node::{Graph};
 use crate::context::{Context};
 use crate::basis_graph::BasisGraph;
 use crate::basis_node::BasisNode;

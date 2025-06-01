@@ -1,10 +1,8 @@
 use std::io::{self, Read};
-use lazy_static::lazy_static;
 use atty::Stream;
 use std::sync::Arc;
 use clap::{Arg, App};
 use log::LevelFilter;
-use std::fs::File;
 use std::io::stdout;
 use fern::Dispatch;
 
@@ -44,7 +42,6 @@ mod network_analysis;
 mod node_analysis;
 
 use crate::prelude::*;
-use crate::config::{CONFIG};
 use crate::provider::{YamlFileProvider};
 
 const VERSION: &str = "1.0.0";

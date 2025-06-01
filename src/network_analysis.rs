@@ -140,11 +140,6 @@ async fn get_basis_network<P: Provider>(
         return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
     }
 
-    let current_context = contexts
-        .get(&read_lock!(graph).id)
-        .unwrap()
-        .clone();
-
     if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(&target_subgraph_hash.to_string().unwrap()).await? {
         log::info!("Provider has supplied basis network");
 

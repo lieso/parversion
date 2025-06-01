@@ -6,4 +6,3 @@ pub use crate::macros::*;
 pub use crate::types::*;
 pub use crate::utility::*;
 pub use crate::meta_context::MetaContext;
-pub use crate::context::Context;

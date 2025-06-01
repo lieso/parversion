@@ -1,28 +1,17 @@
 use tokio::task::JoinError;
 
 #[derive(Clone, Debug)]
-pub enum AnalysisMode {
-    DISABLED,
-    SIMPLE,
-    COMPLEX,
-}
-
-#[derive(Clone, Debug)]
 pub enum Errors {
     FileReadError,
     FileInputError,
     FileOutputError,
-    JsonParseError,
     DocumentNotProvided,
     UnexpectedDocumentType,
     UnexpectedError,
-    UnexpectedOutputFormat,
     XmlParseError,
-    BasisGraphBuildError(String),
     PathConversionError,
     YamlParseError,
     FetchUrlError(String),
-    BasisNodeNotFound,
     FieldTransformationFieldNotFound,
     GraphRootNotProvided,
     ProfileNotProvided,
