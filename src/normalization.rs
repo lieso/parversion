@@ -7,6 +7,7 @@ use crate::organization::{organize};
 use crate::provider::{Provider};
 use crate::traverse::{build_document_from_meta_context};
 use crate::meta_context::MetaContext;
+use crate::schema::Schema;
 
 #[allow(dead_code)]
 pub async fn normalize<P: Provider>(
@@ -15,6 +16,39 @@ pub async fn normalize<P: Provider>(
     _options: &Option<Options>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
+
+    let basis_graph = {
+        let lock = read_lock!(meta_context);
+        lock.basis_graph.clone().unwrap()
+    };
+
+    let current_schema = Arc::new(Schema::from_meta_context(Arc::clone(&meta_context))?);
+
+    if let Some(normal_schema) = provider.get_schema_by_basis_graph(&basis_graph).await? {
+        log::info!("Found a normal schema for basis graph");
+
+        let schema_transformations = current_schema.get_schema_transformations(
+            Arc::clone(&provider),
+            Arc::new(normal_schema),
+        ).await?;
+
+        {
+            let mut lock = write_lock!(meta_context);
+            lock.update_schema_transformations(schema_transformations);
+        }
+
+    } else {
+        log::info!("Did not find a normal schema for basis graph");
+
+        let (normal_schema, schema_transformations) = current_schema.new_normal_schema(
+            Arc::clone(&provider),
+        ).await?;
+
+        {
+            let mut lock = write_lock!(meta_context);
+            lock.update_schema_transformations(schema_transformations);
+        }
+    }
 
     Ok(meta_context)
 }

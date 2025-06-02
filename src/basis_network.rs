@@ -1,9 +1,6 @@
 use serde::{Serialize, Deserialize};
 
 use crate::prelude::*;
-use crate::transformation::{
-    DataNodeFieldsTransform,
-};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetwork {
@@ -17,7 +14,6 @@ pub struct BasisNetwork {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Recursion {
     pub lineage: Lineage,
-    pub transformation: DataNodeFieldsTransform,
 }
 
 pub type Association = Vec<String>; // subgraph hashes

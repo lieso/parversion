@@ -8,6 +8,7 @@ use crate::basis_graph::BasisGraph;
 use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::profile::Profile;
+use crate::transformation::SchemaTransformation;
 
 pub struct MetaContext {
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
@@ -16,6 +17,7 @@ pub struct MetaContext {
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<Arc<BasisGraph>>,
     pub profile: Option<Arc<Profile>>,
+    pub schema_transformations: Option<HashMap<ID, Arc<SchemaTransformation>>>,
 }
 
 impl MetaContext {
@@ -27,7 +29,15 @@ impl MetaContext {
             basis_networks: None,
             basis_graph: None,
             profile: None,
+            schema_transformations: None,
         }
+    }
+
+    pub fn update_schema_transformations(
+        &mut self,
+        schema_transformations: HashMap<ID, Arc<SchemaTransformation>>
+    ) {
+        self.schema_transformations = Some(schema_transformations);
     }
 
     pub fn update_profile(&mut self, profile: Arc<Profile>) {

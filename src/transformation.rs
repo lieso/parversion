@@ -17,127 +17,13 @@ pub enum Runtime {
     QuickJS,
 }
 
-trait Transform {
-    fn get_id(&self) -> ID;
-    fn get_runtime(&self) -> Runtime;
-    fn get_code(&self) -> String;
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct JsonSchemaTransform {
-    id: ID,
-    runtime: Runtime,
-    code: String,
-    source: String,
-    target: String,
-}
-
-impl Transform for JsonSchemaTransform {
-    fn get_id(&self) -> ID {
-        self.id.clone()
-    }
-
-    fn get_runtime(&self) -> Runtime {
-        self.runtime.clone()
-    }
-
-    fn get_code(&self) -> String {
-        self.code.clone()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DataNodeFieldsTransform {
+pub struct SchemaTransformation {
     pub id: ID,
+    pub description: String,
     pub runtime: Runtime,
-    pub code: String,
-}
-
-impl Transform for DataNodeFieldsTransform {
-    fn get_id(&self) -> ID {
-        self.id.clone()
-    }
-
-    fn get_runtime(&self) -> Runtime {
-        self.runtime.clone()
-    }
-
-    fn get_code(&self) -> String {
-        self.code.clone()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DataNodeHashTransform {
-    id: ID,
-    runtime: Runtime,
-    regex: String,
-    code: String,
-}
-
-impl Transform for DataNodeHashTransform {
-    fn get_id(&self) -> ID {
-        self.id.clone()
-    }
-
-    fn get_runtime(&self) -> Runtime {
-        self.runtime.clone()
-    }
-
-    fn get_code(&self) -> String {
-        self.code.clone()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DataNodeRecursiveTransform {
-    id: ID,
-    runtime: Runtime,
-    code: String,
-}
-
-impl Transform for DataNodeRecursiveTransform {
-    fn get_id(&self) -> ID {
-        self.id.clone()
-    }
-
-    fn get_runtime(&self) -> Runtime {
-        self.runtime.clone()
-    }
-
-    fn get_code(&self) -> String {
-        self.code.clone()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DataToJsonFieldTransform {
-    id: ID,
-    runtime: Runtime,
-    code: String,
-}
-
-impl Transform for DataToJsonFieldTransform {
-    fn get_id(&self) -> ID {
-        self.id.clone()
-    }
-
-    fn get_runtime(&self) -> Runtime {
-        self.runtime.clone()
-    }
-
-    fn get_code(&self) -> String {
-        self.code.clone()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Transformation {
-    DataNodeFieldsTransform(DataNodeFieldsTransform),
-    DataNodeRecursiveTransform(DataNodeRecursiveTransform),
-    DataNodeHashTransform(DataNodeHashTransform),
-    DataToJsonFieldTransform(DataToJsonFieldTransform),
-    JsonSchemaTransform(JsonSchemaTransform),
+    pub source: String,
+    pub target: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -289,9 +175,6 @@ impl XMLElementTransformation {
         }
     }
 }
-
-
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldMetadata {
