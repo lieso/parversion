@@ -15,6 +15,91 @@ use crate::provider::Provider;
 use crate::json_node::JsonNode;
 use crate::basis_network::{NetworkRelationship};
 
+pub fn traverse_for_schema(
+    meta_context: Arc<RwLock<MetaContext>>,
+) -> Result<HashMap<ID, SchemaNode>, Errors> {
+    log::trace!("In traverse_for_schema");
+
+    let graph_root = {
+        let lock = read_lock!(meta_context);
+        lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?
+    };
+
+    let mut schema_nodes: HashMap<ID, SchemaNode> = HashMap::new();
+
+    process_network_for_schema(
+        meta_context.clone(),
+        graph_root,
+        &mut schema_nodes,
+        Vec::new()
+    )?;
+
+    Ok(schema_nodes)
+}
+
+fn process_network_for_schema(
+    meta_context: Arc<RwLock<MetaContext>>,
+    graph: Graph,
+    schema_nodes: &mut HashMap<String, Vec<SchemaNode>>,
+    json_path: Vec<String>
+) -> Result<(), Errors> {
+    log::trace!("In process_network_for_schema");
+
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts.clone().unwrap()
+    };
+
+    let mut queue = VecDeque::new();
+    queue.push_back(graph.clone());
+
+    while let Some(current) = queue.pop_front() {
+        let (context_id, children) = {
+            let read_lock = read_lock!(current);
+            (read_lock.id.clone(), read_lock.children.clone())
+        };
+
+        let context = contexts.get(&context_id).unwrap().clone();
+
+        let schema_nodes: Vec<SchemaNode> = process_node_for_schema(
+            meta_context.clone(),
+            context.clone(),
+            json_path.clone()
+        )?;
+
+
+        let new_json_path = schema_node.json_path.clone();
+
+
+        let json_path_key = schema_node.json_path.clone().concat();
+        log.debug("json_path_key: ${}", json_path_key);
+
+
+        schema_nodes.entry(json_path_key)
+            .or_insert_with(Vec::new)
+            .push(schema_node);
+
+
+
+
+
+
+
+    }
+
+
+}
+
+fn process_node_for_schema(
+    meta_context: Arc<RwLock<MetaContext>>,
+    context: Arc<Context>,
+    json_path: Vec<String>
+) -> Result<Vec<SchemaNode>, Errors> {
+    log::trace!("In process_node_for_schema");
+
+
+}
+
 pub fn traverse_document(
     document: Document,
     meta_context: Arc<RwLock<MetaContext>>,
@@ -177,7 +262,7 @@ fn process_network<'a, P: Provider + 'a>(
         let mut processed_child_ids = HashSet::new();
 
         while let Some(current) = queue.pop_front() {
-            let (context_id, children) = {
+let (context_id, children) = {
                 let read_lock = read_lock!(current);
                 (read_lock.id.clone(), read_lock.children.clone())
             };
