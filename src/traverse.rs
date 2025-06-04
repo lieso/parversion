@@ -38,6 +38,22 @@ pub fn traverse_for_schema(
     log::debug!("*****************************************************************************************************");
     log::debug!("schema_nodes: {:?}", schema_nodes);
 
+   // let mut result: HashMap<ID, Arc<SchemaNode>> = HashMap::new();
+
+   // for (_key, nodes) in schema_nodes {
+   //     if (nodes.is_empty()) {
+   //         panic!("There shouldn't be an empty vector here");
+   //     }
+
+   //     let schema_node = if nodes.len() == 1 {
+
+   //     } else {
+
+   //     };
+   // }
+
+    delay();
+
     Ok(schema_nodes)
 }
 

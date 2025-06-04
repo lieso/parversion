@@ -6,6 +6,15 @@ use reqwest::Client;
 
 use crate::types::*;
 
+pub fn delay() {
+    let mut sum: u64 = 0;
+    let iterations: u64 = 10_000_000;
+
+    for i in 0..iterations {
+        sum = sum.wrapping_add(i.wrapping_mul(2));
+    }
+}
+
 pub fn get_file_as_text(path: &str) -> Result<String, Errors> {
     let mut text = String::new();
 
