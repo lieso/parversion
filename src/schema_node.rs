@@ -4,9 +4,9 @@ use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaNode {
-    id: ID,
-    name: String,
-    description: String,
-    json_path: Vec<String>,
-    data_type: String,
+    pub id: ID,
+    pub name: String,
+    pub description: String,
+    pub json_path: Vec<String>,
+    pub data_type: String,
 }

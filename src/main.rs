@@ -40,6 +40,7 @@ mod meta_context;
 mod schema;
 mod network_analysis;
 mod node_analysis;
+mod schema_node;
 
 use crate::prelude::*;
 use crate::provider::{YamlFileProvider};

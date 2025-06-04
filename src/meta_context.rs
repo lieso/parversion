@@ -33,6 +33,40 @@ impl MetaContext {
         }
     }
 
+    pub fn get_basis_network_by_subgraph_hash(
+        &self,
+        subgraph_hash: &String
+    ) -> Result<Option<Arc<BasisNetwork>>, Errors> {
+        log::trace!("In get_basis_network_by_subgraph_hash");
+        
+        let basis_networks = self.basis_networks.as_ref().unwrap();
+
+        for basis_network in basis_networks.values() {
+            if basis_network.subgraph_hash == *subgraph_hash {
+                return Ok(Some(Arc::clone(&basis_network)));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub fn get_basis_node_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<Arc<BasisNode>>, Errors> {
+        log::trace!("In get_basis_node_by_lineage");
+
+        let basis_nodes = self.basis_nodes.as_ref().unwrap();
+
+        for basis_node in basis_nodes.values() {
+            if basis_node.lineage == *lineage {
+                return Ok(Some(Arc::clone(&basis_node)));
+            }
+        }
+
+        Ok(None)
+    }
+
     pub fn update_schema_transformations(
         &mut self,
         schema_transformations: HashMap<ID, Arc<SchemaTransformation>>
