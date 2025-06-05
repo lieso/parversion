@@ -22,7 +22,20 @@ pub async fn normalize<P: Provider>(
         lock.basis_graph.clone().unwrap()
     };
 
+
+    let document = build_document_from_meta_context(
+        meta_context.clone(),
+        &None
+    )?;
+
+    println!("{}", document.to_string());
+
+    unimplemented!();
+
+
+
     let current_schema = Arc::new(Schema::from_meta_context(Arc::clone(&meta_context))?);
+
 
     if let Some(normal_schema) = provider.get_schema_by_basis_graph(&basis_graph).await? {
         log::info!("Found a normal schema for basis graph");
@@ -90,10 +103,9 @@ pub async fn normalize_text_to_document<P: Provider>(
     let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await?;
 
     build_document_from_meta_context(
-        provider,
         meta_context,
         document_format,
-    ).await
+    )
 }
 
 #[allow(dead_code)]
@@ -140,10 +152,9 @@ pub async fn normalize_document<P: Provider>(
     let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
 
     build_document_from_meta_context(
-        provider,
         meta_context,
         document_format,
-    ).await
+    )
 }
 
 #[allow(dead_code)]
@@ -187,10 +198,9 @@ pub async fn normalize_file_to_document<P: Provider>(
     let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options).await?;
 
     build_document_from_meta_context(
-        provider,
         meta_context,
         document_format,
-    ).await
+    )
 }
 
 #[allow(dead_code)]
@@ -254,10 +264,9 @@ pub async fn normalize_url_to_document<P: Provider>(
     let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options).await?;
 
     build_document_from_meta_context(
-        provider,
         meta_context,
         document_format,
-    ).await
+    )
 }
 
 #[allow(dead_code)]

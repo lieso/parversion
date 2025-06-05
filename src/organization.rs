@@ -91,10 +91,9 @@ pub async fn organize_document<P: Provider>(
     ).await?;
 
     build_document_from_meta_context(
-        provider,
         meta_context,
         document_format,
-    ).await
+    )
 }
 
 #[allow(dead_code)]
@@ -140,7 +139,7 @@ pub async fn organize_text_to_document<P: Provider>(
 
     let meta_context = organize_text(Arc::clone(&provider), text, _options).await?;
 
-    build_document_from_meta_context(provider, meta_context, document_format).await
+    build_document_from_meta_context(meta_context, document_format)
 }
 
 #[allow(dead_code)]
@@ -172,7 +171,7 @@ pub async fn organize_file_to_document<P: Provider>(
 
     let meta_context = organize_file(Arc::clone(&provider), path, _options).await?;
 
-    build_document_from_meta_context(provider, meta_context, document_format).await
+    build_document_from_meta_context(meta_context, document_format)
 }
 
 #[allow(dead_code)]
