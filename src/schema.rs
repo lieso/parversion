@@ -5,7 +5,6 @@ use std::collections::{HashMap};
 use crate::prelude::*;
 use crate::transformation::SchemaTransformation;
 use crate::provider::Provider;
-use crate::traverse::traverse_for_schema;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Schema {
@@ -19,8 +18,6 @@ impl Schema {
         meta_context: Arc<RwLock<MetaContext>>,
     ) -> Result<Self, Errors> {
         log::trace!("In from_meta_context");
-
-        let schema_nodes = traverse_for_schema(meta_context.clone());
 
         unimplemented!()
     }

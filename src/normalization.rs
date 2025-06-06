@@ -30,9 +30,6 @@ pub async fn normalize<P: Provider>(
 
     println!("{}", document.to_string());
 
-    unimplemented!();
-
-
 
     let current_schema = Arc::new(Schema::from_meta_context(Arc::clone(&meta_context))?);
 
