@@ -120,11 +120,11 @@ pub fn traverse_document(
     Ok((contexts, graph_root))
 }
 
-pub fn build_document_from_meta_context(
+pub fn traverse_meta_context(
     meta_context: Arc<RwLock<MetaContext>>,
     document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
-    log::trace!("In build_document_from_meta_context");
+    log::trace!("In traverse_meta_context");
 
     let lock = read_lock!(meta_context);
     let graph_root = lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;

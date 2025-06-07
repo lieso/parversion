@@ -5,7 +5,7 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::organization::{organize};
 use crate::provider::{Provider};
-use crate::traverse::{build_document_from_meta_context};
+use crate::traverse::{traverse_meta_context};
 use crate::meta_context::MetaContext;
 use crate::schema::Schema;
 
@@ -23,7 +23,7 @@ pub async fn normalize<P: Provider>(
     };
 
 
-    let document = build_document_from_meta_context(
+    let document = traverse_meta_context(
         meta_context.clone(),
         &None
     )?;
@@ -99,7 +99,7 @@ pub async fn normalize_text_to_document<P: Provider>(
 
     let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await?;
 
-    build_document_from_meta_context(
+    traverse_meta_context(
         meta_context,
         document_format,
     )
@@ -148,7 +148,7 @@ pub async fn normalize_document<P: Provider>(
 
     let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
 
-    build_document_from_meta_context(
+    traverse_meta_context(
         meta_context,
         document_format,
     )
@@ -194,7 +194,7 @@ pub async fn normalize_file_to_document<P: Provider>(
 
     let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options).await?;
 
-    build_document_from_meta_context(
+    traverse_meta_context(
         meta_context,
         document_format,
     )
@@ -260,7 +260,7 @@ pub async fn normalize_url_to_document<P: Provider>(
 
     let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options).await?;
 
-    build_document_from_meta_context(
+    traverse_meta_context(
         meta_context,
         document_format,
     )

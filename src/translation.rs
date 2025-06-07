@@ -5,7 +5,7 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::organization::organize;
 use crate::provider::Provider;
-use crate::traverse::{build_document_from_meta_context};
+use crate::traverse::{traverse_meta_context};
 use crate::meta_context::MetaContext;
 
 #[allow(dead_code)]
@@ -59,7 +59,7 @@ pub async fn translate_text_to_document<P: Provider>(
 
     let meta_context = translate_text_to_meta_context(Arc::clone(&provider), text, _options, json_schema).await?;
 
-    build_document_from_meta_context(
+    traverse_meta_context(
         meta_context,
         document_format,
     )
@@ -117,7 +117,7 @@ pub async fn translate_document<P: Provider>(
         json_schema
     ).await?;
 
-    build_document_from_meta_context(
+    traverse_meta_context(
         meta_context,
         document_format,
     )
@@ -174,7 +174,7 @@ pub async fn translate_file_to_document<P: Provider>(
 
     let meta_context = translate_file_to_meta_context(Arc::clone(&provider), path, _options, json_schema).await?;
 
-    build_document_from_meta_context(
+    traverse_meta_context(
         meta_context,
         document_format,
     )
