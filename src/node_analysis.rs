@@ -13,7 +13,17 @@ use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::transformation::{
     FieldTransformation,
+    SchemaTransformation
 };
+
+pub async fn get_schema_transformations<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>
+) -> Result<HashMap<ID, Arc<SchemaTransformation>>, Errors> {
+    log::trace!("In get_schema_transformations");
+
+    unimplemented!()
+}
 
 pub async fn get_basis_nodes<P: Provider>(
     provider: Arc<P>,

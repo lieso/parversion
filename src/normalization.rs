@@ -8,6 +8,7 @@ use crate::provider::{Provider};
 use crate::traverse::{traverse_meta_context};
 use crate::meta_context::MetaContext;
 use crate::schema::Schema;
+use crate::node_analysis::{get_schema_transformations};
 
 #[allow(dead_code)]
 pub async fn normalize<P: Provider>(
@@ -17,47 +18,26 @@ pub async fn normalize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
 
-    let basis_graph = {
-        let lock = read_lock!(meta_context);
-        lock.basis_graph.clone().unwrap()
-    };
-
-
+    log::info!("Getting document");
     let document = traverse_meta_context(
         meta_context.clone(),
         &None
     )?;
 
-    println!("{}", document.to_string());
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_document(document);
+    }
 
+    log::info!("Getting schema transformations");
+    let schema_transformations = get_schema_transformations(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context)
+    ).await?;
 
-    let current_schema = document.schema.unwrap();
-
-
-    if let Some(normal_schema) = provider.get_schema_by_basis_graph(&basis_graph).await? {
-        log::info!("Found a normal schema for basis graph");
-
-        let schema_transformations = current_schema.get_schema_transformations(
-            Arc::clone(&provider),
-            Arc::new(normal_schema),
-        ).await?;
-
-        {
-            let mut lock = write_lock!(meta_context);
-            lock.update_schema_transformations(schema_transformations);
-        }
-
-    } else {
-        log::info!("Did not find a normal schema for basis graph");
-
-        let (normal_schema, schema_transformations) = current_schema.new_normal_schema(
-            Arc::clone(&provider),
-        ).await?;
-
-        {
-            let mut lock = write_lock!(meta_context);
-            lock.update_schema_transformations(schema_transformations);
-        }
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_schema_transformations(schema_transformations);
     }
 
     Ok(meta_context)

@@ -9,8 +9,10 @@ use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::profile::Profile;
 use crate::transformation::SchemaTransformation;
+use crate::document::Document;
 
 pub struct MetaContext {
+    pub document: Option<Document>,
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
     pub graph_root: Option<Graph>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
@@ -23,6 +25,7 @@ pub struct MetaContext {
 impl MetaContext {
     pub fn new() -> Self {
         MetaContext {
+            document: None,
             contexts: None,
             graph_root: None,
             basis_nodes: None,
@@ -65,6 +68,13 @@ impl MetaContext {
         }
 
         Ok(None)
+    }
+
+    pub fn update_document(
+        &mut self,
+        document: Document
+    ) {
+        self.document = Some(document);
     }
 
     pub fn update_schema_transformations(
