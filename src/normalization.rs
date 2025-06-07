@@ -31,7 +31,7 @@ pub async fn normalize<P: Provider>(
     println!("{}", document.to_string());
 
 
-    let current_schema = Arc::new(Schema::from_meta_context(Arc::clone(&meta_context))?);
+    let current_schema = document.schema.unwrap();
 
 
     if let Some(normal_schema) = provider.get_schema_by_basis_graph(&basis_graph).await? {

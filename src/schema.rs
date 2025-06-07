@@ -14,14 +14,6 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn from_meta_context(
-        meta_context: Arc<RwLock<MetaContext>>,
-    ) -> Result<Self, Errors> {
-        log::trace!("In from_meta_context");
-
-        unimplemented!()
-    }
-
     pub async fn get_schema_transformations<P: Provider>(
         &self,
         provider: Arc<P>,

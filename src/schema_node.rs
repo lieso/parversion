@@ -10,5 +10,5 @@ pub struct SchemaNode {
     pub name: String,
     pub description: String,
     pub data_type: String,
-    pub children: HashMap<String, SchemaNode>,
+    pub properties: HashMap<String, SchemaNode>,
 }

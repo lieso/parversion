@@ -3,7 +3,7 @@ use xmltree::{Element};
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
-use std::collections::{HashSet};
+use std::collections::{HashSet, HashMap};
 use std::sync::Arc;
 
 use crate::prelude::*;
@@ -13,6 +13,7 @@ use crate::profile::Profile;
 use crate::hash::{
     Hash,
 };
+use crate::schema_node::SchemaNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -33,6 +34,7 @@ pub struct Document {
     pub document_type: DocumentType,
     pub data: String,
     pub metadata: DocumentMetadata,
+    pub schema: Option<HashMap<String, SchemaNode>>,
 }
 
 impl Document {
@@ -51,6 +53,7 @@ impl Document {
                 date: options.as_ref().and_then(|opts| opts.date.clone()),
             },
             data: value,
+            schema: None,
         })
     }
 

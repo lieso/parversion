@@ -139,10 +139,6 @@ pub fn traverse_meta_context(
         &mut schema
     )?;
 
-    log::debug!("schema: {:?}", schema);
-
-    delay();
-
     let data = {
         match serde_json::to_string(&result) {
             Ok(json_string) => json_string,
@@ -157,6 +153,7 @@ pub fn traverse_meta_context(
             date: None,
         },
         data,
+        schema: Some(schema)
     };
 
     Ok(document)
@@ -287,7 +284,7 @@ fn process_network(
                             name: object_name.clone(),
                             description: "schema node placeholder description".to_string(),
                             data_type: "object".to_string(),
-                            children: inner_schema,
+                            properties: inner_schema,
                         };
 
                         schema.insert(object_name.clone(), schema_node);
@@ -348,7 +345,7 @@ fn process_node(
                     name: key.clone(),
                     description: "schema node placeholder description".to_string(),
                     data_type: "array".to_string(),
-                    children: HashMap::new(),
+                    properties: HashMap::new(),
                 };
 
                 schema.insert(key.clone(), schema_node);
@@ -360,7 +357,7 @@ fn process_node(
                     name: key.clone(),
                     description: "schema node placeholder description".to_string(),
                     data_type: "string".to_string(),
-                    children: HashMap::new(),
+                    properties: HashMap::new(),
                 };
 
                 schema.insert(key.clone(), schema_node);
