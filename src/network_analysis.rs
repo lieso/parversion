@@ -22,6 +22,17 @@ pub async fn get_basis_graph<P: Provider>(
 ) -> Result<Arc<BasisGraph>, Errors> {
     log::trace!("In get_basis_graph");
 
+    let original_document = {
+        let lock = read_lock!(meta_context);
+        lock.get_original_document()
+    };
+
+    log::debug!("original_document: {}", original_document);
+
+    delay();
+
+    unimplemented!();
+
     let basis_graph = BasisGraph {
         id: ID::new(),
         name: "digest".to_string(),

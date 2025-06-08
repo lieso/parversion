@@ -14,3 +14,16 @@ pub struct SchemaNode {
     pub data_type: String,
     pub properties: HashMap<String, SchemaNode>,
 }
+
+
+
+
+
+// include basis graph name as root key on schema
+
+
+
+
+//digest.foo.bar.username -> digest.baz.qux.user_name
+
+//digest.one.two.user_name -> digest.foo.bar.username
