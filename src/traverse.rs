@@ -128,15 +128,16 @@ pub fn traverse_meta_context(
 
     let lock = read_lock!(meta_context);
     let graph_root = lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
+    let basis_graph = lock.basis_graph.clone().unwrap();
 
     let mut result: HashMap<String, Value> = HashMap::new();
-    let mut schema: HashMap<String, SchemaNode> = HashMap::new();
+    let mut partial_schema: HashMap<String, SchemaNode> = HashMap::new();
 
     process_network(
         meta_context.clone(),
         graph_root,
         &mut result,
-        &mut schema
+        &mut partial_schema
     )?;
 
     let data = {
@@ -145,6 +146,17 @@ pub fn traverse_meta_context(
             Err(e) => panic!("Error serializing to JSON: {}", e),
         }
     };
+
+    let root_schema_node = SchemaNode {
+        id: ID::new(),
+        name: basis_graph.name.clone(),
+        description: basis_graph.description.clone(),
+        data_type: "object".to_string(),
+        properties: partial_schema,
+    };
+
+    let mut schema: HashMap<String, SchemaNode> = HashMap::new();
+    schema.insert(basis_graph.name.clone(), root_schema_node);
 
     let document = Document {
         document_type: DocumentType::Json,
