@@ -208,7 +208,7 @@ async fn get_basis_network<P: Provider>(
 
     let overall_context = basis_graph.description.clone();
 
-    let (name, matches) = LLM::get_relationships(
+    let (name, matches, description) = LLM::get_relationships(
         overall_context.clone(),
         target_subgraph_hash.to_string().unwrap().clone(),
         sibling_jsons.clone()
@@ -230,7 +230,7 @@ async fn get_basis_network<P: Provider>(
 
     let basis_network = BasisNetwork {
         id: ID::new(),
-        description: "Placeholder Description".to_string(),
+        description: description.clone(),
         subgraph_hash: target_subgraph_hash.to_string().unwrap().clone(),
         name: name.clone(),
         relationship: NetworkRelationship::Association(associated_subgraphs),

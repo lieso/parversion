@@ -22,6 +22,33 @@ pub async fn get_schema_transformations<P: Provider>(
 ) -> Result<HashMap<ID, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_schema_transformations");
 
+
+    let lock = read_lock!(meta_context);
+    let document = lock.document.clone().unwrap();
+    let schema = document.schema.unwrap();
+
+
+    match serde_json::to_string(&schema) {
+        Ok(schema_string) => println!("{}", schema_string),
+        _ => {},
+    }
+
+    delay();
+
+
+
+
+
+    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+
+    if max_concurrency == 1 {
+
+
+    }
+
+
+
+    
     unimplemented!()
 }
 

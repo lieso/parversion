@@ -207,7 +207,7 @@ impl FieldTransformation {
                 id: ID::new(),
                 hash: data_node.hash.clone(),
                 lineage: data_node.lineage.clone(),
-                description: data_node.description.clone(),
+                description: self.description.clone(),
                 parent_id: None,
                 json,
             };

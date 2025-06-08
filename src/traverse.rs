@@ -282,7 +282,7 @@ fn process_network(
                         let schema_node = SchemaNode {
                             id: ID::new(),
                             name: object_name.clone(),
-                            description: "schema node placeholder description".to_string(),
+                            description: basis_network.description.clone(),
                             data_type: "object".to_string(),
                             properties: inner_schema,
                         };
@@ -343,7 +343,7 @@ fn process_node(
                 let schema_node = SchemaNode {
                     id: ID::new(),
                     name: key.clone(),
-                    description: "schema node placeholder description".to_string(),
+                    description: json_node.description.clone(),
                     data_type: "array".to_string(),
                     properties: HashMap::new(),
                 };
@@ -355,7 +355,7 @@ fn process_node(
                 let schema_node = SchemaNode {
                     id: ID::new(),
                     name: key.clone(),
-                    description: "schema node placeholder description".to_string(),
+                    description: json_node.description.clone(),
                     data_type: "string".to_string(),
                     properties: HashMap::new(),
                 };
