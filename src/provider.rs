@@ -40,6 +40,15 @@ pub trait Provider: Send + Sync + Sized + 'static {
         subgraph_hash: String,
         basis_network: BasisNetwork
     ) -> Result<(), Errors>;
+    async fn get_basis_graph_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<BasisGraph>, Errors>;
+    async fn save_basis_graph(
+        &self,
+        lineage: &Lineage,
+        basis_graph: BasisGraph
+    ) -> Result<(), Errors>;
 }
 
 pub struct YamlFileProvider {
@@ -215,6 +224,54 @@ impl Provider for YamlFileProvider {
 
         self.save_data(&yaml).await
     }
+
+    async fn get_basis_graph_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<BasisGraph>, Errors> {
+        let yaml = self.load_data().await?;
+
+        let basis_graphs: Vec<BasisGraph> = yaml.get("basis_graphs")
+            .and_then(|bn| {
+                let deserialized: Result<Vec<BasisGraph>, _> = serde_yaml::from_value(bn.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(Vec::new);
+
+        for basis_graph in basis_graphs {
+            if basis_graph.lineage == *lineage {
+                return Ok(Some(basis_graph));
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn save_basis_graph(
+        &self,
+        lineage: &Lineage,
+        basis_graph: BasisGraph
+    ) -> Result<(), Errors> {
+        let mut yaml = self.load_data().await?;
+
+        let serialized_basis_graph = serde_yaml::to_value(&basis_graph)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        if let Some(basis_graphs) = yaml.get_mut("basis_graphs") {
+            basis_graphs.as_sequence_mut()
+                .ok_or(Errors::YamlParseError)?
+                .push(serialized_basis_graph);
+        } else {
+            yaml["basis_graphs"] = serde_yaml::Value::Sequence(
+                vec![serialized_basis_graph]
+            );
+        }
+
+        self.save_data(&yaml).await
+    }
 }
 
 pub struct VoidProvider;
@@ -261,6 +318,21 @@ impl Provider for VoidProvider {
         &self,
         _subgraph_hash: String,
         _basis_network: BasisNetwork
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_basis_graph_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<BasisGraph>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_basis_graph(
+        &self,
+        lineage: &Lineage,
+        basis_graph: BasisGraph
     ) -> Result<(), Errors> {
         Ok(())
     }

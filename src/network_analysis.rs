@@ -26,18 +26,32 @@ pub async fn get_basis_graph<P: Provider>(
         let lock = read_lock!(meta_context);
         lock.get_original_document()
     };
+    let graph_root = {
+        let lock = read_lock!(meta_context);
+        lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?
+    };
+    let lineage = read_lock!(graph_root).lineage.clone();
 
-    log::debug!("original_document: {}", original_document);
+    if let Some(basis_graph) = provider.get_basis_graph_by_lineage(&lineage).await? {
+        log::info!("Provider has supplied basis graph");
 
-    delay();
+        return Ok(Arc::new(basis_graph));
+    };
 
-    unimplemented!();
+    let (name, description, structure) = LLM::categorize_and_summarize(original_document).await?;
 
     let basis_graph = BasisGraph {
         id: ID::new(),
-        name: "digest".to_string(),
-        description: "A collection or summary of information, often curated or aggregated from various sources. It may be algorithmically curated or user generated.".to_string(),
+        name,
+        description,
+        structure,
+        lineage: lineage.clone(),
     };
+
+    provider.save_basis_graph(
+        &lineage,
+        basis_graph.clone()
+    ).await?;
     
     Ok(Arc::new(basis_graph))
 }
@@ -217,7 +231,7 @@ async fn get_basis_network<P: Provider>(
 
     log::info!("Going to consult LLM for relationships between subgraphs...");
 
-    let overall_context = basis_graph.description.clone();
+    let overall_context = basis_graph.structure.clone();
 
     let (name, matches, description) = LLM::get_relationships(
         overall_context.clone(),

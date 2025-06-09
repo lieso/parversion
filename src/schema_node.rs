@@ -23,7 +23,10 @@ pub struct SchemaNode {
 
 
 
+//digest.baz.qux.user_name -> digest.baz.qux.user_name
 
 //digest.foo.bar.username -> digest.baz.qux.user_name
 
 //digest.one.two.user_name -> digest.foo.bar.username
+
+//digest.one.two.user_name -> digest.three.four.username

@@ -40,7 +40,9 @@ struct AssociationsResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct SummaryResponse {
-    pub summary: String,
+    pub category: String,
+    pub description: String,
+    pub structure: String,
 }
 
 impl OpenAI {
@@ -115,11 +117,14 @@ impl OpenAI {
         Some(transformation)
     }
 
-    pub async fn get_summary(document: String) -> Result<String, Errors> {
-        log::trace!("In get_summary");
+    pub async fn categorize_summarize(document: &String) -> Result<(String, String, String), Errors> {
+        log::trace!("In categorize_summarize");
 
         let system_prompt = format!(r##"
- Summarize the following web document and emphasize in your description the structure and organisation of content.
+ You analyze a condensed website, extrapolate from this minimized version, and provide the following information about the original website the condensed document was derived from:
+ 1. category: Use one or two words to categorize this type of website. Provide response in snake case.
+ 2. description: A short paragraph describing what content this website shows.
+ 3. structure: A detailed description on how the HTML of the page is structured and the way content is organized from a technical perspective.
      "##);
         let user_prompt = format!(r##"
  [Document]
@@ -133,11 +138,17 @@ impl OpenAI {
             "schema": {
                 "type": "object",
                 "properties": {
-                    "summary": {
+                    "category": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "structure": {
                         "type": "string"
                     }
                 },
-                "required": ["summary"],
+                "required": ["category", "description", "structure"],
                 "additionalProperties": false
             }
         });
@@ -160,7 +171,7 @@ impl OpenAI {
                 log::debug!("║      SUMMARY END          ║");
                 log::debug!("╚═══════════════════════════╝");
 
-                Ok(response.summary)
+                Ok((response.category, response.description, response.structure))
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);
