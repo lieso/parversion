@@ -229,6 +229,16 @@ async fn get_basis_network<P: Provider>(
         return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
     }
 
+    let non_target_count = sibling_jsons
+        .iter()
+        .filter(|(fragment_id, _)| *fragment_id != target_subgraph_hash.to_string().unwrap())
+        .count();
+
+    if non_target_count < 1 {
+        log::info!("Sibling subgraphs only contain target subgraph");
+        return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
+    }
+
     log::info!("Going to consult LLM for relationships between subgraphs...");
 
     let overall_context = basis_graph.structure.clone();
