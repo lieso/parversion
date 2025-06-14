@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use std::collections::{VecDeque};
 use tokio::task;
 use tokio::sync::Semaphore;
 use futures::future::try_join_all;
@@ -15,6 +16,7 @@ use crate::transformation::{
     FieldTransformation,
     SchemaTransformation
 };
+use crate::schema_node::SchemaNode;
 
 pub async fn get_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -38,11 +40,27 @@ pub async fn get_schema_transformations<P: Provider>(
 
 
 
+    let mut schema_nodes: Vec<SchemaNode> = Vec::new();
+
+    fn collect_schema_nodes(schema: &HashMap<String, SchemaNode>, nodes: &mut Vec<SchemaNode>) {
+        for node in schema.values() {
+            nodes.push(node.clone());
+            collect_schema_nodes(&node.properties, nodes);
+        }
+    }
+
+    collect_schema_nodes(&schema, &mut schema_nodes);
+
+
+
+
+    delay();
+
+
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
     if max_concurrency == 1 {
-
 
     }
 
