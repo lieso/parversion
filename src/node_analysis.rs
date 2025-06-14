@@ -30,14 +30,6 @@ pub async fn get_schema_transformations<P: Provider>(
     let schema = document.schema.unwrap();
 
 
-    match serde_json::to_string(&schema) {
-        Ok(schema_string) => println!("{}", schema_string),
-        _ => {},
-    }
-
-    delay();
-
-
 
 
     let mut schema_nodes: Vec<SchemaNode> = Vec::new();
@@ -54,19 +46,62 @@ pub async fn get_schema_transformations<P: Provider>(
 
 
 
-    delay();
-
-
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
     if max_concurrency == 1 {
+        let mut results = HashMap::new();
 
+        for schema_node in schema_nodes {
+            let cloned_provider = Arc::clone(&provider);
+            let cloned_meta_context = Arc::clone(&meta_context);
+            let result = get_schema_tranformation(
+                cloned_provider,
+                cloned_meta_context,
+                schema_node.clone()
+            ).await?;
+
+            results.insert(result.id.clone(), Arc::new(result));
+        }
+
+        Ok(results)
+    } else {
+        let semaphore = Arc::new(Semaphore::new(max_concurrency));
+        let mut handles = Vec::new();
+
+        for schema_node in schema_nodes {
+            let permit = semaphore.clone().acquire_owned().await.unwrap();
+            let cloned_provider = Arc::clone(&provider);
+            let cloned_meta_context = Arc::clone(&meta_context);
+
+            let handle = task::spawn(async move {
+                let _permit = permit;
+                let transformation = get_schema_tranformation(
+                    cloned_provider,
+                    cloned_meta_context,
+                    schema_node.clone()
+                ).await?;
+
+                Ok((transformation.id.clone(), Arc::new(transformation)))
+            });
+            handles.push(handle);
+        }
+
+        let results: Vec<Result<(ID, Arc<SchemaTransformation>), Errors>> = try_join_all(handles).await?;
+
+        let hashmap_results: HashMap<ID, Arc<SchemaTransformation>> = results.into_iter().collect::<Result<_, _>>()?;
+
+        Ok(hashmap_results)
     }
+}
 
+async fn get_schema_tranformation<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    schema_node: SchemaNode,
+) -> Result<SchemaTransformation, Errors> {
+    log::trace!("In get_schema_transformation");
 
-
-    
     unimplemented!()
 }
 
