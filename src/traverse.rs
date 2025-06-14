@@ -130,14 +130,26 @@ pub fn traverse_meta_context(
     let graph_root = lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
     let basis_graph = lock.basis_graph.clone().unwrap();
 
+
+
+    let mut root_schema_node = SchemaNode::new(
+        &basis_graph.name,
+        &basis_graph.description,
+        &basis_graph.lineage,
+        "object",
+    );
+
+
+
     let mut result: HashMap<String, Value> = HashMap::new();
-    let mut partial_schema: HashMap<String, SchemaNode> = HashMap::new();
+    let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
 
     process_network(
         meta_context.clone(),
         graph_root,
         &mut result,
-        &mut partial_schema
+        &mut inner_schema,
+        &root_schema_node.lineage,
     )?;
 
     let data = {
@@ -147,14 +159,7 @@ pub fn traverse_meta_context(
         }
     };
 
-    let root_schema_node = SchemaNode {
-        id: ID::new(),
-        name: basis_graph.name.clone(),
-        aliases: Vec::new(),
-        description: basis_graph.description.clone(),
-        data_type: "object".to_string(),
-        properties: partial_schema,
-    };
+    root_schema_node.properties = inner_schema;
 
     let mut schema: HashMap<String, SchemaNode> = HashMap::new();
     schema.insert(basis_graph.name.clone(), root_schema_node);
@@ -177,6 +182,7 @@ fn process_network(
     graph: Graph,
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
+    schema_lineage: &Lineage,
 ) -> Result<(), Errors> {
     log::trace!("In process_network");
 
@@ -203,6 +209,7 @@ fn process_network(
             context.clone(),
             result,
             schema,
+            schema_lineage,
         )?;
 
         for (index, child) in children.iter().enumerate() {
@@ -231,6 +238,15 @@ fn process_network(
                 log::trace!("Found basis network");
 
                 if !basis_network.is_null_network() {
+                    let object_name = basis_network.name.clone();
+                    let object_description = basis_network.description.clone();
+                    let mut schema_node = SchemaNode::new(
+                        &object_name,
+                        &object_description,
+                        schema_lineage,
+                        "object"
+                    );
+
                     let mut inner_result: HashMap<String, Value> = HashMap::new();
                     let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
 
@@ -260,6 +276,7 @@ fn process_network(
                                 subsequent_child.clone(),
                                 &mut inner_result,
                                 &mut inner_schema,
+                                &schema_node.lineage,
                             )?;
 
                             associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
@@ -272,12 +289,11 @@ fn process_network(
                         child.clone(),
                         &mut inner_result,
                         &mut inner_schema,
+                        &schema_node.lineage,
                     )?;
 
                     let inner_result_value = serde_json::to_value(inner_result)
                         .expect("Failed to serialize inner result");
-
-                    let object_name = basis_network.name.clone();
 
                     if let Some(existing_object) = result.get_mut(&object_name) {
                         if let Value::Array(ref mut arr) = existing_object {
@@ -292,15 +308,7 @@ fn process_network(
                         let mut existing_schema_node = schema.get_mut(&object_name).unwrap();
                         existing_schema_node.data_type = "array".to_string();
                     } else {
-                        let schema_node = SchemaNode {
-                            id: ID::new(),
-                            name: object_name.clone(),
-                            aliases: Vec::new(),
-                            description: basis_network.description.clone(),
-                            data_type: "object".to_string(),
-                            properties: inner_schema,
-                        };
-
+                        schema_node.properties = inner_schema;
                         schema.insert(object_name.clone(), schema_node);
                         result.insert(object_name.clone(), inner_result_value);
                     }
@@ -323,6 +331,7 @@ fn process_node(
     context: Arc<Context>,
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
+    schema_lineage: &Lineage,
 ) -> Result<(), Errors> {
     log::trace!("In process_node");
 
@@ -354,27 +363,23 @@ fn process_node(
                     *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
                 }
 
-                let schema_node = SchemaNode {
-                    id: ID::new(),
-                    name: key.clone(),
-                    aliases: Vec::new(),
-                    description: json_node.description.clone(),
-                    data_type: "array".to_string(),
-                    properties: HashMap::new(),
-                };
+                let schema_node = SchemaNode::new(
+                    &key,
+                    &json_node.description,
+                    schema_lineage,
+                    "array"
+                );
 
                 schema.insert(key.clone(), schema_node);
             } else {
                 result.insert(key.clone(), trimmed_value);
 
-                let schema_node = SchemaNode {
-                    id: ID::new(),
-                    name: key.clone(),
-                    aliases: Vec::new(),
-                    description: json_node.description.clone(),
-                    data_type: "string".to_string(),
-                    properties: HashMap::new(),
-                };
+                let schema_node = SchemaNode::new(
+                    &key,
+                    &json_node.description,
+                    schema_lineage,
+                    "string"
+                );
 
                 schema.insert(key.clone(), schema_node);
             }
