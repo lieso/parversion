@@ -10,23 +10,8 @@ pub struct SchemaNode {
     pub id: ID,
     #[serde(skip_serializing)]
     pub name: String,
+    pub aliases: Vec<String>,
     pub description: String,
     pub data_type: String,
     pub properties: HashMap<String, SchemaNode>,
 }
-
-
-
-
-
-// include basis graph name as root key on schema
-
-
-
-//digest.baz.qux.user_name -> digest.baz.qux.user_name
-
-//digest.foo.bar.username -> digest.baz.qux.user_name
-
-//digest.one.two.user_name -> digest.foo.bar.username
-
-//digest.one.two.user_name -> digest.three.four.username
