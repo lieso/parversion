@@ -41,10 +41,12 @@ impl HashTransformation {
                 let fields_js: Vec<String> = fields
                     .into_iter()
                     .map(|(key, value)| {
+                        let escaped_value = value.replace("\"", "\\\"");
+
                         if key == "text" {
                             format!("'{}': '<omitted>'", key)
                         } else {
-                            format!("'{}': '{}'", key, value)
+                            format!("'{}': \"{}\"", key, escaped_value)
                         }
                     })
                     .collect();
@@ -116,8 +118,8 @@ impl XMLElementTransformation {
             let attributes_list: Vec<String> = attributes
                 .into_iter()
                 .map(|(key, value)| {
-                    let escaped_value = serde_json::to_string(&value).unwrap();
-                    format!("'{}': {}", key, escaped_value)
+                    let escaped_value = value.replace("\"", "\\\"");
+                    format!("\"{}\": \"{}\"", key, escaped_value)
                 })
                 .collect();
             format!("let attributes = {{ {} }};", attributes_list.join(", "))
