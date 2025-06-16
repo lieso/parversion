@@ -17,7 +17,13 @@ pub fn schema_to_string_with_target(
 
     let entries: Vec<String> = schema
         .iter()
-        .map(|(key, node)| format!(r#""{}": {}"#, key, serialize_schema_node(node, target_id)))
+        .map(|(key, node)| {
+            if node.id == *target_id {
+                format!(r#"START TARGET_SCHEMA_KEY >>>"{}"<<< END TARGET SCHEMA KEY: {}"#, key, serialize_schema_node(node, target_id))
+            } else {
+                format!(r#""{}": {}"#, key, serialize_schema_node(node, target_id))
+            }
+        })
         .collect();
 
     format!(r#"{{ {} }}"#, entries.join(", "))
@@ -28,8 +34,8 @@ fn serialize_schema_node(node: &SchemaNode, target_id: &ID) -> String {
         .properties
         .iter()
         .map(|(key, value)| {
-            if node.id == *target_id {
-                format!(r#"START TARGET SCHEMA KEY >>>"{}"<<< END TARGET SCHEMA KEY:{}"#, key, serialize_schema_node(value, target_id))
+            if value.id == *target_id {
+                format!(r#"START TARGET SCHEMA KEY >>>"{}"<<< END TARGET SCHEMA KEY :{}"#, key, serialize_schema_node(value, target_id))
             } else {
                 format!(r#""{}":{}"#, key, serialize_schema_node(value, target_id))
             }

@@ -37,7 +37,9 @@ pub async fn get_schema_transformations<P: Provider>(
 
     fn collect_schema_nodes(schema: &HashMap<String, SchemaNode>, nodes: &mut Vec<SchemaNode>) {
         for node in schema.values() {
-            nodes.push(node.clone());
+            let mut node_clone = node.clone();
+            node_clone.properties.clear();
+            nodes.push(node_clone);
             collect_schema_nodes(&node.properties, nodes);
         }
     }
