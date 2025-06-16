@@ -17,6 +17,7 @@ pub enum Errors {
     ProfileNotProvided,
     ContextsNotProvided,
     BasisGraphNotProvided,
+    ContextTooLarge,
 }
 
 impl From<JoinError> for Errors {

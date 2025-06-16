@@ -19,7 +19,7 @@ pub fn schema_to_string_with_target(
         .iter()
         .map(|(key, node)| {
             if node.id == *target_id {
-                format!(r#"START TARGET_SCHEMA_KEY >>>"{}"<<< END TARGET SCHEMA KEY: {}"#, key, serialize_schema_node(node, target_id))
+                format!(r#"START TARGET SCHEMA KEY >>>"{}"<<< END TARGET SCHEMA KEY: {}"#, key, serialize_schema_node(node, target_id))
             } else {
                 format!(r#""{}": {}"#, key, serialize_schema_node(node, target_id))
             }

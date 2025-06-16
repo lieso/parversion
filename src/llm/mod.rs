@@ -13,7 +13,9 @@ impl LLM {
     ), Errors> {
         log::trace!("In get_normal_schema");
 
-        unimplemented!()
+        let (target, description) = openai::OpenAI::get_normal_schema(marked_schema).await?;
+
+        Ok((target, description))
     }
 
     pub async fn categorize_and_summarize(document: String) -> Result<(
