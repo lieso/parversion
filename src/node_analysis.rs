@@ -17,6 +17,7 @@ use crate::transformation::{
     SchemaTransformation
 };
 use crate::schema_node::SchemaNode;
+use crate::schema::{schema_to_string_with_target};
 
 pub async fn get_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -102,14 +103,39 @@ async fn get_schema_tranformation<P: Provider>(
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_schema_transformation");
 
-    let complete_schema_string: Arc<String> = {
+    let lineage = &schema_node.lineage;
+
+    if let Some(schema_transformation) = provider.get_normal_schema_transformation_by_lineage(&lineage).await? {
+        log::info!("Provider has supplied normal schema transformation");
+
+        return Ok(schema_transformation);
+    }
+
+    let schema_string: String = {
         let lock = read_lock!(meta_context);
-        lock.schema_string.clone().unwrap()
+        let document = lock.document.as_ref().unwrap();
+        let schema = document.schema.clone().unwrap();
+        schema_to_string_with_target(schema, &schema_node.id)
     };
 
-    log::debug!("complete_schema_string: {}", complete_schema_string);
+    log::debug!("schema_string: {}", schema_string);
+    delay();
 
-    unimplemented!()
+    let (target, description) = LLM::get_normal_schema(&schema_string).await?;
+
+    let schema_transformation = SchemaTransformation {
+        id: ID::new(),
+        description,
+        target,
+        lineage: lineage.clone(),
+    };
+
+    provider.save_normal_schema_transformation(
+        &lineage,
+        schema_transformation.clone()
+    ).await?;
+
+    Ok(schema_transformation)
 }
 
 pub async fn get_basis_nodes<P: Provider>(

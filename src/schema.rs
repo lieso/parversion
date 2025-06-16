@@ -5,31 +5,45 @@ use std::collections::{HashMap};
 use crate::prelude::*;
 use crate::transformation::SchemaTransformation;
 use crate::provider::Provider;
+use crate::schema_node::SchemaNode;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Schema {
-    id: ID,
-    name: String,
-    description: String,
+pub type Schema = HashMap<String, SchemaNode>;
+
+pub fn schema_to_string_with_target(
+    schema: Schema,
+    target_id: &ID
+) -> String {
+    log::trace!("In schema_to_string_with_target");
+
+    let entries: Vec<String> = schema
+        .iter()
+        .map(|(key, node)| format!(r#""{}": {}"#, key, serialize_schema_node(node, target_id)))
+        .collect();
+
+    format!(r#"{{ {} }}"#, entries.join(", "))
 }
 
-impl Schema {
-    pub async fn get_schema_transformations<P: Provider>(
-        &self,
-        provider: Arc<P>,
-        target_schema: Arc<Schema>,
-    ) -> Result<HashMap<ID, Arc<SchemaTransformation>>, Errors> {
-        log::trace!("In get_schema_transformations");
+fn serialize_schema_node(node: &SchemaNode, target_id: &ID) -> String {
+    let properties_json: Vec<String> = node
+        .properties
+        .iter()
+        .map(|(key, value)| {
+            if node.id == *target_id {
+                format!(r#"START TARGET SCHEMA KEY >>>"{}"<<< END TARGET SCHEMA KEY:{}"#, key, serialize_schema_node(value, target_id))
+            } else {
+                format!(r#""{}":{}"#, key, serialize_schema_node(value, target_id))
+            }
+        })
+        .collect();
 
-        unimplemented!()
-    }
-
-    pub async fn new_normal_schema<P: Provider>(
-        &self,
-        provider: Arc<P>,
-    ) -> Result<(Self, HashMap<ID, Arc<SchemaTransformation>>), Errors> {
-        log::trace!("In new_normal_schema");
-
-        unimplemented!()
-    }
+    format!(
+        r#"{{
+             "description": "{}",
+             "data_type": "{}",
+             "properties": {{ {} }}
+         }}"#,
+         node.description,
+         node.data_type,
+         properties_json.join(", ")
+     )
 }

@@ -20,7 +20,6 @@ pub struct MetaContext {
     pub profile: Option<Arc<Profile>>,
     pub schema_transformations: Option<HashMap<ID, Arc<SchemaTransformation>>>,
     pub document: Option<Document>,
-    pub schema_string: Option<Arc<String>>,
 }
 
 impl MetaContext {
@@ -34,7 +33,6 @@ impl MetaContext {
             profile: None,
             schema_transformations: None,
             document: None,
-            schema_string: None,
         }
     }
 
@@ -76,11 +74,6 @@ impl MetaContext {
         &mut self,
         document: Document
     ) {
-        if let Some(schema) = document.schema.clone() {
-            self.schema_string = Some(Arc::new(serde_json::to_string(&schema)
-                .expect("Could not convert schema to string")))
-        }
-
         self.document = Some(document);
     }
 

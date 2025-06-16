@@ -11,6 +11,7 @@ use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::schema::Schema;
+use crate::transformation::SchemaTransformation;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
@@ -48,6 +49,15 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineage: &Lineage,
         basis_graph: BasisGraph
+    ) -> Result<(), Errors>;
+    async fn get_normal_schema_transformation_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<SchemaTransformation>, Errors>;
+    async fn save_normal_schema_transformation(
+        &self,
+        lineage: &Lineage,
+        schema_transformation: SchemaTransformation
     ) -> Result<(), Errors>;
 }
 
@@ -272,6 +282,54 @@ impl Provider for YamlFileProvider {
 
         self.save_data(&yaml).await
     }
+
+    async fn get_normal_schema_transformation_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<SchemaTransformation>, Errors> {
+        let yaml = self.load_data().await?;
+
+        let schema_transformations: Vec<SchemaTransformation> = yaml.get("normal_schema_transformations")
+            .and_then(|bn| {
+                let deserialized: Result<Vec<SchemaTransformation>, _> = serde_yaml::from_value(bn.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(Vec::new);
+
+        for schema_transformation in schema_transformations {
+            if schema_transformation.lineage == *lineage {
+                return Ok(Some(schema_transformation));
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn save_normal_schema_transformation(
+        &self,
+        lineage: &Lineage,
+        schema_transformation: SchemaTransformation
+    ) -> Result<(), Errors> {
+        let mut yaml = self.load_data().await?;
+
+        let serialized_schema_transformation = serde_yaml::to_value(&schema_transformation)
+            .map_err(|_| Errors::UnexpectedError)?;
+
+        if let Some(schema_transformations) = yaml.get_mut("schema_transformations") {
+            schema_transformations.as_sequence_mut()
+                .ok_or(Errors::YamlParseError)?
+                .push(serialized_schema_transformation);
+        } else {
+            yaml["schema_transformations"] = serde_yaml::Value::Sequence(
+                vec![serialized_schema_transformation]
+            );
+        }
+
+        self.save_data(&yaml).await
+    }
 }
 
 pub struct VoidProvider;
@@ -333,6 +391,21 @@ impl Provider for VoidProvider {
         &self,
         lineage: &Lineage,
         basis_graph: BasisGraph
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_normal_schema_transformation_by_lineage(
+        &self,
+        lineage: &Lineage
+    ) -> Result<Option<SchemaTransformation>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_normal_schema_transformation(
+        &self,
+        lineage: &Lineage,
+        schema_transformation: SchemaTransformation
     ) -> Result<(), Errors> {
         Ok(())
     }

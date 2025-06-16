@@ -21,9 +21,8 @@ pub enum Runtime {
 pub struct SchemaTransformation {
     pub id: ID,
     pub description: String,
-    pub runtime: Runtime,
-    pub source: String,
     pub target: String,
+    pub lineage: Lineage,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -7,6 +7,15 @@ mod openai;
 pub struct LLM {}
 
 impl LLM {
+    pub async fn get_normal_schema(marked_schema: &String) -> Result<(
+        String, // target
+        String, // description
+    ), Errors> {
+        log::trace!("In get_normal_schema");
+
+        unimplemented!()
+    }
+
     pub async fn categorize_and_summarize(document: String) -> Result<(
         String, // name
         String, // description
