@@ -22,7 +22,7 @@ use crate::schema::{schema_to_string_with_target};
 pub async fn get_schema_transformations<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>
-) -> Result<HashMap<ID, Arc<SchemaTransformation>>, Errors> {
+) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_schema_transformations");
 
 
@@ -64,7 +64,7 @@ pub async fn get_schema_transformations<P: Provider>(
                 schema_node.clone()
             ).await?;
 
-            results.insert(result.id.clone(), Arc::new(result));
+            results.insert(result.lineage.clone(), Arc::new(result));
         }
 
         Ok(results)
@@ -85,14 +85,14 @@ pub async fn get_schema_transformations<P: Provider>(
                     schema_node.clone()
                 ).await?;
 
-                Ok((transformation.id.clone(), Arc::new(transformation)))
+                Ok((transformation.lineage.clone(), Arc::new(transformation)))
             });
             handles.push(handle);
         }
 
-        let results: Vec<Result<(ID, Arc<SchemaTransformation>), Errors>> = try_join_all(handles).await?;
+        let results: Vec<Result<(Lineage, Arc<SchemaTransformation>), Errors>> = try_join_all(handles).await?;
 
-        let hashmap_results: HashMap<ID, Arc<SchemaTransformation>> = results.into_iter().collect::<Result<_, _>>()?;
+        let hashmap_results: HashMap<Lineage, Arc<SchemaTransformation>> = results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }

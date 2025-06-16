@@ -18,7 +18,7 @@ pub struct MetaContext {
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<Arc<BasisGraph>>,
     pub profile: Option<Arc<Profile>>,
-    pub schema_transformations: Option<HashMap<ID, Arc<SchemaTransformation>>>,
+    pub schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
     pub document: Option<Document>,
 }
 
@@ -79,7 +79,7 @@ impl MetaContext {
 
     pub fn update_schema_transformations(
         &mut self,
-        schema_transformations: HashMap<ID, Arc<SchemaTransformation>>
+        schema_transformations: HashMap<Lineage, Arc<SchemaTransformation>>
     ) {
         self.schema_transformations = Some(schema_transformations);
     }
