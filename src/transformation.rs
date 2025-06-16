@@ -8,6 +8,7 @@ use crate::prelude::*;
 use crate::id::{ID};
 use crate::json_node::{Json, JsonNode, JsonMetadata};
 use crate::data_node::DataNode;
+use crate::schema_node::SchemaNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -23,6 +24,18 @@ pub struct SchemaTransformation {
     pub description: String,
     pub target: String,
     pub lineage: Lineage,
+}
+
+impl SchemaTransformation {
+    pub fn transform(&self, schema_node: &SchemaNode) -> SchemaNode {
+        log::trace!("In transform");
+
+        let mut transformed = schema_node.clone();
+        transformed.name = self.target.clone();
+        transformed.description = self.description.clone();
+
+        transformed
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

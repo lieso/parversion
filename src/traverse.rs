@@ -240,12 +240,23 @@ fn process_network(
                 if !basis_network.is_null_network() {
                     let object_name = basis_network.name.clone();
                     let object_description = basis_network.description.clone();
+
                     let mut schema_node = SchemaNode::new(
                         &object_name,
                         &object_description,
                         schema_lineage,
                         "object"
                     );
+
+                    {
+                        let lock = read_lock!(meta_context);
+                        if let Some(schema_transformations) = &lock.schema_transformations {
+                            if let Some(schema_transformation) = schema_transformations.get(&schema_node.lineage) {
+                                log::info!("Found a schema transformation");
+                                schema_node = schema_transformation.transform(&schema_node);
+                            }
+                        }
+                    }
 
                     let mut inner_result: HashMap<String, Value> = HashMap::new();
                     let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
@@ -295,7 +306,7 @@ fn process_network(
                     let inner_result_value = serde_json::to_value(inner_result)
                         .expect("Failed to serialize inner result");
 
-                    if let Some(existing_object) = result.get_mut(&object_name) {
+                    if let Some(existing_object) = result.get_mut(&schema_node.name) {
                         if let Value::Array(ref mut arr) = existing_object {
                             arr.push(inner_result_value);
                         } else {
@@ -305,12 +316,12 @@ fn process_network(
                             ]);
                         }
 
-                        let mut existing_schema_node = schema.get_mut(&object_name).unwrap();
+                        let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
                         existing_schema_node.data_type = "array".to_string();
                     } else {
                         schema_node.properties = inner_schema;
-                        schema.insert(object_name.clone(), schema_node);
-                        result.insert(object_name.clone(), inner_result_value);
+                        schema.insert(schema_node.name.clone(), schema_node.clone());
+                        result.insert(schema_node.name.clone(), inner_result_value);
                     }
 
                     processed_child_ids.insert(child_id);
@@ -356,32 +367,36 @@ fn process_node(
             let key = json.key.clone();
             let trimmed_value = json!(json.value.trim().to_string());
 
-            if let Some(existing_value) = result.get_mut(&json.key) {
+            let mut schema_node = SchemaNode::new(
+                &key,
+                &json_node.description,
+                schema_lineage,
+                "string"
+            );
+
+            {
+                let lock = read_lock!(meta_context);
+                if let Some(schema_transformations) = &lock.schema_transformations {
+                    if let Some(schema_transformation) = schema_transformations.get(&schema_node.lineage) {
+                        log::info!("Found a schema transformation");
+                        schema_node = schema_transformation.transform(&schema_node);
+                    }
+                }
+            }
+
+            if let Some(existing_value) = result.get_mut(&schema_node.name) {
                 if let Value::Array(ref mut arr) = existing_value {
                     arr.push(trimmed_value);
                 } else {
                     *existing_value = json!(vec![existing_value.clone(), trimmed_value]);
                 }
 
-                let schema_node = SchemaNode::new(
-                    &key,
-                    &json_node.description,
-                    schema_lineage,
-                    "array"
-                );
+                schema_node.data_type = "array".to_string();
 
-                schema.insert(key.clone(), schema_node);
+                schema.insert(schema_node.name.clone(), schema_node);
             } else {
-                result.insert(key.clone(), trimmed_value);
-
-                let schema_node = SchemaNode::new(
-                    &key,
-                    &json_node.description,
-                    schema_lineage,
-                    "string"
-                );
-
-                schema.insert(key.clone(), schema_node);
+                result.insert(schema_node.name.clone(), trimmed_value);
+                schema.insert(schema_node.name.clone(), schema_node);
             }
         }
     }
