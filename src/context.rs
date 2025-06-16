@@ -51,9 +51,16 @@ impl Context {
 
             let data_node = &context.data_node;
 
-            if let Some(basis_node) = provider.get_basis_node_by_lineage(&context.lineage).await? {
+            let maybe_basis_node = {
+                let lock = read_lock!(meta_context);
+                lock.get_basis_node_by_lineage(&context.lineage)
+                    .expect("Could not get basis node by lineage")
+            };
+
+            if let Some(basis_node) = maybe_basis_node {
 
                 let json_nodes: Vec<JsonNode> = basis_node.transformations
+                    .clone()
                     .into_iter()
                     .map(|transformation| {
                         transformation.transform(Arc::clone(&data_node))

@@ -26,10 +26,6 @@ pub async fn normalize<P: Provider>(
 
     println!("document: {}", document.clone().to_string());
 
-    delay();
-
-    unimplemented!();
-
     {
         let mut lock = write_lock!(meta_context);
         lock.update_document(document);
@@ -45,6 +41,8 @@ pub async fn normalize<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.update_schema_transformations(schema_transformations);
     }
+
+    delay();
 
     Ok(meta_context)
 }

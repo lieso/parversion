@@ -12,7 +12,6 @@ use crate::transformation::SchemaTransformation;
 use crate::document::Document;
 
 pub struct MetaContext {
-    pub document: Option<Document>,
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
     pub graph_root: Option<Graph>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
@@ -20,12 +19,13 @@ pub struct MetaContext {
     pub basis_graph: Option<Arc<BasisGraph>>,
     pub profile: Option<Arc<Profile>>,
     pub schema_transformations: Option<HashMap<ID, Arc<SchemaTransformation>>>,
+    pub document: Option<Document>,
+    pub schema_string: Option<Arc<String>>,
 }
 
 impl MetaContext {
     pub fn new() -> Self {
         MetaContext {
-            document: None,
             contexts: None,
             graph_root: None,
             basis_nodes: None,
@@ -33,6 +33,8 @@ impl MetaContext {
             basis_graph: None,
             profile: None,
             schema_transformations: None,
+            document: None,
+            schema_string: None,
         }
     }
 
@@ -74,6 +76,11 @@ impl MetaContext {
         &mut self,
         document: Document
     ) {
+        if let Some(schema) = document.schema.clone() {
+            self.schema_string = Some(Arc::new(serde_json::to_string(&schema)
+                .expect("Could not convert schema to string")))
+        }
+
         self.document = Some(document);
     }
 

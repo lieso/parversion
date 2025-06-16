@@ -102,6 +102,13 @@ async fn get_schema_tranformation<P: Provider>(
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_schema_transformation");
 
+    let complete_schema_string: Arc<String> = {
+        let lock = read_lock!(meta_context);
+        lock.schema_string.clone().unwrap()
+    };
+
+    log::debug!("complete_schema_string: {}", complete_schema_string);
+
     unimplemented!()
 }
 

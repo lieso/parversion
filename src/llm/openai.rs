@@ -120,6 +120,13 @@ impl OpenAI {
     pub async fn categorize_summarize(document: &String) -> Result<(String, String, String), Errors> {
         log::trace!("In categorize_summarize");
 
+        let document = if document.len() > 3000 {
+            log::warn!("truncating document");
+            &format!("{}...", &document[..3000])
+        } else {
+            document
+        };
+
         let system_prompt = format!(r##"
  You analyze a condensed website, extrapolate from this minimized version, and provide the following information about the original website the condensed document was derived from:
  1. category: Use one or two words to categorize this type of website. Provide response in snake case.
