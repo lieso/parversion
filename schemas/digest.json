@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Digest Website Schema",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "The title of the website or page."
+    },
+    "items": {
+      "type": "array",
+      "description": "A list of content items on the page.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "The title of the content item."
+          },
+          "content": {
+            "type": "string",
+            "description": "The main content or description of the item."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The URL to the full content or external link."
+          },
+          "author": {
+            "type": "object",
+            "description": "Information about the author of the content item.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The name of the author."
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "The URL to the author's profile page."
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the item was published or created."
+          },
+          "score": {
+            "type": "string",
+            "description": "The score or ranking of the content item, if applicable."
+          },
+          "tags": {
+            "type": "array",
+            "description": "A list of tags or categories associated with the content item.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
