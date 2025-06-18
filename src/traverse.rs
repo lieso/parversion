@@ -15,6 +15,7 @@ use crate::provider::Provider;
 use crate::json_node::JsonNode;
 use crate::basis_network::{NetworkRelationship};
 use crate::schema_node::SchemaNode;
+use crate::schema::Schema;
 
 pub fn traverse_document(
     document: Document,
@@ -130,17 +131,6 @@ pub fn traverse_meta_context(
     let graph_root = lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
     let basis_graph = lock.basis_graph.clone().unwrap();
 
-
-
-    let mut root_schema_node = SchemaNode::new(
-        &basis_graph.name,
-        &basis_graph.description,
-        &basis_graph.lineage,
-        "object",
-    );
-
-
-
     let mut result: HashMap<String, Value> = HashMap::new();
     let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
 
@@ -149,7 +139,7 @@ pub fn traverse_meta_context(
         graph_root,
         &mut result,
         &mut inner_schema,
-        &root_schema_node.lineage,
+        &basis_graph.lineage,
     )?;
 
     let data = {
@@ -159,10 +149,13 @@ pub fn traverse_meta_context(
         }
     };
 
-    root_schema_node.properties = inner_schema;
-
-    let mut schema: HashMap<String, SchemaNode> = HashMap::new();
-    schema.insert(basis_graph.name.clone(), root_schema_node);
+    let schema = Schema {
+        id: ID::new(),
+        name: basis_graph.name.clone(),
+        description: basis_graph.description.clone(),
+        lineage: basis_graph.lineage.clone(),
+        properties: inner_schema,
+    };
 
     let document = Document {
         document_type: DocumentType::Json,

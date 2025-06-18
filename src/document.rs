@@ -14,6 +14,7 @@ use crate::hash::{
     Hash,
 };
 use crate::schema_node::SchemaNode;
+use crate::schema::Schema;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -34,7 +35,7 @@ pub struct Document {
     pub document_type: DocumentType,
     pub data: String,
     pub metadata: DocumentMetadata,
-    pub schema: Option<HashMap<String, SchemaNode>>,
+    pub schema: Option<Schema>,
 }
 
 impl Document {

@@ -44,7 +44,7 @@ pub async fn get_schema_transformations<P: Provider>(
         }
     }
 
-    collect_schema_nodes(&schema, &mut schema_nodes);
+    collect_schema_nodes(&schema.properties, &mut schema_nodes);
 
 
 
@@ -117,7 +117,7 @@ async fn get_schema_tranformation<P: Provider>(
         let lock = read_lock!(meta_context);
         let document = lock.document.as_ref().unwrap();
         let schema = document.schema.clone().unwrap();
-        schema_to_string_with_target(schema, &schema_node.id)
+        schema_to_string_with_target(schema.properties, &schema_node.id)
     };
 
     log::debug!("schema_string: {}", schema_string);

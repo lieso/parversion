@@ -13,6 +13,8 @@ pub type SchemaProperties = HashMap<String, SchemaNode>;
 pub struct Schema {
     pub id: ID,
     pub name: String,
+    pub description: String,
+    pub lineage: Lineage,
     pub properties: SchemaProperties,
 }
 
