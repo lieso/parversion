@@ -27,7 +27,6 @@ pub mod json_node;
 pub mod context;
 pub mod context_group;
 pub mod llm;
-pub mod traverse;
 pub mod meta_context;
 pub mod schema;
 pub mod network_analysis;

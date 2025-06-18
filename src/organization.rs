@@ -4,9 +4,6 @@ use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::provider::Provider;
-use crate::traverse::{
-    traverse_document,
-};
 use crate::meta_context::MetaContext;
 use crate::node_analysis::{get_basis_nodes};
 use crate::network_analysis::{get_basis_networks, get_basis_graph};
@@ -31,7 +28,7 @@ pub async fn organize<P: Provider>(
     }
 
     log::info!("Traversing document");
-    let (contexts, graph_root) = traverse_document(document, meta_context.clone())?;
+    let (contexts, graph_root) = document.get_contexts(meta_context.clone())?;
 
     {
         let mut lock = write_lock!(meta_context);
