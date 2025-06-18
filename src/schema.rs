@@ -19,7 +19,11 @@ pub struct Schema {
 }
 
 impl Schema {
-    pub fn from_string(schema_str: &str) -> Self {
+    pub fn from_string(value: &str) -> Result<Self, Errors> {
+        if value.trim().is_empty() {
+            return Err(Errors::SchemaNotProvided);
+        }
+
         unimplemented!()
     }
 }
