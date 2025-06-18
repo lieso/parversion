@@ -58,7 +58,7 @@ impl Document {
     }
 
     pub fn to_string(self) -> String {
-        self.data.clone()
+        serde_json::to_string(&self).expect("Could not convert document to string")
     }
 
     pub fn get_document_node(&self) -> Result<DocumentNode, Errors> {

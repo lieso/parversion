@@ -3,10 +3,11 @@ use std::sync::{Arc, RwLock};
 use crate::prelude::*;
 use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
-use crate::organization::organize;
+use crate::normalization::normalize_document_to_meta_context;
 use crate::provider::Provider;
 use crate::traverse::{traverse_meta_context};
 use crate::meta_context::MetaContext;
+use crate::schema::Schema;
 
 #[allow(dead_code)]
 pub async fn translate<P: Provider>(
@@ -16,6 +17,13 @@ pub async fn translate<P: Provider>(
     json_schema: &str,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
+
+    let schema = Schema::from_string(json_schema);
+
+    log::debug!("------------------------------");
+    log::debug!("schema: {:?}", schema);
+
+    delay();
 
     unimplemented!()
 }
@@ -42,7 +50,7 @@ pub async fn translate_text_to_meta_context<P: Provider>(
     log::trace!("In translate_text_to_meta_context");
 
     let document = Document::from_string(text, _options)?;
-    let meta_context = organize(Arc::clone(&provider), document, _options).await?;
+    let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
 
     translate_meta_context(Arc::clone(&provider), meta_context, _options, json_schema).await
 }
@@ -95,7 +103,7 @@ pub async fn translate_document_to_meta_context<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_document_to_meta_context");
 
-    let meta_context = organize(Arc::clone(&provider), document, _options).await?;
+    let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
 
     translate_meta_context(Arc::clone(&provider), meta_context, _options, json_schema).await
 }

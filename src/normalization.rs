@@ -18,27 +18,29 @@ pub async fn normalize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
 
-    log::info!("Getting document");
-    let document = traverse_meta_context(
-        meta_context.clone(),
-        &None
-    )?;
+    //for _ in 0..3 {
+        log::info!("Getting document");
+        let document = traverse_meta_context(
+            meta_context.clone(),
+            &None
+        )?;
 
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_document(document);
-    }
+        {
+            let mut lock = write_lock!(meta_context);
+            lock.update_document(document);
+        }
 
-    log::info!("Getting schema transformations");
-    let schema_transformations = get_schema_transformations(
-        Arc::clone(&provider),
-        Arc::clone(&meta_context)
-    ).await?;
+        log::info!("Getting schema transformations");
+        let schema_transformations = get_schema_transformations(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context)
+        ).await?;
 
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_schema_transformations(schema_transformations);
-    }
+        {
+            let mut lock = write_lock!(meta_context);
+            lock.update_schema_transformations(schema_transformations);
+        }
+    //}
 
     Ok(meta_context)
 }

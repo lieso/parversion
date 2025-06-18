@@ -7,10 +7,23 @@ use crate::transformation::SchemaTransformation;
 use crate::provider::Provider;
 use crate::schema_node::SchemaNode;
 
-pub type Schema = HashMap<String, SchemaNode>;
+pub type SchemaProperties = HashMap<String, SchemaNode>;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Schema {
+    pub id: ID,
+    pub name: String,
+    pub properties: SchemaProperties,
+}
+
+impl Schema {
+    pub fn from_string(schema_str: &str) -> Self {
+        unimplemented!()
+    }
+}
 
 pub fn schema_to_string_with_target(
-    schema: Schema,
+    schema: SchemaProperties,
     target_id: &ID
 ) -> String {
     log::trace!("In schema_to_string_with_target");
