@@ -6,7 +6,6 @@ use crate::document_format::{DocumentFormat};
 use crate::provider::Provider;
 use crate::traverse::{
     traverse_document,
-    traverse_meta_context
 };
 use crate::meta_context::MetaContext;
 use crate::node_analysis::{get_basis_nodes};
@@ -90,10 +89,12 @@ pub async fn organize_document<P: Provider>(
         _options
     ).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let organized_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    organized_document
 }
 
 #[allow(dead_code)]
@@ -139,7 +140,12 @@ pub async fn organize_text_to_document<P: Provider>(
 
     let meta_context = organize_text(Arc::clone(&provider), text, _options).await?;
 
-    traverse_meta_context(meta_context, document_format)
+    let organized_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    organized_document
 }
 
 #[allow(dead_code)]
@@ -171,7 +177,12 @@ pub async fn organize_file_to_document<P: Provider>(
 
     let meta_context = organize_file(Arc::clone(&provider), path, _options).await?;
 
-    traverse_meta_context(meta_context, document_format)
+    let organized_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    organized_document
 }
 
 #[allow(dead_code)]

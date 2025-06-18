@@ -5,7 +5,6 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::normalization::normalize_document_to_meta_context;
 use crate::provider::Provider;
-use crate::traverse::{traverse_meta_context};
 use crate::meta_context::MetaContext;
 use crate::schema::Schema;
 
@@ -67,10 +66,12 @@ pub async fn translate_text_to_document<P: Provider>(
 
     let meta_context = translate_text_to_meta_context(Arc::clone(&provider), text, _options, json_schema).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let translated_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    translated_document
 }
 
 #[allow(dead_code)]
@@ -125,10 +126,12 @@ pub async fn translate_document<P: Provider>(
         json_schema
     ).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let translated_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    translated_document
 }
 
 #[allow(dead_code)]
@@ -182,10 +185,12 @@ pub async fn translate_file_to_document<P: Provider>(
 
     let meta_context = translate_file_to_meta_context(Arc::clone(&provider), path, _options, json_schema).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let translated_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    translated_document
 }
 
 #[allow(dead_code)]

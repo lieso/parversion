@@ -5,7 +5,6 @@ use crate::document::{Document};
 use crate::document_format::{DocumentFormat};
 use crate::organization::{organize};
 use crate::provider::{Provider};
-use crate::traverse::{traverse_meta_context};
 use crate::meta_context::MetaContext;
 use crate::schema::Schema;
 use crate::node_analysis::{get_schema_transformations};
@@ -20,10 +19,7 @@ pub async fn normalize<P: Provider>(
 
     //for _ in 0..3 {
         log::info!("Getting document");
-        let document = traverse_meta_context(
-            meta_context.clone(),
-            &None
-        )?;
+        let document = read_lock!(meta_context).to_document(&None)?;
 
         {
             let mut lock = write_lock!(meta_context);
@@ -81,10 +77,12 @@ pub async fn normalize_text_to_document<P: Provider>(
 
     let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    document
 }
 
 #[allow(dead_code)]
@@ -130,10 +128,12 @@ pub async fn normalize_document<P: Provider>(
 
     let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let normalized_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    normalized_document
 }
 
 #[allow(dead_code)]
@@ -176,10 +176,12 @@ pub async fn normalize_file_to_document<P: Provider>(
 
     let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let normalized_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    normalized_document
 }
 
 #[allow(dead_code)]
@@ -242,10 +244,12 @@ pub async fn normalize_url_to_document<P: Provider>(
 
     let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options).await?;
 
-    traverse_meta_context(
-        meta_context,
-        document_format,
-    )
+    let normalized_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    normalized_document
 }
 
 #[allow(dead_code)]
