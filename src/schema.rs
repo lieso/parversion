@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap};
+use serde_json::Value;
 
 use crate::prelude::*;
 use crate::transformation::SchemaTransformation;
@@ -24,7 +25,59 @@ impl Schema {
             return Err(Errors::SchemaNotProvided);
         }
 
-        unimplemented!()
+        let serde_value: Value = serde_json::from_str(value)
+            .expect("Could not parse json schema string");
+
+        let name = serde_value.get("title")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Errors::JsonSchemaParseError("Unable to obtain title".to_string()))?;
+        log::debug!("name: {}", name);
+
+        let description = serde_value.get("description")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Errors::JsonSchemaParseError("Unable to obtain description".to_string()))?;
+        log::debug!("description: {}", description);
+
+
+
+
+        //
+
+        let hash = Hash::from_str(&name);
+        let lineage = Lineage::from_hashes(vec![hash.clone()]);
+
+        //
+
+
+
+
+        let properties = if let Some(props) = serde_value["properties"].as_object() {
+            props
+                .iter()
+                .map(|(key, val)| {
+                    match SchemaNode::from_serde_value(
+                        &val,
+                        &key,
+                        &lineage,
+                    ) {
+                        Ok(schema_node) => Ok((key.clone(), schema_node)),
+                        Err(e) => Err(e),
+                    }
+                })
+                .collect::<Result<HashMap<_, _>, Errors>>()?
+        } else {
+            HashMap::new()
+        };
+
+        let schema = Schema {
+            id: ID::new(),
+            name: name.to_string(),
+            description: description.to_string(),
+            lineage,
+            properties,
+        };
+
+        Ok(schema)
     }
 }
 

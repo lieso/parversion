@@ -19,6 +19,7 @@ pub enum Errors {
     BasisGraphNotProvided,
     ContextTooLarge,
     SchemaNotProvided,
+    JsonSchemaParseError(String),
 }
 
 impl From<JoinError> for Errors {
