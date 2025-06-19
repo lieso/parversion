@@ -233,3 +233,39 @@ pub async fn translate_file<P: Provider>(
         Errors::FileOutputError
     })
 }
+
+#[allow(dead_code)]
+pub async fn translate_url_to_meta_context<P: Provider>(
+    provider: Arc<P>,
+    url: &str,
+    _options: &Option<Options>,
+    json_schema: &str
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+    log::trace!("In translate_url_to_meta_context");
+    log::debug!("url: {}", url);
+
+    let text = fetch_url_as_text(url).await?;
+
+    translate_text_to_meta_context(Arc::clone(&provider), text, _options, json_schema).await
+}
+
+#[allow(dead_code)]
+pub async fn translate_url_to_document<P: Provider>(
+    provider: Arc<P>,
+    url: &str,
+    _options: &Option<Options>,
+    document_format: &Option<DocumentFormat>,
+    json_schema: &str
+) -> Result<Document, Errors> {
+    log::trace!("In translate_url_to_document");
+    log::debug!("url: {}", url);
+
+    let meta_context = translate_url_to_meta_context(Arc::clone(&provider), url, _options, json_schema).await?;
+
+    let translated_document = {
+        let lock = read_lock!(meta_context);
+        lock.to_document(document_format)
+    };
+
+    translated_document
+}

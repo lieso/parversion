@@ -98,6 +98,16 @@ async fn main() {
             .long("url")
             .value_name("URL")
             .help("Provide url as document for processing"))
+        .arg(Arg::with_name("schema-file")
+            .short('s')
+            .long("schema-file")
+            .value_name("SCHEMA_FILE")
+            .help("Provide file as schema for translation"))
+        .arg(Arg::with_name("schema-url")
+            .short('S')
+            .long("schema-url")
+            .value_name("SCHEMA_URL")
+            .help("Provide url as schema for translation"))
         .arg(Arg::with_name("version")
             .short('v')
             .long("version")
@@ -118,53 +128,112 @@ async fn main() {
     let options = Options {
         ..Options::default()
     };
-
     log::debug!("options: {:?}", options);
+
+    let maybe_json_schema: Option<String> = {
+        if let Some(path) = matches.value_of("schema-file") {
+            let text = get_file_as_text(path).expect("Could not get schema file");
+            Some(text)
+        } else if let Some(url) = matches.value_of("schema-url") {
+            let text = fetch_url_as_text(url).await.expect("Could not get schema from URL");
+            Some(text)
+        } else {
+            None
+        }
+    };
 
     let document = {
         if let Ok(stdin) = load_stdin() {
             log::info!("Received data from stdin");
-            
-            match normalization::normalize_text_to_document(
-                provider.clone(),
-                stdin,
-                &Some(options),
-                &Some(document_format),
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    eprintln!("Failed to normalize text from stdin: {:?}", err);
-                    std::process::exit(1);
+
+            if let Some(json_schema) = maybe_json_schema {
+                match translation::translate_text_to_document(
+                    provider.clone(),
+                    stdin,
+                    &Some(options),
+                    &Some(document_format),
+                    &json_schema,
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        eprintln!("Failed to translate text from stdin: {:?}", err);
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                match normalization::normalize_text_to_document(
+                    provider.clone(),
+                    stdin,
+                    &Some(options),
+                    &Some(document_format),
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        eprintln!("Failed to normalize text from stdin: {:?}", err);
+                        std::process::exit(1);
+                    }
                 }
             }
         } else if let Some(path) = matches.value_of("file") {
             log::info!("Received a file name");
 
-            match normalization::normalize_file_to_document(
-                provider.clone(),
-                path,
-                &Some(options),
-                &Some(document_format),
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    eprintln!("Failed to normalize URL: {:?}", err);
-                    std::process::exit(1);
+            if let Some(json_schema) = maybe_json_schema {
+                match translation::translate_file_to_document(
+                    provider.clone(),
+                    path,
+                    &Some(options),
+                    &Some(document_format),
+                    &json_schema,
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        eprintln!("Failed to translate text from stdin: {:?}", err);
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                match normalization::normalize_file_to_document(
+                    provider.clone(),
+                    path,
+                    &Some(options),
+                    &Some(document_format),
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        eprintln!("Failed to normalize URL: {:?}", err);
+                        std::process::exit(1);
+                    }
                 }
             }
         } else if let Some(url) = matches.value_of("url") {
             log::info!("Received a URL");
 
-            match normalization::normalize_url_to_document(
-                provider.clone(),
-                url,
-                &Some(options),
-                &Some(document_format),
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    eprintln!("Failed to normalize URL: {:?}", err);
-                    std::process::exit(1);
+            if let Some(json_schema) = maybe_json_schema {
+                match translation::translate_url_to_document(
+                    provider.clone(),
+                    url,
+                    &Some(options),
+                    &Some(document_format),
+                    &json_schema,
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        eprintln!("Failed to translate text from stdin: {:?}", err);
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                match normalization::normalize_url_to_document(
+                    provider.clone(),
+                    url,
+                    &Some(options),
+                    &Some(document_format),
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        eprintln!("Failed to normalize URL: {:?}", err);
+                        std::process::exit(1);
+                    }
                 }
             }
         } else {
