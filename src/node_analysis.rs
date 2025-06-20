@@ -56,20 +56,15 @@ pub async fn get_normal_schema_transformations<P: Provider>(
 
 
 
-    let mut schema_nodes: Vec<SchemaNode> = Vec::new();
+    let schema_nodes: Vec<SchemaNode> = schema.collect_schema_nodes();
 
-    fn collect_schema_nodes(schema: &HashMap<String, SchemaNode>, nodes: &mut Vec<SchemaNode>) {
-        for node in schema.values() {
-            let mut node_clone = node.clone();
-            node_clone.properties.clear();
-            node_clone.items.clear();
-            nodes.push(node_clone);
-            collect_schema_nodes(&node.properties, nodes);
-            collect_schema_nodes(&node.items, nodes);
-        }
-    }
 
-    collect_schema_nodes(&schema.properties, &mut schema_nodes);
+    log::debug!("*****************************************************************************************************");
+    log::debug!("schema_nodes: {:?}", schema_nodes);
+
+    delay();
+
+    unimplemented!();
 
 
 

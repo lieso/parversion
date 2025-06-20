@@ -20,6 +20,24 @@ pub struct Schema {
 }
 
 impl Schema {
+    pub fn collect_schema_nodes(&self) -> Vec<SchemaNode> {
+        log::trace!("In collect_schema_nodes");
+
+        let mut schema_nodes: Vec<SchemaNode> = Vec::new();
+
+        for node in self.properties.values() {
+            let mut node_clone = node.clone();
+            node_clone.properties.clear();
+            node_clone.items = None;
+
+            schema_nodes.push(node_clone);
+
+            node.collect_schema_nodes(&mut schema_nodes);
+        }
+
+        schema_nodes
+    }
+
     pub fn from_string(value: &str) -> Result<Self, Errors> {
         if value.trim().is_empty() {
             return Err(Errors::SchemaNotProvided);
