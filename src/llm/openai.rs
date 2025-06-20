@@ -56,11 +56,11 @@ struct NormalResponse {
 impl OpenAI {
     pub async fn get_normal_schema(
         marked_schema: &String
-    ) -> Result<(String, String), Errors> {
+    ) -> Result<(String, String, Vec<String>), Errors> {
         log::trace!("In get_normal_schema");
 
-        if marked_schema.len() > 5000 {
-            log::error!("Schema is over 5000 characters...");
+        if marked_schema.len() > 10000 {
+            log::error!("Schema is over 10000 characters...");
             return Err(Errors::ContextTooLarge);
         }
 
@@ -122,7 +122,7 @@ In addition to the new property name:
                 log::debug!("║       NORMAL SCHEMA END   ║");
                 log::debug!("╚═══════════════════════════╝");
 
-                Ok((response.new_property_name, response.description))
+                Ok((response.new_property_name, response.description, response.alternative_property_names))
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);

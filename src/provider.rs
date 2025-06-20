@@ -289,7 +289,7 @@ impl Provider for YamlFileProvider {
     ) -> Result<Option<SchemaTransformation>, Errors> {
         let yaml = self.load_data().await?;
 
-        let schema_transformations: Vec<SchemaTransformation> = yaml.get("normal_schema_transformations")
+        let schema_transformations: Vec<SchemaTransformation> = yaml.get("schema_transformations")
             .and_then(|bn| {
                 let deserialized: Result<Vec<SchemaTransformation>, _> = serde_yaml::from_value(bn.clone());
                 if let Err(ref err) = deserialized {

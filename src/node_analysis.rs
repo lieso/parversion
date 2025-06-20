@@ -120,7 +120,7 @@ async fn get_schema_tranformation<P: Provider>(
         schema_to_string_with_target(schema.properties, &schema_node.id)
     };
 
-    let (target, description) = LLM::get_normal_schema(&schema_string).await?;
+    let (target, description, aliases) = LLM::get_normal_schema(&schema_string).await?;
 
     let schema_transformation = SchemaTransformation {
         id: ID::new(),

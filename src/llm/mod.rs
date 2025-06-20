@@ -10,12 +10,13 @@ impl LLM {
     pub async fn get_normal_schema(marked_schema: &String) -> Result<(
         String, // target
         String, // description
+        Vec<String> // aliases
     ), Errors> {
         log::trace!("In get_normal_schema");
 
-        let (target, description) = openai::OpenAI::get_normal_schema(marked_schema).await?;
+        let (target, description, aliases) = openai::OpenAI::get_normal_schema(marked_schema).await?;
 
-        Ok((target, description))
+        Ok((target, description, aliases))
     }
 
     pub async fn categorize_and_summarize(document: String) -> Result<(
