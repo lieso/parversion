@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 use serde_json::Value;
 
@@ -15,6 +14,7 @@ pub struct SchemaNode {
     pub description: String,
     pub data_type: String,
     pub properties: HashMap<String, SchemaNode>,
+    pub items: Option<Vec<SchemaNode>>,
 }
 
 impl SchemaNode {
@@ -36,6 +36,7 @@ impl SchemaNode {
             description: description.to_string(),
             data_type: data_type.to_string(),
             properties: HashMap::new(),
+            items: None,
         }
     }
 
@@ -76,6 +77,25 @@ impl SchemaNode {
             HashMap::new()
         };
 
+        let items = if data_type == "array" {
+            if let Some(items_value) = value.get("items") {
+                if items_value.is_array() {
+                    Some(
+                        items_value.as_array().unwrap()
+                            .iter()
+                            .map(|item_value| Self::from_serde_value(item_value, name, &lineage))
+                            .collect::<Result<Vec<_>, Errors>>()?
+                    )
+                } else {
+                    Some(vec![Self::from_serde_value(items_value, name, &lineage)?])
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         let schema_node = SchemaNode {
             id: ID::new(),
             hash,
@@ -85,6 +105,7 @@ impl SchemaNode {
             description: description.to_string(),
             data_type: data_type.to_string(),
             properties,
+            items,
         };
 
         Ok(schema_node)
