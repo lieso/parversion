@@ -25,7 +25,7 @@ pub async fn normalize<P: Provider>(
         lock.update_document(document);
     }
 
-    log::info!("Getting schema transformations");
+    log::info!("Getting normal schema transformations");
     let schema_transformations = get_normal_schema_transformations(
         Arc::clone(&provider),
         Arc::clone(&meta_context)
@@ -33,7 +33,7 @@ pub async fn normalize<P: Provider>(
 
     {
         let mut lock = write_lock!(meta_context);
-        lock.update_schema_transformations(schema_transformations);
+        lock.update_normal_schema_transformations(schema_transformations);
     }
 
     Ok(meta_context)

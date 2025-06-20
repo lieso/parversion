@@ -19,6 +19,15 @@ use crate::transformation::{
 use crate::schema_node::SchemaNode;
 use crate::schema::{schema_to_string_with_target};
 
+pub async fn get_translation_schema_transformations<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>
+) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
+    log::trace!("In get_translation_schema_transformations");
+
+    unimplemented!()
+}
+
 pub async fn get_normal_schema_transformations<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>

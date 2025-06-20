@@ -24,8 +24,10 @@ pub struct MetaContext {
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<Arc<BasisGraph>>,
     pub profile: Option<Arc<Profile>>,
-    pub schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
+    pub normal_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
+    pub translation_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
     pub document: Option<Document>,
+    pub translation_schema: Option<Schema>,
 }
 
 impl MetaContext {
@@ -37,8 +39,10 @@ impl MetaContext {
             basis_networks: None,
             basis_graph: None,
             profile: None,
-            schema_transformations: None,
+            normal_schema_transformations: None,
+            translation_schema_transformations: None,
             document: None,
+            translation_schema: None,
         }
     }
 
@@ -83,11 +87,25 @@ impl MetaContext {
         self.document = Some(document);
     }
 
-    pub fn update_schema_transformations(
+    pub fn update_normal_schema_transformations(
         &mut self,
         schema_transformations: HashMap<Lineage, Arc<SchemaTransformation>>
     ) {
-        self.schema_transformations = Some(schema_transformations);
+        self.normal_schema_transformations = Some(schema_transformations);
+    }
+
+    pub fn update_translation_schema_transformations(
+        &mut self,
+        schema_transformations: HashMap<Lineage, Arc<SchemaTransformation>>
+    ) {
+        self.translation_schema_transformations = Some(schema_transformations);
+    }
+
+    pub fn update_translation_schema(
+        &mut self,
+        schema: Schema
+    ) {
+        self.translation_schema = Some(schema);
     }
 
     pub fn update_profile(&mut self, profile: Arc<Profile>) {
@@ -284,7 +302,7 @@ fn process_network(
                     );
 
                     {
-                        if let Some(schema_transformations) = &meta_context.schema_transformations {
+                        if let Some(schema_transformations) = &meta_context.normal_schema_transformations {
                             if let Some(schema_transformation) = schema_transformations.get(&schema_node.lineage) {
                                 log::info!("Found a schema transformation");
                                 schema_node = schema_transformation.transform(&schema_node);
@@ -408,7 +426,7 @@ fn process_node(
             );
 
             {
-                if let Some(schema_transformations) = &meta_context.schema_transformations {
+                if let Some(schema_transformations) = &meta_context.normal_schema_transformations {
                     if let Some(schema_transformation) = schema_transformations.get(&schema_node.lineage) {
                         log::info!("Found a schema transformation");
                         schema_node = schema_transformation.transform(&schema_node);

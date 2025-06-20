@@ -7,6 +7,7 @@ use crate::normalization::normalize_document_to_meta_context;
 use crate::provider::Provider;
 use crate::meta_context::MetaContext;
 use crate::schema::Schema;
+use crate::node_analysis::get_translation_schema_transformations;
 
 #[allow(dead_code)]
 pub async fn translate<P: Provider>(
@@ -16,15 +17,35 @@ pub async fn translate<P: Provider>(
     json_schema: &str,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
+    
+    log::info!("Parsing JSON schema");
+    let schema = Schema::from_string(json_schema)?;
 
-    let schema = Schema::from_string(json_schema);
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_translation_schema(schema);
+    }
 
-    log::debug!("------------------------------");
-    log::debug!("schema: {:?}", schema);
+    log::info!("Getting document");
+    let document = read_lock!(meta_context).to_document(&None)?;
 
-    delay();
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_document(document);
+    }
 
-    unimplemented!()
+    log::info!("Getting translation schema transformations");
+    let schema_transformations = get_translation_schema_transformations(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context)
+    ).await?;
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_translation_schema_transformations(schema_transformations);
+    }
+
+    Ok(meta_context)
 }
 
 #[allow(dead_code)]
