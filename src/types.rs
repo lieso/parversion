@@ -20,6 +20,7 @@ pub enum Errors {
     ContextTooLarge,
     SchemaNotProvided,
     JsonSchemaParseError(String),
+    DeficientMetaContextError(String)
 }
 
 impl From<JoinError> for Errors {

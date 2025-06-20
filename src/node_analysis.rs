@@ -21,9 +21,23 @@ use crate::schema::{schema_to_string_with_target};
 
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>
+    meta_context: Arc<RwLock<MetaContext>>,
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_translation_schema_transformations");
+
+    let lock = read_lock!(meta_context);
+
+    let document = lock.document.clone().ok_or_else(|| {
+        Errors::DeficientMetaContextError("Document not provided in MetaContext".to_string())
+    })?;
+
+    let schema = document.schema.ok_or_else(|| {
+        Errors::DeficientMetaContextError("Schema not provided in Document".to_string())
+    })?;
+
+    let translation_schema = lock.translation_schema.clone().ok_or_else(|| {
+        Errors::DeficientMetaContextError("Translation schema not provided in MetaContext".to_string())
+    })?;
 
     unimplemented!()
 }
@@ -48,8 +62,10 @@ pub async fn get_normal_schema_transformations<P: Provider>(
         for node in schema.values() {
             let mut node_clone = node.clone();
             node_clone.properties.clear();
+            node_clone.items.clear();
             nodes.push(node_clone);
             collect_schema_nodes(&node.properties, nodes);
+            collect_schema_nodes(&node.items, nodes);
         }
     }
 

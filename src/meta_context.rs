@@ -27,7 +27,7 @@ pub struct MetaContext {
     pub normal_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
     pub translation_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
     pub document: Option<Document>,
-    pub translation_schema: Option<Schema>,
+    pub translation_schema: Option<Arc<Schema>>,
 }
 
 impl MetaContext {
@@ -105,7 +105,7 @@ impl MetaContext {
         &mut self,
         schema: Schema
     ) {
-        self.translation_schema = Some(schema);
+        self.translation_schema = Some(Arc::new(schema));
     }
 
     pub fn update_profile(&mut self, profile: Arc<Profile>) {
