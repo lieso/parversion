@@ -7,7 +7,7 @@ use crate::organization::{organize};
 use crate::provider::{Provider};
 use crate::meta_context::MetaContext;
 use crate::schema::Schema;
-use crate::node_analysis::{get_schema_transformations};
+use crate::node_analysis::{get_normal_schema_transformations};
 
 #[allow(dead_code)]
 pub async fn normalize<P: Provider>(
@@ -17,26 +17,24 @@ pub async fn normalize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
 
-    //for _ in 0..3 {
-        log::info!("Getting document");
-        let document = read_lock!(meta_context).to_document(&None)?;
+    log::info!("Getting document");
+    let document = read_lock!(meta_context).to_document(&None)?;
 
-        {
-            let mut lock = write_lock!(meta_context);
-            lock.update_document(document);
-        }
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_document(document);
+    }
 
-        log::info!("Getting schema transformations");
-        let schema_transformations = get_schema_transformations(
-            Arc::clone(&provider),
-            Arc::clone(&meta_context)
-        ).await?;
+    log::info!("Getting schema transformations");
+    let schema_transformations = get_normal_schema_transformations(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context)
+    ).await?;
 
-        {
-            let mut lock = write_lock!(meta_context);
-            lock.update_schema_transformations(schema_transformations);
-        }
-    //}
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_schema_transformations(schema_transformations);
+    }
 
     Ok(meta_context)
 }

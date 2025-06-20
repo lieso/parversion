@@ -19,11 +19,11 @@ use crate::transformation::{
 use crate::schema_node::SchemaNode;
 use crate::schema::{schema_to_string_with_target};
 
-pub async fn get_schema_transformations<P: Provider>(
+pub async fn get_normal_schema_transformations<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
-    log::trace!("In get_schema_transformations");
+    log::trace!("In get_normal_schema_transformations");
 
 
     let lock = read_lock!(meta_context);
@@ -103,7 +103,7 @@ async fn get_schema_tranformation<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
     schema_node: SchemaNode,
 ) -> Result<SchemaTransformation, Errors> {
-    log::trace!("In get_schema_transformation");
+    log::trace!("In get_normal_schema_transformation");
 
     let lineage = &schema_node.lineage;
 
