@@ -49,7 +49,7 @@ impl Document {
         HashMap<ID, Arc<Context>>, // context
         Arc<RwLock<GraphNode>> // graph root
     ), Errors> {
-        log::trace!("In get_context");
+        log::trace!("In get_contexts");
 
         let lock = read_lock!(meta_context);
         let profile = lock.profile.as_ref().ok_or(Errors::ProfileNotProvided)?;

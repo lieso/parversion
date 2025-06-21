@@ -20,6 +20,20 @@ pub struct Schema {
 }
 
 impl Schema {
+    pub fn get_contexts(&self) -> Result<(
+        HashMap<ID, Arc<SchemaContext>>,
+        Graph
+    ), Errors> {
+        log::trace!("In get_contexts");
+
+        let mut schema_nodes: HashMap<ID, Arc<SchemaNode>> = HashMap::new();
+        let mut contexts: HashMap<ID, Arc<Context>> = HashMap::new();
+
+        // dummy node
+
+        unimplemented!()
+    }
+
     pub fn collect_schema_nodes(&self) -> Vec<SchemaNode> {
         log::trace!("In collect_schema_nodes");
 
@@ -97,7 +111,18 @@ impl Schema {
 
         Ok(schema)
     }
+
+    pub fn to_string_with_target(&self, target_node: &SchemaNode): String -> {
+        log::trace!("In to_string_with_target");
+
+        let mut neighbour_ids = HashSet::new();
+
+        unimplemented!()
+    }
 }
+
+// to minimize context we should incrementally add json one level up till we reach some threshold or include entire schema if threshold is not reached
+// that way we maximize information shown to llm about specific objects and not unrelated objects since they will be nested down elsewhere in json tree
 
 pub fn schema_to_string_with_target(
     schema: SchemaProperties,
