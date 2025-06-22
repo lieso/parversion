@@ -56,31 +56,6 @@ impl SchemaNode {
         schema_nodes
     }
 
-    pub fn collect_schema_nodes(
-        &self,
-        schema_nodes: &mut Vec<Self>
-    ) {
-        for node in self.properties.values() {
-            let mut node_clone = node.clone();
-            node_clone.properties.clear();
-            node_clone.items = None;
-            schema_nodes.push(node_clone);
-
-            node.collect_schema_nodes(schema_nodes);
-        }
-
-        if let Some(items) = &self.items {
-            for node in items.iter() {
-                let mut node_clone = node.clone();
-                node_clone.properties.clear();
-                node_clone.items = None;
-                schema_nodes.push(node_clone);
-
-                node.collect_schema_nodes(schema_nodes);
-            }
-        }
-    }
-
     pub fn from_serde_value(
         value: &Value,
         name: &str,

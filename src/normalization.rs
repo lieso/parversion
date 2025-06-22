@@ -17,12 +17,13 @@ pub async fn normalize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
 
-    log::info!("Getting document");
+    log::info!("Getting schema context");
     let document = read_lock!(meta_context).to_document(&None)?;
-
+    let (contexts, graph_root) = &document.schema.unwrap().get_contexts()?;
+    
     {
         let mut lock = write_lock!(meta_context);
-        lock.update_document(document);
+        lock.update_normal_schema_context(contexts.clone(), graph_root.clone());
     }
 
     log::info!("Getting normal schema transformations");

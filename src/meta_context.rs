@@ -16,6 +16,7 @@ use crate::schema::Schema;
 use crate::json_node::JsonNode;
 use crate::document_format::{DocumentFormat};
 use crate::basis_network::{NetworkRelationship};
+use crate::schema_context::SchemaContext;
 
 pub struct MetaContext {
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
@@ -26,8 +27,9 @@ pub struct MetaContext {
     pub profile: Option<Arc<Profile>>,
     pub normal_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
     pub translation_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
-    pub document: Option<Document>,
     pub translation_schema: Option<Arc<Schema>>,
+    pub normal_schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
+    pub normal_schema_graph_root: Option<Graph>,
 }
 
 impl MetaContext {
@@ -41,9 +43,19 @@ impl MetaContext {
             profile: None,
             normal_schema_transformations: None,
             translation_schema_transformations: None,
-            document: None,
             translation_schema: None,
+            normal_schema_contexts: None,
+            normal_schema_graph_root: None,
         }
+    }
+
+    pub fn update_normal_schema_context(
+        &mut self,
+        contexts: HashMap<ID, Arc<SchemaContext>>,
+        graph_root: Graph
+    ) {
+        self.normal_schema_contexts = Some(contexts);
+        self.normal_schema_graph_root = Some(graph_root);
     }
 
     pub fn get_basis_network_by_subgraph_hash(
@@ -78,13 +90,6 @@ impl MetaContext {
         }
 
         Ok(None)
-    }
-
-    pub fn update_document(
-        &mut self,
-        document: Document
-    ) {
-        self.document = Some(document);
     }
 
     pub fn update_normal_schema_transformations(

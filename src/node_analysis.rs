@@ -18,6 +18,7 @@ use crate::transformation::{
 };
 use crate::schema_node::SchemaNode;
 use crate::schema::{schema_to_string_with_target};
+use crate::schema_context::SchemaContext;
 
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -26,18 +27,6 @@ pub async fn get_translation_schema_transformations<P: Provider>(
     log::trace!("In get_translation_schema_transformations");
 
     let lock = read_lock!(meta_context);
-
-    let document = lock.document.clone().ok_or_else(|| {
-        Errors::DeficientMetaContextError("Document not provided in MetaContext".to_string())
-    })?;
-
-    let schema = document.schema.ok_or_else(|| {
-        Errors::DeficientMetaContextError("Schema not provided in Document".to_string())
-    })?;
-
-    let translation_schema = lock.translation_schema.clone().ok_or_else(|| {
-        Errors::DeficientMetaContextError("Translation schema not provided in MetaContext".to_string())
-    })?;
 
     unimplemented!()
 }
@@ -48,19 +37,20 @@ pub async fn get_normal_schema_transformations<P: Provider>(
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_normal_schema_transformations");
 
+    let schema_contexts: Vec<Arc<SchemaContext>> = {
+        let lock = read_lock!(meta_context);
 
-    let lock = read_lock!(meta_context);
-    let document = lock.document.clone().unwrap();
-    let schema = document.schema.unwrap();
-
-
-
-
-    let schema_nodes: Vec<SchemaNode> = schema.collect_schema_nodes();
-
-
-    log::debug!("*****************************************************************************************************");
-    log::debug!("schema_nodes: {:?}", schema_nodes);
+        lock.normal_schema_contexts
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError(
+                    "Normal schema contexts not provided in meta context".to_string()
+                )
+            })?
+            .values()
+            .cloned()
+            .collect()
+    };
 
     delay();
 
@@ -75,13 +65,13 @@ pub async fn get_normal_schema_transformations<P: Provider>(
     if max_concurrency == 1 {
         let mut results = HashMap::new();
 
-        for schema_node in schema_nodes {
+        for schema_context in schema_contexts {
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
             let result = get_schema_tranformation(
                 cloned_provider,
                 cloned_meta_context,
-                schema_node.clone()
+                schema_context.clone()
             ).await?;
 
             results.insert(result.lineage.clone(), Arc::new(result));
@@ -92,7 +82,7 @@ pub async fn get_normal_schema_transformations<P: Provider>(
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
         let mut handles = Vec::new();
 
-        for schema_node in schema_nodes {
+        for schema_context in schema_contexts {
             let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
@@ -102,7 +92,7 @@ pub async fn get_normal_schema_transformations<P: Provider>(
                 let transformation = get_schema_tranformation(
                     cloned_provider,
                     cloned_meta_context,
-                    schema_node.clone()
+                    schema_context.clone()
                 ).await?;
 
                 Ok((transformation.lineage.clone(), Arc::new(transformation)))
@@ -121,11 +111,11 @@ pub async fn get_normal_schema_transformations<P: Provider>(
 async fn get_schema_tranformation<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    schema_node: SchemaNode,
+    schema_context: Arc<SchemaContext>,
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_normal_schema_transformation");
 
-    let lineage = &schema_node.lineage;
+    let lineage = &schema_context.lineage;
 
     if let Some(schema_transformation) = provider.get_normal_schema_transformation_by_lineage(&lineage).await? {
         log::info!("Provider has supplied normal schema transformation");
@@ -133,14 +123,9 @@ async fn get_schema_tranformation<P: Provider>(
         return Ok(schema_transformation);
     }
 
-    let schema_string: String = {
-        let lock = read_lock!(meta_context);
-        let document = lock.document.as_ref().unwrap();
-        let schema = document.schema.clone().unwrap();
-        schema_to_string_with_target(schema.properties, &schema_node.id)
-    };
+    let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let (target, description, aliases) = LLM::get_normal_schema(&schema_string).await?;
+    let (target, description, aliases) = LLM::get_normal_schema(&snippet).await?;
 
     let schema_transformation = SchemaTransformation {
         id: ID::new(),
