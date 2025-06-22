@@ -39,6 +39,22 @@ impl SchemaNode {
             items: None,
         }
     }
+    
+    pub fn get_children(&self) -> Vec<SchemaNode> {
+        let mut schema_nodes: Vec<SchemaNode> = Vec::new();
+
+        for node in self.properties.values() {
+            schema_nodes.push(node.clone());
+        }
+
+        if let Some(items) = &self.items {
+            for node in items.iter() {
+                schema_nodes.push(node.clone());
+            }
+        }
+
+        schema_nodes
+    }
 
     pub fn collect_schema_nodes(
         &self,

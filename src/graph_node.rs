@@ -3,6 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::data_node::DataNode;
+use crate::schema_node::SchemaNode;
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -19,6 +20,17 @@ pub struct GraphNode {
 }
 
 impl GraphNode {
+    pub fn from_schema_node(schema_node: Arc<SchemaNode>, parents: Vec<Graph>) -> Self {
+        GraphNode {
+            id: ID::new(),
+            parents,
+            description: schema_node.description.clone(),
+            hash: schema_node.hash.clone(),
+            subgraph_hash: schema_node.hash.clone(),
+            lineage: schema_node.lineage.clone(),
+            children: Vec::new(),
+        }
+    }
     pub fn from_data_node(data_node: Arc<DataNode>, parents: Vec<Graph>) -> Self {
         let hash = data_node.hash.clone();
 

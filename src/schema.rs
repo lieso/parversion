@@ -7,6 +7,8 @@ use crate::prelude::*;
 use crate::transformation::SchemaTransformation;
 use crate::provider::Provider;
 use crate::schema_node::SchemaNode;
+use crate::schema_context::SchemaContext;
+use crate::graph_node::{GraphNode, Graph};
 
 pub type SchemaProperties = HashMap<String, SchemaNode>;
 
@@ -27,11 +29,86 @@ impl Schema {
         log::trace!("In get_contexts");
 
         let mut schema_nodes: HashMap<ID, Arc<SchemaNode>> = HashMap::new();
-        let mut contexts: HashMap<ID, Arc<Context>> = HashMap::new();
+        let mut schema_contexts: HashMap<ID, Arc<SchemaContext>> = HashMap::new();
 
-        // dummy node
+        let dummy_node = SchemaNode {
+            id: self.id.clone(),
+            name: self.name.clone(),
+            description: self.description.clone(),
+            hash: Hash::from_str(&self.name),
+            lineage: self.lineage.clone(),
+            properties: self.properties.clone(),
+            items: None,
+            aliases: Vec::new(),
+            data_type: "object".to_string(),
+        };
 
-        unimplemented!()
+        fn recurse(
+            current: Arc<SchemaNode>,
+            parents: Vec<Graph>,
+            schema_nodes: &mut HashMap<ID, Arc<SchemaNode>>,
+            contexts: &mut HashMap<ID, Arc<SchemaContext>>,
+        ) -> Graph {
+            schema_nodes.insert(current.id.clone(), Arc::clone(&current));
+
+            let graph_node = Arc::new(RwLock::new(
+                GraphNode::from_schema_node(
+                    Arc::clone(&current),
+                    parents.clone(),
+                )
+            ));
+
+            let schema_context = Arc::new(SchemaContext {
+                id: ID::new(),
+                lineage: current.lineage.clone(),
+                schema_node: Arc::clone(&current),
+                graph_node: Arc::clone(&graph_node),
+            });
+
+            contexts.insert(current.id.clone(), Arc::clone(&schema_context));
+            contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&schema_context));
+
+            {
+                let children: Vec<Graph> = current
+                    .get_children()
+                    .into_iter()
+                    .map(|child| {
+                        recurse(
+                            Arc::new(child),
+                            vec![Arc::clone(&graph_node)],
+                            schema_nodes,
+                            contexts,
+                        )
+                    })
+                    .collect();
+
+                let mut write_lock = write_lock!(graph_node);
+
+                let child_hashes: Vec<Hash> = children.iter()
+                    .map(|child| read_lock!(child).hash.clone())
+                    .collect();
+
+                let mut subgraph_hash = Hash::from_items(child_hashes.clone());
+                let subgraph_hash = subgraph_hash
+                    .sort()
+                    .push(write_lock.hash.clone())
+                    .finalize();
+
+                write_lock.subgraph_hash = subgraph_hash.clone();
+                write_lock.children.extend(children);
+            }
+
+            graph_node
+        }
+
+        let graph_root = recurse(
+            Arc::new(dummy_node),
+            Vec::new(),
+            &mut schema_nodes,
+            &mut schema_contexts,
+        );
+
+        Ok((schema_contexts, graph_root))
     }
 
     pub fn collect_schema_nodes(&self) -> Vec<SchemaNode> {
@@ -112,10 +189,8 @@ impl Schema {
         Ok(schema)
     }
 
-    pub fn to_string_with_target(&self, target_node: &SchemaNode): String -> {
+    pub fn to_string_with_target(&self, target_node: &SchemaNode) -> String {
         log::trace!("In to_string_with_target");
-
-        let mut neighbour_ids = HashSet::new();
 
         unimplemented!()
     }
