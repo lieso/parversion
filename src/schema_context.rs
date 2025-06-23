@@ -35,7 +35,7 @@ impl SchemaContext {
             &read_lock!(graph_node).id,
         );
 
-        snippet
+        format!("{{ {} }}", snippet)
     }
 
     fn traverse_for_snippet(
@@ -93,42 +93,22 @@ impl SchemaContext {
 
         if is_neighbour || is_target {
             if schema_node.data_type == "array" {
-                format!(
-                    r#"{{
-                        "{}": {{
-                             "description": "{}",
-                             "data_type": "array",
-                             "items": {{ {} }}
-                         }}
-                     }}"#,
-                     json_schema_key,
-                     schema_node.description,
-                     inner_schema.join(", ")
+                format!(r#""{}": {{ "description": "{}", "data_type": "array", "items": {{ {} }} }}"#,
+                    json_schema_key,
+                    schema_node.description,
+                    inner_schema.join(", ")
                 )
             } else if schema_node.data_type == "object" {
-                format!(
-                    r#"{{
-                        "{}": {{
-                             "description": "{}",
-                             "data_type": "object",
-                             "properties": {{ {} }}
-                         }}
-                     }}"#,
-                     json_schema_key,
-                     schema_node.description,
-                     inner_schema.join(", ")
+                format!(r#""{}": {{ "description": "{}", "data_type": "object", "properties": {{ {} }} }}"#,
+                    json_schema_key,
+                    schema_node.description,
+                    inner_schema.join(", ")
                 )
             } else {
-                format!(
-                    r#"{{
-                        "{}": {{
-                             "description": "{}",
-                             "data_type": "{}",
-                         }}
-                     }}"#,
-                     json_schema_key,
-                     schema_node.description,
-                     schema_node.data_type
+                format!(r#""{}": {{ "description": "{}", "data_type": "{}" }}"#,
+                    json_schema_key,
+                    schema_node.description,
+                    schema_node.data_type
                 )
             }
         } else {
