@@ -10,7 +10,7 @@ pub enum Errors {
     UnexpectedError,
     XmlParseError,
     PathConversionError,
-    YamlParseError,
+    YamlParseError(String),
     FetchUrlError(String),
     FieldTransformationFieldNotFound,
     GraphRootNotProvided,
