@@ -64,7 +64,6 @@ impl SchemaContext {
             Arc::clone(&schema_context.schema_node)
         };
 
-
         let children = {
             let lock = read_lock!(current_node);
             lock.children.clone()
@@ -81,9 +80,8 @@ impl SchemaContext {
                 )
 
             })
+            .filter(|item| !item.is_empty())
             .collect();
-
-
 
         let json_schema_key: String = {
             if is_target {
@@ -94,19 +92,45 @@ impl SchemaContext {
         };
 
         if is_neighbour || is_target {
-            format!(
-                r#"{{
-                    "{}": {{
-                         "description": "{}",
-                         "data_type": "{}",
-                         {}
-                     }}
-                 }}"#,
-                 json_schema_key,
-                 schema_node.description,
-                 schema_node.data_type,
-                 inner_schema.join(", ")
-            )
+            if schema_node.data_type == "array" {
+                format!(
+                    r#"{{
+                        "{}": {{
+                             "description": "{}",
+                             "data_type": "array",
+                             "items": {{ {} }}
+                         }}
+                     }}"#,
+                     json_schema_key,
+                     schema_node.description,
+                     inner_schema.join(", ")
+                )
+            } else if schema_node.data_type == "object" {
+                format!(
+                    r#"{{
+                        "{}": {{
+                             "description": "{}",
+                             "data_type": "object",
+                             "properties": {{ {} }}
+                         }}
+                     }}"#,
+                     json_schema_key,
+                     schema_node.description,
+                     inner_schema.join(", ")
+                )
+            } else {
+                format!(
+                    r#"{{
+                        "{}": {{
+                             "description": "{}",
+                             "data_type": "{}",
+                         }}
+                     }}"#,
+                     json_schema_key,
+                     schema_node.description,
+                     schema_node.data_type
+                )
+            }
         } else {
             inner_schema.join(", ")
         }
@@ -129,7 +153,7 @@ impl SchemaContext {
 
             visited.insert(graph_node_id.clone());
 
-            if visited.len() > 5 {
+            if visited.len() > 20 {
                 return;
             }
 

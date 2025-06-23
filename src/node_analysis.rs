@@ -119,8 +119,6 @@ async fn get_schema_tranformation<P: Provider>(
 
     log::debug!("*********************************");
     log::debug!("snippet: {}", snippet);
-    delay();
-    panic!();
 
     let (target, description, aliases) = LLM::get_normal_schema(&snippet).await?;
 
