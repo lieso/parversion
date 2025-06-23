@@ -52,14 +52,6 @@ pub async fn get_normal_schema_transformations<P: Provider>(
             .collect()
     };
 
-    delay();
-
-    unimplemented!();
-
-
-
-
-
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
     if max_concurrency == 1 {
@@ -124,6 +116,11 @@ async fn get_schema_tranformation<P: Provider>(
     }
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
+
+    log::debug!("*********************************");
+    log::debug!("snippet: {}", snippet);
+    delay();
+    panic!();
 
     let (target, description, aliases) = LLM::get_normal_schema(&snippet).await?;
 
