@@ -78,10 +78,16 @@ impl YamlFileProvider {
         let mut cache = self.cache.write().await;
         if cache.is_none() {
             let data = async_fs::read_to_string(&self.file_path).await.map_err(|_| Errors::FileReadError)?;
-            let yaml: serde_yaml::Value = serde_yaml::from_str(&data).map_err(|e| {
+            let mut yaml: serde_yaml::Value = serde_yaml::from_str(&data).map_err(|e| {
                 Errors::YamlParseError(format!("Failed to parse YAML: {}", e))
             })?;
+
+            if !yaml.is_mapping() {
+                yaml = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+            }
+
             *cache = Some(yaml.clone());
+
             Ok(yaml)
         } else {
             Ok(cache.clone().unwrap())
@@ -110,7 +116,7 @@ impl Provider for YamlFileProvider {
                 }
                 deserialized.ok()
             })
-            .ok_or_else(|| Errors::YamlParseError("Failed to parse 'profiles' from YAML.".to_string()))?;
+            .unwrap_or_else(Vec::new);
 
         if let Some(target_profile) = Profile::get_similar_profile(&profiles, features) {
             Ok(Some(target_profile))
@@ -122,9 +128,15 @@ impl Provider for YamlFileProvider {
     async fn save_profile(&self, profile: &Profile) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
 
-        let profiles = yaml.get_mut("profiles")
-            .and_then(|profiles_value| profiles_value.as_sequence_mut())
-            .ok_or_else(|| Errors::YamlParseError("Failed to get mutable sequence for 'profiles'.".to_string()))?;
+        let mapping = yaml.as_mapping_mut().ok_or_else(|| {
+            Errors::YamlParseError("Expected root YAML value to be a mapping.".to_string())
+        })?;
+
+        let profiles = mapping
+            .entry(serde_yaml::Value::String("profiles".to_string()))
+            .or_insert_with(|| serde_yaml::Value::Sequence(Vec::new()))
+            .as_sequence_mut()
+            .ok_or_else(|| Errors::YamlParseError("Failed to get or create mutable sequence for 'profiles'.".to_string()))?;
 
         let new_profile_yaml = serde_yaml::to_value(&profile).map_err(|_| Errors::UnexpectedError)?;
         profiles.push(new_profile_yaml);
