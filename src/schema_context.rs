@@ -4,6 +4,7 @@ use std::collections::{HashSet, VecDeque};
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
 use crate::graph_node::{Graph, GraphNode, GraphNodeID};
+use crate::config::{CONFIG};
 
 #[derive(Clone, Debug)]
 pub struct SchemaContext {
@@ -71,14 +72,12 @@ impl SchemaContext {
         let inner_schema: Vec<String> = children
             .iter()
             .map(|child| {
-
                 Self::traverse_for_snippet(
                     Arc::clone(&meta_context),
                     Arc::clone(child),
                     neighbour_ids,
                     target_id,
                 )
-
             })
             .filter(|item| !item.is_empty())
             .collect();
@@ -133,7 +132,7 @@ impl SchemaContext {
 
             visited.insert(graph_node_id.clone());
 
-            if visited.len() > 20 {
+            if visited.len() > read_lock!(CONFIG).llm.schema_neighbour_count {
                 return;
             }
 
