@@ -36,6 +36,7 @@ pub struct DocumentMetadata {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Document {
     pub document_type: DocumentType,
+    #[serde(skip_serializing)]
     pub data: String,
     pub metadata: DocumentMetadata,
     pub schema: Option<Schema>,
@@ -165,8 +166,12 @@ impl Document {
         })
     }
 
-    pub fn to_string(self) -> String {
-        serde_json::to_string(&self).expect("Could not convert document to string")
+    pub fn to_string(&self) -> String {
+        let mut result = serde_json::to_string(self).expect("Could not convert document to string");
+        result.push('\n');
+        result.push_str(&self.data);
+
+        result
     }
 
     pub fn get_document_node(&self) -> Result<DocumentNode, Errors> {
