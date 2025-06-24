@@ -17,6 +17,7 @@ pub struct Schema {
     pub id: ID,
     pub name: String,
     pub description: String,
+    #[serde(skip_serializing)]
     pub lineage: Lineage,
     pub properties: SchemaProperties,
 }

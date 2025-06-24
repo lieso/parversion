@@ -8,7 +8,9 @@ use crate::prelude::*;
 pub struct SchemaNode {
     pub id: ID,
     pub name: String,
+    #[serde(skip_serializing)]
     pub hash: Hash,
+    #[serde(skip_serializing)]
     pub lineage: Lineage,
     pub aliases: Vec<String>,
     pub description: String,
