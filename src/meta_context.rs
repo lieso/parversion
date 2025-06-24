@@ -25,11 +25,13 @@ pub struct MetaContext {
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<Arc<BasisGraph>>,
     pub profile: Option<Arc<Profile>>,
-    pub normal_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
-    pub translation_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
-    pub translation_schema: Option<Arc<Schema>>,
     pub normal_schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
     pub normal_schema_graph_root: Option<Graph>,
+    pub normal_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
+    pub translation_schema: Option<Arc<Schema>>,
+    pub translation_schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
+    pub translation_schema_graph_root: Option<Graph>,
+    pub translation_schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
 }
 
 impl MetaContext {
@@ -41,12 +43,21 @@ impl MetaContext {
             basis_networks: None,
             basis_graph: None,
             profile: None,
-            normal_schema_transformations: None,
-            translation_schema_transformations: None,
-            translation_schema: None,
             normal_schema_contexts: None,
             normal_schema_graph_root: None,
+            normal_schema_transformations: None,
+            translation_schema: None,
+            translation_schema_contexts: None,
+            translation_schema_graph_root: None,
+            translation_schema_transformations: None,
         }
+    }
+
+    pub fn update_translation_schema(
+        &mut self,
+        schema: Schema
+    ) {
+        self.translation_schema = Some(Arc::new(schema));
     }
 
     pub fn update_normal_schema_context(
@@ -56,6 +67,15 @@ impl MetaContext {
     ) {
         self.normal_schema_contexts = Some(contexts);
         self.normal_schema_graph_root = Some(graph_root);
+    }
+
+    pub fn update_translation_schema_context(
+        &mut self,
+        contexts: HashMap<ID, Arc<SchemaContext>>,
+        graph_root: Graph
+    ) {
+        self.translation_schema_contexts = Some(contexts);
+        self.translation_schema_graph_root = Some(graph_root);
     }
 
     pub fn get_basis_network_by_subgraph_hash(
@@ -104,13 +124,6 @@ impl MetaContext {
         schema_transformations: HashMap<Lineage, Arc<SchemaTransformation>>
     ) {
         self.translation_schema_transformations = Some(schema_transformations);
-    }
-
-    pub fn update_translation_schema(
-        &mut self,
-        schema: Schema
-    ) {
-        self.translation_schema = Some(Arc::new(schema));
     }
 
     pub fn update_profile(&mut self, profile: Arc<Profile>) {

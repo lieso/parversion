@@ -25,7 +25,21 @@ pub async fn get_translation_schema_transformations<P: Provider>(
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_translation_schema_transformations");
 
-    let lock = read_lock!(meta_context);
+    let schema_contexts: Vec<Arc<SchemaContext>> = {
+        let lock = read_lock!(meta_context);
+
+        lock.translation_schema_contexts
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError(
+                    "Normal schema contexts not provided in meta context".to_string()
+                )
+            })?
+            .values()
+            .cloned()
+            .collect()
+    };
+
 
     unimplemented!()
 }
