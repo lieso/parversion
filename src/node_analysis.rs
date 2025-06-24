@@ -17,7 +17,6 @@ use crate::transformation::{
     SchemaTransformation
 };
 use crate::schema_node::SchemaNode;
-use crate::schema::{schema_to_string_with_target};
 use crate::schema_context::SchemaContext;
 
 pub async fn get_translation_schema_transformations<P: Provider>(
