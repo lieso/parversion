@@ -256,6 +256,8 @@ async fn get_translation_schema_transformation<P: Provider>(
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_translation_schema_transformation");
 
+    // ask for json path on target schema
+
     unimplemented!()
 }
 

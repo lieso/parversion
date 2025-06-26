@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::prelude::*;
+use crate::path::Path;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaNode {
     pub id: ID,
     pub name: String,
+    pub path: Path,
     #[serde(skip_serializing)]
     pub hash: Hash,
     #[serde(skip_serializing)]
@@ -25,15 +27,18 @@ impl SchemaNode {
         description: &str,
         parent_lineage: &Lineage,
         data_type: &str,
+        parent_path: &Path,
     ) -> Self {
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
+        let path = parent_path.with_segment(format!("{}", name));
 
         SchemaNode {
             id: ID::new(),
             hash,
             lineage,
             name: name.to_string(),
+            path,
             aliases: Vec::new(),
             description: description.to_string(),
             data_type: data_type.to_string(),
@@ -61,13 +66,15 @@ impl SchemaNode {
     pub fn from_serde_value(
         value: &Value,
         name: &str,
-        parent_lineage: &Lineage
+        parent_lineage: &Lineage,
+        parent_path: &Path
     ) -> Result<Self, Errors> {
         log::trace!("In from_serde_value");
         log::debug!("name: {}", name);
 
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
+        let path = parent_path.with_segment(name.to_string());
 
         let description = value.get("description")
             .and_then(|v| v.as_str())
@@ -85,6 +92,7 @@ impl SchemaNode {
                         &val,
                         &key,
                         &lineage,
+                        &path,
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),
@@ -101,11 +109,11 @@ impl SchemaNode {
                     Some(
                         items_value.as_array().unwrap()
                             .iter()
-                            .map(|item_value| Self::from_serde_value(item_value, name, &lineage))
+                            .map(|item_value| Self::from_serde_value(item_value, name, &lineage, &path))
                             .collect::<Result<Vec<_>, Errors>>()?
                     )
                 } else {
-                    Some(vec![Self::from_serde_value(items_value, name, &lineage)?])
+                    Some(vec![Self::from_serde_value(items_value, name, &lineage, &path)?])
                 }
             } else {
                 None
@@ -119,6 +127,7 @@ impl SchemaNode {
             hash,
             lineage,
             name: name.to_string(),
+            path,
             aliases: Vec::new(),
             description: description.to_string(),
             data_type: data_type.to_string(),

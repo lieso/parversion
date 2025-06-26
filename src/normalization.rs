@@ -37,6 +37,15 @@ pub async fn normalize<P: Provider>(
         lock.update_normal_schema_transformations(schema_transformations);
     }
 
+    {
+        let lock = read_lock!(meta_context);
+        let document = lock.to_document(&None);
+        println!("{}", document?.to_string());
+    }
+
+    delay();
+    panic!("testing");
+
     Ok(meta_context)
 }
 

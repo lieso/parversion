@@ -33,6 +33,7 @@ impl SchemaTransformation {
         let mut transformed = schema_node.clone();
         transformed.name = self.target.clone();
         transformed.description = self.description.clone();
+        transformed.path.replace_tail(self.target.clone());
 
         transformed
     }

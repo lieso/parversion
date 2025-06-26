@@ -9,6 +9,7 @@ use crate::provider::Provider;
 use crate::schema_node::SchemaNode;
 use crate::schema_context::SchemaContext;
 use crate::graph_node::{GraphNode, Graph};
+use crate::path::Path;
 
 pub type SchemaProperties = HashMap<String, SchemaNode>;
 
@@ -35,6 +36,7 @@ impl Schema {
         let dummy_node = SchemaNode {
             id: self.id.clone(),
             name: self.name.clone(),
+            path: Path::new(),
             description: self.description.clone(),
             hash: Hash::from_str(&self.name),
             lineage: self.lineage.clone(),
@@ -137,6 +139,7 @@ impl Schema {
 
         let hash = Hash::from_str(&name);
         let lineage = Lineage::from_hashes(vec![hash.clone()]);
+        let path = Path::from_str(&name);
 
         //
 
@@ -151,6 +154,7 @@ impl Schema {
                         &val,
                         &key,
                         &lineage,
+                        &path,
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),

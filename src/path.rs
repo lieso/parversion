@@ -1,0 +1,31 @@
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Path {
+    pub segments: Vec<String>,
+}
+
+impl Path {
+    pub fn new() -> Self {
+        Path {
+            segments: Vec::new()
+        }
+    }
+
+    pub fn from_str(val: &str) -> Self {
+        Path {
+            segments: vec![val.to_string()]
+        }
+    }
+
+    pub fn with_segment(&self, segment: String) -> Self {
+        let mut new_path = self.clone();
+        new_path.segments.push(segment);
+        new_path
+    }
+
+    pub fn replace_tail(&mut self, segment: String) {
+        let last = self.segments.last_mut().expect("Cannot replace tail on an empty path");
+        *last = segment;
+    }
+}

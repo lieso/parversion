@@ -17,6 +17,7 @@ use crate::json_node::JsonNode;
 use crate::document_format::{DocumentFormat};
 use crate::basis_network::{NetworkRelationship};
 use crate::schema_context::SchemaContext;
+use crate::path::Path;
 
 pub struct MetaContext {
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
@@ -175,6 +176,7 @@ impl MetaContext {
 
         let mut result: HashMap<String, Value> = HashMap::new();
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
+        let path: Path = Path::new();
 
         process_network(
             &self,
@@ -182,6 +184,7 @@ impl MetaContext {
             &mut result,
             &mut inner_schema,
             &basis_graph.lineage,
+            &path,
         )?;
 
         let data = {
@@ -258,6 +261,7 @@ fn process_network(
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
     schema_lineage: &Lineage,
+    path: &Path,
 ) -> Result<(), Errors> {
     log::trace!("In process_network");
 
@@ -282,6 +286,7 @@ fn process_network(
             result,
             schema,
             schema_lineage,
+            path,
         )?;
 
         for (index, child) in children.iter().enumerate() {
@@ -316,7 +321,8 @@ fn process_network(
                         &object_name,
                         &object_description,
                         schema_lineage,
-                        "object"
+                        "object",
+                        path,
                     );
 
                     {
@@ -358,6 +364,7 @@ fn process_network(
                                 &mut inner_result,
                                 &mut inner_schema,
                                 &schema_node.lineage,
+                                &schema_node.path
                             )?;
 
                             associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
@@ -371,6 +378,7 @@ fn process_network(
                         &mut inner_result,
                         &mut inner_schema,
                         &schema_node.lineage,
+                        &schema_node.path,
                     )?;
 
                     let inner_result_value = serde_json::to_value(inner_result)
@@ -413,6 +421,7 @@ fn process_node(
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
     schema_lineage: &Lineage,
+    path: &Path,
 ) -> Result<(), Errors> {
     log::trace!("In process_node");
 
@@ -440,7 +449,8 @@ fn process_node(
                 &key,
                 &json_node.description,
                 schema_lineage,
-                "string"
+                "string",
+                path,
             );
 
             {
