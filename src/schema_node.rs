@@ -31,14 +31,13 @@ impl SchemaNode {
     ) -> Self {
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
-        let path = parent_path.with_segment(format!("{}", name));
 
         SchemaNode {
             id: ID::new(),
             hash,
+            path: parent_path.clone(),
             lineage,
             name: name.to_string(),
-            path,
             aliases: Vec::new(),
             description: description.to_string(),
             data_type: data_type.to_string(),

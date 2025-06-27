@@ -23,9 +23,4 @@ impl Path {
         new_path.segments.push(segment);
         new_path
     }
-
-    pub fn replace_tail(&mut self, segment: String) {
-        let last = self.segments.last_mut().expect("Cannot replace tail on an empty path");
-        *last = segment;
-    }
 }

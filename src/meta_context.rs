@@ -176,7 +176,7 @@ impl MetaContext {
 
         let mut result: HashMap<String, Value> = HashMap::new();
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-        let path: Path = Path::new();
+        let path: Path = Path::from_str(&basis_graph.name);
 
         process_network(
             &self,
@@ -364,7 +364,7 @@ fn process_network(
                                 &mut inner_result,
                                 &mut inner_schema,
                                 &schema_node.lineage,
-                                &schema_node.path
+                                &schema_node.path.with_segment(format!("{}", schema_node.name))
                             )?;
 
                             associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
@@ -378,7 +378,7 @@ fn process_network(
                         &mut inner_result,
                         &mut inner_schema,
                         &schema_node.lineage,
-                        &schema_node.path,
+                        &schema_node.path.with_segment(format!("{}", schema_node.name)),
                     )?;
 
                     let inner_result_value = serde_json::to_value(inner_result)
