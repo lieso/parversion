@@ -28,17 +28,18 @@ pub async fn get_translation_schema_transformations<P: Provider>(
     let schema_contexts: Vec<Arc<SchemaContext>> = {
         let lock = read_lock!(meta_context);
 
-        lock.translation_schema_contexts
+        lock.schema_contexts
             .clone()
             .ok_or_else(|| {
                 Errors::DeficientMetaContextError(
-                    "Normal schema contexts not provided in meta context".to_string()
+                    "Schema contexts not provided in meta context".to_string()
                 )
             })?
             .values()
             .cloned()
             .collect()
     };
+    let target_schema = "unimplemented";
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
@@ -51,7 +52,8 @@ pub async fn get_translation_schema_transformations<P: Provider>(
             let result = get_translation_schema_transformation(
                 cloned_provider,
                 cloned_meta_context,
-                schema_context.clone()
+                schema_context.clone(),
+                target_schema,
             ).await?;
 
             results.insert(result.lineage.clone(), Arc::new(result));
@@ -72,7 +74,8 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                 let transformation = get_translation_schema_transformation(
                     cloned_provider,
                     cloned_meta_context,
-                    schema_context.clone()
+                    schema_context.clone(),
+                    target_schema,
                 ).await?;
 
                 Ok((transformation.lineage.clone(), Arc::new(transformation)))
@@ -97,7 +100,7 @@ pub async fn get_normal_schema_transformations<P: Provider>(
     let schema_contexts: Vec<Arc<SchemaContext>> = {
         let lock = read_lock!(meta_context);
 
-        lock.normal_schema_contexts
+        lock.schema_contexts
             .clone()
             .ok_or_else(|| {
                 Errors::DeficientMetaContextError(
@@ -229,9 +232,6 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    log::debug!("*********************************");
-    log::debug!("snippet: {}", snippet);
-
     let (target, description, aliases) = LLM::get_normal_schema(&snippet).await?;
 
     let schema_transformation = SchemaTransformation {
@@ -253,10 +253,9 @@ async fn get_translation_schema_transformation<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     schema_context: Arc<SchemaContext>,
+    target_schema: &str
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_translation_schema_transformation");
-
-    // ask for json path on target schema
 
     unimplemented!()
 }

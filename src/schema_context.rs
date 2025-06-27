@@ -27,7 +27,7 @@ impl SchemaContext {
         );
 
         let lock = read_lock!(meta_context);
-        let graph_root = lock.normal_schema_graph_root.clone().unwrap();
+        let graph_root = lock.schema_graph_root.clone().unwrap();
 
         let snippet = Self::traverse_for_snippet(
             Arc::clone(&meta_context),
@@ -56,10 +56,10 @@ impl SchemaContext {
         };
         let schema_node = {
             let lock = read_lock!(meta_context);
-            let normal_schema_contexts = lock.normal_schema_contexts
+            let schema_contexts = lock.schema_contexts
                 .as_ref()
                 .unwrap();
-            let schema_context = normal_schema_contexts
+            let schema_context = schema_contexts
                 .get(&read_lock!(current_node).id)
                 .unwrap();
             Arc::clone(&schema_context.schema_node)

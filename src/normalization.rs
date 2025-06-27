@@ -23,7 +23,7 @@ pub async fn normalize<P: Provider>(
     
     {
         let mut lock = write_lock!(meta_context);
-        lock.update_normal_schema_context(contexts.clone(), graph_root.clone());
+        lock.update_schema_context(contexts.clone(), graph_root.clone());
     }
 
     log::info!("Getting normal schema transformations");
@@ -34,7 +34,7 @@ pub async fn normalize<P: Provider>(
 
     {
         let mut lock = write_lock!(meta_context);
-        lock.update_normal_schema_transformations(schema_transformations);
+        lock.update_schema_transformations(schema_transformations);
     }
 
     Ok(meta_context)

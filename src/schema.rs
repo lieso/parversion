@@ -175,10 +175,4 @@ impl Schema {
 
         Ok(schema)
     }
-
-    pub fn to_string_with_target(&self, target_node: &SchemaNode) -> String {
-        log::trace!("In to_string_with_target");
-
-        unimplemented!()
-    }
 }
