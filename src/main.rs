@@ -44,7 +44,7 @@ mod schema_context;
 mod path;
 
 use crate::prelude::*;
-use crate::provider::{YamlFileProvider};
+use crate::provider::yaml::{YamlFileProvider};
 
 const VERSION: &str = "1.0.0";
 
