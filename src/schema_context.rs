@@ -1,5 +1,5 @@
 use std::sync::{Arc, RwLock};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashSet, HashMap, VecDeque};
 
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
@@ -30,8 +30,15 @@ impl SchemaContext {
         let graph_root = lock.schema_graph_root.clone().unwrap();
         let target_id = read_lock!(graph_node).id.clone();
 
+        let schema_contexts: HashMap<ID, Arc<SchemaContext>> = {
+            let lock = read_lock!(meta_context);
+            lock.schema_contexts
+                .clone()
+                .unwrap()
+        };
+
         let snippet = Self::traverse_for_snippet(
-            Arc::clone(&meta_context),
+            &schema_contexts,
             Arc::clone(&graph_root),
             &|id| neighbour_ids.contains(id),
             &|id| *id == target_id,
@@ -40,8 +47,8 @@ impl SchemaContext {
         format!("{{ {} }}", snippet)
     }
 
-    fn traverse_for_snippet<F, G>(
-        meta_context: Arc<RwLock<MetaContext>>,
+    pub fn traverse_for_snippet<F, G>(
+        schema_contexts: &HashMap<ID, Arc<SchemaContext>>,
         current_node: Graph,
         is_neighbour: &F,
         is_target: &G,
@@ -57,11 +64,7 @@ impl SchemaContext {
         let is_current_neighbour = is_neighbour(id);
         let is_current_target = is_target(id);
 
-        let schema_node = {
-            let lock = read_lock!(meta_context);
-            let schema_contexts = lock.schema_contexts
-                .as_ref()
-                .unwrap();
+        let schema_node: Arc<SchemaNode> = {
             let schema_context = schema_contexts
                 .get(&read_lock!(current_node).id)
                 .unwrap();
@@ -76,7 +79,7 @@ impl SchemaContext {
             .iter()
             .map(|child| {
                 Self::traverse_for_snippet(
-                    Arc::clone(&meta_context),
+                    schema_contexts,
                     Arc::clone(child),
                     is_neighbour,
                     is_target,

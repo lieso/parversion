@@ -42,17 +42,33 @@ pub async fn get_translation_schema_transformations<P: Provider>(
     let target_schema: &str = {
         let lock = read_lock!(meta_context);
 
-        let graph_root = lock.schema_graph_root
+        let graph_root = lock.translation_schema_graph_root
             .clone()
             .ok_or_else(|| {
                 Errors::DeficientMetaContextError(
-                    "Schema graph root not provided in meta context".to_string()
+                    "Translation schema graph root not provided in meta context".to_string()
                 )
             })?
             .clone();
-        
-        unimplemented!()
+
+        let schema_contexts_map: HashMap<ID, Arc<SchemaContext>> = {
+            let lock = read_lock!(meta_context);
+            lock.translation_schema_contexts
+                .clone()
+                .unwrap()
+        };
+
+        &SchemaContext::traverse_for_snippet(
+            &schema_contexts_map,
+            Arc::clone(&graph_root),
+            &|_id| true,
+            &|_id| false,
+        )
     };
+
+    log::debug!("target_schema: {}", target_schema);
+    delay();
+    panic!();
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 

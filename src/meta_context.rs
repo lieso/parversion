@@ -30,6 +30,8 @@ pub struct MetaContext {
     pub schema_graph_root: Option<Graph>,
     pub schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
     pub translation_schema: Option<Arc<Schema>>,
+    pub translation_schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
+    pub translation_schema_graph_root: Option<Graph>,
 }
 
 impl MetaContext {
@@ -45,6 +47,8 @@ impl MetaContext {
             schema_graph_root: None,
             schema_transformations: None,
             translation_schema: None,
+            translation_schema_contexts: None,
+            translation_schema_graph_root: None,
         }
     }
 
@@ -62,6 +66,15 @@ impl MetaContext {
     ) {
         self.schema_contexts = Some(contexts);
         self.schema_graph_root = Some(graph_root);
+    }
+
+    pub fn update_translation_schema_context(
+        &mut self,
+        contexts: HashMap<ID, Arc<SchemaContext>>,
+        graph_root: Graph
+    ) {
+        self.translation_schema_contexts = Some(contexts);
+        self.translation_schema_graph_root = Some(graph_root);
     }
 
     pub fn get_basis_network_by_subgraph_hash(

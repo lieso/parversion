@@ -28,7 +28,14 @@ pub async fn translate<P: Provider>(
 
     {
         let mut lock = write_lock!(meta_context);
-        lock.update_translation_schema(schema);
+        lock.update_translation_schema(schema.clone());
+    }
+
+    let (contexts, graph_root) = &schema.get_contexts()?;
+    
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_translation_schema_context(contexts.clone(), graph_root.clone());
     }
 
     log::info!("Getting translation schema transformations");
