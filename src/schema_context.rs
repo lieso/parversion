@@ -28,32 +28,35 @@ impl SchemaContext {
 
         let lock = read_lock!(meta_context);
         let graph_root = lock.schema_graph_root.clone().unwrap();
+        let target_id = read_lock!(graph_node).id.clone();
 
         let snippet = Self::traverse_for_snippet(
             Arc::clone(&meta_context),
             Arc::clone(&graph_root),
-            &neighbour_ids,
-            &read_lock!(graph_node).id,
+            &|id| neighbour_ids.contains(id),
+            &|id| *id == target_id,
         );
 
         format!("{{ {} }}", snippet)
     }
 
-    fn traverse_for_snippet(
+    fn traverse_for_snippet<F, G>(
         meta_context: Arc<RwLock<MetaContext>>,
         current_node: Graph,
-        neighbour_ids: &HashSet<GraphNodeID>,
-        target_id: &GraphNodeID,
-    ) -> String {
-        let (is_neighbour, is_target) = {
+        is_neighbour: &F,
+        is_target: &G,
+    ) -> String 
+    where
+        F: Fn(&GraphNodeID) -> bool,
+        G: Fn(&GraphNodeID) -> bool,
+    {
+        let id = {
             let lock = read_lock!(current_node);
-            let id = &lock.id;
-
-            (
-                neighbour_ids.contains(id),
-                *id == *target_id,
-            )
+            &lock.id.clone()
         };
+        let is_current_neighbour = is_neighbour(id);
+        let is_current_target = is_target(id);
+
         let schema_node = {
             let lock = read_lock!(meta_context);
             let schema_contexts = lock.schema_contexts
@@ -75,22 +78,22 @@ impl SchemaContext {
                 Self::traverse_for_snippet(
                     Arc::clone(&meta_context),
                     Arc::clone(child),
-                    neighbour_ids,
-                    target_id,
+                    is_neighbour,
+                    is_target,
                 )
             })
             .filter(|item| !item.is_empty())
             .collect();
 
         let json_schema_key: String = {
-            if is_target {
+            if is_current_target {
                 format!(r#"START TARGET SCHEMA KEY >>>{}<<< END TARGET SCHEMA KEY"#, schema_node.name)
             } else {
                 schema_node.name.clone()
             }
         };
 
-        if is_neighbour || is_target {
+        if is_current_neighbour || is_current_target {
             if schema_node.data_type == "array" {
                 format!(r#""{}": {{ "description": "{}", "data_type": "array", "items": {{ {} }} }}"#,
                     json_schema_key,

@@ -39,7 +39,20 @@ pub async fn get_translation_schema_transformations<P: Provider>(
             .cloned()
             .collect()
     };
-    let target_schema = "unimplemented";
+    let target_schema: &str = {
+        let lock = read_lock!(meta_context);
+
+        let graph_root = lock.schema_graph_root
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError(
+                    "Schema graph root not provided in meta context".to_string()
+                )
+            })?
+            .clone();
+        
+        unimplemented!()
+    };
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
