@@ -138,12 +138,15 @@ impl SchemaContext {
 
             visited.insert(graph_node_id.clone());
 
-            if visited.len() > read_lock!(CONFIG).llm.schema_neighbour_count {
-                return;
-            }
+            let schema_neighbour_count = read_lock!(CONFIG).llm.schema_neighbour_count;
 
-            for child in lock.children.iter() {
-                queue.push_back(Arc::clone(child));
+            // We want schema snippets to always go back to the root node
+            // so we know how to apply json path transformations
+            // but we still avoid including distant subgraphs like this
+            if visited.len() <= schema_neighbour_count {
+                for child in lock.children.iter() {
+                    queue.push_back(Arc::clone(child));
+                }
             }
 
             for parent in lock.parents.iter() {
