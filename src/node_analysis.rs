@@ -58,12 +58,14 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                 .unwrap()
         };
 
-        &SchemaContext::traverse_for_snippet(
+        let snippet = &SchemaContext::traverse_for_snippet(
             &schema_contexts_map,
             Arc::clone(&graph_root),
             &|_id| true,
             &|_id| false,
-        )
+        );
+
+        &format!("{{ {} }}", snippet)
     };
 
     log::debug!("target_schema: {}", target_schema);
