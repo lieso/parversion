@@ -68,6 +68,19 @@ pub async fn organize<P: Provider>(
         lock.update_basis_networks(basis_networks);
     }
 
+    {
+        let lock = read_lock!(meta_context);
+        let result = format!("{}", lock.to_document(&None)?.to_string());
+        log::debug!("\n\n\
+        =======================================================\n\
+        =============   ORGANIZED DOCUMENT START   =================\n\
+        =======================================================\n\
+        {}
+        =======================================================\n\
+        =============    ORGANIZED DOCUMENT END    =================\n\
+        =======================================================\n\n", result);
+    }
+
     Ok(meta_context)
 }
 
