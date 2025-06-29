@@ -9,6 +9,7 @@ use crate::id::{ID};
 use crate::json_node::{Json, JsonNode, JsonMetadata};
 use crate::data_node::DataNode;
 use crate::schema_node::SchemaNode;
+use crate::path::Path;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -22,7 +23,8 @@ pub enum Runtime {
 pub struct SchemaTransformation {
     pub id: ID,
     pub description: String,
-    pub target: String,
+    pub key: String,
+    pub path: Path,
     pub lineage: Lineage,
 }
 
@@ -31,7 +33,7 @@ impl SchemaTransformation {
         log::trace!("In transform");
 
         let mut transformed = schema_node.clone();
-        transformed.name = self.target.clone();
+        transformed.name = self.key.clone();
         transformed.description = self.description.clone();
 
         transformed

@@ -52,15 +52,20 @@ pub trait Provider: Send + Sync + Sized + 'static {
         lineage: &Lineage,
         basis_graph: BasisGraph
     ) -> Result<(), Errors>;
-    async fn get_normal_schema_transformation_by_lineage(
+    async fn get_schema_transformation_by_lineage(
         &self,
         lineage: &Lineage
     ) -> Result<Option<SchemaTransformation>, Errors>;
-    async fn save_normal_schema_transformation(
+    async fn save_schema_transformation(
         &self,
         lineage: &Lineage,
         schema_transformation: SchemaTransformation
     ) -> Result<(), Errors>;
+    async fn get_schema_transformation_by_lineage_and_target_subgraph_hash(
+        &self,
+        lineage: &Lineage,
+        target_subgraph_hash: &Hash
+    ) -> Result<Option<SchemaTransformation>, Errors>;
 }
 
 pub struct VoidProvider;
@@ -126,14 +131,22 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
-    async fn get_normal_schema_transformation_by_lineage(
+    async fn get_schema_transformation_by_lineage(
         &self,
         lineage: &Lineage
     ) -> Result<Option<SchemaTransformation>, Errors> {
         Ok(None)
     }
 
-    async fn save_normal_schema_transformation(
+    async fn get_schema_transformation_by_lineage_and_target_subgraph_hash(
+        &self,
+        lineage: &Lineage,
+        target_subgraph: &Hash
+    ) -> Result<Option<SchemaTransformation>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_schema_transformation(
         &self,
         lineage: &Lineage,
         schema_transformation: SchemaTransformation

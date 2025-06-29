@@ -18,6 +18,7 @@ use crate::transformation::{
 };
 use crate::schema_node::SchemaNode;
 use crate::schema_context::SchemaContext;
+use crate::graph_node::Graph;
 
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -39,7 +40,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
             .cloned()
             .collect()
     };
-    let target_schema: &str = {
+    let target_schema: String = {
         let lock = read_lock!(meta_context);
 
         let graph_root = lock.translation_schema_graph_root
@@ -65,12 +66,9 @@ pub async fn get_translation_schema_transformations<P: Provider>(
             &|_id| false,
         );
 
-        &format!("{{ {} }}", snippet)
+        format!("{{ {} }}", snippet)
     };
-
-    log::debug!("target_schema: {}", target_schema);
-    delay();
-    panic!();
+    let target_schema = Arc::new(target_schema);
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
@@ -84,7 +82,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                 cloned_provider,
                 cloned_meta_context,
                 schema_context.clone(),
-                target_schema,
+                target_schema.clone(),
             ).await?;
 
             results.insert(result.lineage.clone(), Arc::new(result));
@@ -99,6 +97,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
             let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_target_schema = Arc::clone(&target_schema);
 
             let handle = task::spawn(async move {
                 let _permit = permit;
@@ -106,7 +105,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                     cloned_provider,
                     cloned_meta_context,
                     schema_context.clone(),
-                    target_schema,
+                    cloned_target_schema,
                 ).await?;
 
                 Ok((transformation.lineage.clone(), Arc::new(transformation)))
@@ -255,7 +254,7 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let lineage = &schema_context.lineage;
 
-    if let Some(schema_transformation) = provider.get_normal_schema_transformation_by_lineage(&lineage).await? {
+    if let Some(schema_transformation) = provider.get_schema_transformation_by_lineage(&lineage).await? {
         log::info!("Provider has supplied normal schema transformation");
 
         return Ok(schema_transformation);
@@ -263,16 +262,17 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let (target, description, aliases) = LLM::get_normal_schema(&snippet).await?;
+    let (key, description, aliases, path) = LLM::get_normal_schema(&snippet).await?;
 
     let schema_transformation = SchemaTransformation {
         id: ID::new(),
         description,
-        target,
+        key,
+        path,
         lineage: lineage.clone(),
     };
 
-    provider.save_normal_schema_transformation(
+    provider.save_schema_transformation(
         &lineage,
         schema_transformation.clone()
     ).await?;
@@ -284,9 +284,38 @@ async fn get_translation_schema_transformation<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     schema_context: Arc<SchemaContext>,
-    target_schema: &str
+    target_schema: Arc<String>,
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_translation_schema_transformation");
+
+    let lineage = &schema_context.lineage;
+    let schema_root: Graph = {
+        let lock = read_lock!(meta_context);
+        lock.translation_schema_graph_root
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError(
+                    "Schema contexts not provided in meta context".to_string()
+                )
+            })?
+    };
+    let subgraph_hash: Hash = {
+        let lock = read_lock!(schema_root);
+        lock.subgraph_hash.clone()
+    };
+
+    if let Some(schema_transformation) = provider
+        .get_schema_transformation_by_lineage_and_target_subgraph_hash(&lineage, &subgraph_hash).await? {
+        log::info!("Provider has supplied translation schema transformtion"); 
+
+        return Ok(schema_transformation);
+    }
+
+
+    let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
+
+    let _ = LLM::get_translation_schema(&snippet, Arc::clone(&target_schema)).await?;
+
 
     unimplemented!()
 }

@@ -18,6 +18,10 @@ impl Path {
         }
     }
 
+    pub fn from_json_path(json_path: &String) -> Self {
+        unimplemented!()
+    }
+
     pub fn with_segment(&self, segment: String) -> Self {
         let mut new_path = self.clone();
         new_path.segments.push(segment);

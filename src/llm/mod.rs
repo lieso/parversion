@@ -1,22 +1,34 @@
+use std::sync::{Arc};
+
 use crate::prelude::*;
 use crate::transformation::FieldTransformation;
 use crate::context_group::ContextGroup;
+use crate::path::Path;
 
 mod openai;
 
 pub struct LLM {}
 
 impl LLM {
+    pub async fn get_translation_schema(
+        marked_schema: &String,
+        target_schema: Arc<String>
+    ) -> Result<(), Errors> {
+        unimplemented!()
+    }
+
     pub async fn get_normal_schema(marked_schema: &String) -> Result<(
-        String, // target
+        String, // key
         String, // description
-        Vec<String> // aliases
+        Vec<String>, // aliases
+        Path
     ), Errors> {
         log::trace!("In get_normal_schema");
 
-        let (target, description, aliases) = openai::OpenAI::get_normal_schema(marked_schema).await?;
+        let (key, description, aliases, json_path) = openai::OpenAI::get_normal_schema(marked_schema).await?;
+        let path = Path::from_json_path(&json_path);
 
-        Ok((target, description, aliases))
+        Ok((key, description, aliases, path))
     }
 
     pub async fn categorize_and_summarize(document: String) -> Result<(

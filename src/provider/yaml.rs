@@ -214,7 +214,7 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_normal_schema_transformation_by_lineage(&self, lineage: &Lineage) -> Result<Option<SchemaTransformation>, Errors> {
+    async fn get_schema_transformation_by_lineage(&self, lineage: &Lineage) -> Result<Option<SchemaTransformation>, Errors> {
         let yaml = self.load_data().await?;
 
         let schema_transformations: Vec<SchemaTransformation> = yaml.get("schema_transformations")
@@ -236,7 +236,15 @@ impl Provider for YamlFileProvider {
         Ok(None)
     }
 
-    async fn save_normal_schema_transformation(&self, lineage: &Lineage, schema_transformation: SchemaTransformation) -> Result<(), Errors> {
+    async fn get_schema_transformation_by_lineage_and_target_subgraph_hash(
+        &self,
+        lineage: &Lineage,
+        target_subgraph: &Hash
+    ) -> Result<Option<SchemaTransformation>, Errors> {
+        unimplemented!()
+    }
+
+    async fn save_schema_transformation(&self, lineage: &Lineage, schema_transformation: SchemaTransformation) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
 
         let serialized_schema_transformation = serde_yaml::to_value(&schema_transformation)
