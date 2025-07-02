@@ -255,7 +255,7 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let lineage = &schema_context.lineage;
 
-    if let Some(schema_transformation) = provider.get_schema_transformation_by_lineage(&lineage).await? {
+    if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, None).await? {
         log::info!("Provider has supplied normal schema transformation");
 
         return Ok(schema_transformation);
@@ -263,14 +263,15 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let (key, description, aliases, target) = LLM::get_normal_schema(&snippet).await?;
+    let (key, description, aliases, path) = LLM::get_normal_schema(&snippet).await?;
 
     let schema_transformation = SchemaTransformation {
         id: ID::new(),
         description,
         key,
-        target,
+        path,
         lineage: lineage.clone(),
+        target: None,
     };
 
     provider.save_schema_transformation(
@@ -305,8 +306,7 @@ async fn get_translation_schema_transformation<P: Provider>(
         lock.subgraph_hash.clone()
     };
 
-    if let Some(schema_transformation) = provider
-        .get_schema_transformation_by_lineage_and_target_subgraph_hash(&lineage, &subgraph_hash).await? {
+    if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, Some(&subgraph_hash)).await? {
         log::info!("Provider has supplied translation schema transformtion"); 
 
         return Ok(schema_transformation);

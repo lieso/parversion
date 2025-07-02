@@ -24,8 +24,9 @@ pub struct SchemaTransformation {
     pub id: ID,
     pub description: String,
     pub key: String,
-    pub target: Path,
+    pub path: Path,
     pub lineage: Lineage,
+    pub target: Option<Hash>,
 }
 
 impl SchemaTransformation {

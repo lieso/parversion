@@ -214,7 +214,11 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_schema_transformation_by_lineage(&self, lineage: &Lineage) -> Result<Option<SchemaTransformation>, Errors> {
+    async fn get_schema_transformation(
+        &self,
+        lineage: &Lineage,
+        target: Option<&Hash>,
+    ) -> Result<Option<SchemaTransformation>, Errors> {
         let yaml = self.load_data().await?;
 
         let schema_transformations: Vec<SchemaTransformation> = yaml.get("schema_transformations")
@@ -228,20 +232,12 @@ impl Provider for YamlFileProvider {
             .unwrap_or_else(Vec::new);
 
         for schema_transformation in schema_transformations {
-            if schema_transformation.lineage == *lineage {
+            if schema_transformation.lineage == *lineage && schema_transformation.target == target.cloned() {
                 return Ok(Some(schema_transformation));
             }
         }
 
         Ok(None)
-    }
-
-    async fn get_schema_transformation_by_lineage_and_target_subgraph_hash(
-        &self,
-        lineage: &Lineage,
-        target_subgraph: &Hash
-    ) -> Result<Option<SchemaTransformation>, Errors> {
-        unimplemented!()
     }
 
     async fn save_schema_transformation(&self, lineage: &Lineage, schema_transformation: SchemaTransformation) -> Result<(), Errors> {

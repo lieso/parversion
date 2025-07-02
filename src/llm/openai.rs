@@ -79,7 +79,7 @@ Provide a JSON path against the second schema indicating which field is equivale
 
 The second JSON schema will be complete and you must find which field is equivalent to the target schema key, given a contextual understanding of the resources both JSON schemas represent.
 
-For example, if first JSON schema is this, representing an invoice:
+For example, if the first JSON schema is this, representing an invoice:
 {{
   "title": "Invoice",
   "type": "object",
@@ -201,7 +201,7 @@ You may return the current property name and JSON path if you think it's already
 In addition to the new property name:
 1. (alternative_property_names): please also suggest a few alternatives to the new property name you suggest, if you think there are any.
 2. (description): suggest a more appropriate json schema description for the target schema key/property.
-3. (json_path): the JSON path, exluding the new property name, for an alternative, more generic schema this property may be found in.
+3. (json_path): the JSON path, excluding the new property name, for an alternative, more generic schema this property may be found in.
 4. (justification): provide a justification for your response
         "##);
         let user_prompt = format!(r##"Schema: {}"##, marked_schema);
