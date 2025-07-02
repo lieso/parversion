@@ -19,7 +19,7 @@ impl Path {
     }
 
     pub fn from_json_path(json_path: &String) -> Self {
-        unimplemented!()
+        Self::new()
     }
 
     pub fn with_segment(&self, segment: String) -> Self {

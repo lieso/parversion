@@ -245,6 +245,7 @@ pub async fn get_basis_nodes<P: Provider>(
         Ok(hashmap_results)
     }
 }
+
 async fn get_normal_schema_transformation<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
@@ -262,13 +263,13 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let (key, description, aliases, path) = LLM::get_normal_schema(&snippet).await?;
+    let (key, description, aliases, target) = LLM::get_normal_schema(&snippet).await?;
 
     let schema_transformation = SchemaTransformation {
         id: ID::new(),
         description,
         key,
-        path,
+        target,
         lineage: lineage.clone(),
     };
 

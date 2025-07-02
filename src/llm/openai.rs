@@ -1,3 +1,4 @@
+use std::sync::{Arc};
 use serde::{Serialize, Deserialize};
 use reqwest::header;
 use serde::de::DeserializeOwned;
@@ -54,7 +55,128 @@ struct NormalResponse {
     pub json_path: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct MatchSchemaNodeResponse {
+    pub json_path: Option<String>,
+}
+
 impl OpenAI {
+    pub async fn match_schema_nodes(marked_schema_node: &String, target_schema: Arc<String>) -> Result<Option<String>, Errors> {
+        log::trace!("In match_schema_nodes");
+
+        if marked_schema_node.len() > 10000 || target_schema.len() > 10000 {
+            return Err(Errors::ContextTooLarge);
+        }
+
+        let system_prompt = format!(r##"
+Your task to compare two JSON schemas and attempt to match a target schema field from the first with the second, if there is an appropriate equivalent.
+
+The first JSON schema will be an incomplete snippet, and the schema field to match against will be found inside delimiter strings:
+START TARGET SCHEMA KEY >>>
+<<< END TARGET SCHEMA KEY
+
+Provide a JSON path against the second schema indicating which field is equivalent to the target schema field, or null if there is no equivalent.
+
+The second JSON schema will be complete and you must find which field is equivalent to the target schema key, given a contextual understanding of the resources both JSON schemas represent.
+
+For example, if first JSON schema is this, representing an invoice:
+{{
+  "title": "Invoice",
+  "type": "object",
+  "properties": {{
+    "invoiceNumber": {{
+      "type": "string",
+      "description": "Unique identifier for the invoice"
+    }},
+    "START TARGET SCHEMA KEY>>>date<<< END TARGET SCHEMA KEY": {{
+      "type": "string",
+      "format": "date",
+      "description": "Date when the invoice was issued"
+    }},
+    "dueDate": {{
+      "type": "string",
+      "format": "date",
+      "description": "Date by which the invoice should be paid"
+    }}
+  }}
+}}
+
+And the second JSON schema is this:
+{{
+   "title": "Invoice",
+   "type": "object",
+   "properties": {{
+     "id": {{
+       "type": "string",
+       "description": "Unique identifier for the invoice"
+     }},
+     "issueDate": {{
+       "type": "string",
+       "format": "date",
+       "description": "Date when the invoice was issued"
+     }},
+     "paymentDue": {{
+       "type": "string",
+       "format": "date",
+       "description": "Date by which the payment should be completed"
+     }}
+   }}
+ }}
+
+Your response should be the JSON path '$.issueDate' since the 'date' field on the first schema represents an invoice issue date, just like the 'issueDate' field on the second JSON schema.
+
+Please also provide a justification for your response.
+        "##);
+        let user_prompt = format!(r##"
+[FIRST JSON SCHEMA]:
+{}
+
+[SECOND JSON SCHEMA]:
+{}
+        "##, marked_schema_node, target_schema);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "name": "match_schema",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "json_path": {
+                        "type": "string"
+                    },
+                    "justification": {
+                        "type": "string"
+                    }
+                },
+                "required": ["json_path", "justification"],
+                "additionalProperties": false
+            }
+        });
+
+        match Self::send_openai_request::<MatchSchemaNodeResponse>(&system_prompt, &user_prompt, response_format).await {
+            Ok(response) => {
+                log::debug!("╔═════════════════════════════════╗");
+                log::debug!("║       TRANSLATE SCHEMA START    ║");
+                log::debug!("╚═════════════════════════════════╝");
+
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
+
+                log::debug!("╔══════════════════════════════╗");
+                log::debug!("║       TRANSLATE SCHEMA END   ║");
+                log::debug!("╚══════════════════════════════╝");
+
+                Ok(response.json_path)
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
     pub async fn get_normal_schema(
         marked_schema: &String
     ) -> Result<(String, String, Vec<String>, String), Errors> {

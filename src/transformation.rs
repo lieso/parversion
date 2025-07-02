@@ -24,7 +24,7 @@ pub struct SchemaTransformation {
     pub id: ID,
     pub description: String,
     pub key: String,
-    pub path: Path,
+    pub target: Path,
     pub lineage: Lineage,
 }
 
