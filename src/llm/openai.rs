@@ -78,10 +78,10 @@ The first JSON schema will be an incomplete snippet, and the schema field to mat
 START TARGET SCHEMA KEY >>>
 <<< END TARGET SCHEMA KEY
 
-Provide a JSON path against the resulting JSON document from the second schema indicating which field is equivalent to the target schema field, or null if there is no equivalent.
+Provide a JSON path against the JSON schema of the second schema indicating which field is equivalent to the target schema field, or null if there is no equivalent.
 
-Important: The JSON path should be relative to the JSON document that would be generated based on the second schema, not the JSON schema itself. This means you should think about the actual
-data structure that would be instantiated from the schema.
+Important: The JSON path should be relative to the JSON schema itself, not the resulting JSON document. This means you should identify the path within the schema structure where the equivalent
+field resides.
 
 For example, if the first JSON schema is this, representing an invoice:
 {{
@@ -127,9 +127,7 @@ And the second JSON schema is this:
    }}
  }}
 
-Your response should be the JSON path '$.issueDate' since the 'date' field on the first schema represents an invoice issue date, just like the 'issueDate' field on the second JSON schema.
-
-Ensure the JSON paths are with respect to the JSON documents that result from the latter schema and not the JSON of the schema.
+Your response should be the JSON path '$.properties.issueDate' since the 'date' field on the first schema represents an invoice issue date, just like the 'issueDate' field on the second JSON schema.
 
 Please also provide a justification for your response.
         "##);

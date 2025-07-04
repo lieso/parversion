@@ -16,9 +16,20 @@ impl LLM {
     ) -> Result<(), Errors> {
         log::trace!("In get_translation_schema");
 
-        let maybe_json_path = openai::OpenAI::match_schema_nodes(marked_schema, Arc::clone(&target_schema)).await?;
+        let maybe_json_path = openai::OpenAI::match_schema_nodes(
+            marked_schema,
+            Arc::clone(&target_schema)
+        ).await?;
             
         log::debug!("maybe_json_path: {:?}", maybe_json_path);
+
+        if let Some(json_path) = maybe_json_path {
+
+
+        } else {
+
+        }
+
 
         unimplemented!()
     }
