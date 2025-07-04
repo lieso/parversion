@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::transformation::FieldTransformation;
@@ -11,6 +11,7 @@ pub struct LLM {}
 
 impl LLM {
     pub async fn get_translation_schema(
+        meta_context: Arc<RwLock<MetaContext>>,
         marked_schema: &String,
         target_schema: Arc<String>
     ) -> Result<(), Errors> {
@@ -24,6 +25,16 @@ impl LLM {
         log::debug!("maybe_json_path: {:?}", maybe_json_path);
 
         if let Some(json_path) = maybe_json_path {
+
+            let translation_schema = {
+                let lock = read_lock!(meta_context);
+
+                lock.translation_schema.clone().unwrap()
+            };
+
+            let maybe_schema_node = translation_schema.get_schema_node_by_json_path(&json_path);
+
+            log::debug!("maybe_schema_node: {:?}", maybe_schema_node);
 
 
         } else {

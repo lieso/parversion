@@ -175,4 +175,57 @@ impl Schema {
 
         Ok(schema)
     }
+
+    pub fn get_schema_node_by_json_path(&self, json_path: &str) -> Option<&SchemaNode> {
+        log::trace!("In get_schema_node_by_json_path");
+
+        let path = json_path.strip_prefix("$.").unwrap_or(json_path);
+        let mut segments = path.split('.');
+
+        if segments.next() != Some(&self.name) {
+            log::warn!("Could not obtain schema node using json path: {}", json_path);
+            return None;
+        }
+
+        let mut current_schema_nodes: Vec<&SchemaNode> = self.properties.values().collect();
+
+        while let Some(segment) = segments.next() {
+            let mut next_schema_nodes = Vec::new();
+
+            for node in &current_schema_nodes {
+                match segment {
+                    "properties" => {
+                        if let Some(property_name) = segments.next() {
+                            if let Some(matching_node) = node.properties.get(property_name) {
+                                next_schema_nodes.push(matching_node);
+                            }
+                        }
+                    }
+                    "items" => {
+                        if let Some(item_name) = segments.next() {
+                            if let Some(items) = &node.items {
+                                for item in items {
+                                    if item.name == item_name {
+                                        next_schema_nodes.push(item);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        log::warn!("Unexpected segment: {}", segment);
+                        return None;
+                    }
+                }
+            }
+
+            if next_schema_nodes.is_empty() {
+                return None;
+            }
+
+            current_schema_nodes = next_schema_nodes;
+        }
+
+        current_schema_nodes.into_iter().next()
+    }
 }

@@ -315,7 +315,11 @@ async fn get_translation_schema_transformation<P: Provider>(
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let _ = LLM::get_translation_schema(&snippet, Arc::clone(&target_schema)).await?;
+    let _ = LLM::get_translation_schema(
+        Arc::clone(&meta_context),
+        &snippet,
+        Arc::clone(&target_schema)
+    ).await?;
 
 
     unimplemented!()
