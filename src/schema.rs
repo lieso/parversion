@@ -178,54 +178,58 @@ impl Schema {
 
     pub fn get_schema_node_by_json_path(&self, json_path: &str) -> Option<&SchemaNode> {
         log::trace!("In get_schema_node_by_json_path");
+        log::debug!("json_path: {}", json_path);
 
         let path = json_path.strip_prefix("$.").unwrap_or(json_path);
         let mut segments = path.split('.');
 
         if segments.next() != Some(&self.name) {
-            log::warn!("Could not obtain schema node using json path: {}", json_path);
-            return None;
+            log::info!("First segment does not match schema name '{}', continuing without it.", self.name);
+            segments = path.split('.');
         }
 
-        let mut current_schema_nodes: Vec<&SchemaNode> = self.properties.values().collect();
+        let mut current_node: Option<&SchemaNode> = None;
+
+        if let Some(_root_properties_segment) = segments.next() {
+            if let Some(first_segment) = segments.next() {
+                current_node = self.properties.get(first_segment);
+            }
+        }
 
         while let Some(segment) = segments.next() {
-            let mut next_schema_nodes = Vec::new();
-
-            for node in &current_schema_nodes {
+            if let Some(node) = current_node {
                 match segment {
                     "properties" => {
                         if let Some(property_name) = segments.next() {
-                            if let Some(matching_node) = node.properties.get(property_name) {
-                                next_schema_nodes.push(matching_node);
-                            }
+                            current_node = node.properties.get(property_name);
+                        } else {
+                            return None;
                         }
                     }
                     "items" => {
                         if let Some(item_name) = segments.next() {
                             if let Some(items) = &node.items {
-                                for item in items {
-                                    if item.name == item_name {
-                                        next_schema_nodes.push(item);
-                                    }
+                                if item_name == "properties" {
+                                    current_node = items.first();
+                                } else {
+                                    current_node = items.iter().find(|item| item.name == item_name);
                                 }
+                            } else {
+                                return None;
                             }
+                        } else {
+                            return None;
                         }
                     }
                     _ => {
-                        log::warn!("Unexpected segment: {}", segment);
-                        return None;
+                        current_node = node.properties.get(segment)
                     }
                 }
-            }
-
-            if next_schema_nodes.is_empty() {
+            } else {
                 return None;
             }
-
-            current_schema_nodes = next_schema_nodes;
         }
 
-        current_schema_nodes.into_iter().next()
+        current_node
     }
 }
