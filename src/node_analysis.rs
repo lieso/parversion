@@ -312,17 +312,47 @@ async fn get_translation_schema_transformation<P: Provider>(
         return Ok(schema_transformation);
     }
 
-
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let _ = LLM::get_translation_schema(
+    let result = LLM::get_translation_schema(
         Arc::clone(&meta_context),
         &snippet,
         Arc::clone(&target_schema)
     ).await?;
 
+    if let Some((key, description, path)) = result {
+        let schema_transformation = SchemaTransformation {
+            id: ID::new(),
+            description,
+            key,
+            path,
+            lineage: lineage.clone(),
+            target: Some(subgraph_hash.clone()),
+        };
 
-    unimplemented!()
+        provider.save_schema_transformation(
+            &lineage,
+            schema_transformation.clone()
+        ).await?;
+
+        Ok(schema_transformation)
+    } else {
+        let schema_transformation = SchemaTransformation {
+            id: ID::new(),
+            description: schema_context.schema_node.description.clone(),
+            key: schema_context.schema_node.name.clone(),
+            path: schema_context.schema_node.path.clone(),
+            lineage: lineage.clone(),
+            target: Some(subgraph_hash.clone()),
+        };
+
+        provider.save_schema_transformation(
+            &lineage,
+            schema_transformation.clone()
+        ).await?;
+
+        Ok(schema_transformation)
+    }
 }
 
 async fn get_basis_node<P: Provider>(

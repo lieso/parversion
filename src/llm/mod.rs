@@ -14,7 +14,11 @@ impl LLM {
         meta_context: Arc<RwLock<MetaContext>>,
         marked_schema: &String,
         target_schema: Arc<String>
-    ) -> Result<(), Errors> {
+    ) -> Result<Option<(
+        String,
+        String,
+        Path
+    )>, Errors> {
         log::trace!("In get_translation_schema");
 
         let maybe_json_path = openai::OpenAI::match_schema_nodes(
@@ -22,27 +26,26 @@ impl LLM {
             Arc::clone(&target_schema)
         ).await?;
             
-        log::debug!("maybe_json_path: {:?}", maybe_json_path);
-
         if let Some(json_path) = maybe_json_path {
-
             let translation_schema = {
                 let lock = read_lock!(meta_context);
-
                 lock.translation_schema.clone().unwrap()
             };
 
             let maybe_schema_node = translation_schema.get_schema_node_by_json_path(&json_path);
 
-            log::debug!("maybe_schema_node: {:?}", maybe_schema_node);
-
-
-        } else {
-
+            if let Some(schema_node) = maybe_schema_node {
+                return Ok(Some((
+                    schema_node.name.clone(),
+                    schema_node.description.clone(),
+                    schema_node.path.clone()
+                )));
+            } else {
+                log::warn!("Could not get schema node from target schema using LLM JSON path");
+            }
         }
 
-
-        unimplemented!()
+        Ok(None)
     }
 
     pub async fn get_normal_schema(marked_schema: &String) -> Result<(
