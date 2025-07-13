@@ -27,4 +27,13 @@ impl Path {
         new_path.segments.push(segment);
         new_path
     }
+
+    pub fn insert_at_value(
+        &self,
+        object: &mut serde_json::Value,
+        key: String,
+        value: serde_json::Value,
+    ) {
+        unimplemented!()
+    }
 }
