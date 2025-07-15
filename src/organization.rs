@@ -2,11 +2,11 @@ use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::document::{Document};
-use crate::document_format::{DocumentFormat};
 use crate::provider::Provider;
 use crate::meta_context::MetaContext;
 use crate::node_analysis::{get_basis_nodes};
 use crate::network_analysis::{get_basis_networks, get_basis_graph};
+use crate::document_format::DocumentFormat;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -70,7 +70,7 @@ pub async fn organize<P: Provider>(
 
     {
         let lock = read_lock!(meta_context);
-        let result = format!("{}", lock.to_document(&None)?.to_string());
+        let result = format!("{}", lock.to_document()?.to_string(&None));
         log::debug!("\n\n\
         =======================================================\n\
         =============   ORGANIZED DOCUMENT START   =================\n\
@@ -89,7 +89,6 @@ pub async fn organize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Option<Options>,
-    document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_document");
 
@@ -101,7 +100,7 @@ pub async fn organize_document<P: Provider>(
 
     let organized_document = {
         let lock = read_lock!(meta_context);
-        lock.to_document(document_format)
+        lock.to_document()
     };
 
     organized_document
@@ -112,7 +111,7 @@ pub async fn organize_document_to_string<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Option<Options>,
-    document_format: &Option<DocumentFormat>,
+    document_format: &Option<DocumentFormat>
 ) -> Result<String, Errors> {
     log::trace!("In organize_document_to_string");
 
@@ -120,10 +119,9 @@ pub async fn organize_document_to_string<P: Provider>(
         Arc::clone(&provider),
         document,
         _options,
-        document_format
     ).await?;
 
-    Ok(document.to_string())
+    Ok(document.to_string(document_format))
 }
 
 #[allow(dead_code)]
@@ -144,7 +142,6 @@ pub async fn organize_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
     _options: &Option<Options>,
-    document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_text_to_document");
 
@@ -152,7 +149,7 @@ pub async fn organize_text_to_document<P: Provider>(
 
     let organized_document = {
         let lock = read_lock!(meta_context);
-        lock.to_document(document_format)
+        lock.to_document()
     };
 
     organized_document
@@ -180,7 +177,6 @@ pub async fn organize_file_to_document<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Option<Options>,
-    document_format: &Option<DocumentFormat>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_file_to_document");
     log::debug!("file path: {}", path);
@@ -189,7 +185,7 @@ pub async fn organize_file_to_document<P: Provider>(
 
     let organized_document = {
         let lock = read_lock!(meta_context);
-        lock.to_document(document_format)
+        lock.to_document()
     };
 
     organized_document
@@ -200,12 +196,12 @@ pub async fn organize_file_to_string<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Option<Options>,
-    document_format: &Option<DocumentFormat>,
+    document_format: &Option<DocumentFormat>
 ) -> Result<String, Errors> {
     log::trace!("In organize_file_to_string");
     log::debug!("file path: {}", path);
 
-    let document = organize_file_to_document(Arc::clone(&provider), path, _options, document_format).await?;
+    let document = organize_file_to_document(Arc::clone(&provider), path, _options).await?;
 
-    Ok(document.to_string())
+    Ok(document.to_string(document_format))
 }

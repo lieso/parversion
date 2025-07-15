@@ -18,6 +18,7 @@ use crate::schema::Schema;
 use crate::graph_node::{GraphNode};
 use crate::context::{Context};
 use crate::data_node::DataNode;
+use crate::document_format::DocumentFormat;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -43,6 +44,15 @@ pub struct Document {
 }
 
 impl Document {
+    pub fn apply_schema_transformations(
+        &self,
+        meta_context: Arc<RwLock<MetaContext>>,
+    ) -> Result<Document, Errors> {
+        log::trace!("In apply_schema_transformations");
+
+        unimplemented!()
+    }
+
     pub fn get_contexts(
         &self,
         meta_context: Arc<RwLock<MetaContext>>,
@@ -166,7 +176,7 @@ impl Document {
         })
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn to_string(&self, document_format: &Option<DocumentFormat>) -> String {
         let mut result = serde_json::to_string(self).expect("Could not convert document to string");
         result.push('\n');
         result.push_str(&self.data);

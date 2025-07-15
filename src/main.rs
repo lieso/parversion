@@ -153,7 +153,6 @@ async fn main() {
                     provider.clone(),
                     stdin,
                     &Some(options),
-                    &Some(document_format),
                     &json_schema,
                 ).await {
                     Ok(document) => document,
@@ -167,7 +166,6 @@ async fn main() {
                     provider.clone(),
                     stdin,
                     &Some(options),
-                    &Some(document_format),
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
@@ -184,7 +182,6 @@ async fn main() {
                     provider.clone(),
                     path,
                     &Some(options),
-                    &Some(document_format),
                     &json_schema,
                 ).await {
                     Ok(document) => document,
@@ -198,7 +195,6 @@ async fn main() {
                     provider.clone(),
                     path,
                     &Some(options),
-                    &Some(document_format),
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
@@ -215,7 +211,6 @@ async fn main() {
                     provider.clone(),
                     url,
                     &Some(options),
-                    &Some(document_format),
                     &json_schema,
                 ).await {
                     Ok(document) => document,
@@ -229,7 +224,6 @@ async fn main() {
                     provider.clone(),
                     url,
                     &Some(options),
-                    &Some(document_format),
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
@@ -246,7 +240,7 @@ async fn main() {
 
     log::info!("Successfully processed document");
 
-    println!("{}", document.to_string());
+    println!("{}", document.to_string(&Some(document_format)));
 
     std::process::exit(0);
 }

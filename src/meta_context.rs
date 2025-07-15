@@ -14,7 +14,6 @@ use crate::document::{Document, DocumentType, DocumentMetadata};
 use crate::schema_node::SchemaNode;
 use crate::schema::Schema;
 use crate::json_node::JsonNode;
-use crate::document_format::{DocumentFormat};
 use crate::basis_network::{NetworkRelationship};
 use crate::schema_context::SchemaContext;
 use crate::path::Path;
@@ -156,10 +155,7 @@ impl MetaContext {
         document
     }
 
-    pub fn to_document(
-        &self,
-        document_format: &Option<DocumentFormat>,
-    ) -> Result<Document, Errors> {
+    pub fn to_document(&self) -> Result<Document, Errors> {
         log::trace!("In to_document");
 
         let graph_root = self.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
@@ -216,45 +212,6 @@ impl MetaContext {
         };
 
         Ok(document)
-    }
-}
-
-fn traverse_for_condensed_document(
-    meta_context: &MetaContext,
-    current_node: Graph,
-    visited_lineages: &mut HashSet<Lineage>,
-    document: &mut String
-) {
-    let lock = read_lock!(current_node);
-    let current_id = lock.id.clone();
-    let current_context = meta_context.contexts.clone().unwrap();
-    let current_context = current_context.get(&current_id).unwrap();
-    let current_lineage = current_context.lineage.clone();
-    let document_node = current_context.document_node.clone();
-
-    let should_render = !visited_lineages.contains(&current_lineage);
-
-    visited_lineages.insert(current_lineage.clone());
-
-    if should_render {
-        let (a, _) = read_lock!(document_node).to_string_components();
-
-        document.push_str(&a);
-    }
-
-    for child in &lock.children {
-        traverse_for_condensed_document(
-            &meta_context,
-            Arc::clone(child),
-            visited_lineages,
-            document
-        );
-    }
-
-    if should_render {
-        let (_, b) = read_lock!(document_node).to_string_components();
-
-        document.push_str(b.as_deref().unwrap_or(""));
     }
 }
 
@@ -502,3 +459,43 @@ fn process_node(
 
     Ok(())
 }
+
+fn traverse_for_condensed_document(
+    meta_context: &MetaContext,
+    current_node: Graph,
+    visited_lineages: &mut HashSet<Lineage>,
+    document: &mut String
+) {
+    let lock = read_lock!(current_node);
+    let current_id = lock.id.clone();
+    let current_context = meta_context.contexts.clone().unwrap();
+    let current_context = current_context.get(&current_id).unwrap();
+    let current_lineage = current_context.lineage.clone();
+    let document_node = current_context.document_node.clone();
+
+    let should_render = !visited_lineages.contains(&current_lineage);
+
+    visited_lineages.insert(current_lineage.clone());
+
+    if should_render {
+        let (a, _) = read_lock!(document_node).to_string_components();
+
+        document.push_str(&a);
+    }
+
+    for child in &lock.children {
+        traverse_for_condensed_document(
+            &meta_context,
+            Arc::clone(child),
+            visited_lineages,
+            document
+        );
+    }
+
+    if should_render {
+        let (_, b) = read_lock!(document_node).to_string_components();
+
+        document.push_str(b.as_deref().unwrap_or(""));
+    }
+}
+
