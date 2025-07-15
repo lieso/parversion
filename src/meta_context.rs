@@ -162,7 +162,6 @@ impl MetaContext {
         let basis_graph = self.basis_graph.clone().unwrap();
 
         let mut result: HashMap<String, Value> = HashMap::new();
-        let mut transformed_result: Value = Value::Null;
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
         let path: Path = Path::from_str(&basis_graph.name);
 
@@ -170,7 +169,6 @@ impl MetaContext {
             &self,
             graph_root,
             &mut result,
-            &mut transformed_result,
             &mut inner_schema,
             &basis_graph.lineage,
             &path,
@@ -182,16 +180,6 @@ impl MetaContext {
                 Err(e) => panic!("Error serializing to JSON: {}", e),
             }
         };
-
-        let transformed_data = {
-            match serde_json::to_string(&transformed_result) {
-                Ok(json_string) => json_string,
-                Err(e) => panic!("Error serializing to JSON: {}", e),
-            }
-        };
-
-        log::debug!("*****************************************************************************************************");
-        log::debug!("transformed_data: {}", transformed_data);
 
         let schema = Schema {
             id: ID::new(),
@@ -219,7 +207,6 @@ fn process_network(
     meta_context: &MetaContext,
     graph: Graph,
     result: &mut HashMap<String, Value>,
-    transformed_result: &mut Value,
     schema: &mut HashMap<String, SchemaNode>,
     schema_lineage: &Lineage,
     path: &Path,
@@ -245,7 +232,6 @@ fn process_network(
             meta_context,
             context.clone(),
             result,
-            transformed_result,
             schema,
             schema_lineage,
             path,
@@ -315,7 +301,6 @@ fn process_network(
                                 meta_context.clone(),
                                 subsequent_child.clone(),
                                 &mut inner_result,
-                                transformed_result,
                                 &mut inner_schema,
                                 &schema_node.lineage,
                                 &schema_node.path.with_segment(format!("{}", schema_node.name))
@@ -330,7 +315,6 @@ fn process_network(
                         meta_context.clone(),
                         child.clone(),
                         &mut inner_result,
-                        transformed_result,
                         &mut inner_schema,
                         &schema_node.lineage,
                         &schema_node.path.with_segment(format!("{}", schema_node.name)),
@@ -357,22 +341,6 @@ fn process_network(
                         result.insert(schema_node.name.clone(), inner_result_value.clone());
                     }
 
-                    {
-                        if let Some(schema_transformations) = &meta_context.schema_transformations {
-                            if let Some(schema_transformation) = schema_transformations.get(&schema_node.lineage) {
-                                log::info!("Found a schema transformation");
-                                let transformed_schema_node = schema_transformation.transform(&schema_node);
-                                let transformed_path = transformed_schema_node.path;
-
-                                transformed_path.insert_at_value(
-                                    transformed_result,
-                                    transformed_schema_node.name.clone(),
-                                    inner_result_value.clone()
-                                );
-                            }
-                        }
-                    }
-
                     processed_child_ids.insert(child_id);
                 } else {
                     queue.push_back(child.clone());
@@ -390,7 +358,6 @@ fn process_node(
     meta_context: &MetaContext,
     context: Arc<Context>,
     result: &mut HashMap<String, Value>,
-    transformed_result: &mut Value,
     schema: &mut HashMap<String, SchemaNode>,
     schema_lineage: &Lineage,
     path: &Path,
@@ -424,21 +391,6 @@ fn process_node(
                 "string",
                 path,
             );
-
-            {
-                if let Some(schema_transformations) = &meta_context.schema_transformations {
-                    if let Some(schema_transformation) = schema_transformations.get(&schema_node.lineage) {
-                        let transformed_schema_node = schema_transformation.transform(&schema_node);
-                        let transformed_path = transformed_schema_node.path;
-
-                        transformed_path.insert_at_value(
-                            transformed_result,
-                            transformed_schema_node.name.clone(),
-                            trimmed_value.clone()
-                        );
-                    }
-                }
-            }
 
             if let Some(existing_value) = result.get_mut(&schema_node.name) {
                 if let Value::Array(ref mut arr) = existing_value {
