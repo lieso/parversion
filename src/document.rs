@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 use xmltree::{Element};
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
@@ -50,7 +51,25 @@ impl Document {
     ) -> Result<Document, Errors> {
         log::trace!("In apply_schema_transformations");
 
-        unimplemented!()
+        match self.document_type {
+            DocumentType::Json => {
+                match serde_json::from_str::<Value>(&self.data) {
+                    Ok(json_value) => {
+                        log::debug!("Parsed JSON: {:?}", json_value);
+
+                        unimplemented!()
+                    }
+                    Err(e) => {
+                        log::error!("Failed to parse JSON: {}", e);
+                        Err(Errors::UnexpectedError)
+                    }
+                }
+            }
+            _ => {
+                log::error!("Unexpected document type: {:?}", self.document_type);
+                unimplemented!()
+            }
+        }
     }
 
     pub fn get_contexts(
