@@ -24,6 +24,44 @@ pub struct Schema {
 }
 
 impl Schema {
+    pub fn collect_schema_nodes(&self) -> HashMap<Lineage, SchemaNode> {
+        log::trace!("In collect_schema_nodes");
+
+        let mut node_map = HashMap::new();
+
+        fn recurse(
+            node: &SchemaNode,
+            node_map: &mut HashMap<Lineage, SchemaNode>
+        ) {
+            node_map.insert(node.lineage.clone(), node.clone());
+
+            for child_node in node.properties.values() {
+                recurse(
+                    child_node,
+                    node_map
+                );
+            }
+
+            if let Some(items) = &node.items {
+                for item in items {
+                    recurse(
+                        item,
+                        node_map
+                    );
+                }
+            }
+        }
+
+        for node in self.properties.values() {
+            recurse(
+                node,
+                &mut node_map
+            );
+        }
+
+        node_map
+    }
+
     pub fn get_contexts(&self) -> Result<(
         HashMap<ID, Arc<SchemaContext>>,
         Graph

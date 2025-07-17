@@ -57,7 +57,13 @@ impl Document {
                     Ok(json_value) => {
                         log::debug!("Parsed JSON: {:?}", json_value);
 
-                        unimplemented!()
+                        let schema_nodes = self.schema.clone().unwrap().collect_schema_nodes();
+
+                        apply_schema_transformations_json(
+                            Arc::clone(&meta_context),
+                            &schema_nodes,
+                            &json_value,
+                        )
                     }
                     Err(e) => {
                         log::error!("Failed to parse JSON: {}", e);
@@ -378,4 +384,49 @@ fn escape_xml(data: &str) -> String {
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
         .replace("'", "&apos;")
+}
+
+fn apply_schema_transformations_json(
+    meta_context: Arc<RwLock<MetaContext>>,
+    schema_nodes: &HashMap<Lineage, SchemaNode>,
+    json: &Value
+) -> Result<Document, Errors> {
+
+    let mut result: HashMap<String, Value> = HashMap::new();
+
+    fn recurse(
+        value: &Value,
+        parent_lineage: &Lineage
+    ) {
+        match value {
+            Value::Array(arr) => {
+                for v in arr {
+                    recurse(
+                        v,
+                        parent_lineage,
+                    );
+                }
+            }
+            Value::Object(obj) => {
+                for (k, v) in obj {
+                    let lineage = parent_lineage.with_hash(Hash::from_str(k));
+
+                    recurse(
+                        v,
+                        &lineage,
+                    );
+                }
+            },
+            _ => {
+                //let schema_node = meta_context
+            }
+        }
+    }
+
+    recurse(
+        &json,
+        &Lineage::new()
+    );
+
+    unimplemented!()
 }
