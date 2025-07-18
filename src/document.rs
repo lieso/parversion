@@ -395,15 +395,21 @@ fn apply_schema_transformations_json(
     let mut result: HashMap<String, Value> = HashMap::new();
 
     fn recurse(
+        meta_context: Arc<RwLock<MetaContext>>,
         value: &Value,
-        parent_lineage: &Lineage
+        parent_lineage: &Lineage,
+        schema_nodes: &HashMap<Lineage, SchemaNode>,
+        result: &mut HashMap<String, Value>
     ) {
         match value {
             Value::Array(arr) => {
                 for v in arr {
                     recurse(
+                        Arc::clone(&meta_context),
                         v,
                         parent_lineage,
+                        schema_nodes,
+                        result
                     );
                 }
             }
@@ -412,20 +418,40 @@ fn apply_schema_transformations_json(
                     let lineage = parent_lineage.with_hash(Hash::from_str(k));
 
                     recurse(
+                        Arc::clone(&meta_context),
                         v,
                         &lineage,
+                        schema_nodes,
+                        result
                     );
                 }
             },
             _ => {
-                //let schema_node = meta_context
+                let schema_node: SchemaNode = {
+                    let current_schema_node = schema_nodes.get(parent_lineage).unwrap();
+
+                    let lock = read_lock!(meta_context);
+
+                    if let Some(schema_transformations) = &lock.schema_transformations {
+                        if let Some(transformation) = schema_transformations.get(parent_lineage) {
+                            transformation.transform(current_schema_node)
+                        } else {
+                            current_schema_node.clone()
+                        }
+                    } else {
+                        current_schema_node.clone()
+                    }
+                };
             }
         }
     }
 
     recurse(
+        Arc::clone(&meta_context),
         &json,
-        &Lineage::new()
+        &Lineage::new(),
+        schema_nodes,
+        &mut result
     );
 
     unimplemented!()
