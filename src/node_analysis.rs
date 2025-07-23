@@ -1,5 +1,4 @@
 use std::sync::{Arc, RwLock};
-use std::collections::{VecDeque};
 use tokio::task;
 use tokio::sync::Semaphore;
 use futures::future::try_join_all;
@@ -16,7 +15,6 @@ use crate::transformation::{
     FieldTransformation,
     SchemaTransformation
 };
-use crate::schema_node::SchemaNode;
 use crate::schema_context::SchemaContext;
 use crate::graph_node::Graph;
 
@@ -263,7 +261,7 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let (key, description, aliases, path) = LLM::get_normal_schema(&snippet).await?;
+    let (key, description, _aliases, path) = LLM::get_normal_schema(&snippet).await?;
 
     let schema_transformation = SchemaTransformation {
         id: ID::new(),

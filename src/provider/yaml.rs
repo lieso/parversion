@@ -10,7 +10,6 @@ use crate::profile::Profile;
 use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
-use crate::schema::Schema;
 use crate::transformation::SchemaTransformation;
 use crate::provider::Provider;
 

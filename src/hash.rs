@@ -77,6 +77,7 @@ impl Hash {
         format!("{:x}", hasher.finalize())
     }
 
+    #[allow(dead_code)]
     pub fn permute_hash(&self, permutation_index: usize) -> String {
         let hash_value = match &self.value {
             Some(value) => value.clone(),

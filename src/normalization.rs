@@ -5,7 +5,6 @@ use crate::document::{Document};
 use crate::organization::{organize};
 use crate::provider::{Provider};
 use crate::meta_context::MetaContext;
-use crate::schema::Schema;
 use crate::node_analysis::{get_normal_schema_transformations};
 use crate::document_format::DocumentFormat;
 

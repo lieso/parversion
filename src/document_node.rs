@@ -33,6 +33,7 @@ impl DocumentNode {
         }
     }
 
+    #[allow(dead_code)]
     pub fn to_string(&self) -> String {
         let (a, b) = self.to_string_components();
 

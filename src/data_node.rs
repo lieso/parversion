@@ -38,8 +38,4 @@ impl DataNode {
             description,
         }
     }
-
-    pub fn get_hash(&self) -> Hash {
-        self.hash.clone()
-    }
 }

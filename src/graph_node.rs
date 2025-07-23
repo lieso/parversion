@@ -45,6 +45,7 @@ impl GraphNode {
         }
     }
 
+    #[allow(dead_code)]
     pub fn subgraph_hash(&self) -> Hash {
         let mut combined_hash = Hash::new();
 
