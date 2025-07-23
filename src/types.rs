@@ -1,6 +1,6 @@
 use tokio::task::JoinError;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum DocumentVersion {
     InputDocument,
     OrganizedDocument,
@@ -27,7 +27,9 @@ pub enum Errors {
     ContextTooLarge,
     SchemaNotProvided,
     JsonSchemaParseError(String),
-    DeficientMetaContextError(String)
+    DeficientMetaContextError(String),
+    DocumentVersionNotFound,
+    BasisGraphNotFound
 }
 
 impl From<JoinError> for Errors {

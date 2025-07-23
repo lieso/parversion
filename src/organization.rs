@@ -74,8 +74,8 @@ pub async fn organize<P: Provider>(
     }
 
     {
-        let lock = read_lock!(meta_context);
-        let result = format!("{}", lock.to_document()?.to_string(&None));
+        let organized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
+        let result = format!("{}", organized.to_string(&None));
         log::debug!("\n\n\
         =======================================================\n\
         =============   ORGANIZED DOCUMENT START   =================\n\
@@ -103,10 +103,7 @@ pub async fn organize_document<P: Provider>(
         _options
     ).await?;
 
-    let organized_document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()
-    };
+    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
 
     organized_document
 }
@@ -152,10 +149,7 @@ pub async fn organize_text_to_document<P: Provider>(
 
     let meta_context = organize_text(Arc::clone(&provider), text, _options).await?;
 
-    let organized_document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()
-    };
+    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
 
     organized_document
 }
@@ -188,10 +182,7 @@ pub async fn organize_file_to_document<P: Provider>(
 
     let meta_context = organize_file(Arc::clone(&provider), path, _options).await?;
 
-    let organized_document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()
-    };
+    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
 
     organized_document
 }

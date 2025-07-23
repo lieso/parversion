@@ -95,13 +95,9 @@ pub async fn translate_text_to_document<P: Provider>(
         json_schema
     ).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let translated_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let translated_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::NormalizedDocument
     );
 
     translated_document
@@ -157,13 +153,9 @@ pub async fn translate_document<P: Provider>(
         json_schema
     ).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let translated_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let translated_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::NormalizedDocument
     );
 
     translated_document
@@ -218,13 +210,9 @@ pub async fn translate_file_to_document<P: Provider>(
 
     let meta_context = translate_file_to_meta_context(Arc::clone(&provider), path, _options, json_schema).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let translated_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let translated_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::NormalizedDocument
     );
 
     translated_document
@@ -303,13 +291,9 @@ pub async fn translate_url_to_document<P: Provider>(
 
     let meta_context = translate_url_to_meta_context(Arc::clone(&provider), url, _options, json_schema).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let translated_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let translated_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::NormalizedDocument
     );
 
     translated_document

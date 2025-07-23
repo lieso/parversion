@@ -5,7 +5,7 @@ use xmltree::{Element};
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashSet, HashMap, VecDeque};
 
 use crate::prelude::*;
 use crate::document_node::{DocumentNode};
@@ -59,11 +59,11 @@ impl Document {
 
         let graph_root = {
             let lock = read_lock!(meta_context);
-            lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
+            lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?
         };
-        let basis_graph = {
+        let basis_graph: Arc<BasisGraph> = {
             let lock = read_lock!(meta_context);
-            lock.basis_graph.clone().unwrap();
+            lock.basis_graph.clone().ok_or(Errors::BasisGraphNotFound)?
         };
 
         let mut result: HashMap<String, Value> = HashMap::new();
@@ -71,7 +71,7 @@ impl Document {
         let path: Path = Path::from_str(&basis_graph.name);
 
         process_network(
-            &self,
+            Arc::clone(&meta_context),
             graph_root,
             &mut result,
             &mut inner_schema,
@@ -111,20 +111,20 @@ impl Document {
         meta_context: Arc<RwLock<MetaContext>>,
         document_version: DocumentVersion
     ) -> Result<Self, Errors> {
-        log::trace!("In apply_schema_transformations");
+        log::trace!("In from_schema_transformations");
 
-        let document: &Document = {
+        let document: Arc<Document> = {
             let lock = read_lock!(meta_context);
-            lock.get_document(document_version).unwrap()
+            lock.get_document(document_version).clone().ok_or(Errors::DocumentVersionNotFound)?
         };
 
         match document.document_type {
             DocumentType::Json => {
-                match serde_json::from_str::<Value>(&self.data) {
+                match serde_json::from_str::<Value>(&document.data) {
                     Ok(json_value) => {
                         log::debug!("Parsed JSON: {:?}", json_value);
 
-                        let schema_nodes = self.schema.clone().unwrap().collect_schema_nodes();
+                        let schema_nodes = document.schema.clone().unwrap().collect_schema_nodes();
 
                         apply_schema_transformations_json(
                             Arc::clone(&meta_context),
@@ -139,7 +139,7 @@ impl Document {
                 }
             }
             _ => {
-                log::error!("Unexpected document type: {:?}", self.document_type);
+                log::error!("Unexpected document type: {:?}", document.document_type);
                 unimplemented!()
             }
         }
@@ -525,7 +525,7 @@ fn apply_schema_transformations_json(
 }
 
 fn process_network(
-    meta_context: &MetaContext,
+    meta_context: Arc<RwLock<MetaContext>>,
     graph: Graph,
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
@@ -534,7 +534,10 @@ fn process_network(
 ) -> Result<(), Errors> {
     log::trace!("In process_network");
 
-    let contexts = meta_context.contexts.clone().unwrap();
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts.clone().unwrap()
+    };
 
     let mut queue = VecDeque::new();
     queue.push_back(graph.clone());
@@ -550,7 +553,7 @@ fn process_network(
         let context = contexts.get(&context_id).unwrap().clone();
 
         process_node(
-            meta_context,
+            Arc::clone(&meta_context),
             context.clone(),
             result,
             schema,
@@ -574,7 +577,8 @@ fn process_network(
             };
 
             let maybe_basis_network = {
-                meta_context.get_basis_network_by_subgraph_hash(
+                let lock = read_lock!(meta_context);
+                lock.get_basis_network_by_subgraph_hash(
                     &child_subgraph_hash.to_string().unwrap()
                 ).expect("Could not get basis network by subgraph hash")
             };
@@ -676,7 +680,7 @@ fn process_network(
 }
 
 fn process_node(
-    meta_context: &MetaContext,
+    meta_context: Arc<RwLock<MetaContext>>,
     context: Arc<Context>,
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
@@ -686,7 +690,8 @@ fn process_node(
     log::trace!("In process_node");
 
     let maybe_basis_node = {
-        meta_context.get_basis_node_by_lineage(&context.lineage)
+        let lock = read_lock!(meta_context);
+        lock.get_basis_node_by_lineage(&context.lineage)
             .expect("Could not get basis node by lineage")
     };
 

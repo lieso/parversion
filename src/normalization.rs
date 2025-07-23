@@ -43,7 +43,10 @@ pub async fn normalize<P: Provider>(
     }
 
     {
-        let normalized = Document::from_schema_transformations(Arc::clone(&meta_context))?;
+        let normalized = Document::from_schema_transformations(
+            Arc::clone(&meta_context),
+            DocumentVersion::OrganizedDocument
+        )?;
         let result = format!("{}", normalized.to_string(&None));
         log::debug!("\n\n\
         =======================================================\n\
@@ -93,13 +96,9 @@ pub async fn normalize_text_to_document<P: Provider>(
 
     let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let normalized_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let normalized_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::OrganizedDocument
     );
 
     normalized_document
@@ -146,13 +145,9 @@ pub async fn normalize_document<P: Provider>(
 
     let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let normalized_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let normalized_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::OrganizedDocument
     );
 
     normalized_document
@@ -197,13 +192,9 @@ pub async fn normalize_file_to_document<P: Provider>(
 
     let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let normalized_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let normalized_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::OrganizedDocument
     );
 
     normalized_document
@@ -268,13 +259,9 @@ pub async fn normalize_url_to_document<P: Provider>(
 
     let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options).await?;
 
-    let document = {
-        let lock = read_lock!(meta_context);
-        lock.to_document()?
-    };
-
-    let normalized_document = document.apply_schema_transformations(
-        Arc::clone(&meta_context)
+    let normalized_document = Document::from_schema_transformations(
+        Arc::clone(&meta_context),
+        DocumentVersion::OrganizedDocument
     );
 
     normalized_document

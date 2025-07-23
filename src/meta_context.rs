@@ -1,5 +1,5 @@
 use std::sync::{Arc};
-use std::collections::{HashSet, HashMap, VecDeque};
+use std::collections::{HashSet, HashMap};
 
 use crate::prelude::*;
 use crate::graph_node::{Graph};
@@ -14,7 +14,7 @@ use crate::schema::Schema;
 use crate::schema_context::SchemaContext;
 
 pub struct MetaContext {
-    pub document_versions: HashMap<DocumentVersion, Document>,
+    pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
     pub graph_root: Option<Graph>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
@@ -32,7 +32,7 @@ pub struct MetaContext {
 impl MetaContext {
     pub fn new() -> Self {
         MetaContext {
-            document_version: HashMap:::new(),
+            document_versions: HashMap::new(),
             contexts: None,
             graph_root: None,
             basis_nodes: None,
@@ -53,14 +53,14 @@ impl MetaContext {
         document_version: DocumentVersion,
         document: Document
     ) {
-        self.document_versions.insert(document_version, document);
+        self.document_versions.insert(document_version, Arc::new(document));
     }
 
     pub fn get_document(
         &self,
         version: DocumentVersion
-    ) -> Option<&Document> {
-        self.document.vesions.get(&version)
+    ) -> Option<Arc<Document>> {
+        self.document_versions.get(&version).cloned()
     }
 
     pub fn update_translation_schema(
