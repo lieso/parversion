@@ -22,6 +22,7 @@ pub mod transformation;
 pub mod translation;
 pub mod types;
 pub mod prelude;
+#[allow(dead_code)]
 pub mod utility;
 pub mod json_node;
 pub mod context;

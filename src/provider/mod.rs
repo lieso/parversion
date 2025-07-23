@@ -114,31 +114,31 @@ impl Provider for VoidProvider {
 
     async fn get_basis_graph_by_lineage(
         &self,
-        lineage: &Lineage
+        _lineage: &Lineage
     ) -> Result<Option<BasisGraph>, Errors> {
         Ok(None)
     }
 
     async fn save_basis_graph(
         &self,
-        lineage: &Lineage,
-        basis_graph: BasisGraph
+        _lineage: &Lineage,
+        _basis_graph: BasisGraph
     ) -> Result<(), Errors> {
         Ok(())
     }
 
     async fn get_schema_transformation(
         &self,
-        lineage: &Lineage,
-        target: Option<&Hash>
+        _lineage: &Lineage,
+        _target: Option<&Hash>
     ) -> Result<Option<SchemaTransformation>, Errors> {
         Ok(None)
     }
 
     async fn save_schema_transformation(
         &self,
-        lineage: &Lineage,
-        schema_transformation: SchemaTransformation
+        _lineage: &Lineage,
+        _schema_transformation: SchemaTransformation
     ) -> Result<(), Errors> {
         Ok(())
     }

@@ -8,6 +8,7 @@ use crate::config::{CONFIG};
 
 #[derive(Clone, Debug)]
 pub struct SchemaContext {
+    #[allow(dead_code)]
     pub id: ID,
     pub lineage: Lineage,
     pub schema_node: Arc<SchemaNode>,

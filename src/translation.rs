@@ -17,7 +17,7 @@ pub async fn translate<P: Provider>(
     json_schema: &str,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
-    
+
     if json_schema.len() > 10000 {
         log::error!("Schema is over 10000 characters...");
         return Err(Errors::ContextTooLarge);

@@ -30,6 +30,7 @@ mod transformation;
 mod translation;
 mod types;
 mod prelude;
+#[allow(dead_code)]
 mod utility;
 mod json_node;
 mod context;
@@ -82,6 +83,20 @@ fn init_logging() {
 
 fn setup() {
     init_logging();
+}
+
+fn handle_error(err: Errors) {
+    match err {
+        Errors::YamlParseError(msg)
+        | Errors::FetchUrlError(msg)
+        | Errors::JsonSchemaParseError(msg)
+        | Errors::DeficientMetaContextError(msg) => {
+            eprintln!("Error: {}", msg);
+        }
+        _ => {
+            eprintln!("Error: {:?}", err);
+        }
+    }
 }
 
 #[tokio::main]
@@ -157,7 +172,7 @@ async fn main() {
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
-                        eprintln!("Failed to translate text from stdin: {:?}", err);
+                        handle_error(err);
                         std::process::exit(1);
                     }
                 }
@@ -169,7 +184,7 @@ async fn main() {
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
-                        eprintln!("Failed to normalize text from stdin: {:?}", err);
+                        handle_error(err);
                         std::process::exit(1);
                     }
                 }
@@ -186,7 +201,7 @@ async fn main() {
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
-                        eprintln!("Failed to translate text from stdin: {:?}", err);
+                        handle_error(err);
                         std::process::exit(1);
                     }
                 }
@@ -198,7 +213,7 @@ async fn main() {
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
-                        eprintln!("Failed to normalize URL: {:?}", err);
+                        handle_error(err);
                         std::process::exit(1);
                     }
                 }
@@ -215,7 +230,7 @@ async fn main() {
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
-                        eprintln!("Failed to translate text from stdin: {:?}", err);
+                        handle_error(err);
                         std::process::exit(1);
                     }
                 }
@@ -227,7 +242,7 @@ async fn main() {
                 ).await {
                     Ok(document) => document,
                     Err(err) => {
-                        eprintln!("Failed to normalize URL: {:?}", err);
+                        handle_error(err);
                         std::process::exit(1);
                     }
                 }
