@@ -18,6 +18,11 @@ pub async fn organize<P: Provider>(
 
     let meta_context = Arc::new(RwLock::new(MetaContext::new()));
 
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.add_document_version(DocumentVersion::InputDocument, document.clone());
+    }
+
     log::info!("Performing document analysis");
     let profile = document.perform_analysis(Arc::clone(&provider)).await?;
     let profile = Arc::new(profile);

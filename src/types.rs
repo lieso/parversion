@@ -1,6 +1,13 @@
 use tokio::task::JoinError;
 
 #[derive(Clone, Debug)]
+pub enum DocumentVersion {
+    InputDocument,
+    OrganizedDocument,
+    NormalizedDocument
+}
+
+#[derive(Clone, Debug)]
 pub enum Errors {
     FileReadError,
     FileInputError,

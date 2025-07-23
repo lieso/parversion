@@ -1,6 +1,5 @@
 use std::sync::{Arc};
 use std::collections::{HashSet, HashMap, VecDeque};
-use serde_json::{json, Value};
 
 use crate::prelude::*;
 use crate::graph_node::{Graph};
@@ -10,15 +9,12 @@ use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::profile::Profile;
 use crate::transformation::SchemaTransformation;
-use crate::document::{Document, DocumentType, DocumentMetadata};
-use crate::schema_node::SchemaNode;
+use crate::document::{Document};
 use crate::schema::Schema;
-use crate::json_node::JsonNode;
-use crate::basis_network::{NetworkRelationship};
 use crate::schema_context::SchemaContext;
-use crate::path::Path;
 
 pub struct MetaContext {
+    pub document_versions: HashMap<DocumentVersion, Document>,
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
     pub graph_root: Option<Graph>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
@@ -36,6 +32,7 @@ pub struct MetaContext {
 impl MetaContext {
     pub fn new() -> Self {
         MetaContext {
+            document_version: HashMap:::new(),
             contexts: None,
             graph_root: None,
             basis_nodes: None,
@@ -49,6 +46,21 @@ impl MetaContext {
             translation_schema_contexts: None,
             translation_schema_graph_root: None,
         }
+    }
+
+    pub fn add_document_version(
+        &mut self,
+        document_version: DocumentVersion,
+        document: Document
+    ) {
+        self.document_versions.insert(document_version, document);
+    }
+
+    pub fn get_document(
+        &self,
+        version: DocumentVersion
+    ) -> Option<&Document> {
+        self.document.vesions.get(&version)
     }
 
     pub fn update_translation_schema(
@@ -154,262 +166,6 @@ impl MetaContext {
 
         document
     }
-
-    pub fn to_document(&self) -> Result<Document, Errors> {
-        log::trace!("In to_document");
-
-        let graph_root = self.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?;
-        let basis_graph = self.basis_graph.clone().unwrap();
-
-        let mut result: HashMap<String, Value> = HashMap::new();
-        let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-        let path: Path = Path::from_str(&basis_graph.name);
-
-        process_network(
-            &self,
-            graph_root,
-            &mut result,
-            &mut inner_schema,
-            &basis_graph.lineage,
-            &path,
-        )?;
-
-        let data = {
-            match serde_json::to_string(&result) {
-                Ok(json_string) => json_string,
-                Err(e) => panic!("Error serializing to JSON: {}", e),
-            }
-        };
-
-        let schema = Schema {
-            id: ID::new(),
-            name: basis_graph.name.clone(),
-            description: basis_graph.description.clone(),
-            lineage: basis_graph.lineage.clone(),
-            properties: inner_schema,
-        };
-
-        let document = Document {
-            document_type: DocumentType::Json,
-            metadata: DocumentMetadata {
-                origin: None,
-                date: None,
-            },
-            data,
-            schema: Some(schema)
-        };
-
-        Ok(document)
-    }
-}
-
-fn process_network(
-    meta_context: &MetaContext,
-    graph: Graph,
-    result: &mut HashMap<String, Value>,
-    schema: &mut HashMap<String, SchemaNode>,
-    schema_lineage: &Lineage,
-    path: &Path,
-) -> Result<(), Errors> {
-    log::trace!("In process_network");
-
-    let contexts = meta_context.contexts.clone().unwrap();
-
-    let mut queue = VecDeque::new();
-    queue.push_back(graph.clone());
-
-    let mut processed_child_ids = HashSet::new();
-
-    while let Some(current) = queue.pop_front() {
-        let (context_id, children) = {
-            let read_lock = read_lock!(current);
-            (read_lock.id.clone(), read_lock.children.clone())
-        };
-
-        let context = contexts.get(&context_id).unwrap().clone();
-
-        process_node(
-            meta_context,
-            context.clone(),
-            result,
-            schema,
-            schema_lineage,
-            path,
-        )?;
-
-        for (index, child) in children.iter().enumerate() {
-            let child_id = {
-                let child_lock = read_lock!(child);
-                child_lock.id.clone()
-            };
-
-            if processed_child_ids.contains(&child_id) {
-                continue;
-            }
-
-            let child_subgraph_hash = {
-                let child_lock = read_lock!(child);
-                child_lock.subgraph_hash.clone()
-            };
-
-            let maybe_basis_network = {
-                meta_context.get_basis_network_by_subgraph_hash(
-                    &child_subgraph_hash.to_string().unwrap()
-                ).expect("Could not get basis network by subgraph hash")
-            };
-
-            if let Some(basis_network) = maybe_basis_network {
-                log::trace!("Found basis network");
-
-                if !basis_network.is_null_network() {
-                    let object_name = basis_network.name.clone();
-                    let object_description = basis_network.description.clone();
-
-                    let mut schema_node = SchemaNode::new(
-                        &object_name,
-                        &object_description,
-                        schema_lineage,
-                        "object",
-                        path,
-                    );
-
-                    let mut inner_result: HashMap<String, Value> = HashMap::new();
-                    let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-
-                    let mut associated_graphs = match &basis_network.relationship {
-                        NetworkRelationship::Association(assoc) => assoc.clone(),
-                        _ => Vec::new(),
-                    };
-
-                    for subsequent_child in children.iter().skip(index + 1) {
-                        let subsequent_child_id = {
-                            let subsequent_lock = read_lock!(subsequent_child);
-                            subsequent_lock.id.clone()
-                        };
-
-                        if processed_child_ids.contains(&subsequent_child_id) {
-                            continue;
-                        }
-
-                        let subsequent_subgraph_hash = {
-                            let subsequent_lock = read_lock!(subsequent_child);
-                            subsequent_lock.subgraph_hash.clone()
-                        };
-
-                        if associated_graphs.contains(&subsequent_subgraph_hash.to_string().unwrap()) {
-                            process_network(
-                                meta_context.clone(),
-                                subsequent_child.clone(),
-                                &mut inner_result,
-                                &mut inner_schema,
-                                &schema_node.lineage,
-                                &schema_node.path.with_segment(format!("{}", schema_node.name))
-                            )?;
-
-                            associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
-                            processed_child_ids.insert(subsequent_child_id);
-                        }
-                    }
-
-                    process_network(
-                        meta_context.clone(),
-                        child.clone(),
-                        &mut inner_result,
-                        &mut inner_schema,
-                        &schema_node.lineage,
-                        &schema_node.path.with_segment(format!("{}", schema_node.name)),
-                    )?;
-
-                    let inner_result_value = serde_json::to_value(inner_result)
-                        .expect("Failed to serialize inner result");
-
-                    if let Some(existing_object) = result.get_mut(&schema_node.name) {
-                        if let Value::Array(ref mut arr) = existing_object {
-                            arr.push(inner_result_value.clone());
-                        } else {
-                            *existing_object = json!(vec![
-                                existing_object.clone(),
-                                inner_result_value.clone()
-                            ]);
-                        }
-
-                        let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
-                        existing_schema_node.data_type = "array".to_string();
-                    } else {
-                        schema_node.properties = inner_schema;
-                        schema.insert(schema_node.name.clone(), schema_node.clone());
-                        result.insert(schema_node.name.clone(), inner_result_value.clone());
-                    }
-
-                    processed_child_ids.insert(child_id);
-                } else {
-                    queue.push_back(child.clone());
-                }
-            } else {
-                queue.push_back(child.clone());
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn process_node(
-    meta_context: &MetaContext,
-    context: Arc<Context>,
-    result: &mut HashMap<String, Value>,
-    schema: &mut HashMap<String, SchemaNode>,
-    schema_lineage: &Lineage,
-    path: &Path,
-) -> Result<(), Errors> {
-    log::trace!("In process_node");
-
-    let maybe_basis_node = {
-        meta_context.get_basis_node_by_lineage(&context.lineage)
-            .expect("Could not get basis node by lineage")
-    };
-
-    if let Some(basis_node) = maybe_basis_node {
-        let json_nodes: Vec<JsonNode> = basis_node.transformations
-            .clone()
-            .into_iter()
-            .map(|transformation| {
-                transformation.transform(Arc::clone(&context.data_node))
-                    .expect("Could not transform data node")
-            })
-            .collect();
-
-        for json_node in json_nodes.into_iter() {
-            let json = json_node.json;
-            let key = json.key.clone();
-            let trimmed_value = json!(json.value.trim().to_string());
-
-            let mut schema_node = SchemaNode::new(
-                &key,
-                &json_node.description,
-                schema_lineage,
-                "string",
-                path,
-            );
-
-            if let Some(existing_value) = result.get_mut(&schema_node.name) {
-                if let Value::Array(ref mut arr) = existing_value {
-                    arr.push(trimmed_value.clone());
-                } else {
-                    *existing_value = json!(vec![existing_value.clone(), trimmed_value.clone()]);
-                }
-
-                schema_node.data_type = "array".to_string();
-
-                schema.insert(schema_node.name.clone(), schema_node);
-            } else {
-                result.insert(schema_node.name.clone(), trimmed_value.clone());
-                schema.insert(schema_node.name.clone(), schema_node);
-            }
-        }
-    }
-
-    Ok(())
 }
 
 fn traverse_for_condensed_document(

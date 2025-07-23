@@ -16,11 +16,17 @@ pub async fn normalize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
 
-    log::info!("Getting schema context");
-    let document = read_lock!(meta_context).to_document()?;
-    let (contexts, graph_root) = &document.schema.unwrap().get_contexts()?;
-    
+    log::info!("Generating organized document");
+    let document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
+
     {
+        let mut lock = write_lock!(meta_context);
+        lock.add_document_version(DocumentVersion::OrganizedDocument, document.clone());
+    }
+
+    {
+        log::info!("Getting schema context");
+        let (contexts, graph_root) = &document.schema.unwrap().get_contexts()?;
         let mut lock = write_lock!(meta_context);
         lock.update_schema_context(contexts.clone(), graph_root.clone());
     }
@@ -37,8 +43,8 @@ pub async fn normalize<P: Provider>(
     }
 
     {
-        let lock = read_lock!(meta_context);
-        let result = format!("{}", lock.to_document()?.to_string(&None));
+        let normalized = Document::from_schema_transformations(Arc::clone(&meta_context))?;
+        let result = format!("{}", normalized.to_string(&None));
         log::debug!("\n\n\
         =======================================================\n\
         =============   NORMALIZED DOCUMENT START   =================\n\
