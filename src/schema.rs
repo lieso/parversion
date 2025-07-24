@@ -191,6 +191,7 @@ impl Schema {
                         &key,
                         &lineage,
                         &path,
+                        false
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),

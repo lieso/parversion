@@ -68,14 +68,24 @@ impl SchemaNode {
         value: &Value,
         name: &str,
         parent_lineage: &Lineage,
-        parent_path: &Path
+        parent_path: &Path,
+        is_array: bool
     ) -> Result<Self, Errors> {
         log::trace!("In from_serde_value");
         log::debug!("name: {}", name);
 
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
-        let path = parent_path.with_segment(name.to_string());
+        let path = {
+            if is_array {
+                parent_path
+                    .with_key_segment(name.to_string())
+                    .with_any_index_segment()
+            } else {
+                parent_path
+                    .with_key_segment(name.to_string())
+            }
+        };
 
         let description = value.get("description")
             .and_then(|v| v.as_str())
@@ -94,6 +104,7 @@ impl SchemaNode {
                         &key,
                         &lineage,
                         &path,
+                        false
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),
@@ -110,11 +121,11 @@ impl SchemaNode {
                     Some(
                         items_value.as_array().unwrap()
                             .iter()
-                            .map(|item_value| Self::from_serde_value(item_value, name, &lineage, &path))
+                            .map(|item_value| Self::from_serde_value(item_value, name, &lineage, &path, true))
                             .collect::<Result<Vec<_>, Errors>>()?
                     )
                 } else {
-                    Some(vec![Self::from_serde_value(items_value, name, &lineage, &path)?])
+                    Some(vec![Self::from_serde_value(items_value, name, &lineage, &path, false)?])
                 }
             } else {
                 None

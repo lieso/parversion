@@ -25,6 +25,21 @@ pub async fn normalize<P: Provider>(
     }
 
     {
+        let schema = document.clone().schema.unwrap();
+        let schema_nodes = schema.collect_schema_nodes();
+
+        for node in schema_nodes.values() {
+            log::debug!("----");
+            log::debug!("{:?}", node.path);
+        }
+
+    }
+
+
+
+    panic!("testing");
+
+    {
         log::info!("Getting schema context");
         let (contexts, graph_root) = &document.schema.unwrap().get_contexts()?;
         let mut lock = write_lock!(meta_context);

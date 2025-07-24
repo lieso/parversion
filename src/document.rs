@@ -628,7 +628,7 @@ fn process_network(
                                 &mut inner_result,
                                 &mut inner_schema,
                                 &schema_node.lineage,
-                                &schema_node.path.with_segment(format!("{}", schema_node.name))
+                                &schema_node.path.with_key_segment(format!("{}", schema_node.name))
                             )?;
 
                             associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
@@ -642,7 +642,7 @@ fn process_network(
                         &mut inner_result,
                         &mut inner_schema,
                         &schema_node.lineage,
-                        &schema_node.path.with_segment(format!("{}", schema_node.name)),
+                        &schema_node.path.with_key_segment(format!("{}", schema_node.name)),
                     )?;
 
                     let inner_result_value = serde_json::to_value(inner_result)
@@ -660,6 +660,7 @@ fn process_network(
 
                         let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
                         existing_schema_node.data_type = "array".to_string();
+                        existing_schema_node.path = existing_schema_node.path.with_any_index_segment();
                     } else {
                         schema_node.properties = inner_schema;
                         schema.insert(schema_node.name.clone(), schema_node.clone());
