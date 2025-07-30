@@ -339,7 +339,7 @@ async fn get_translation_schema_transformation<P: Provider>(
             id: ID::new(),
             description: schema_context.schema_node.description.clone(),
             key: schema_context.schema_node.name.clone(),
-            path: schema_context.schema_node.path.clone(),
+            path: Path::new(),
             lineage: lineage.clone(),
             target: Some(subgraph_hash.clone()),
         };
