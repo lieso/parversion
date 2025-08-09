@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 pub enum PathSegment {
     Key(String),
     Index(usize),
-    AnyIndex,
+    VariableIndex(char),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
