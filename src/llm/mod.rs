@@ -13,6 +13,7 @@ impl LLM {
     pub async fn get_translation_schema(
         meta_context: Arc<RwLock<MetaContext>>,
         marked_schema: &String,
+        schema_node_path: &Path,
         target_schema: Arc<String>
     ) -> Result<Option<(
         String,
@@ -23,6 +24,7 @@ impl LLM {
 
         let maybe_json_path = openai::OpenAI::match_schema_nodes(
             marked_schema,
+            schema_node_path.to_string(),
             Arc::clone(&target_schema)
         ).await?;
             

@@ -12,8 +12,6 @@ pub struct SchemaNode {
     pub hash: Hash,
     #[serde(skip_serializing)]
     pub lineage: Lineage,
-    //#[serde(skip_serializing)]
-    //pub node_lineage: Lineage,
     pub aliases: Vec<String>,
     pub description: String,
     pub data_type: String,

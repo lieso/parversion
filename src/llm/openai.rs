@@ -63,6 +63,7 @@ struct MatchSchemaNodeResponse {
 impl OpenAI {
     pub async fn match_schema_nodes(
         marked_schema_node: &String,
+        schema_node_path: &String,
         target_schema: Arc<String>
     ) -> Result<Option<String>, Errors> {
         log::trace!("In match_schema_nodes");
@@ -102,8 +103,6 @@ This modified syntax enhances interpretability and coordination between equivale
 
 ---
 
-
-
 Please also provide a justification for your response.
         "##);
         let user_prompt = format!(r##"
@@ -115,7 +114,7 @@ Please also provide a justification for your response.
 
 [SECOND JSON SCHEMA]:
 {}
-        "##, marked_schema_node, target_schema);
+        "##, marked_schema_node, schema_node_path, target_schema);
 
         let response_format = json!({
             "type": "json_schema",

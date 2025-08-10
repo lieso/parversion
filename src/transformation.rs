@@ -22,15 +22,15 @@ pub enum Runtime {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaTransformation {
     pub id: ID,
-    pub description: String,
-    pub key: String,
-    pub path: Path,
     pub lineage: Lineage,
-    pub target: Option<Hash>,
+    pub subgraph_hash: Option<Hash>,
+    pub key: String,
+    pub description: String,
+    pub path: Path,
 }
 
 impl SchemaTransformation {
-    pub fn transform(&self, schema_node: &SchemaNode) -> SchemaNode {
+    pub fn transform(&self, schema_node: &SchemaNode, path: &Path) -> SchemaNode {
         log::trace!("In transform");
 
         let mut transformed = schema_node.clone();

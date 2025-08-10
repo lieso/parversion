@@ -17,6 +17,7 @@ use crate::transformation::{
 };
 use crate::schema_context::SchemaContext;
 use crate::graph_node::Graph;
+use crate::path::Path;
 
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -325,7 +326,7 @@ async fn get_translation_schema_transformation<P: Provider>(
             key,
             path,
             lineage: lineage.clone(),
-            target: Some(subgraph_hash.clone()),
+            subgraph_hash: Some(subgraph_hash.clone()),
         };
 
         provider.save_schema_transformation(
@@ -341,7 +342,7 @@ async fn get_translation_schema_transformation<P: Provider>(
             key: schema_context.schema_node.name.clone(),
             path: Path::new(),
             lineage: lineage.clone(),
-            target: Some(subgraph_hash.clone()),
+            subgraph_hash: Some(subgraph_hash.clone()),
         };
 
         provider.save_schema_transformation(
