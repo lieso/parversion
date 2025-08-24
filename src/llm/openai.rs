@@ -63,7 +63,6 @@ struct MatchSchemaNodeResponse {
 impl OpenAI {
     pub async fn match_schema_nodes(
         marked_schema_node: &String,
-        schema_node_path: &String,
         target_schema: Arc<String>
     ) -> Result<Option<String>, Errors> {
         log::trace!("In match_schema_nodes");
@@ -79,29 +78,56 @@ The first JSON schema will be an incomplete snippet, and the schema field to mat
 START TARGET SCHEMA KEY >>>
 <<< END TARGET SCHEMA KEY
 
-Provide a JSON path against documents that result from the second JSON schema indicating which field is equivalent to the target field from documents derived from the first schema. Ignore the standard rules for JSON paths and use this modified syntax for JSON paths:
+Provide a JSON path against the JSON schema of the second schema indicating which field is equivalent to the target schema field, or null if there is no equivalent.
 
---- 
+Important: The JSON path should be relative to the JSON schema itself, not the resulting JSON document. This means you should identify the path within the schema structure where the equivalent
+field resides.
 
-Modified JSON Path Syntax Description:
+For example, if the first JSON schema is this, representing an invoice:
+{{
+  "title": "Invoice",
+  "type": "object",
+  "properties": {{
+    "invoiceNumber": {{
+      "type": "string",
+      "description": "Unique identifier for the invoice"
+    }},
+    "START TARGET SCHEMA KEY>>>date<<< END TARGET SCHEMA KEY": {{
+      "type": "string",
+      "format": "date",
+      "description": "Date when the invoice was issued"
+    }},
+    "dueDate": {{
+      "type": "string",
+      "format": "date",
+      "description": "Date by which the invoice should be paid"
+    }}
+  }}
+}}
 
-This JSON Path syntax extension allows the use of lowercase alphabetic letters as placeholders for array indices. Each letter represents a position within an array,
-providing a flexible and descriptive means to reference elements across complex and nested JSON structures. This is particularly useful for aligning array positions
-across multiple JSON Paths in different JSON schemas.
+And the second JSON schema is this:
+{{
+   "title": "Invoice",
+   "type": "object",
+   "properties": {{
+     "id": {{
+       "type": "string",
+       "description": "Unique identifier for the invoice"
+     }},
+     "issueDate": {{
+       "type": "string",
+       "format": "date",
+       "description": "Date when the invoice was issued"
+     }},
+     "paymentDue": {{
+       "type": "string",
+       "format": "date",
+       "description": "Date by which the payment should be completed"
+     }}
+   }}
+ }}
 
-Key Features:
-
- • Alphabetic Index Placeholders: Use lowercase alphabet letters (a, b, c, etc.) as symbolic references to array indices.
- • Alignment Across Paths: The same letter used in different JSON Paths indicates a corresponding index position across different JSON arrays.
-
-Example:
-
- • $.invoices[a].items[b].unitPrice refers to unitPrice at index b within items at index a of invoices.
- • $.dataContainer[a].document.productList[b].pricePerUnit similarly refers to pricePerUnit using the same indices for conceptual alignment.
-
-This modified syntax enhances interpretability and coordination between equivalent structures in various JSON documents or schemas.
-
----
+Your response should be the JSON path '$.properties.issueDate' since the 'date' field on the first schema represents an invoice issue date, just like the 'issueDate' field on the second JSON schema.
 
 Please also provide a justification for your response.
         "##);
@@ -109,12 +135,9 @@ Please also provide a justification for your response.
 [FIRST JSON SCHEMA]:
 {}
 
-[FIRST JSON SCHEMA PATH]:
-{}
-
 [SECOND JSON SCHEMA]:
 {}
-        "##, marked_schema_node, schema_node_path, target_schema);
+        "##, marked_schema_node, target_schema);
 
         let response_format = json!({
             "type": "json_schema",

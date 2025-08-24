@@ -216,7 +216,7 @@ impl Provider for YamlFileProvider {
     async fn get_schema_transformation(
         &self,
         lineage: &Lineage,
-        target: Option<&Hash>,
+        subgraph_hash: Option<&Hash>,
     ) -> Result<Option<SchemaTransformation>, Errors> {
         let yaml = self.load_data().await?;
 
@@ -231,7 +231,7 @@ impl Provider for YamlFileProvider {
             .unwrap_or_else(Vec::new);
 
         for schema_transformation in schema_transformations {
-            if schema_transformation.lineage == *lineage && schema_transformation.target == target.cloned() {
+            if schema_transformation.lineage == *lineage && schema_transformation.subgraph_hash == subgraph_hash.cloned() {
                 return Ok(Some(schema_transformation));
             }
         }

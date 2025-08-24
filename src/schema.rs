@@ -79,6 +79,7 @@ impl Schema {
             items: None,
             aliases: Vec::new(),
             data_type: "object".to_string(),
+            path: Path::new(),
         };
 
         fn recurse(

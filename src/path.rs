@@ -43,12 +43,6 @@ impl Path {
         new_path
     }
 
-    pub fn with_any_index_segment(&self) -> Self {
-        let mut new_path = self.clone();
-        new_path.segments.push(PathSegment::AnyIndex);
-        new_path
-    }
-
     pub fn from_json_path(json_path: &String) -> Self {
         Self::new()
     }

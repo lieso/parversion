@@ -270,7 +270,7 @@ async fn get_normal_schema_transformation<P: Provider>(
         key,
         path,
         lineage: lineage.clone(),
-        target: None,
+        subgraph_hash: None,
     };
 
     provider.save_schema_transformation(

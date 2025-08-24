@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::prelude::*;
+use crate::path::Path;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaNode {
@@ -17,6 +18,7 @@ pub struct SchemaNode {
     pub data_type: String,
     pub properties: HashMap<String, SchemaNode>,
     pub items: Option<Vec<SchemaNode>>,
+    pub path: Path,
 }
 
 impl SchemaNode {
@@ -39,6 +41,7 @@ impl SchemaNode {
             data_type: data_type.to_string(),
             properties: HashMap::new(),
             items: None,
+            path: Path::new(),
         }
     }
     
@@ -126,6 +129,7 @@ impl SchemaNode {
             data_type: data_type.to_string(),
             properties,
             items,
+            path: Path::new(),
         };
 
         Ok(schema_node)
