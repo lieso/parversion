@@ -28,19 +28,44 @@ impl YamlFileProvider {
 
     async fn load_data(&self) -> Result<serde_yaml::Value, Errors> {
         let mut cache = self.cache.write().await;
+
         if cache.is_none() {
-            let data = async_fs::read_to_string(&self.file_path).await.map_err(|_| Errors::FileReadError)?;
-            let mut yaml: serde_yaml::Value = serde_yaml::from_str(&data).map_err(|e| {
-                Errors::YamlParseError(format!("Failed to parse YAML: {}", e))
-            })?;
+            log::info!("Loading data from file: {}", &self.file_path);
 
-            if !yaml.is_mapping() {
-                yaml = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+            match async_fs::read_to_string(&self.file_path).await {
+                Ok(data) => {
+                    log::info!("Read yaml provider file successfully");
+
+                    let mut yaml: serde_yaml::Value = serde_yaml::from_str(&data).map_err(|e| {
+                        log::error!("Failed to parse yaml: {}", e);
+                        Errors::YamlProviderError
+                    })?;
+
+                    if !yaml.is_mapping() {
+                        yaml = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+                    }
+
+                    *cache = Some(yaml.clone());
+                    log::info!("YAML provider data loaded and cached successfully");
+
+                    Ok(yaml)
+                }
+                Err(_) => {
+                    log::info!("Failed to read yaml provider file. Will attempt to create one now...");
+
+                    async_fs::File::create(&self.file_path).await.map_err(|_| {
+                        log::error!("Failed to create yaml provider file: {}", &self.file_path);
+                        Errors::YamlProviderError
+                    })?;
+
+                    log::info!("Initialized yaml provider with empty yaml");
+
+                    let yaml = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+                    *cache = Some(yaml.clone());
+
+                    Ok(yaml)
+                }
             }
-
-            *cache = Some(yaml.clone());
-
-            Ok(yaml)
         } else {
             Ok(cache.clone().unwrap())
         }
