@@ -26,6 +26,7 @@ impl SchemaNode {
         name: &str,
         description: &str,
         parent_lineage: &Lineage,
+        parent_path: &Path,
         data_type: &str,
     ) -> Self {
         let hash: Hash = Hash::from_str(&name);
@@ -41,7 +42,7 @@ impl SchemaNode {
             data_type: data_type.to_string(),
             properties: HashMap::new(),
             items: None,
-            path: Path::new(),
+            path: parent_path.with_key_segment(name.to_string()),
         }
     }
     
