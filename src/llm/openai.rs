@@ -953,7 +953,6 @@ Example {}:
             match client
                 .post(url)
                 .json(&request_json)
-                .header(header::CONTENT_TYPE, "application/json")
                 .header(header::AUTHORIZATION, authorization)
                 .send()
                 .await
