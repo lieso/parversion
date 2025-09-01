@@ -14,7 +14,7 @@ use crate::profile::Profile;
 use crate::hash::{
     Hash,
 };
-use crate::schema_node::SchemaNode;
+use crate::schema_node::{SchemaNode, arrayify_schema_node};
 use crate::schema::Schema;
 use crate::graph_node::{GraphNode};
 use crate::context::{Context};
@@ -611,7 +611,7 @@ fn process_network(
                         &object_name,
                         &object_description,
                         schema_lineage,
-                        path,
+                        &path.with_key_segment(object_name.to_string()),
                         "object",
                     );
 
@@ -677,7 +677,13 @@ fn process_network(
 
                         let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
                         if existing_schema_node.data_type != "array" {
-                            existing_schema_node.data_type = "array".to_string();
+                            let last_path_segment_id = existing_schema_node
+                                .get_last_path_segment()
+                                .unwrap()
+                                .id
+                                .clone();
+
+                            arrayify_schema_node(existing_schema_node, &last_path_segment_id);
                         }
                     } else {
                         schema_node.properties = inner_schema;

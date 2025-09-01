@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::prelude::*;
-use crate::path::Path;
+use crate::path::{Path, PathSegment};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaNode {
@@ -19,6 +19,42 @@ pub struct SchemaNode {
     pub properties: HashMap<String, SchemaNode>,
     pub items: Option<Vec<SchemaNode>>,
     pub path: Path,
+}
+
+pub fn arrayify_schema_node(schema_node: &mut SchemaNode, target_path_segment: &ID) {
+    schema_node.data_type = "array".to_string();
+
+    fn recurse(
+        node: &mut SchemaNode,
+        target: &ID
+    ) {
+        log::debug!("schema node: {:?}", node);
+
+        node.path.arrayify(target);
+
+        for child_node in node.properties.values_mut() {
+            recurse(
+                child_node,
+                target,
+            );
+        }
+
+        if let Some(items) = &mut node.items {
+            for item in items {
+                recurse(
+                    item,
+                    target,
+                );
+            }
+        }
+    }
+
+    for node in schema_node.properties.values_mut() {
+        recurse(
+            node,
+            target_path_segment,
+        );
+    }
 }
 
 impl SchemaNode {
@@ -42,8 +78,12 @@ impl SchemaNode {
             data_type: data_type.to_string(),
             properties: HashMap::new(),
             items: None,
-            path: parent_path.with_key_segment(name.to_string()),
+            path: parent_path.clone(),
         }
+    }
+
+    pub fn get_last_path_segment(&self) -> Option<PathSegment> {
+        self.path.segments.last().cloned()
     }
     
     pub fn get_children(&self) -> Vec<SchemaNode> {
