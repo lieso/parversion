@@ -37,6 +37,24 @@ impl PathSegment {
             variable_index: Some(variable_index),
         }
     }
+
+    pub fn to_string(&self) -> String {
+        match (self.key.clone(), self.index, self.variable_index) {
+            (Some(key), None, None) => {
+                key.to_string()
+            }
+            (None, Some(index), None) => {
+                format!("[{}]", index)
+            }
+            (None, None, Some(_variable_index)) => {
+                "[]".to_string()
+            }
+            _ => {
+                panic!("Invalid PathSegment struct received");
+            }
+        }
+
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -55,6 +73,14 @@ impl Path {
         Path {
             segments: vec![PathSegment::new_key_segment(val.to_string())],
         }
+    }
+
+    pub fn to_string(&self) -> String {
+        self.segments.iter().fold(
+            String::new(),
+            |acc, segment| {
+                format!("{}{}", acc, segment.to_string())
+            })
     }
 
     pub fn with_key_segment(&self, key: String) -> Self {

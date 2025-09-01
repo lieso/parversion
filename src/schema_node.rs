@@ -28,8 +28,6 @@ pub fn arrayify_schema_node(schema_node: &mut SchemaNode, target_path_segment: &
         node: &mut SchemaNode,
         target: &ID
     ) {
-        log::debug!("schema node: {:?}", node);
-
         node.path.arrayify(target);
 
         for child_node in node.properties.values_mut() {

@@ -80,8 +80,7 @@ START TARGET SCHEMA KEY >>>
 
 Provide a JSON path against the JSON schema of the second schema indicating which field is equivalent to the target schema field, or null if there is no equivalent.
 
-Important: The JSON path should be relative to the JSON schema itself, not the resulting JSON document. This means you should identify the path within the schema structure where the equivalent
-field resides.
+Important: The JSON path should be relative to the JSON schema itself, not the resulting JSON document. This means you should identify the path within the schema structure where the equivalent field resides.
 
 For example, if the first JSON schema is this, representing an invoice:
 {{

@@ -506,12 +506,10 @@ fn apply_schema_transformations_json(
 
                 log::debug!("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 
-                log::debug!("path: {:?}", path);
-
                 let schema_node: SchemaNode = {
                     let current_schema_node = schema_nodes.get(parent_lineage).unwrap();
 
-                    log::debug!("current_schema_node path: {:?}", current_schema_node.path);
+                    log::debug!("current_schema_node path: {:?}", current_schema_node.path.to_string());
 
                     let lock = read_lock!(meta_context);
 
