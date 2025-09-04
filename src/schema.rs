@@ -189,6 +189,7 @@ impl Schema {
                         &val,
                         &key,
                         &lineage,
+                        &Path::from_str(&name),
                         false
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),

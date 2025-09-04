@@ -68,7 +68,7 @@ impl Document {
 
         let mut result: HashMap<String, Value> = HashMap::new();
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-        let path: Path = Path::new();
+        let path: Path = Path::from_str(&basis_graph.name);
 
         process_network(
             Arc::clone(&meta_context),
@@ -503,13 +503,10 @@ fn apply_schema_transformations_json(
                 }
             },
             _ => {
-
-                log::debug!("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-
                 let schema_node: SchemaNode = {
                     let current_schema_node = schema_nodes.get(parent_lineage).unwrap();
 
-                    log::debug!("current_schema_node path: {:?}", current_schema_node.path.to_string());
+                    log::debug!("current schema node: {:?}.{}", current_schema_node.path.to_string(), current_schema_node.name);
 
                     let lock = read_lock!(meta_context);
 
@@ -523,6 +520,28 @@ fn apply_schema_transformations_json(
                         current_schema_node.clone()
                     }
                 };
+
+
+
+
+
+
+
+                log::debug!("document path: {:?}", path.to_string());
+                log::debug!("transformed schema node: {:?}.{}", schema_node.path.to_string(), schema_node.name);
+
+
+
+
+
+
+
+
+
+
+
+
+
             }
         }
     }
