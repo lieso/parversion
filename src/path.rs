@@ -108,7 +108,41 @@ impl Path {
     }
 
     pub fn from_json_path(json_path: &String) -> Self {
-        Self::new()
+        log::debug!("json_path: {}", json_path);
+
+        let mut path = Path::new();
+        let path_segments = json_path.trim_start_matches('$').split('.');
+
+        for segment in path_segments {
+            let maybe_bracket = segment.find('[');
+
+            if maybe_bracket.is_none() && !segment.is_empty() {
+                log::debug!("Found key: {}", segment.to_string());
+                path = path.with_key_segment(segment.to_string());
+            }
+
+            if let Some(bracket_start) = maybe_bracket {
+                let key = &segment[..bracket_start];
+
+                if !key.is_empty() {
+                    log::debug!("Found key: {}", key.to_string());
+                    path = path.with_key_segment(segment.to_string());
+                }
+
+                let bracket_end = segment.find(']').unwrap();
+
+                let brackets_content = &segment[bracket_start..bracket_end];
+
+                if brackets_content.is_empty() {
+                    path = path.with_variable_index_segment();
+                } else {
+                    let index: usize = brackets_content.parse().unwrap();
+                    path = path.with_index_segment(index);
+                }
+            }
+        }
+
+        path
     }
 
     pub fn arrayify(&mut self, target_segment_id: &ID) {
