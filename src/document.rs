@@ -506,8 +506,6 @@ fn apply_schema_transformations_json(
                 let schema_node: SchemaNode = {
                     let current_schema_node = schema_nodes.get(parent_lineage).unwrap();
 
-                    log::debug!("current schema node: {:?}.{}", current_schema_node.path.to_string(), current_schema_node.name);
-
                     let lock = read_lock!(meta_context);
 
                     if let Some(schema_transformations) = &lock.schema_transformations {
@@ -521,27 +519,7 @@ fn apply_schema_transformations_json(
                     }
                 };
 
-
-
-
-
-
-
-                log::debug!("document path: {:?}", path.to_string());
-                log::debug!("transformed schema node: {:?}.{}", schema_node.path.to_string(), schema_node.name);
-
-
-
-
-
-
-
-
-
-
-
-
-
+                path.insert_into_hashmap(result, value.to_string());
             }
         }
     }

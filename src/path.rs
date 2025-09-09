@@ -1,4 +1,6 @@
 use serde::{Serialize, Deserialize};
+use serde_json::{Value};
+use std::collections::{HashMap};
 
 use crate::prelude::*;
 
@@ -151,5 +153,32 @@ impl Path {
         } else {
             panic!("Could not find segment with id: {}", target_segment_id.to_string());
         }
+    }
+
+    pub fn insert_into_hashmap(
+        &self,
+        hashmap: &mut HashMap<String, Value>,
+        value: String,
+    ) {
+        let mut current_position = hashmap;
+
+        for segment in &self.segments {
+            match segment {
+                PathSegment { key: Some(ref key), index: None, variable_index: None, .. } => {
+                    log::debug!("Handling key segment with key: {}", key);
+                }
+                PathSegment { key: None, index: Some(index), variable_index: None, .. } => {
+                    log::debug!("Handling index segment with index: {}", index);
+                }
+                PathSegment { key: None, index: None, variable_index: Some(variable_index), .. } => {
+                    log::debug!("Handling variable index segment with placeholder: {}", variable_index);
+                }
+                _ => {
+                    panic!("Invalid PathSegment struct received");
+                }
+            }
+        }
+
+        unimplemented!()
     }
 }
