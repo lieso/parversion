@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
-use serde_json::{json, Value};
+use serde_json::{json, Value, Map};
 use xmltree::{Element};
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
@@ -459,7 +459,7 @@ fn apply_schema_transformations_json(
     json: &Value
 ) -> Result<Document, Errors> {
 
-    let mut result: HashMap<String, Value> = HashMap::new();
+    let mut result: Map<String, Value> = Map::new();
 
     let basis_graph: Arc<BasisGraph> = {
         let lock = read_lock!(meta_context);
@@ -472,7 +472,7 @@ fn apply_schema_transformations_json(
         value: &Value,
         parent_lineage: &Lineage,
         schema_nodes: &HashMap<Lineage, SchemaNode>,
-        result: &mut HashMap<String, Value>,
+        result: &mut Map<String, Value>,
         path: &Path,
     ) {
         match value {
@@ -519,7 +519,11 @@ fn apply_schema_transformations_json(
                     }
                 };
 
-                path.insert_into_hashmap(result, value.to_string());
+                path.insert_into_hashmap(
+                    result,
+                    schema_node.name.to_string(),
+                    value.to_string()
+                );
             }
         }
     }

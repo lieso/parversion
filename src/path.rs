@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use serde_json::{Value};
+use serde_json::{json, Value, Map};
 use std::collections::{HashMap};
 
 use crate::prelude::*;
@@ -157,27 +157,48 @@ impl Path {
 
     pub fn insert_into_hashmap(
         &self,
-        hashmap: &mut HashMap<String, Value>,
-        value: String,
+        hashmap: &mut Map<String, Value>,
+        insert_key: String,
+        insert_value: String,
     ) {
-        let mut current_position = hashmap;
+        fn recurse<'a>(
+            map: &'a mut Map<String, Value>,
+            segments: &'a [PathSegment],
+        ) -> &'a mut Map<String, Value> {
+            if let Some(first_segment) = segments.first() {
+                if let Some(second_segment) = segments.get(1) {
 
-        for segment in &self.segments {
-            match segment {
-                PathSegment { key: Some(ref key), index: None, variable_index: None, .. } => {
-                    log::debug!("Handling key segment with key: {}", key);
                 }
-                PathSegment { key: None, index: Some(index), variable_index: None, .. } => {
-                    log::debug!("Handling index segment with index: {}", index);
-                }
-                PathSegment { key: None, index: None, variable_index: Some(variable_index), .. } => {
-                    log::debug!("Handling variable index segment with placeholder: {}", variable_index);
-                }
-                _ => {
-                    panic!("Invalid PathSegment struct received");
-                }
+
+                let key = first_segment.key.as_ref().unwrap();
+
+                let next_value = map
+                    .entry(key.clone())
+                    .or_insert_with(|| Value::Object(Map::new()));
+
+                let next_map = if let Value::Object(ref mut obj) = next_value {
+                    obj
+                } else {
+                    panic!("Expected an object");
+                };
+
+                let remaining_segments = &segments[1..];
+
+                recurse(
+                    next_map,
+                    remaining_segments
+                )
+            } else {
+                map
             }
         }
+
+        let object_at_path = recurse(
+            hashmap,
+            &self.segments,
+        );
+
+        log::debug!("hashmap: {:?}", hashmap);
 
         unimplemented!()
     }
