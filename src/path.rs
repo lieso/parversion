@@ -55,7 +55,10 @@ impl PathSegment {
                 panic!("Invalid PathSegment struct received");
             }
         }
+    }
 
+    pub fn is_array_segment(&self) -> bool {
+        self.index.is_some() || self.variable_index.is_some()
     }
 }
 
@@ -155,9 +158,9 @@ impl Path {
         }
     }
 
-    pub fn insert_into_hashmap(
+    pub fn insert_into_map(
         &self,
-        hashmap: &mut Map<String, Value>,
+        map: &mut Map<String, Value>,
         insert_key: String,
         insert_value: String,
     ) {
@@ -166,11 +169,35 @@ impl Path {
             segments: &'a [PathSegment],
         ) -> &'a mut Map<String, Value> {
             if let Some(first_segment) = segments.first() {
-                if let Some(second_segment) = segments.get(1) {
-
-                }
-
                 let key = first_segment.key.as_ref().unwrap();
+
+                if let Some(second_segment) = segments.get(1) {
+                    if second_segment.is_array_segment() {
+                        let next_value = map
+                            .entry(key.clone())
+                            .or_insert_with(|| Value::Array(Vec::new()));
+
+                        if let Value::Array(ref mut array) = next_value {
+                            if array.is_empty() || !matches!(array.last(), Some(Value::Object(_))) {
+                                array.push(Value::Object(Map::new()));
+                            }
+
+                            let last_object = array
+                                .last_mut()
+                                .and_then(|v| if let Value::Object(ref mut obj) = *v {
+                                    Some(obj)
+                                } else {
+                                    None
+                                })
+                                .unwrap();
+
+                            let remaining_segments = &segments[2..];
+                            return recurse(last_object, remaining_segments);
+                        } else {
+                            panic!("Expected an array");
+                        }
+                    }
+                }
 
                 let next_value = map
                     .entry(key.clone())
@@ -194,12 +221,14 @@ impl Path {
         }
 
         let object_at_path = recurse(
-            hashmap,
+            map,
             &self.segments,
         );
 
-        log::debug!("hashmap: {:?}", hashmap);
+        object_at_path
+            .entry(insert_key.clone())
+            .or_insert_with(|| Value::String(insert_value.clone()));
 
-        unimplemented!()
+        log::debug!("map: {:?}", map);
     }
 }

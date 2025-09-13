@@ -519,7 +519,7 @@ fn apply_schema_transformations_json(
                     }
                 };
 
-                path.insert_into_hashmap(
+                path.insert_into_map(
                     result,
                     schema_node.name.to_string(),
                     value.to_string()
