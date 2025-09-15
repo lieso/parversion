@@ -24,6 +24,29 @@ pub async fn translate<P: Provider>(
         return Err(Errors::ContextTooLarge);
     }
 
+
+
+
+
+    log::info!("Generating organized document");
+    let document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.add_document_version(DocumentVersion::OrganizedDocument, document.clone());
+    }
+
+    {
+        log::info!("Getting schema context");
+        let (contexts, graph_root) = &document.schema.unwrap().get_contexts()?;
+        let mut lock = write_lock!(meta_context);
+        lock.update_schema_context(contexts.clone(), graph_root.clone());
+    }
+
+
+
+
+
     log::info!("Parsing JSON schema");
     let schema = Schema::from_string(json_schema)?;
 
@@ -99,7 +122,7 @@ pub async fn translate_text_to_document<P: Provider>(
 
     let translated_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::NormalizedDocument
+        DocumentVersion::OrganizedDocument
     );
 
     translated_document
@@ -157,7 +180,7 @@ pub async fn translate_document<P: Provider>(
 
     let translated_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::NormalizedDocument
+        DocumentVersion::OrganizedDocument
     );
 
     translated_document
@@ -214,7 +237,7 @@ pub async fn translate_file_to_document<P: Provider>(
 
     let translated_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::NormalizedDocument
+        DocumentVersion::OrganizedDocument
     );
 
     translated_document
@@ -295,7 +318,7 @@ pub async fn translate_url_to_document<P: Provider>(
 
     let translated_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::NormalizedDocument
+        DocumentVersion::OrganizedDocument
     );
 
     translated_document

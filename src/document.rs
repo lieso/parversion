@@ -540,6 +540,8 @@ fn apply_schema_transformations_json(
         &start_path,
     );
 
+    log::debug!("result: {:?}", result);
+
     unimplemented!()
 }
 
