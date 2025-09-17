@@ -212,6 +212,46 @@ impl Schema {
         Ok(schema)
     }
 
+    pub fn to_string(&self) -> String {
+        fn format_node(node: &SchemaNode, indent: usize) -> String {
+            let indent_str = "  ".repeat(indent * 2);
+            let mut result = format!(
+                "{}\n{}Name: {}\n{}Description: {}\n",
+                indent_str, indent_str, node.name, indent_str, node.description
+            );
+
+            if !node.properties.is_empty() {
+                result.push_str(&format!("{}Properties:\n", indent_str));
+                for (key, child) in &node.properties {
+                    result.push_str(&format!("{}  Key: {}\n", indent_str, key));
+                    result.push_str(&format_node(child, indent + 2));
+                }
+            }
+
+            if let Some(items) = &node.items {
+                if !items.is_empty() {
+                    result.push_str(&format!("{}Items:\n", indent_str));
+                    for item in items {
+                        result.push_str(&format_node(item, indent + 1));
+                    }
+                }
+            }
+
+            result
+        }
+
+        let mut result = format!(
+            "Schema name: {}\nDescription: {}\nProperties:\n",
+            self.name, self.description
+        );
+
+        for node in self.properties.values() {
+            result.push_str(&format_node(node, 1));
+        }
+
+        result
+    }
+
     pub fn get_schema_node_by_json_path(&self, json_path: &str) -> Option<&SchemaNode> {
         log::trace!("In get_schema_node_by_json_path");
         log::debug!("json_path: {}", json_path);
