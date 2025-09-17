@@ -216,8 +216,8 @@ impl Schema {
         fn format_node(node: &SchemaNode, indent: usize) -> String {
             let indent_str = "  ".repeat(indent * 2);
             let mut result = format!(
-                "{}\n{}Name: {}\n{}Description: {}\n{}Data type: {}\n",
-                indent_str, indent_str, node.name, indent_str, node.description, indent_str, node.data_type
+                "{}\n{}Name: {}\n{}Description: {}\n{}Data type: {}\n{}Path: {}\n",
+                indent_str, indent_str, node.name, indent_str, node.description, indent_str, node.data_type, indent_str, node.path.to_string()
             );
 
             if !node.properties.is_empty() {

@@ -130,7 +130,7 @@ impl SchemaNode {
                         &val,
                         &key,
                         &lineage,
-                        &path,
+                        &parent_path,
                         false,
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
@@ -152,7 +152,10 @@ impl SchemaNode {
                             .collect::<Result<Vec<_>, Errors>>()?
                     )
                 } else {
-                    Some(vec![Self::from_serde_value(items_value, name, &lineage, &path, false)?])
+
+                    let schema_node = Self::from_serde_value(items_value, name, &lineage, &path, false)?;
+
+                    return Ok(schema_node);
                 }
             } else {
                 None
