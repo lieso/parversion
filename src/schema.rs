@@ -216,14 +216,14 @@ impl Schema {
         fn format_node(node: &SchemaNode, indent: usize) -> String {
             let indent_str = "  ".repeat(indent * 2);
             let mut result = format!(
-                "{}\n{}Name: {}\n{}Description: {}\n",
-                indent_str, indent_str, node.name, indent_str, node.description
+                "{}\n{}Name: {}\n{}Description: {}\n{}Data type: {}\n",
+                indent_str, indent_str, node.name, indent_str, node.description, indent_str, node.data_type
             );
 
             if !node.properties.is_empty() {
                 result.push_str(&format!("{}Properties:\n", indent_str));
                 for (key, child) in &node.properties {
-                    result.push_str(&format!("{}  Key: {}\n", indent_str, key));
+                    result.push_str(&format!("\n"));
                     result.push_str(&format_node(child, indent + 2));
                 }
             }
