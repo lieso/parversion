@@ -36,7 +36,10 @@ impl SchemaTransformation {
         let mut transformed = schema_node.clone();
         transformed.name = self.key.clone();
         transformed.description = self.description.clone();
-        transformed.path = self.path.clone();
+
+        let mut transformed_path = self.path.clone();
+        transformed_path.segments.pop();
+        transformed.path = transformed_path;
 
         transformed
     }
