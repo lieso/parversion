@@ -105,7 +105,7 @@ impl SchemaNode {
         name: &str,
         parent_lineage: &Lineage,
         parent_path: &Path,
-        is_array: bool
+        was_array: bool
     ) -> Result<Self, Errors> {
         log::trace!("In from_serde_value");
         log::debug!("name: {}", name);
@@ -127,12 +127,19 @@ impl SchemaNode {
             props
                 .iter()
                 .map(|(key, val)| {
+                    let new_path = if was_array {
+                        let with_key = path.with_key_segment(name.to_string());
+                        with_key.with_variable_index_segment()
+                    } else {
+                        path.with_key_segment(name.to_string())
+                    };
+
                     match Self::from_serde_value(
                         &val,
                         &key,
                         &lineage,
-                        &path.with_key_segment(name.to_string()),
-                        false,
+                        &new_path,
+                        data_type == "array"
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),
@@ -149,12 +156,26 @@ impl SchemaNode {
                     Some(
                         items_value.as_array().unwrap()
                             .iter()
-                            .map(|item_value| Self::from_serde_value(item_value, name, &lineage, &path, true))
+                            .map(|item_value|
+                                Self::from_serde_value(
+                                    item_value,
+                                    name,
+                                    &lineage,
+                                    &path,
+                                    data_type == "array"
+                                )
+                            )
                             .collect::<Result<Vec<_>, Errors>>()?
                     )
                 } else {
 
-                    let schema_node = Self::from_serde_value(items_value, name, &lineage, &path, false)?;
+                    let schema_node = Self::from_serde_value(
+                        items_value,
+                        name,
+                        &lineage,
+                        &path,
+                        data_type == "array"
+                    )?;
 
                     return Ok(schema_node);
                 }
