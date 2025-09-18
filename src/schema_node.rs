@@ -112,7 +112,8 @@ impl SchemaNode {
 
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
-        let path = parent_path.with_key_segment(name.to_string());
+
+        let mut path = parent_path.clone();
 
         let description = value.get("description")
             .and_then(|v| v.as_str())
@@ -130,7 +131,7 @@ impl SchemaNode {
                         &val,
                         &key,
                         &lineage,
-                        &parent_path,
+                        &path.with_key_segment(name.to_string()),
                         false,
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
@@ -163,6 +164,10 @@ impl SchemaNode {
         } else {
             None
         };
+
+        if data_type == "array" {
+            path = path.with_variable_index_segment();
+        }
 
         let schema_node = SchemaNode {
             id: ID::new(),

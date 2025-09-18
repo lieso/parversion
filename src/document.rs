@@ -521,6 +521,7 @@ fn apply_schema_transformations_json(
 
                 log::debug!("path: {:?}", path.to_string());
                 log::debug!("schema node path: {:?}", schema_node.path.to_string());
+                log::debug!("schema node path: {:?}", schema_node.path);
 
                 schema_node.path.insert_into_map(
                     result,
