@@ -149,6 +149,22 @@ impl Path {
 
         path
     }
+    
+    pub fn merge_path(&self, path: Path) -> Self {
+        log::trace!("In merge_path");
+
+        let mut variable_index_counter = 0;
+
+        let merged_segments: Vec<PathSegment> = self.segments.iter().map(|segment| {
+            if segment.variable_index.is_some() {
+                variable_index_counter += 1;
+            }
+
+            segment.clone()
+        }).collect();
+
+        Path { segments: merged_segments }
+    }
 
     pub fn arrayify(&mut self, target_segment_id: &ID) {
         if let Some(position) = self.segments.iter().position(|segment| segment.id == *target_segment_id) {
