@@ -157,7 +157,16 @@ impl Path {
 
         let merged_segments: Vec<PathSegment> = self.segments.iter().map(|segment| {
             if segment.variable_index.is_some() {
-                variable_index_counter += 1;
+                let index_segments: Vec<&PathSegment> = path.segments
+                    .iter()
+                    .filter(|item| item.index.is_some())
+                    .collect();
+
+                if let Some(index) = index_segments.get(variable_index_counter) {
+                    variable_index_counter += 1;
+
+                    return (*index).clone();
+                }
             }
 
             segment.clone()
