@@ -56,10 +56,6 @@ impl PathSegment {
             }
         }
     }
-
-    pub fn is_array_segment(&self) -> bool {
-        self.index.is_some() || self.variable_index.is_some()
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -172,6 +168,8 @@ impl Path {
             segment.clone()
         }).collect();
 
+        log::debug!("merged_segments: {:?}", merged_segments);
+
         Path { segments: merged_segments }
     }
 
@@ -197,7 +195,7 @@ impl Path {
                 let key = first_segment.key.as_ref().unwrap();
 
                 if let Some(second_segment) = segments.get(1) {
-                    if second_segment.is_array_segment() {
+                    if second_segment.variable_index.is_some() {
                         let next_value = map
                             .entry(key.clone())
                             .or_insert_with(|| Value::Array(Vec::new()));
@@ -221,6 +219,33 @@ impl Path {
                         } else {
                             panic!("Expected an array");
                         }
+                    } else if let Some(index) = second_segment.index {
+
+                        let next_value = map
+                            .entry(key.clone())
+                            .or_insert_with(|| Value::Array(Vec::new()));
+
+
+                        if let Value::Array(ref mut array) = next_value {
+
+                            while array.len() <= index {
+                                array.push(Value::Object(Map::new()));
+                            }
+
+                            let indexed_object = array.get_mut(index).and_then(|v| {
+                                if let Value::Object(ref mut obj) = *v {
+                                    Some(obj)
+                                } else {
+                                    None
+                                }
+                            }).unwrap();
+
+                            let remaining_segments = &segments[2..];
+                            return recurse(indexed_object, remaining_segments);
+                        } else {
+                            panic!("Expected an array");
+                        }
+
                     }
                 }
 

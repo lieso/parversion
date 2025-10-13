@@ -521,7 +521,7 @@ fn apply_schema_transformations_json(
 
                 log::debug!("path: {:?}", path.to_string());
                 log::debug!("schema node path: {:?}", schema_node.path.to_string());
-                log::debug!("schema node path: {:?}", schema_node.path);
+                log::debug!("schema node key: {:?}", schema_node.name);
 
                 let indexed_path = schema_node.path.merge_path(path.clone());
 
