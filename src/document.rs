@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
-use serde_json::{json, Value, Map};
+use serde_json::{json, Value, Map, to_string};
 use xmltree::{Element};
 use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
@@ -545,7 +545,7 @@ fn apply_schema_transformations_json(
 
     let document = Document {
         document_type: DocumentType::Json,
-        data: format!("{:?}", result),
+        data: to_string(&result).expect("Could not convert result to json string"),
         metadata: DocumentMetadata {
             origin: None,
             date: None,
