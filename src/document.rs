@@ -543,9 +543,17 @@ fn apply_schema_transformations_json(
         &start_path,
     );
 
-    log::debug!("result: {:?}", result);
+    let document = Document {
+        document_type: DocumentType::Json,
+        data: format!("{:?}", result),
+        metadata: DocumentMetadata {
+            origin: None,
+            date: None,
+        },
+        schema: None,
+    };
 
-    unimplemented!()
+    Ok(document)
 }
 
 fn process_network(
