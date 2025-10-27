@@ -503,6 +503,12 @@ fn apply_schema_transformations_json(
                 }
             },
             _ => {
+
+                // TODO: why might schema_nodes be missing parent_lineage?
+                if !schema_nodes.contains_key(parent_lineage) {
+                    return;
+                }
+
                 let schema_node: SchemaNode = {
                     let current_schema_node = schema_nodes.get(parent_lineage).unwrap();
 
