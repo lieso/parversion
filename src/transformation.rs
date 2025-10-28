@@ -31,8 +31,6 @@ pub struct SchemaTransformation {
 
 impl SchemaTransformation {
     pub fn transform(&self, schema_node: &SchemaNode) -> SchemaNode {
-        log::trace!("In transform");
-
         let mut transformed = schema_node.clone();
         transformed.name = self.key.clone();
         transformed.description = self.description.clone();

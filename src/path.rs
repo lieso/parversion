@@ -109,7 +109,6 @@ impl Path {
     }
 
     pub fn from_json_path(json_path: &String) -> Self {
-        log::debug!("json_path: {}", json_path);
 
         let mut path = Path::new();
         let path_segments = json_path.trim_start_matches('$').split('.');
@@ -118,7 +117,6 @@ impl Path {
             let maybe_bracket = segment.find('[');
 
             if maybe_bracket.is_none() && !segment.is_empty() {
-                log::debug!("Found key: {}", segment.to_string());
                 path = path.with_key_segment(segment.to_string());
             }
 
@@ -126,7 +124,6 @@ impl Path {
                 let key = &segment[..bracket_start];
 
                 if !key.is_empty() {
-                    log::debug!("Found key: {}", key.to_string());
                     path = path.with_key_segment(segment.to_string());
                 }
 
@@ -147,8 +144,6 @@ impl Path {
     }
     
     pub fn merge_path(&self, path: Path) -> Self {
-        log::trace!("In merge_path");
-
         let mut variable_index_counter = 0;
 
         let merged_segments: Vec<PathSegment> = self.segments.iter().map(|segment| {
@@ -167,8 +162,6 @@ impl Path {
 
             segment.clone()
         }).collect();
-
-        log::debug!("merged_segments: {:?}", merged_segments);
 
         Path { segments: merged_segments }
     }
@@ -278,7 +271,5 @@ impl Path {
         object_at_path
             .entry(insert_key.clone())
             .or_insert_with(|| Value::String(insert_value.clone()));
-
-        log::debug!("map: {:?}", map);
     }
 }

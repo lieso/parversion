@@ -122,8 +122,6 @@ impl Document {
             DocumentType::Json => {
                 match serde_json::from_str::<Value>(&document.data) {
                     Ok(json_value) => {
-                        log::debug!("Parsed JSON: {:?}", json_value);
-
                         let schema_nodes = document.schema.clone().unwrap().collect_schema_nodes();
 
                         apply_schema_transformations_json(
@@ -524,10 +522,6 @@ fn apply_schema_transformations_json(
                         current_schema_node.clone()
                     }
                 };
-
-                log::debug!("path: {:?}", path.to_string());
-                log::debug!("schema node path: {:?}", schema_node.path.to_string());
-                log::debug!("schema node key: {:?}", schema_node.name);
 
                 let indexed_path = schema_node.path.merge_path(path.clone());
 
