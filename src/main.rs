@@ -115,6 +115,11 @@ async fn main() {
             .long("url")
             .value_name("URL")
             .help("Provide url as document for processing"))
+        .arg(Arg::with_name("inline")
+            .short('i')
+            .long("inline")
+            .value_name("INLINE")
+            .help("Provide document directly in parameter"))
         .arg(Arg::with_name("schema-file")
             .long("schema-file")
             .value_name("SCHEMA_FILE")
@@ -242,6 +247,35 @@ async fn main() {
                 match normalization::normalize_url_to_document(
                     provider.clone(),
                     url,
+                    &Some(options),
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        handle_error(err);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        } else if let Some(inline_document) = matches.value_of("inline") {
+            log::info!("Received an inline document");
+
+            if let Some(json_schema) = maybe_json_schema {
+                match translation::translate_text_to_document(
+                    provider.clone(),
+                    inline_document.to_string(),
+                    &Some(options),
+                    &json_schema,
+                ).await {
+                    Ok(document) => document,
+                    Err(err) => {
+                        handle_error(err);
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                match normalization::normalize_text_to_document(
+                    provider.clone(),
+                    inline_document.to_string(),
                     &Some(options),
                 ).await {
                     Ok(document) => document,
