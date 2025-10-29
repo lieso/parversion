@@ -116,15 +116,17 @@ async fn main() {
             .value_name("URL")
             .help("Provide url as document for processing"))
         .arg(Arg::with_name("schema-file")
-            .short('s')
             .long("schema-file")
             .value_name("SCHEMA_FILE")
             .help("Provide file as schema for translation"))
         .arg(Arg::with_name("schema-url")
-            .short('S')
             .long("schema-url")
             .value_name("SCHEMA_URL")
             .help("Provide url as schema for translation"))
+        .arg(Arg::with_name("schema-inline")
+            .long("schema-inline")
+            .value_name("SCHEMA_INLINE")
+            .help("Provide schema directly in parameter value for translation"))
         .arg(Arg::with_name("version")
             .short('v')
             .long("version")
@@ -148,7 +150,9 @@ async fn main() {
     log::debug!("options: {:?}", options);
 
     let maybe_json_schema: Option<String> = {
-        if let Some(path) = matches.value_of("schema-file") {
+        if let Some(schema) = matches.value_of("schema-inline") {
+            Some(schema.to_string())
+        } else if let Some(path) = matches.value_of("schema-file") {
             let text = get_file_as_text(path).expect("Could not get schema file");
             Some(text)
         } else if let Some(url) = matches.value_of("schema-url") {
