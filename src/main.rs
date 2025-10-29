@@ -46,6 +46,8 @@ mod path;
 
 use crate::prelude::*;
 use crate::provider::yaml::{YamlFileProvider};
+use crate::provider::{Provider};
+use crate::document::Document;
 
 const VERSION: &str = "1.0.0";
 
@@ -136,6 +138,148 @@ fn parse_arguments() -> clap::ArgMatches {
         .get_matches()
 }
 
+async fn get_schema(matches: &clap::ArgMatches) -> Option<String> {
+    if let Some(schema) = matches.value_of("schema-inline") {
+        Some(schema.to_string())
+    } else if let Some(path) = matches.value_of("schema-file") {
+        let text = get_file_as_text(path).expect("Could not get schema file");
+        Some(text)
+    } else if let Some(url) = matches.value_of("schema-url") {
+        let text = fetch_url_as_text(url).await.expect("Could not get schema from URL");
+        Some(text)
+    } else {
+        None
+    }
+}
+
+async fn determine_document<P: Provider>(
+    maybe_json_schema: Option<String>,
+    provider: Arc<P>,
+    options: Options,
+    matches: &clap::ArgMatches
+) -> Document {
+    if let Ok(stdin) = load_stdin() {
+        log::info!("Received data from stdin");
+
+        if let Some(json_schema) = maybe_json_schema {
+            match translation::translate_text_to_document(
+                provider.clone(),
+                stdin,
+                &Some(options),
+                &json_schema,
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            match normalization::normalize_text_to_document(
+                provider.clone(),
+                stdin,
+                &Some(options),
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        }
+    } else if let Some(path) = matches.value_of("file") {
+        log::info!("Received a file name");
+
+        if let Some(json_schema) = maybe_json_schema {
+            match translation::translate_file_to_document(
+                provider.clone(),
+                path,
+                &Some(options),
+                &json_schema,
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            match normalization::normalize_file_to_document(
+                provider.clone(),
+                path,
+                &Some(options),
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        }
+    } else if let Some(url) = matches.value_of("url") {
+        log::info!("Received a URL");
+
+        if let Some(json_schema) = maybe_json_schema {
+            match translation::translate_url_to_document(
+                provider.clone(),
+                url,
+                &Some(options),
+                &json_schema,
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            match normalization::normalize_url_to_document(
+                provider.clone(),
+                url,
+                &Some(options),
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        }
+    } else if let Some(inline_document) = matches.value_of("inline") {
+        log::info!("Received an inline document");
+
+        if let Some(json_schema) = maybe_json_schema {
+            match translation::translate_text_to_document(
+                provider.clone(),
+                inline_document.to_string(),
+                &Some(options),
+                &json_schema,
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            match normalization::normalize_text_to_document(
+                provider.clone(),
+                inline_document.to_string(),
+                &Some(options),
+            ).await {
+                Ok(document) => document,
+                Err(err) => {
+                    handle_error(err);
+                    std::process::exit(1);
+                }
+            }
+        }
+    } else {
+        eprintln!("No valid input provided. Please provide either stdin, a file or URL.");
+        std::process::exit(1);
+    }
+}
+
 #[tokio::main]
 async fn main() {
     setup();
@@ -158,142 +302,14 @@ async fn main() {
     };
     log::debug!("options: {:?}", options);
 
-    let maybe_json_schema: Option<String> = {
-        if let Some(schema) = matches.value_of("schema-inline") {
-            Some(schema.to_string())
-        } else if let Some(path) = matches.value_of("schema-file") {
-            let text = get_file_as_text(path).expect("Could not get schema file");
-            Some(text)
-        } else if let Some(url) = matches.value_of("schema-url") {
-            let text = fetch_url_as_text(url).await.expect("Could not get schema from URL");
-            Some(text)
-        } else {
-            None
-        }
-    };
+    let maybe_json_schema: Option<String> = get_schema(&matches).await;
 
-    let document = {
-        if let Ok(stdin) = load_stdin() {
-            log::info!("Received data from stdin");
-
-            if let Some(json_schema) = maybe_json_schema {
-                match translation::translate_text_to_document(
-                    provider.clone(),
-                    stdin,
-                    &Some(options),
-                    &json_schema,
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            } else {
-                match normalization::normalize_text_to_document(
-                    provider.clone(),
-                    stdin,
-                    &Some(options),
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            }
-        } else if let Some(path) = matches.value_of("file") {
-            log::info!("Received a file name");
-
-            if let Some(json_schema) = maybe_json_schema {
-                match translation::translate_file_to_document(
-                    provider.clone(),
-                    path,
-                    &Some(options),
-                    &json_schema,
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            } else {
-                match normalization::normalize_file_to_document(
-                    provider.clone(),
-                    path,
-                    &Some(options),
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            }
-        } else if let Some(url) = matches.value_of("url") {
-            log::info!("Received a URL");
-
-            if let Some(json_schema) = maybe_json_schema {
-                match translation::translate_url_to_document(
-                    provider.clone(),
-                    url,
-                    &Some(options),
-                    &json_schema,
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            } else {
-                match normalization::normalize_url_to_document(
-                    provider.clone(),
-                    url,
-                    &Some(options),
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            }
-        } else if let Some(inline_document) = matches.value_of("inline") {
-            log::info!("Received an inline document");
-
-            if let Some(json_schema) = maybe_json_schema {
-                match translation::translate_text_to_document(
-                    provider.clone(),
-                    inline_document.to_string(),
-                    &Some(options),
-                    &json_schema,
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            } else {
-                match normalization::normalize_text_to_document(
-                    provider.clone(),
-                    inline_document.to_string(),
-                    &Some(options),
-                ).await {
-                    Ok(document) => document,
-                    Err(err) => {
-                        handle_error(err);
-                        std::process::exit(1);
-                    }
-                }
-            }
-        } else {
-            eprintln!("No valid input provided. Please provide either stdin, a file or URL.");
-            std::process::exit(1);
-        }
-    };
+    let document = determine_document(
+        maybe_json_schema,
+        provider,
+        options,
+        &matches
+    ).await;
 
     log::info!("Successfully processed document");
 
