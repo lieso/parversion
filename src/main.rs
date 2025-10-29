@@ -99,11 +99,8 @@ fn handle_error(err: Errors) {
     }
 }
 
-#[tokio::main]
-async fn main() {
-    setup();
-
-    let matches = App::new("parversion")
+fn parse_arguments() -> clap::ArgMatches {
+    App::new("parversion")
         .version(VERSION)
         .arg(Arg::with_name("file")
              .short('f')
@@ -136,7 +133,14 @@ async fn main() {
             .short('v')
             .long("version")
             .help("Display program version"))
-        .get_matches();
+        .get_matches()
+}
+
+#[tokio::main]
+async fn main() {
+    setup();
+
+    let matches = parse_arguments();
 
     if matches.is_present("version") {
         println!("parversion {}", VERSION);
