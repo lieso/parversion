@@ -264,7 +264,12 @@ impl Provider for YamlFileProvider {
         Ok(None)
     }
 
-    async fn save_schema_transformation(&self, lineage: &Lineage, schema_transformation: SchemaTransformation) -> Result<(), Errors> {
+    async fn save_schema_transformation(
+        &self,
+        lineage: &Lineage,
+        target_schema: Option<&Hash>,
+        schema_transformation: SchemaTransformation
+    ) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
 
         let serialized_schema_transformation = serde_yaml::to_value(&schema_transformation)

@@ -275,7 +275,8 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     provider.save_schema_transformation(
         &lineage,
-        schema_transformation.clone()
+        None,
+        schema_transformation.clone(),
     ).await?;
 
     Ok(schema_transformation)
@@ -331,7 +332,8 @@ async fn get_translation_schema_transformation<P: Provider>(
 
         provider.save_schema_transformation(
             &lineage,
-            schema_transformation.clone()
+            Some(&subgraph_hash),
+            schema_transformation.clone(),
         ).await?;
 
         Ok(schema_transformation)
@@ -347,7 +349,8 @@ async fn get_translation_schema_transformation<P: Provider>(
 
         provider.save_schema_transformation(
             &lineage,
-            schema_transformation.clone()
+            Some(&subgraph_hash),
+            schema_transformation.clone(),
         ).await?;
 
         Ok(schema_transformation)

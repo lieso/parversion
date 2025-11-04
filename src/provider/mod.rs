@@ -50,12 +50,13 @@ pub trait Provider: Send + Sync + Sized + 'static {
     async fn get_schema_transformation(
         &self,
         lineage: &Lineage,
-        target: Option<&Hash>
+        target_schema: Option<&Hash>
     ) -> Result<Option<SchemaTransformation>, Errors>;
     async fn save_schema_transformation(
         &self,
         lineage: &Lineage,
-        schema_transformation: SchemaTransformation
+        target_schema: Option<&Hash>,
+        schema_transformation: SchemaTransformation,
     ) -> Result<(), Errors>;
 }
 
@@ -133,6 +134,7 @@ impl Provider for VoidProvider {
     async fn save_schema_transformation(
         &self,
         _lineage: &Lineage,
+        _target_schema: Option<&Hash>,
         _schema_transformation: SchemaTransformation
     ) -> Result<(), Errors> {
         Ok(())
