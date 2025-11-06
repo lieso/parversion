@@ -157,138 +157,88 @@ async fn determine_document<P: Provider>(
     provider: Arc<P>,
     options: Options,
     matches: &clap::ArgMatches
-) -> Document {
+) -> Result<Document, Errors> {
     if let Ok(stdin) = load_stdin() {
         log::info!("Received data from stdin");
 
         if let Some(json_schema) = maybe_json_schema {
-            match translation::translate_text_to_document(
+            translation::translate_text_to_document(
                 provider.clone(),
                 stdin,
                 &Some(options),
                 &json_schema,
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         } else {
-            match normalization::normalize_text_to_document(
+            normalization::normalize_text_to_document(
                 provider.clone(),
                 stdin,
                 &Some(options),
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         }
     } else if let Some(path) = matches.value_of("file") {
         log::info!("Received a file name");
 
         if let Some(json_schema) = maybe_json_schema {
-            match translation::translate_file_to_document(
+            translation::translate_file_to_document(
                 provider.clone(),
                 path,
                 &Some(options),
                 &json_schema,
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         } else {
-            match normalization::normalize_file_to_document(
+            normalization::normalize_file_to_document(
                 provider.clone(),
                 path,
                 &Some(options),
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         }
     } else if let Some(url) = matches.value_of("url") {
         log::info!("Received a URL");
 
         if let Some(json_schema) = maybe_json_schema {
-            match translation::translate_url_to_document(
+            translation::translate_url_to_document(
                 provider.clone(),
                 url,
                 &Some(options),
                 &json_schema,
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         } else {
-            match normalization::normalize_url_to_document(
+            normalization::normalize_url_to_document(
                 provider.clone(),
                 url,
                 &Some(options),
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         }
     } else if let Some(inline_document) = matches.value_of("inline") {
         log::info!("Received an inline document");
 
         if let Some(json_schema) = maybe_json_schema {
-            match translation::translate_text_to_document(
+            translation::translate_text_to_document(
                 provider.clone(),
                 inline_document.to_string(),
                 &Some(options),
                 &json_schema,
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         } else {
-            match normalization::normalize_text_to_document(
+            normalization::normalize_text_to_document(
                 provider.clone(),
                 inline_document.to_string(),
                 &Some(options),
-            ).await {
-                Ok(document) => document,
-                Err(err) => {
-                    handle_error(err);
-                    std::process::exit(1);
-                }
-            }
+            ).await
         }
     } else {
-        eprintln!("No valid input provided. Please provide either stdin, a file or URL.");
-        std::process::exit(1);
+        Err(Errors::DocumentNotProvided)
     }
 }
 
-#[tokio::main]
-async fn main() {
+async fn run() -> Result<(), Errors> {
     setup();
 
     let matches = parse_arguments();
 
     if matches.is_present("version") {
         println!("parversion {}", VERSION);
-        return;
+        return Ok(());
     }
 
     let document_format = document_format::DocumentFormat::default();
@@ -309,11 +259,20 @@ async fn main() {
         provider,
         options,
         &matches
-    ).await;
+    ).await?;
 
     log::info!("Successfully processed document");
 
     println!("{}", document.to_string(&Some(document_format)));
 
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    if let Err(e) = run().await {
+        println!("Error occurred: {:?}", e);
+        std::process::exit(1);
+    }
     std::process::exit(0);
 }
