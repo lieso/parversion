@@ -19,15 +19,6 @@ pub async fn translate<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
 
-    if json_schema.len() > 10000 {
-        log::error!("Schema is over 10000 characters...");
-        return Err(Errors::ContextTooLarge);
-    }
-
-
-
-
-
     log::info!("Generating organized document");
     let document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
 
@@ -42,10 +33,6 @@ pub async fn translate<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.update_schema_context(contexts.clone(), graph_root.clone());
     }
-
-
-
-
 
     log::info!("Parsing JSON schema");
     let schema = Schema::from_string(json_schema)?;
@@ -97,11 +84,18 @@ pub async fn translate_text_to_meta_context<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_text_to_meta_context");
 
-    //let document = Document::from_string(text, _options)?;
-    //let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
-    let meta_context = organize_text(Arc::clone(&provider), text, _options).await?;
+    let meta_context = organize_text(
+        Arc::clone(&provider),
+        text,
+        _options
+    ).await?;
 
-    translate_meta_context(Arc::clone(&provider), meta_context, _options, json_schema).await
+    translate_meta_context(
+        Arc::clone(&provider),
+        meta_context,
+        _options,
+        json_schema
+    ).await
 }
 
 #[allow(dead_code)]
