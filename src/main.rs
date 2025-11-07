@@ -6,6 +6,9 @@ use log::LevelFilter;
 use std::io::stdout;
 use fern::Dispatch;
 use cfg_if::cfg_if;
+use dirs;
+use std::path::PathBuf;
+use std::fs;
 
 mod basis_network;
 mod basis_node;
@@ -245,7 +248,20 @@ async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "yaml-provider")] {
             log::info!("Using yaml file provider");
-            Ok(Arc::new(YamlFileProvider::new(String::from("provider.yaml"))))
+
+            let data_dir = dirs::data_dir()
+                .ok_or_else(|| Errors::ProviderError("Could not find data directory".into()))?;
+
+            let provider_path = data_dir.join(PROGRAM_NAME).join("provider.yaml");
+            
+            if let Some(parent_dir) = provider_path.parent() {
+                fs::create_dir_all(parent_dir).expect("Unable to create directory");
+            }
+
+            log::debug!("provider_path: {}", provider_path.display());
+
+            Ok(Arc::new(YamlFileProvider::new(provider_path.to_string_lossy().into_owned())))
+        
         } else {
             log::warn!("Using VoidProvider, document will be completely reprocessed each time");
             Ok(Arc::new(VoidProvider))
