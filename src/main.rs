@@ -54,7 +54,7 @@ use crate::provider::{Provider, VoidProvider};
 use crate::provider::yaml::{YamlFileProvider};
 use crate::document::Document;
 
-const VERSION: &str = "1.0.0";
+const VERSION: &str = "0.0.0";
 const PROGRAM_NAME: &str = "parversion";
 
 fn load_stdin() -> io::Result<String> {
