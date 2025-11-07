@@ -13,11 +13,13 @@ use crate::basis_graph::BasisGraph;
 use crate::transformation::SchemaTransformation;
 use crate::provider::Provider;
 
+#[cfg(feature = "yaml-provider")]
 pub struct YamlFileProvider {
     file_path: String,
     cache: Arc<AsyncRwLock<Option<serde_yaml::Value>>>,
 }
 
+#[cfg(feature = "yaml-provider")]
 impl YamlFileProvider {
     pub fn new(file_path: String) -> Self {
         Self {
@@ -80,6 +82,7 @@ impl YamlFileProvider {
     }
 }
 
+#[cfg(feature = "yaml-provider")]
 #[async_trait]
 impl Provider for YamlFileProvider {
     async fn get_profile(&self, features: &HashSet<Hash>) -> Result<Option<Profile>, Errors> {

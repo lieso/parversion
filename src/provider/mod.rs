@@ -8,6 +8,7 @@ use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::transformation::SchemaTransformation;
 
+#[cfg(feature = "yaml-provider")]
 pub mod yaml;
 
 #[async_trait]

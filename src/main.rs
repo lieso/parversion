@@ -5,6 +5,7 @@ use clap::{Arg, App};
 use log::LevelFilter;
 use std::io::stdout;
 use fern::Dispatch;
+use cfg_if::cfg_if;
 
 mod basis_network;
 mod basis_node;
@@ -45,8 +46,9 @@ mod schema_context;
 mod path;
 
 use crate::prelude::*;
+use crate::provider::{Provider, VoidProvider};
+#[cfg(feature = "yaml-provider")]
 use crate::provider::yaml::{YamlFileProvider};
-use crate::provider::{Provider};
 use crate::document::Document;
 
 const VERSION: &str = "1.0.0";
@@ -119,6 +121,11 @@ fn parse_arguments() -> clap::ArgMatches {
             .long("inline")
             .value_name("INLINE")
             .help("Provide document directly in parameter"))
+        .arg(Arg::with_name("provider")
+            .short('p')
+            .long("provider")
+            .value_name("PROVIDER")
+            .help("Specify data provider"))
         .arg(Arg::with_name("schema-file")
             .long("schema-file")
             .value_name("SCHEMA_FILE")
@@ -152,7 +159,7 @@ async fn get_schema(matches: &clap::ArgMatches) -> Option<String> {
     }
 }
 
-async fn determine_document<P: Provider>(
+async fn determine_document<P: Provider + ?Sized>(
     maybe_json_schema: Option<String>,
     provider: Arc<P>,
     options: Options,
@@ -231,6 +238,20 @@ async fn determine_document<P: Provider>(
     }
 }
 
+async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
+    log::info!("Initializing data provider...");
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "yaml-provider")] {
+            log::info!("Using yaml file provider");
+            Ok(Arc::new(YamlFileProvider::new(String::from("provider.yaml"))))
+        } else {
+            log::warn!("Using VoidProvider, document will be completely reprocessed each time");
+            Ok(Arc::new(VoidProvider))
+        }
+    }
+}
+
 async fn run() -> Result<(), Errors> {
     setup();
 
@@ -243,9 +264,7 @@ async fn run() -> Result<(), Errors> {
 
     let document_format = document_format::DocumentFormat::default();
 
-    let provider = Arc::new(YamlFileProvider::new(String::from("provider.yaml")));
-
-    log::info!("Using yaml file provider");
+    let provider = init_provider().await?;
 
     let options = Options {
         ..Options::default()

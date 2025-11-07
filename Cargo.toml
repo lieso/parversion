@@ -31,11 +31,12 @@ dotenv = "0.15.0"
 fern = "0.7.0"
 async-trait = "0.1.83"
 quick-js = "0.4.1"
-serde_yaml = "0.9.34"
+serde_yaml = { version = "0.9.34", optional = true }
 fantoccini = "0.21.3"
 once_cell = { version = "1.20.2", optional = true }
 hex = "0.4.3"
 chrono = "0.4.41"
+cfg-if = "1.0.4"
 
 [lib]
 name = "parversion"
@@ -48,3 +49,4 @@ path = "src/main.rs"
 [features]
 default = []
 caching = ["dep:sled", "dep:once_cell"]
+yaml-provider = ["dep:serde_yaml"]
