@@ -52,6 +52,7 @@ use crate::provider::yaml::{YamlFileProvider};
 use crate::document::Document;
 
 const VERSION: &str = "1.0.0";
+const PROGRAM_NAME: &str = "parversion";
 
 fn load_stdin() -> io::Result<String> {
     log::trace!("In load_stdin");
@@ -79,7 +80,7 @@ fn init_logging() {
             ))
         })
         .level(LevelFilter::Off)
-        .level_for("parversion", LevelFilter::Trace)
+        .level_for(PROGRAM_NAME, LevelFilter::Trace)
         .chain(stdout())
         .apply()
         .expect("Could not initialize logging");
@@ -104,7 +105,7 @@ fn handle_error(err: Errors) {
 }
 
 fn parse_arguments() -> clap::ArgMatches {
-    App::new("parversion")
+    App::new(PROGRAM_NAME)
         .version(VERSION)
         .arg(Arg::with_name("file")
              .short('f')
@@ -258,7 +259,7 @@ async fn run() -> Result<(), Errors> {
     let matches = parse_arguments();
 
     if matches.is_present("version") {
-        println!("parversion {}", VERSION);
+        println!("{} {}", PROGRAM_NAME, VERSION);
         return Ok(());
     }
 
