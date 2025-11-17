@@ -528,7 +528,7 @@ fn apply_schema_transformations_json(
                 indexed_path.insert_into_map(
                     result,
                     schema_node.name.to_string(),
-                    value.to_string()
+                    value.as_str().unwrap().to_string()
                 );
             }
         }
