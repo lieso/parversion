@@ -49,10 +49,12 @@ mod schema_context;
 mod path;
 
 use crate::prelude::*;
+use crate::document::Document;
 use crate::provider::{Provider, VoidProvider};
 #[cfg(feature = "yaml-provider")]
 use crate::provider::yaml::{YamlFileProvider};
-use crate::document::Document;
+#[cfg(feature = "sqlite-provider")]
+use crate::provider::sqlite::{SqliteProvider};
 
 const VERSION: &str = "0.0.0";
 const PROGRAM_NAME: &str = "parversion";
@@ -256,6 +258,22 @@ async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
             log::debug!("provider_path: {}", provider_path.display());
 
             Ok(Arc::new(YamlFileProvider::new(provider_path.to_string_lossy().into_owned())))
+        
+        } else if #[cfg(feature = "sqlite-provider")] {
+            log::info!("Using sqlite provider");
+
+            let data_dir = dirs::data_dir()
+                .ok_or_else(|| Errors::ProviderError("Could not find data directory".into()))?;
+
+            let provider_path = data_dir.join(PROGRAM_NAME).join("provider.sqlite");
+            
+            if let Some(parent_dir) = provider_path.parent() {
+                fs::create_dir_all(parent_dir).expect("Unable to create directory");
+            }
+
+            log::debug!("provider_path: {}", provider_path.display());
+
+            Ok(Arc::new(SqliteProvider::new(provider_path.to_string_lossy().into_owned())))
         
         } else {
             log::warn!("Using VoidProvider, document will be completely reprocessed each time");
