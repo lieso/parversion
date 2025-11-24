@@ -8,66 +8,23 @@ use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::transformation::SchemaTransformation;
 
-#[cfg(feature = "yaml-provider")]
-pub mod yaml;
-
 #[cfg(feature = "sqlite-provider")]
-pub mod sqlite;
+pub struct SqliteProvider {
 
-#[async_trait]
-pub trait Provider: Send + Sync + Sized + 'static {
-    async fn get_profile(
-        &self,
-        features: &HashSet<Hash>
-    ) -> Result<Option<Profile>, Errors>;
-    async fn save_profile(
-        &self,
-        profile: &Profile
-    ) -> Result<(), Errors>;
-    async fn get_basis_node_by_lineage(
-        &self,
-        lineage: &Lineage
-    ) -> Result<Option<BasisNode>, Errors>;
-    async fn save_basis_node(
-        &self,
-        lineage: &Lineage,
-        basis_node: BasisNode,
-    ) -> Result<(), Errors>;
-    async fn get_basis_network_by_subgraph_hash(
-        &self,
-        subgraph_hash: &String
-    ) -> Result<Option<BasisNetwork>, Errors>;
-    async fn save_basis_network(
-        &self,
-        subgraph_hash: String,
-        basis_network: BasisNetwork
-    ) -> Result<(), Errors>;
-    async fn get_basis_graph_by_lineage(
-        &self,
-        lineage: &Lineage
-    ) -> Result<Option<BasisGraph>, Errors>;
-    async fn save_basis_graph(
-        &self,
-        lineage: &Lineage,
-        basis_graph: BasisGraph
-    ) -> Result<(), Errors>;
-    async fn get_schema_transformation(
-        &self,
-        lineage: &Lineage,
-        target_schema: Option<&Hash>
-    ) -> Result<Option<SchemaTransformation>, Errors>;
-    async fn save_schema_transformation(
-        &self,
-        lineage: &Lineage,
-        target_schema: Option<&Hash>,
-        schema_transformation: SchemaTransformation,
-    ) -> Result<(), Errors>;
 }
 
-pub struct VoidProvider;
+#[cfg(feature = "sqlite-provider")]
+impl SqliteProvider {
+    pub fn new() -> Self {
+        Self {
 
+        }
+    }
+}
+
+#[cfg(feature = "yaml-provider")]
 #[async_trait]
-impl Provider for VoidProvider {
+impl Provider for YamlFileProvider {
     async fn get_profile(
         &self,
         _features: &HashSet<Hash>

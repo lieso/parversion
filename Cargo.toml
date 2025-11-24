@@ -38,6 +38,7 @@ hex = "0.4.3"
 chrono = "0.4.41"
 cfg-if = "1.0.4"
 dirs = "6.0.0"
+rusqlite = { version = "0.37.0", features = ["bundled"], optional = true }
 
 [lib]
 name = "parversion"
@@ -51,3 +52,4 @@ path = "src/main.rs"
 default = []
 caching = ["dep:sled", "dep:once_cell"]
 yaml-provider = ["dep:serde_yaml"]
+sqlite-provider = ["dep:rusqlite"]
