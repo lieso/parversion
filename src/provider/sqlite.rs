@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 use std::collections::{HashSet};
+use rusqlite::{Connection, Result};
+use std::sync::{Arc, Mutex};
 
 use crate::prelude::*;
 use crate::profile::Profile;
@@ -7,24 +9,29 @@ use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::transformation::SchemaTransformation;
+use crate::provider::Provider;
 
 #[cfg(feature = "sqlite-provider")]
 pub struct SqliteProvider {
-
+    file_path: String,
+    connection: Arc<Mutex<Connection>>,
 }
 
 #[cfg(feature = "sqlite-provider")]
 impl SqliteProvider {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(file_path: String) -> Self {
+        let connection = Connection::open(&file_path).expect("Could not create sqlite connection");
 
+        Self {
+            file_path,
+            connection: Arc::new(Mutex::new(connection)),
         }
     }
 }
 
-#[cfg(feature = "yaml-provider")]
+#[cfg(feature = "sqlite-provider")]
 #[async_trait]
-impl Provider for YamlFileProvider {
+impl Provider for SqliteProvider {
     async fn get_profile(
         &self,
         _features: &HashSet<Hash>
