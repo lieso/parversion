@@ -6,6 +6,12 @@ use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use std::collections::{HashSet, HashMap, VecDeque};
+use swc_common::sync::Lrc;
+use swc_common::{SourceMap, FileName, BytePos};
+use swc_ecma_parser::{Syntax, Parser, StringInput};
+use swc_ecma_parser::lexer::Lexer;
+use swc_ecma_ast::Program;
+use std::rc::Rc;
 
 use crate::prelude::*;
 use crate::document_node::{DocumentNode};
@@ -301,7 +307,58 @@ impl Document {
         &mut self,
         provider: Arc<P>
     ) -> Result<Profile, Errors> {
-        log::trace!("In document/perform_analysis");
+        log::trace!("In perform_analysis");
+
+
+
+
+
+
+
+
+
+
+        let cm: Lrc<SourceMap> = Default::default();
+
+        let source_file = cm.new_source_file(Rc::new(FileName::Custom("inline.js".into())), self.data.to_string());
+
+        let lexer = Lexer::new(
+            Syntax::Es(Default::default()),
+            Default::default(),
+            StringInput::from(&*source_file),
+            None,
+        );
+
+        let mut parser = Parser::new_from(lexer);
+
+        match parser.parse_program() {
+            Ok(program) => {
+                log::debug!("{:#?}", program);
+            },
+            Err(e) => {
+                log::info!("Document is not javascript");
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         if let Some(dom) = self.to_dom() {
             log::info!("It seems to be possible to parse this document as XML");
