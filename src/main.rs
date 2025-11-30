@@ -55,6 +55,7 @@ use crate::provider::{Provider, VoidProvider};
 use crate::provider::yaml::{YamlFileProvider};
 #[cfg(feature = "sqlite-provider")]
 use crate::provider::sqlite::{SqliteProvider};
+use crate::config::{CONFIG};
 
 const VERSION: &str = "0.0.0";
 const PROGRAM_NAME: &str = "parversion";
@@ -93,6 +94,11 @@ fn init_logging() {
 
 fn setup() {
     init_logging();
+
+    let config = read_lock!(CONFIG);
+
+    log::debug!("===========CONFIGURATION===========");
+    log::debug!("{:?}", config);
 }
 
 fn handle_error(err: Errors) {
