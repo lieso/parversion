@@ -50,7 +50,7 @@ fn get_default_debug_dir() -> String {
 
 impl Config {
     fn default() -> Self {
-        Config {
+        let config = Config {
             llm: LlmConfig {
                 llm_provider: LlmProvider::OpenAI,
                 max_concurrency: 1,
@@ -58,7 +58,9 @@ impl Config {
                 schema_neighbour_count: 20,
             },
             dev: DevConfig::default(),
-        }
+        };
+
+        config
     }
 
     fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
@@ -70,7 +72,9 @@ impl Config {
 
     fn load_or_create_default(path: &str) -> Config {
         if Path::new(path).exists() {
-            Config::load_from_file(path).unwrap_or_else(|_| Config::default())
+            Config::load_from_file(path).unwrap_or_else(|e| {
+                panic!("Failed to load config from settings.toml: {}", e);
+            })
         } else {
             Config::default()
         }
