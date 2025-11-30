@@ -36,3 +36,4 @@ pub mod schema_node;
 pub mod schema_context;
 pub mod path;
 pub mod reduction;
+pub mod mutations;

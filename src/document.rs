@@ -43,6 +43,7 @@ use crate::graph_node::{Graph};
 pub enum DocumentType {
     Json,
     PlainText,
+    JavaScript,
     Xml,
     Html,
 }

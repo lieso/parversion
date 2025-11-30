@@ -14,6 +14,7 @@ pub enum Errors {
     FileOutputError,
     DocumentNotProvided,
     UnexpectedDocumentType,
+    DocumentTypeNotProvided,
     UnexpectedError,
     XmlParseError,
     PathConversionError,

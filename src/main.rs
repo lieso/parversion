@@ -49,15 +49,17 @@ mod schema_node;
 mod schema_context;
 mod path;
 mod reduction;
+mod mutations;
 
 use crate::prelude::*;
-use crate::document::Document;
+use crate::document::{Document, DocumentType};
 use crate::provider::{Provider, VoidProvider};
 #[cfg(feature = "yaml-provider")]
 use crate::provider::yaml::{YamlFileProvider};
 #[cfg(feature = "sqlite-provider")]
 use crate::provider::sqlite::{SqliteProvider};
 use crate::config::{CONFIG};
+use crate::mutations::Mutations;
 
 const VERSION: &str = "0.0.0";
 const PROGRAM_NAME: &str = "parversion";
@@ -151,6 +153,10 @@ fn parse_arguments() -> clap::ArgMatches {
             .short('v')
             .long("version")
             .help("Display program version"))
+        .arg(Arg::with_name("document-type")
+            .short('d')
+            .long("document-type")
+            .help("The document type : html, xml, js"))
         .get_matches()
 }
 
@@ -165,6 +171,66 @@ async fn get_schema(matches: &clap::ArgMatches) -> Option<String> {
         Some(text)
     } else {
         None
+    }
+}
+
+fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors> {
+    if let Some(document_type_input) = matches.value_of("document-type") {
+        match document_type_input {
+            "js" => Ok(DocumentType::JavaScript),
+            "html" => Ok(DocumentType::Html),
+            "xml" => Ok(DocumentType::Xml),
+            _ => Err(Errors::UnexpectedDocumentType),
+        }
+    } else {
+        Err(Errors::DocumentTypeNotProvided)
+    }
+}
+
+async fn determine_program<P: Provider + ?Sized>(
+    provider: Arc<P>,
+    options: Options,
+    matches: &clap::ArgMatches,
+    document_type: DocumentType
+) -> Result<Mutations, Errors> {
+    if let Ok(stdin) = load_stdin() {
+        log::info!("Received data from stdin");
+
+        reduction::reduce_text_to_mutations(
+            provider.clone(),
+            stdin,
+            &Some(options),
+            document_type.clone(),
+        ).await
+    } else if let Some(path) = matches.value_of("file") {
+        log::info!("Received a file name");
+
+        reduction::reduce_file_to_mutations(
+            provider.clone(),
+            path,
+            &Some(options),
+            document_type.clone(),
+        ).await
+    } else if let Some(url) = matches.value_of("url") {
+        log::info!("Received a URL");
+
+        reduction::reduce_url_to_mutations(
+            provider.clone(),
+            url,
+            &Some(options),
+            document_type.clone(),
+        ).await
+    } else if let Some(inline_document) = matches.value_of("inline") {
+        log::info!("Received an inline program");
+
+        reduction::reduce_text_to_mutations(
+            provider.clone(),
+            inline_document.to_string(),
+            &Some(options),
+            document_type.clone(),
+        ).await
+    } else {
+        Err(Errors::DocumentNotProvided)
     }
 }
 
@@ -302,7 +368,7 @@ async fn run() -> Result<(), Errors> {
         return Ok(());
     }
 
-    let document_format = document_format::DocumentFormat::default();
+    let document_type = get_document_type(&matches)?;
 
     let provider = init_provider().await?;
 
@@ -310,22 +376,54 @@ async fn run() -> Result<(), Errors> {
         ..Options::default()
     };
     log::debug!("options: {:?}", options);
+    
 
-    let maybe_json_schema: Option<String> = get_schema(&matches).await;
 
-    let document = determine_document(
-        maybe_json_schema,
-        provider,
-        options,
-        &matches
-    ).await?;
 
-    log::info!("Successfully processed document");
+
+    if document_type == DocumentType::JavaScript {
+
+
+        let mutations = determine_program(
+            provider,
+            options,
+            &matches,
+            document_type,
+        ).await?;
+
+        log::debug!("Successfully processed program");
+
+        println!("{}", mutations.to_string());
+
+
+    } else {
+
+    
+        ///////////////
+
+        let document_format = document_format::DocumentFormat::default();
+        let maybe_json_schema: Option<String> = get_schema(&matches).await;
+
+        let document = determine_document(
+            maybe_json_schema,
+            provider,
+            options,
+            &matches
+        ).await?;
+
+        log::info!("Successfully processed document");
+
+        println!("{}", document.to_string(&Some(document_format)));
+
+        //////////////
+
+
+
+    }
+
 
     let elapsed = start.elapsed();
     log::info!("Elapsed: {:.2?}", elapsed);
-
-    println!("{}", document.to_string(&Some(document_format)));
 
     Ok(())
 }
