@@ -9,6 +9,7 @@ use cfg_if::cfg_if;
 use dirs;
 use std::path::PathBuf;
 use std::fs;
+use std::time::Instant;
 
 mod basis_network;
 mod basis_node;
@@ -289,6 +290,8 @@ async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
 }
 
 async fn run() -> Result<(), Errors> {
+    let start = Instant::now();
+
     setup();
 
     let matches = parse_arguments();
@@ -317,6 +320,9 @@ async fn run() -> Result<(), Errors> {
     ).await?;
 
     log::info!("Successfully processed document");
+
+    let elapsed = start.elapsed();
+    log::info!("Elapsed: {:.2?}", elapsed);
 
     println!("{}", document.to_string(&Some(document_format)));
 
