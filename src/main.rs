@@ -48,6 +48,7 @@ mod node_analysis;
 mod schema_node;
 mod schema_context;
 mod path;
+mod reduction;
 
 use crate::prelude::*;
 use crate::document::Document;

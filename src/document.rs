@@ -861,7 +861,8 @@ impl Visit for AstExplorer {
          self.fn_count += 1;
 
          let foo = format!("{:?}", f);
-         if foo.contains("serverUrl") {
+         //if foo.contains("serverUrl") {
+         if true {
              let func_decl = FnDecl {
                  ident: Ident::new("wrapped".into(), f.span, SyntaxContext::empty()),
                  declare: false,
