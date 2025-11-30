@@ -6,11 +6,16 @@ use html5ever::parse_document;
 use html5ever::tendril::TendrilSink;
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use std::collections::{HashSet, HashMap, VecDeque};
+
+
 use swc_common::sync::Lrc;
-use swc_common::{SourceMap, FileName, BytePos};
+use swc_common::{SourceMap, FileName, BytePos, SyntaxContext};
 use swc_ecma_parser::{Syntax, Parser, StringInput};
 use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_ast::Program;
+use swc_ecma_ast::*;
+use swc_ecma_visit::{Visit, VisitWith};
+use swc_ecma_codegen::{Emitter, text_writer::JsWriter};
 use std::rc::Rc;
 
 use crate::prelude::*;
@@ -333,7 +338,7 @@ impl Document {
 
         match parser.parse_program() {
             Ok(program) => {
-                log::debug!("{:#?}", program);
+                explore_with_visitor(&program);
             },
             Err(e) => {
                 log::info!("Document is not javascript");
@@ -341,6 +346,8 @@ impl Document {
         }
 
 
+        
+        panic!("test");
 
 
 
@@ -834,3 +841,89 @@ fn process_node(
 
     Ok(())
 }
+
+
+
+
+
+
+
+
+
+
+struct AstExplorer {
+    pub fn_count: i64,
+    pub cm: Lrc<SourceMap>,
+}
+
+impl Visit for AstExplorer {
+     fn visit_function(&mut self, f: &Function) {
+         self.fn_count += 1;
+
+         let foo = format!("{:?}", f);
+         if foo.contains("serverUrl") {
+             let func_decl = FnDecl {
+                 ident: Ident::new("wrapped".into(), f.span, SyntaxContext::empty()),
+                 declare: false,
+                 function: Box::new(f.clone()),
+             };
+
+             let module = Module {
+                 span: f.span,
+                 body: vec![ModuleItem::Stmt(Stmt::Decl(Decl::Fn(func_decl)))],
+                 shebang: None,
+             };
+
+             let mut buf = Vec::new();
+             {
+                 let writer = JsWriter::new(self.cm.clone(), "\n", &mut buf, None);
+                 let mut emitter = Emitter {
+                     cfg: Default::default(),
+                     comments: None,
+                     cm: self.cm.clone(),
+                     wr: Box::new(writer),
+                 };
+
+                 emitter.emit_module(&module).expect("emit failed");
+             }
+
+             let output = String::from_utf8(buf).expect("non-utf8 output from emitter");
+             log::debug!("PRETTY FUNCTION:\n{}", output);
+         }
+
+         f.visit_children_with(self);
+     }
+
+     fn visit_fn_decl(&mut self, n: &FnDecl) {
+         n.visit_children_with(self);
+     }
+
+     fn visit_var_decl(&mut self, n: &VarDecl) {
+         n.visit_children_with(self);
+     }
+
+     fn visit_class_decl(&mut self, n: &ClassDecl) {
+         n.visit_children_with(self);
+     }
+
+     fn visit_expr(&mut self, n: &Expr) {
+         if let Expr::Call(call) = n {
+             call.visit_children_with(self);
+             return;
+         }
+         n.visit_children_with(self);
+     }
+ }
+
+fn explore_with_visitor(program: &Program) {
+     let cm: Lrc<SourceMap> = Default::default();
+
+     let mut explorer = AstExplorer {
+         fn_count: 0,
+         cm,
+     };
+
+     program.visit_with(&mut explorer);
+     println!("fn count: {}", explorer.fn_count);
+ }
+
