@@ -157,7 +157,7 @@ Please also provide a justification for your response.
             }
         });
 
-        match Self::send_openai_request::<MatchSchemaNodeResponse>(&system_prompt, &user_prompt, response_format, true).await {
+        match Self::send_openai_request::<MatchSchemaNodeResponse>(&system_prompt, &user_prompt, response_format).await {
             Ok(response) => {
                 log::debug!("╔═════════════════════════════════╗");
                 log::debug!("║       TRANSLATE SCHEMA START    ║");
@@ -240,7 +240,7 @@ In addition to the new property name:
             }
         });
 
-        match Self::send_openai_request::<NormalResponse>(&system_prompt, &user_prompt, response_format, false).await {
+        match Self::send_openai_request::<NormalResponse>(&system_prompt, &user_prompt, response_format).await {
             Ok(response) => {
                 log::debug!("╔══════════════════════════════╗");
                 log::debug!("║       NORMAL SCHEMA START    ║");
@@ -380,8 +380,7 @@ In addition to the new property name:
         match Self::send_openai_request::<SummaryResponse>(
             &system_prompt,
             &user_prompt,
-            response_format,
-            false
+            response_format
         ).await {
             Ok(response) => {
                 log::debug!("╔════════════════════════════╗");
@@ -547,12 +546,7 @@ Consider this website context when deciding how to match fragment type IDs:
             }
         });
 
-        match Self::send_openai_request::<AssociationsResponse>(
-            &system_prompt,
-            &user_prompt,
-            response_format,
-            true
-        ).await {
+        match Self::send_openai_request::<AssociationsResponse>(&system_prompt, &user_prompt, response_format).await {
             Ok(response) => {
                 log::debug!("╔══════════════════════════════╗");
                 log::debug!("║       ASSOCIATIONS START     ║");
@@ -643,8 +637,7 @@ Example {}:
         match Self::send_openai_request(
             &system_prompt,
             &user_prompt,
-            response_format,
-            false
+            response_format
         ).await {
             Ok(response) => {
                 log::debug!("╔═════════════════════════════════╗");
@@ -743,8 +736,7 @@ Example {}:
         match Self::send_openai_request(
             &system_prompt,
             &user_prompt,
-            response_format,
-            false
+            response_format
         ).await {
             Ok(response) => {
                 log::debug!("╔════════════════════════════════════════╗");
@@ -890,8 +882,7 @@ Example {}:
         match Self::send_openai_request(
             &system_prompt,
             &user_prompt,
-            response_format,
-            false
+            response_format
         ).await {
             Ok(response) => {
                 log::debug!("╔════════════════════════════════════════╗");
@@ -920,7 +911,6 @@ Example {}:
         system_prompt: &str,
         user_prompt: &str,
         response_format: serde_json::Value,
-        is_challenging: bool,
     ) -> Result<T, Box<dyn std::error::Error>>
     where
         T: DeserializeOwned,
@@ -934,19 +924,12 @@ Example {}:
         ]);
         let hash = hash.finalize();
 
-        let model = {
-            if is_challenging {
-                "gpt-5-pro-2025-10-06".to_string()
-            } else {
-                "gpt-5.1-2025-11-13".to_string()
-            }
-        };
-
         let response = Self::get_or_set_cache(hash.clone(), || async {
             let openai_api_key = get_env_variable("OPENAI_API_KEY");
 
             let request_json = json!({
-                "model": model,
+                "model": "gpt-4o-2024-08-06",
+                "temperature": 0,
                 "input": [
                     {
                         "role": "system",
