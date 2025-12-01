@@ -156,6 +156,7 @@ fn parse_arguments() -> clap::ArgMatches {
         .arg(Arg::with_name("document-type")
             .short('d')
             .long("document-type")
+            .value_name("DOCUMENT_TYPE")
             .help("The document type : html, xml, js"))
         .get_matches()
 }
@@ -176,6 +177,8 @@ async fn get_schema(matches: &clap::ArgMatches) -> Option<String> {
 
 fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors> {
     if let Some(document_type_input) = matches.value_of("document-type") {
+        log::debug!("*****************************************************************************************************");
+        log::debug!("document_type_input: {}", document_type_input);
         match document_type_input {
             "js" => Ok(DocumentType::JavaScript),
             "html" => Ok(DocumentType::Html),
