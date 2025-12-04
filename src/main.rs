@@ -177,8 +177,6 @@ async fn get_schema(matches: &clap::ArgMatches) -> Option<String> {
 
 fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors> {
     if let Some(document_type_input) = matches.value_of("document-type") {
-        log::debug!("*****************************************************************************************************");
-        log::debug!("document_type_input: {}", document_type_input);
         match document_type_input {
             "js" => Ok(DocumentType::JavaScript),
             "html" => Ok(DocumentType::Html),

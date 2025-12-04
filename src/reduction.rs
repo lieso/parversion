@@ -8,6 +8,7 @@ use swc_ecma_ast::*;
 use swc_ecma_visit::{Visit, VisitWith};
 use swc_ecma_codegen::{Emitter, text_writer::JsWriter};
 use std::rc::Rc;
+use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::document::{Document, DocumentType};
@@ -115,6 +116,7 @@ pub async fn reduce_file_to_mutations<P: Provider>(
 
 struct AstExplorer {
     pub fn_count: i64,
+    pub hash_count: HashMap<String, usize>,
     pub cm: Lrc<SourceMap>,
 }
 
@@ -122,37 +124,46 @@ impl Visit for AstExplorer {
      fn visit_function(&mut self, f: &Function) {
          self.fn_count += 1;
 
-         let foo = format!("{:?}", f);
-         //if foo.contains("serverUrl") {
-         if true {
-             let func_decl = FnDecl {
-                 ident: Ident::new("wrapped".into(), f.span, SyntaxContext::empty()),
-                 declare: false,
-                 function: Box::new(f.clone()),
+         let func_decl = FnDecl {
+             ident: Ident::new("wrapped".into(), f.span, SyntaxContext::empty()),
+             declare: false,
+             function: Box::new(f.clone()),
+         };
+
+         let module = Module {
+             span: f.span,
+             body: vec![ModuleItem::Stmt(Stmt::Decl(Decl::Fn(func_decl)))],
+             shebang: None,
+         };
+
+         let mut buf = Vec::new();
+         {
+             let writer = JsWriter::new(self.cm.clone(), "\n", &mut buf, None);
+             let mut emitter = Emitter {
+                 cfg: Default::default(),
+                 comments: None,
+                 cm: self.cm.clone(),
+                 wr: Box::new(writer),
              };
 
-             let module = Module {
-                 span: f.span,
-                 body: vec![ModuleItem::Stmt(Stmt::Decl(Decl::Fn(func_decl)))],
-                 shebang: None,
-             };
-
-             let mut buf = Vec::new();
-             {
-                 let writer = JsWriter::new(self.cm.clone(), "\n", &mut buf, None);
-                 let mut emitter = Emitter {
-                     cfg: Default::default(),
-                     comments: None,
-                     cm: self.cm.clone(),
-                     wr: Box::new(writer),
-                 };
-
-                 emitter.emit_module(&module).expect("emit failed");
-             }
-
-             let output = String::from_utf8(buf).expect("non-utf8 output from emitter");
-             log::debug!("PRETTY FUNCTION:\n{}", output);
+             emitter.emit_module(&module).expect("emit failed");
          }
+
+         let output = String::from_utf8(buf).expect("non-utf8 output from emitter");
+
+
+         log::debug!("PRETTY FUNCTION:\n{}", output);
+
+
+         let hash = Hash::from_str(&output);
+         
+         log::debug!("hash: {}", hash.to_string().unwrap());
+
+
+         *self.hash_count
+             .entry(hash.to_string().unwrap())
+             .or_insert(0) += 1;
+
 
          f.visit_children_with(self);
      }
@@ -183,10 +194,12 @@ fn explore_with_visitor(program: &Program) {
 
      let mut explorer = AstExplorer {
          fn_count: 0,
+         hash_count: HashMap::new(),
          cm,
      };
 
      program.visit_with(&mut explorer);
      println!("fn count: {}", explorer.fn_count);
+     println!("hash count: {:?}", explorer.hash_count);
  }
 
