@@ -8,8 +8,11 @@ use swc_ecma_ast::*;
 use swc_ecma_visit::{Visit, VisitMut, VisitMutWith, VisitWith};
 use swc_ecma_codegen::{Emitter, text_writer::JsWriter};
 use std::rc::Rc;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use swc_atoms::Atom;
+use std::fs;
+use std::path::Path;
+use std::io;
 
 use crate::prelude::*;
 use crate::document::{Document, DocumentType};
@@ -42,27 +45,9 @@ pub async fn reduce_text_to_mutations<P: Provider>(
 
 
 
-    let cm: Lrc<SourceMap> = Default::default();
 
-    let source_file = cm.new_source_file(Rc::new(FileName::Custom("inline.js".into())), text.to_string());
-
-    let lexer = Lexer::new(
-        Syntax::Es(Default::default()),
-        Default::default(),
-        StringInput::from(&*source_file),
-        None,
-    );
-
-    let mut parser = Parser::new_from(lexer);
-
-    match parser.parse_program() {
-        Ok(program) => {
-            explore_with_visitor(&program);
-        },
-        Err(e) => {
-            log::info!("Document is not javascript");
-        }
-    }
+    let program =  parse(text);
+    explore_with_visitor(&program);
 
 
 
@@ -118,6 +103,8 @@ pub async fn reduce_file_to_mutations<P: Provider>(
 struct AstExplorer {
     pub fn_count: i64,
     pub hash_count: HashMap<String, usize>,
+    pub ignore_hash: HashSet<String>,
+    pub hash_ignore_count: i64,
     pub cm: Lrc<SourceMap>,
 }
 
@@ -171,12 +158,18 @@ impl Visit for AstExplorer {
 
         let hash = Hash::from_str(&output);
         
-        log::debug!("hash: {}", hash.to_string().unwrap());
+        let hash_string = hash.to_string().unwrap();
+        log::debug!("hash: {}", hash_string);
 
+        if !self.ignore_hash.contains(&hash_string) {
 
-        *self.hash_count
-            .entry(hash.to_string().unwrap())
-            .or_insert(0) += 1;
+            *self.hash_count
+                .entry(hash_string)
+                .or_insert(0) += 1;
+
+        } else {
+            self.hash_ignore_count += 1;
+        }
 
 
         f.visit_children_with(self);
@@ -246,21 +239,66 @@ impl VisitMut for Normalizer {
 }
 
 
+fn parse(text: String) -> Program {
+    let cm: Lrc<SourceMap> = Default::default();
+
+    let source_file = cm.new_source_file(Rc::new(FileName::Custom("inline.js".into())), text.to_string());
+
+    let lexer = Lexer::new(
+        Syntax::Es(Default::default()),
+        Default::default(),
+        StringInput::from(&*source_file),
+        None,
+    );
+
+    let mut parser = Parser::new_from(lexer);
+
+    parser.parse_program().expect("Could not parse program")
+}
 
 
 
-fn explore_with_visitor(program: &Program) {
-     let cm: Lrc<SourceMap> = Default::default();
+fn explore_with_visitor(target_program: &Program) {
+     let cm1: Lrc<SourceMap> = Default::default();
 
+
+     let path = Path::new("./js/min.js");
+     let contents = fs::read_to_string(path).expect("Could not load lodash");
+
+     let program = parse(contents);
      let mut explorer = AstExplorer {
          fn_count: 0,
          hash_count: HashMap::new(),
-         cm,
+         ignore_hash: HashSet::new(),
+         hash_ignore_count: 0,
+         cm: cm1,
      };
 
      program.visit_with(&mut explorer);
      println!("fn count: {}", explorer.fn_count);
-     println!("hash count: {:?}", explorer.hash_count);
      println!("hash count: {}", explorer.hash_count.len());
+
+     let cm2: Lrc<SourceMap> = Default::default();
+
+     let mut ignore_hash = HashSet::new();
+     ignore_hash.extend(explorer.hash_count.keys().cloned());
+
+     let mut explorer = AstExplorer {
+         fn_count: 0,
+         hash_count: HashMap::new(),
+         ignore_hash,
+         hash_ignore_count: 0,
+         cm: cm2
+     };
+
+     target_program.visit_with(&mut explorer);
+     println!("hash count: {}", explorer.hash_count.len());
+     println!("hash ignore count: {}", explorer.hash_ignore_count);
+
+
+
+
+
+
  }
 
