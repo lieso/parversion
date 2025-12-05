@@ -108,6 +108,31 @@ struct AstExplorer {
     pub cm: Lrc<SourceMap>,
 }
 
+impl AstExplorer {
+    fn emit_stmt(&self, stmt: Stmt, span: swc_common::Span) -> String {
+        let module = Module {
+            span,
+            body: vec![ModuleItem::Stmt(stmt)],
+            shebang: None,
+        };
+
+        let mut buf = Vec::new();
+        {
+            let writer = JsWriter::new(self.cm.clone(), "\n", &mut buf, None);
+            let mut emitter = Emitter {
+                cfg: Default::default(),
+                comments: None,
+                cm: self.cm.clone(),
+                wr: Box::new(writer),
+            };
+
+            emitter.emit_module(&module).expect("emit failed");
+        }
+
+        String::from_utf8(buf).expect("non-utf8 output from emitter")
+    }
+}
+
 impl Visit for AstExplorer {
     fn visit_function(&mut self, f: &Function) {
         self.fn_count += 1;
@@ -153,15 +178,16 @@ impl Visit for AstExplorer {
         let output = String::from_utf8(buf).expect("non-utf8 output from emitter");
 
 
-        log::debug!("PRETTY FUNCTION:\n{}", output);
 
 
         let hash = Hash::from_str(&output);
         
         let hash_string = hash.to_string().unwrap();
-        log::debug!("hash: {}", hash_string);
 
         if !self.ignore_hash.contains(&hash_string) {
+
+            log::debug!("hash: {}", hash_string);
+            log::debug!("PRETTY FUNCTION:\n{}", output);
 
             *self.hash_count
                 .entry(hash_string)
@@ -180,6 +206,10 @@ impl Visit for AstExplorer {
     }
 
     fn visit_var_decl(&mut self, n: &VarDecl) {
+        let stmt = Stmt::Decl(Decl::Var(Box::new(n.clone())));
+        let output = self.emit_stmt(stmt, n.span);
+        log::debug!("VAR DECL:\n{}", output);
+
         n.visit_children_with(self);
     }
 
