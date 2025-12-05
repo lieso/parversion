@@ -47,7 +47,7 @@ pub async fn reduce_text_to_mutations<P: Provider>(
 
 
     let program =  parse(text);
-    explore_with_visitor(&program);
+    explore(&program);
 
 
 
@@ -226,6 +226,22 @@ impl Visit for AstExplorer {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #[derive(Default)]
 struct Normalizer {
     rename_map: HashMap<Atom, Atom>,
@@ -269,6 +285,68 @@ impl VisitMut for Normalizer {
 }
 
 
+
+
+
+
+#[derive(Debug)]
+enum JavaScriptValue {
+    Indeterminate, // unknowable, null, undefined
+    Bool(bool),
+    Number(f64),
+    String(String),
+}
+
+#[derive(Debug)]
+struct ValueCollector {
+    values: HashMap<String, JavaScriptValue>,
+}
+
+impl ValueCollector {
+    fn resolve_expr(&self, expr: &Expr) -> JavaScriptValue {
+        match expr {
+            _ => JavaScriptValue::Indeterminate
+        }
+    }
+
+    fn bind_pattern(&mut self, pat: &Pat, value: JavaScriptValue) {
+        match pat {
+            _ => {}
+        }
+    }
+}
+
+impl Visit for ValueCollector {
+    fn visit_var_decl(&mut self, n: &VarDecl) {
+        for decl in &n.decls {
+            let value = if let Some(init) = &decl.init {
+                self.resolve_expr(&*init)
+            } else {
+                JavaScriptValue::Indeterminate
+            };
+
+            self.bind_pattern(&decl.name, value);
+        }
+
+        n.visit_children_with(self);
+    }
+
+    fn visit_fn_decl(&mut self, n: &FnDecl) {
+        let name = n.ident.sym.to_string();
+
+        self.values.insert(name, JavaScriptValue::Indeterminate);
+        n.visit_children_with(self);
+    }
+}
+
+
+
+
+
+
+
+
+
 fn parse(text: String) -> Program {
     let cm: Lrc<SourceMap> = Default::default();
 
@@ -288,7 +366,7 @@ fn parse(text: String) -> Program {
 
 
 
-fn explore_with_visitor(target_program: &Program) {
+fn explore(target_program: &Program) {
      let cm1: Lrc<SourceMap> = Default::default();
 
 
@@ -305,8 +383,38 @@ fn explore_with_visitor(target_program: &Program) {
      };
 
      program.visit_with(&mut explorer);
-     println!("fn count: {}", explorer.fn_count);
-     println!("hash count: {}", explorer.hash_count.len());
+     //println!("fn count: {}", explorer.fn_count);
+     //println!("hash count: {}", explorer.hash_count.len());
+
+
+
+
+
+
+     let cm3: Lrc<SourceMap> = Default::default();
+
+
+     let mut collector = ValueCollector {
+         values: HashMap::new(),
+     };
+
+     program.visit_with(&mut collector);
+
+     log::debug!("collector: {:?}", collector);
+
+     unimplemented!();
+
+
+
+
+
+
+
+
+
+
+
+
 
      let cm2: Lrc<SourceMap> = Default::default();
 
