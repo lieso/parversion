@@ -303,31 +303,7 @@ struct ValueCollector {
 }
 
 impl ValueCollector {
-    fn emit_stmt(&self, stmt: Stmt, span: swc_common::Span) -> String {
-        let module = Module {
-            span,
-            body: vec![ModuleItem::Stmt(stmt)],
-            shebang: None,
-        };
-
-        let mut buf = Vec::new();
-        {
-            let writer = JsWriter::new(self.cm.clone(), "\n", &mut buf, None);
-            let mut emitter = Emitter {
-                cfg: Default::default(),
-                comments: None,
-                cm: self.cm.clone(),
-                wr: Box::new(writer),
-            };
-
-            emitter.emit_module(&module).expect("emit failed");
-        }
-
-        String::from_utf8(buf).expect("non-utf8 output from emitter")
-    }
-}
-impl ValueCollector {
-    fn resolve_expr(&self, expr: &Expr) -> JavaScriptValue {
+    fn resolve_expr(&mut self, expr: &Expr) -> JavaScriptValue {
         match expr {
             Expr::Lit(lit) => match lit {
                 Lit::Str(s) => JavaScriptValue::String(s.value.as_str().unwrap().to_string()),
@@ -353,7 +329,33 @@ impl ValueCollector {
                     _ => JavaScriptValue::Indeterminate
                 }
             }
+            Expr::Object(obj) => {
+                for prop in &obj.props {
+                    match prop {
+                        PropOrSpread::Prop(p) => {
+                            if let Prop::KeyValue(kv) = &**p {
+                                if let Some(key_str) = self.resolve_prop_name(&kv.key) {
+                                    let value = self.resolve_expr(&kv.value);
+                                    self.values.insert(key_str, value);
+                                }
+                            }
+
+                        }
+                        _ => {}
+                    }
+                }
+
+                JavaScriptValue::Indeterminate
+            }
             _ => JavaScriptValue::Indeterminate
+        }
+    }
+
+    fn resolve_prop_name(&self, name: &PropName) -> Option<String> {
+        match name {
+            PropName::Ident(i) => Some(i.sym.to_string()),
+            PropName::Str(s) => Some(s.value.as_str().unwrap().to_string()),
+            _ => None,
         }
     }
 
@@ -361,9 +363,6 @@ impl ValueCollector {
         match pat {
             Pat::Ident(bi) => {
                 let name = bi.id.sym.to_string();
-                if let Some(existing_value) = self.values.get(&name) {
-                    log::debug!("EXISTING VALUE FOUND: {:?}", existing_value);
-                }
                 self.values.insert(name, value);
             }
             Pat::Array(arr) => {
@@ -378,9 +377,6 @@ impl ValueCollector {
                     match prop {
                         ObjectPatProp::Assign(assign) => {
                             let name = assign.key.sym.to_string();
-                            if let Some(existing_value) = self.values.get(&name) {
-                                log::debug!("EXISTING VALUE FOUND: {:?}", existing_value);
-                            }
                             self.values.insert(name, JavaScriptValue::Indeterminate);
                         }
                         ObjectPatProp::KeyValue(kv) => {
@@ -399,11 +395,6 @@ impl ValueCollector {
 
 impl Visit for ValueCollector {
     fn visit_var_decl(&mut self, n: &VarDecl) {
-
-        let stmt = Stmt::Decl(Decl::Var(Box::new(n.clone())));
-        let output = self.emit_stmt(stmt, n.span);
-        //log::debug!("VAR DECL:\n{}", output);
-
         for decl in &n.decls {
             let value = if let Some(init) = &decl.init {
                 self.resolve_expr(&*init)
@@ -420,9 +411,6 @@ impl Visit for ValueCollector {
     fn visit_fn_decl(&mut self, n: &FnDecl) {
         let name = n.ident.sym.to_string();
 
-        if let Some(existing_value) = self.values.get(&name) {
-            log::debug!("EXISTING VALUE FOUND: {:?}", existing_value);
-        }
         self.values.insert(name, JavaScriptValue::Indeterminate);
         n.visit_children_with(self);
     }
