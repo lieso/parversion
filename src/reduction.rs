@@ -289,7 +289,7 @@ impl VisitMut for Normalizer {
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum JavaScriptValue {
     Indeterminate, // unknowable, null, undefined
     Bool(bool),
@@ -297,20 +297,101 @@ enum JavaScriptValue {
     String(String),
 }
 
-#[derive(Debug)]
 struct ValueCollector {
-    values: HashMap<String, JavaScriptValue>,
+    pub values: HashMap<String, JavaScriptValue>,
+    pub cm: Lrc<SourceMap>,
 }
 
 impl ValueCollector {
+    fn emit_stmt(&self, stmt: Stmt, span: swc_common::Span) -> String {
+        let module = Module {
+            span,
+            body: vec![ModuleItem::Stmt(stmt)],
+            shebang: None,
+        };
+
+        let mut buf = Vec::new();
+        {
+            let writer = JsWriter::new(self.cm.clone(), "\n", &mut buf, None);
+            let mut emitter = Emitter {
+                cfg: Default::default(),
+                comments: None,
+                cm: self.cm.clone(),
+                wr: Box::new(writer),
+            };
+
+            emitter.emit_module(&module).expect("emit failed");
+        }
+
+        String::from_utf8(buf).expect("non-utf8 output from emitter")
+    }
+}
+impl ValueCollector {
     fn resolve_expr(&self, expr: &Expr) -> JavaScriptValue {
         match expr {
+            Expr::Lit(lit) => match lit {
+                Lit::Str(s) => JavaScriptValue::String(s.value.as_str().unwrap().to_string()),
+                Lit::Num(n) => JavaScriptValue::Number(n.value),
+                Lit::Bool(b) => JavaScriptValue::Bool(b.value),
+                _ => JavaScriptValue::Indeterminate,
+            }
+            Expr::Ident(id) => {
+                let name = id.sym.to_string();
+                self.values.get(&name).cloned().unwrap_or(JavaScriptValue::Indeterminate)
+            }
+            Expr::Bin(bin) => {
+                let left = self.resolve_expr(&bin.left);
+                let right = self.resolve_expr(&bin.right);
+
+                match (bin.op, left, right) {
+                    (BinaryOp::Add, JavaScriptValue::Number(a), JavaScriptValue::Number(b)) => {
+                        JavaScriptValue::Number(a + b)
+                    }
+                    (BinaryOp::Add, JavaScriptValue::String(a), JavaScriptValue::String(b)) => {
+                        JavaScriptValue::String(format!("{}{}", a, b))
+                    }
+                    _ => JavaScriptValue::Indeterminate
+                }
+            }
             _ => JavaScriptValue::Indeterminate
         }
     }
 
     fn bind_pattern(&mut self, pat: &Pat, value: JavaScriptValue) {
         match pat {
+            Pat::Ident(bi) => {
+                let name = bi.id.sym.to_string();
+                if let Some(existing_value) = self.values.get(&name) {
+                    log::debug!("EXISTING VALUE FOUND: {:?}", existing_value);
+                }
+                self.values.insert(name, value);
+            }
+            Pat::Array(arr) => {
+                for elem in &arr.elems {
+                    if let Some(p) = elem {
+                        self.bind_pattern(&p, JavaScriptValue::Indeterminate);
+                    }
+                }
+            }
+            Pat::Object(obj) => {
+                for prop in &obj.props {
+                    match prop {
+                        ObjectPatProp::Assign(assign) => {
+                            let name = assign.key.sym.to_string();
+                            if let Some(existing_value) = self.values.get(&name) {
+                                log::debug!("EXISTING VALUE FOUND: {:?}", existing_value);
+                            }
+                            self.values.insert(name, JavaScriptValue::Indeterminate);
+                        }
+                        ObjectPatProp::KeyValue(kv) => {
+                            self.bind_pattern(&kv.value, JavaScriptValue::Indeterminate);
+                        }
+                        ObjectPatProp::Rest(rest) => {
+                            self.bind_pattern(&rest.arg, JavaScriptValue::Indeterminate);
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -318,6 +399,11 @@ impl ValueCollector {
 
 impl Visit for ValueCollector {
     fn visit_var_decl(&mut self, n: &VarDecl) {
+
+        let stmt = Stmt::Decl(Decl::Var(Box::new(n.clone())));
+        let output = self.emit_stmt(stmt, n.span);
+        //log::debug!("VAR DECL:\n{}", output);
+
         for decl in &n.decls {
             let value = if let Some(init) = &decl.init {
                 self.resolve_expr(&*init)
@@ -334,6 +420,9 @@ impl Visit for ValueCollector {
     fn visit_fn_decl(&mut self, n: &FnDecl) {
         let name = n.ident.sym.to_string();
 
+        if let Some(existing_value) = self.values.get(&name) {
+            log::debug!("EXISTING VALUE FOUND: {:?}", existing_value);
+        }
         self.values.insert(name, JavaScriptValue::Indeterminate);
         n.visit_children_with(self);
     }
@@ -370,19 +459,19 @@ fn explore(target_program: &Program) {
      let cm1: Lrc<SourceMap> = Default::default();
 
 
-     let path = Path::new("./js/min.js");
-     let contents = fs::read_to_string(path).expect("Could not load lodash");
+     //let path = Path::new("./js/min.js");
+     //let contents = fs::read_to_string(path).expect("Could not load lodash");
 
-     let program = parse(contents);
-     let mut explorer = AstExplorer {
-         fn_count: 0,
-         hash_count: HashMap::new(),
-         ignore_hash: HashSet::new(),
-         hash_ignore_count: 0,
-         cm: cm1,
-     };
+     //let program = parse(contents);
+     //let mut explorer = AstExplorer {
+     //    fn_count: 0,
+     //    hash_count: HashMap::new(),
+     //    ignore_hash: HashSet::new(),
+     //    hash_ignore_count: 0,
+     //    cm: cm1,
+     //};
 
-     program.visit_with(&mut explorer);
+     //program.visit_with(&mut explorer);
      //println!("fn count: {}", explorer.fn_count);
      //println!("hash count: {}", explorer.hash_count.len());
 
@@ -393,16 +482,14 @@ fn explore(target_program: &Program) {
 
      let cm3: Lrc<SourceMap> = Default::default();
 
-
      let mut collector = ValueCollector {
          values: HashMap::new(),
+         cm: cm3,
      };
 
-     program.visit_with(&mut collector);
+     target_program.visit_with(&mut collector);
 
-     log::debug!("collector: {:?}", collector);
-
-     unimplemented!();
+     log::debug!("collector: {:?}", collector.values);
 
 
 
@@ -416,22 +503,23 @@ fn explore(target_program: &Program) {
 
 
 
-     let cm2: Lrc<SourceMap> = Default::default();
 
-     let mut ignore_hash = HashSet::new();
-     ignore_hash.extend(explorer.hash_count.keys().cloned());
+     //let cm2: Lrc<SourceMap> = Default::default();
 
-     let mut explorer = AstExplorer {
-         fn_count: 0,
-         hash_count: HashMap::new(),
-         ignore_hash,
-         hash_ignore_count: 0,
-         cm: cm2
-     };
+     //let mut ignore_hash = HashSet::new();
+     //ignore_hash.extend(explorer.hash_count.keys().cloned());
 
-     target_program.visit_with(&mut explorer);
-     println!("hash count: {}", explorer.hash_count.len());
-     println!("hash ignore count: {}", explorer.hash_ignore_count);
+     //let mut explorer = AstExplorer {
+     //    fn_count: 0,
+     //    hash_count: HashMap::new(),
+     //    ignore_hash,
+     //    hash_ignore_count: 0,
+     //    cm: cm2
+     //};
+
+     //target_program.visit_with(&mut explorer);
+     //println!("hash count: {}", explorer.hash_count.len());
+     //println!("hash ignore count: {}", explorer.hash_ignore_count);
 
 
 
