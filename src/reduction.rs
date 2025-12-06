@@ -437,7 +437,6 @@ fn parse(text: String) -> Program {
 
 
 fn explore(target_program: &Program) {
-     let cm1: Lrc<SourceMap> = Default::default();
 
 
 
@@ -445,16 +444,15 @@ fn explore(target_program: &Program) {
 
 
 
-     let cm3: Lrc<SourceMap> = Default::default();
+     let cm: Lrc<SourceMap> = Default::default();
 
      let mut collector = ValueCollector {
          values: HashMap::new(),
-         cm: cm3,
+         cm: cm.clone(),
      };
 
      target_program.visit_with(&mut collector);
 
-     log::debug!("collector: {:?}", collector.values);
 
 
 
@@ -468,18 +466,18 @@ fn explore(target_program: &Program) {
 
 
 
-
-     let cm2: Lrc<SourceMap> = Default::default();
 
 
      let mut explorer = AstExplorer {
          fn_count: 0,
          hash_count: HashMap::new(),
-         cm: cm2
+         cm,
      };
 
      target_program.visit_with(&mut explorer);
-     println!("hash count: {}", explorer.hash_count.len());
+     
+     log::debug!("collector: {:?}", collector.values);
+     log::debug!("hash count: {}", explorer.hash_count.len());
 
 
 
