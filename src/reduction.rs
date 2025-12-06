@@ -92,21 +92,150 @@ pub async fn reduce_file_to_mutations<P: Provider>(
 
 
 
+#[derive(Debug, Clone)]
+enum JavaScriptValue {
+    Indeterminate, // unknowable, null, undefined
+    Bool(bool),
+    Number(f64),
+    String(String),
+}
 
-
-
-
-
-
-
-
-struct AstExplorer {
-    pub fn_count: i64,
-    pub hash_count: HashMap<String, usize>,
+struct ValueCollector {
+    pub values: HashMap<String, JavaScriptValue>,
     pub cm: Lrc<SourceMap>,
 }
 
-impl AstExplorer {
+impl ValueCollector {
+    fn resolve_expr(&mut self, expr: &Expr) -> JavaScriptValue {
+        match expr {
+            Expr::Lit(lit) => match lit {
+                Lit::Str(s) => JavaScriptValue::String(s.value.as_str().unwrap().to_string()),
+                Lit::Num(n) => JavaScriptValue::Number(n.value),
+                Lit::Bool(b) => JavaScriptValue::Bool(b.value),
+                _ => JavaScriptValue::Indeterminate,
+            }
+            Expr::Ident(id) => {
+                let name = id.sym.to_string();
+                self.values.get(&name).cloned().unwrap_or(JavaScriptValue::Indeterminate)
+            }
+            Expr::Bin(bin) => {
+                let left = self.resolve_expr(&bin.left);
+                let right = self.resolve_expr(&bin.right);
+
+                match (bin.op, left, right) {
+                    (BinaryOp::Add, JavaScriptValue::Number(a), JavaScriptValue::Number(b)) => {
+                        JavaScriptValue::Number(a + b)
+                    }
+                    (BinaryOp::Add, JavaScriptValue::String(a), JavaScriptValue::String(b)) => {
+                        JavaScriptValue::String(format!("{}{}", a, b))
+                    }
+                    _ => JavaScriptValue::Indeterminate
+                }
+            }
+            Expr::Object(obj) => {
+                for prop in &obj.props {
+                    match prop {
+                        PropOrSpread::Prop(p) => {
+                            if let Prop::KeyValue(kv) = &**p {
+                                if let Some(key_str) = self.resolve_prop_name(&kv.key) {
+                                    let value = self.resolve_expr(&kv.value);
+                                    self.values.insert(key_str, value);
+                                }
+                            }
+
+                        }
+                        _ => {}
+                    }
+                }
+
+                JavaScriptValue::Indeterminate
+            }
+            _ => JavaScriptValue::Indeterminate
+        }
+    }
+
+    fn resolve_prop_name(&self, name: &PropName) -> Option<String> {
+        match name {
+            PropName::Ident(i) => Some(i.sym.to_string()),
+            PropName::Str(s) => Some(s.value.as_str().unwrap().to_string()),
+            _ => None,
+        }
+    }
+
+    fn bind_pattern(&mut self, pat: &Pat, value: JavaScriptValue) {
+        match pat {
+            Pat::Ident(bi) => {
+                let name = bi.id.sym.to_string();
+                self.values.insert(name, value);
+            }
+            Pat::Array(arr) => {
+                for elem in &arr.elems {
+                    if let Some(p) = elem {
+                        self.bind_pattern(&p, JavaScriptValue::Indeterminate);
+                    }
+                }
+            }
+            Pat::Object(obj) => {
+                for prop in &obj.props {
+                    match prop {
+                        ObjectPatProp::Assign(assign) => {
+                            let name = assign.key.sym.to_string();
+                            self.values.insert(name, JavaScriptValue::Indeterminate);
+                        }
+                        ObjectPatProp::KeyValue(kv) => {
+                            self.bind_pattern(&kv.value, JavaScriptValue::Indeterminate);
+                        }
+                        ObjectPatProp::Rest(rest) => {
+                            self.bind_pattern(&rest.arg, JavaScriptValue::Indeterminate);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+impl Visit for ValueCollector {
+    fn visit_var_decl(&mut self, n: &VarDecl) {
+        for decl in &n.decls {
+            let value = if let Some(init) = &decl.init {
+                self.resolve_expr(&*init)
+            } else {
+                JavaScriptValue::Indeterminate
+            };
+
+            self.bind_pattern(&decl.name, value);
+        }
+
+        n.visit_children_with(self);
+    }
+
+    fn visit_fn_decl(&mut self, n: &FnDecl) {
+        let name = n.ident.sym.to_string();
+
+        self.values.insert(name, JavaScriptValue::Indeterminate);
+        n.visit_children_with(self);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+struct AstExplorer<'a> {
+    pub fn_count: i64,
+    pub hash_count: HashMap<String, usize>,
+    pub cm: Lrc<SourceMap>,
+    pub values: &'a HashMap<String, JavaScriptValue>,
+}
+
+impl AstExplorer<'_> {
     fn emit_stmt(&self, stmt: Stmt, span: swc_common::Span) -> String {
         let module = Module {
             span,
@@ -131,7 +260,7 @@ impl AstExplorer {
     }
 }
 
-impl Visit for AstExplorer {
+impl Visit for AstExplorer<'_> {
     fn visit_function(&mut self, f: &Function) {
         self.fn_count += 1;
 
@@ -282,132 +411,6 @@ impl VisitMut for Normalizer {
 
 
 
-#[derive(Debug, Clone)]
-enum JavaScriptValue {
-    Indeterminate, // unknowable, null, undefined
-    Bool(bool),
-    Number(f64),
-    String(String),
-}
-
-struct ValueCollector {
-    pub values: HashMap<String, JavaScriptValue>,
-    pub cm: Lrc<SourceMap>,
-}
-
-impl ValueCollector {
-    fn resolve_expr(&mut self, expr: &Expr) -> JavaScriptValue {
-        match expr {
-            Expr::Lit(lit) => match lit {
-                Lit::Str(s) => JavaScriptValue::String(s.value.as_str().unwrap().to_string()),
-                Lit::Num(n) => JavaScriptValue::Number(n.value),
-                Lit::Bool(b) => JavaScriptValue::Bool(b.value),
-                _ => JavaScriptValue::Indeterminate,
-            }
-            Expr::Ident(id) => {
-                let name = id.sym.to_string();
-                self.values.get(&name).cloned().unwrap_or(JavaScriptValue::Indeterminate)
-            }
-            Expr::Bin(bin) => {
-                let left = self.resolve_expr(&bin.left);
-                let right = self.resolve_expr(&bin.right);
-
-                match (bin.op, left, right) {
-                    (BinaryOp::Add, JavaScriptValue::Number(a), JavaScriptValue::Number(b)) => {
-                        JavaScriptValue::Number(a + b)
-                    }
-                    (BinaryOp::Add, JavaScriptValue::String(a), JavaScriptValue::String(b)) => {
-                        JavaScriptValue::String(format!("{}{}", a, b))
-                    }
-                    _ => JavaScriptValue::Indeterminate
-                }
-            }
-            Expr::Object(obj) => {
-                for prop in &obj.props {
-                    match prop {
-                        PropOrSpread::Prop(p) => {
-                            if let Prop::KeyValue(kv) = &**p {
-                                if let Some(key_str) = self.resolve_prop_name(&kv.key) {
-                                    let value = self.resolve_expr(&kv.value);
-                                    self.values.insert(key_str, value);
-                                }
-                            }
-
-                        }
-                        _ => {}
-                    }
-                }
-
-                JavaScriptValue::Indeterminate
-            }
-            _ => JavaScriptValue::Indeterminate
-        }
-    }
-
-    fn resolve_prop_name(&self, name: &PropName) -> Option<String> {
-        match name {
-            PropName::Ident(i) => Some(i.sym.to_string()),
-            PropName::Str(s) => Some(s.value.as_str().unwrap().to_string()),
-            _ => None,
-        }
-    }
-
-    fn bind_pattern(&mut self, pat: &Pat, value: JavaScriptValue) {
-        match pat {
-            Pat::Ident(bi) => {
-                let name = bi.id.sym.to_string();
-                self.values.insert(name, value);
-            }
-            Pat::Array(arr) => {
-                for elem in &arr.elems {
-                    if let Some(p) = elem {
-                        self.bind_pattern(&p, JavaScriptValue::Indeterminate);
-                    }
-                }
-            }
-            Pat::Object(obj) => {
-                for prop in &obj.props {
-                    match prop {
-                        ObjectPatProp::Assign(assign) => {
-                            let name = assign.key.sym.to_string();
-                            self.values.insert(name, JavaScriptValue::Indeterminate);
-                        }
-                        ObjectPatProp::KeyValue(kv) => {
-                            self.bind_pattern(&kv.value, JavaScriptValue::Indeterminate);
-                        }
-                        ObjectPatProp::Rest(rest) => {
-                            self.bind_pattern(&rest.arg, JavaScriptValue::Indeterminate);
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-impl Visit for ValueCollector {
-    fn visit_var_decl(&mut self, n: &VarDecl) {
-        for decl in &n.decls {
-            let value = if let Some(init) = &decl.init {
-                self.resolve_expr(&*init)
-            } else {
-                JavaScriptValue::Indeterminate
-            };
-
-            self.bind_pattern(&decl.name, value);
-        }
-
-        n.visit_children_with(self);
-    }
-
-    fn visit_fn_decl(&mut self, n: &FnDecl) {
-        let name = n.ident.sym.to_string();
-
-        self.values.insert(name, JavaScriptValue::Indeterminate);
-        n.visit_children_with(self);
-    }
-}
 
 
 
@@ -436,24 +439,46 @@ fn parse(text: String) -> Program {
 
 
 
+
+
+
 fn explore(target_program: &Program) {
-
-
-
-
 
 
 
      let cm: Lrc<SourceMap> = Default::default();
 
-     let mut collector = ValueCollector {
-         values: HashMap::new(),
-         cm: cm.clone(),
+
+
+
+
+
+
+
+     let values: HashMap<String, JavaScriptValue> = {
+
+         let mut collector = ValueCollector {
+             values: HashMap::new(),
+             cm: cm.clone(),
+         };
+
+         target_program.visit_with(&mut collector);
+
+         let values = std::mem::take(
+             &mut collector.values
+         );
+
+         values
+             .into_iter()
+             .filter_map(|(k, v)| {
+                 if let JavaScriptValue::Indeterminate = v {
+                     None
+                 } else {
+                     Some((k, v))
+                 }
+             })
+            .collect()
      };
-
-     target_program.visit_with(&mut collector);
-
-
 
 
 
@@ -471,14 +496,15 @@ fn explore(target_program: &Program) {
      let mut explorer = AstExplorer {
          fn_count: 0,
          hash_count: HashMap::new(),
+         values: &values,
          cm,
      };
 
      target_program.visit_with(&mut explorer);
      
-     log::debug!("collector: {:?}", collector.values);
      log::debug!("hash count: {}", explorer.hash_count.len());
 
+     log::debug!("values: {:?}", values);
 
 
 
