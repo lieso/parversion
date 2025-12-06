@@ -103,8 +103,6 @@ pub async fn reduce_file_to_mutations<P: Provider>(
 struct AstExplorer {
     pub fn_count: i64,
     pub hash_count: HashMap<String, usize>,
-    pub ignore_hash: HashSet<String>,
-    pub hash_ignore_count: i64,
     pub cm: Lrc<SourceMap>,
 }
 
@@ -184,18 +182,13 @@ impl Visit for AstExplorer {
         
         let hash_string = hash.to_string().unwrap();
 
-        if !self.ignore_hash.contains(&hash_string) {
+        log::debug!("hash: {}", hash_string);
+        log::debug!("PRETTY FUNCTION:\n{}", output);
 
-            log::debug!("hash: {}", hash_string);
-            log::debug!("PRETTY FUNCTION:\n{}", output);
+        *self.hash_count
+            .entry(hash_string)
+            .or_insert(0) += 1;
 
-            *self.hash_count
-                .entry(hash_string)
-                .or_insert(0) += 1;
-
-        } else {
-            self.hash_ignore_count += 1;
-        }
 
 
         f.visit_children_with(self);
@@ -447,22 +440,6 @@ fn explore(target_program: &Program) {
      let cm1: Lrc<SourceMap> = Default::default();
 
 
-     //let path = Path::new("./js/min.js");
-     //let contents = fs::read_to_string(path).expect("Could not load lodash");
-
-     //let program = parse(contents);
-     //let mut explorer = AstExplorer {
-     //    fn_count: 0,
-     //    hash_count: HashMap::new(),
-     //    ignore_hash: HashSet::new(),
-     //    hash_ignore_count: 0,
-     //    cm: cm1,
-     //};
-
-     //program.visit_with(&mut explorer);
-     //println!("fn count: {}", explorer.fn_count);
-     //println!("hash count: {}", explorer.hash_count.len());
-
 
 
 
@@ -492,22 +469,17 @@ fn explore(target_program: &Program) {
 
 
 
-     //let cm2: Lrc<SourceMap> = Default::default();
+     let cm2: Lrc<SourceMap> = Default::default();
 
-     //let mut ignore_hash = HashSet::new();
-     //ignore_hash.extend(explorer.hash_count.keys().cloned());
 
-     //let mut explorer = AstExplorer {
-     //    fn_count: 0,
-     //    hash_count: HashMap::new(),
-     //    ignore_hash,
-     //    hash_ignore_count: 0,
-     //    cm: cm2
-     //};
+     let mut explorer = AstExplorer {
+         fn_count: 0,
+         hash_count: HashMap::new(),
+         cm: cm2
+     };
 
-     //target_program.visit_with(&mut explorer);
-     //println!("hash count: {}", explorer.hash_count.len());
-     //println!("hash ignore count: {}", explorer.hash_ignore_count);
+     target_program.visit_with(&mut explorer);
+     println!("hash count: {}", explorer.hash_count.len());
 
 
 
