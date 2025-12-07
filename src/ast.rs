@@ -48,7 +48,6 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
     };
 
     let mut explorer = AstExplorer {
-        fn_count: 0,
         hash_to_code: HashMap::new(),
         values: &values,
         cm,
@@ -144,7 +143,6 @@ impl VisitMut for Normalizer<'_> {
 }
 
 struct AstExplorer<'a> {
-    pub fn_count: i64,
     pub hash_to_code: HashMap<Hash, String>,
     pub cm: Lrc<SourceMap>,
     pub values: &'a HashMap<String, JavaScriptValue>,
@@ -177,8 +175,6 @@ impl AstExplorer<'_> {
 
 impl Visit for AstExplorer<'_> {
     fn visit_function(&mut self, f: &Function) {
-        self.fn_count += 1;
-
 
 
         let mut cloned_fn = f.clone();
