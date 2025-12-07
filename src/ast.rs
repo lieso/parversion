@@ -127,7 +127,6 @@ impl VisitMut for Normalizer<'_> {
                 }
             }
             MemberProp::Computed(comp) => {
-                log::debug!("comp: {:?}", comp);
                 comp.expr.visit_mut_with(self);
             }
             MemberProp::PrivateName(privateName) => {
@@ -223,14 +222,9 @@ impl Visit for AstExplorer<'_> {
         
         let hash_string = hash.to_string().unwrap();
 
-        log::debug!("hash: {}", hash_string);
-        log::debug!("PRETTY FUNCTION:\n{}", output);
-
         *self.hash_count
             .entry(hash_string)
             .or_insert(0) += 1;
-
-
 
         f.visit_children_with(self);
     }
@@ -242,7 +236,6 @@ impl Visit for AstExplorer<'_> {
     fn visit_var_decl(&mut self, n: &VarDecl) {
         let stmt = Stmt::Decl(Decl::Var(Box::new(n.clone())));
         let output = self.emit_stmt(stmt, n.span);
-        log::debug!("VAR DECL:\n{}", output);
 
         n.visit_children_with(self);
     }
