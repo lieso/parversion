@@ -28,7 +28,7 @@ pub async fn reduce_text_to_mutations<P: Provider>(
 
     let functions = program_to_functions(text);
 
-    log::debug!("functions: {:?}", functions);
+    log::debug!("functions: {}", functions.len());
 
 
     unimplemented!()

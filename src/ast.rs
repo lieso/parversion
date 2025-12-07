@@ -49,14 +49,21 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
 
     let mut explorer = AstExplorer {
         fn_count: 0,
-        hash_count: HashMap::new(),
+        hash_to_code: HashMap::new(),
         values: &values,
         cm,
     };
 
     program.visit_with(&mut explorer);
 
-    unimplemented!()
+    explorer.hash_to_code
+        .iter()
+        .map(|(k, v)| ParversionFunction {
+            id: ID::new(),
+            hash: k.clone(),
+            code: v.clone(),
+        })
+        .collect()
 }
 
 fn parse(text: String) -> Program {
@@ -130,7 +137,7 @@ impl VisitMut for Normalizer<'_> {
                 comp.expr.visit_mut_with(self);
             }
             MemberProp::PrivateName(privateName) => {
-                log::debug!("private: {:?}", privateName);
+                //log::debug!("private: {:?}", privateName);
             }
         }
     }
@@ -138,7 +145,7 @@ impl VisitMut for Normalizer<'_> {
 
 struct AstExplorer<'a> {
     pub fn_count: i64,
-    pub hash_count: HashMap<String, usize>,
+    pub hash_to_code: HashMap<Hash, String>,
     pub cm: Lrc<SourceMap>,
     pub values: &'a HashMap<String, JavaScriptValue>,
 }
@@ -215,16 +222,9 @@ impl Visit for AstExplorer<'_> {
 
         let output = String::from_utf8(buf).expect("non-utf8 output from emitter");
 
-
-
-
         let hash = Hash::from_str(&output);
         
-        let hash_string = hash.to_string().unwrap();
-
-        *self.hash_count
-            .entry(hash_string)
-            .or_insert(0) += 1;
+        self.hash_to_code.insert(hash, output);
 
         f.visit_children_with(self);
     }
