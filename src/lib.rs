@@ -37,3 +37,4 @@ pub mod schema_context;
 pub mod path;
 pub mod reduction;
 pub mod mutations;
+pub mod function;

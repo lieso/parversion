@@ -50,6 +50,7 @@ mod schema_context;
 mod path;
 mod reduction;
 mod mutations;
+mod function;
 
 use crate::prelude::*;
 use crate::document::{Document, DocumentType};
