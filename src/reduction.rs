@@ -13,6 +13,7 @@ use swc_atoms::Atom;
 use std::fs;
 use std::path::Path;
 use std::io;
+use std::fmt;
 
 use crate::prelude::*;
 use crate::document::{Document, DocumentType};
@@ -99,6 +100,18 @@ enum JavaScriptValue {
     Number(f64),
     String(String),
 }
+
+impl fmt::Display for JavaScriptValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            JavaScriptValue::Number(n)      => write!(f, "{n}"),
+            JavaScriptValue::String(s)      => write!(f, "{s}"),
+            JavaScriptValue::Bool(b)        => write!(f, "{b}"),
+            JavaScriptValue::Indeterminate  => write!(f, ""),
+        }
+    }
+}
+
 
 struct ValueCollector {
     pub values: HashMap<String, JavaScriptValue>,
@@ -270,7 +283,10 @@ impl Visit for AstExplorer<'_> {
 
 
 
-        let mut normalizer = Normalizer::default();
+        let mut normalizer = Normalizer {
+            rename_map: HashMap::new(),
+            values: self.values,
+        };
         cloned_fn.visit_mut_with(&mut normalizer);
 
 
@@ -364,12 +380,12 @@ impl Visit for AstExplorer<'_> {
 
 
 
-#[derive(Default)]
-struct Normalizer {
+struct Normalizer<'a> {
     rename_map: HashMap<Atom, Atom>,
+    values: &'a HashMap<String, JavaScriptValue>,
 }
 
-impl VisitMut for Normalizer {
+impl VisitMut for Normalizer<'_> {
     fn visit_mut_function(&mut self, f: &mut Function) {
 
         for (idx, param) in f.params.iter_mut().enumerate() {
@@ -402,6 +418,25 @@ impl VisitMut for Normalizer {
     fn visit_mut_ident(&mut self, i: &mut Ident) {
         if let Some(new) = self.rename_map.get(&i.sym) {
             i.sym = new.clone();
+        }
+    }
+
+    fn visit_mut_member_expr(&mut self, e: &mut MemberExpr) {
+        e.obj.visit_mut_with(self);
+
+        match &mut e.prop {
+            MemberProp::Ident(id) => {
+                if let Some(value) = self.values.get(&id.sym.to_string()) {
+                    id.sym = format!("<<{}>>", value.to_string()).into();
+                }
+            }
+            MemberProp::Computed(comp) => {
+                log::debug!("comp: {:?}", comp);
+                comp.expr.visit_mut_with(self);
+            }
+            MemberProp::PrivateName(privateName) => {
+                log::debug!("private: {:?}", privateName);
+            }
         }
     }
 }
@@ -446,7 +481,7 @@ fn explore(target_program: &Program) {
 
 
 
-     let cm: Lrc<SourceMap> = Default::default();
+    let cm: Lrc<SourceMap> = Default::default();
 
 
 
@@ -455,32 +490,30 @@ fn explore(target_program: &Program) {
 
 
 
-     let values: HashMap<String, JavaScriptValue> = {
+    let values: HashMap<String, JavaScriptValue> = {
 
-         let mut collector = ValueCollector {
-             values: HashMap::new(),
-             cm: cm.clone(),
-         };
+        let mut collector = ValueCollector {
+            values: HashMap::new(),
+            cm: cm.clone(),
+        };
 
-         target_program.visit_with(&mut collector);
+        target_program.visit_with(&mut collector);
 
-         let values = std::mem::take(
-             &mut collector.values
-         );
+        let values = std::mem::take(
+            &mut collector.values
+        );
 
-         values
-             .into_iter()
-             .filter_map(|(k, v)| {
-                 if let JavaScriptValue::Indeterminate = v {
-                     None
-                 } else {
-                     Some((k, v))
-                 }
-             })
-            .collect()
-     };
-
-
+        values
+            .into_iter()
+            .filter_map(|(k, v)| {
+                if let JavaScriptValue::Indeterminate = v {
+                    None
+                } else {
+                    Some((k, v))
+                }
+            })
+           .collect()
+    };
 
 
 
@@ -493,22 +526,23 @@ fn explore(target_program: &Program) {
 
 
 
-     let mut explorer = AstExplorer {
-         fn_count: 0,
-         hash_count: HashMap::new(),
-         values: &values,
-         cm,
-     };
-
-     target_program.visit_with(&mut explorer);
-     
-     log::debug!("hash count: {}", explorer.hash_count.len());
-
-     log::debug!("values: {:?}", values);
 
 
+    let mut explorer = AstExplorer {
+        fn_count: 0,
+        hash_count: HashMap::new(),
+        values: &values,
+        cm,
+    };
+
+    target_program.visit_with(&mut explorer);
+    
+    log::debug!("hash count: {}", explorer.hash_count.len());
+
+    log::debug!("values: {:?}", values);
 
 
 
- }
 
+
+}
