@@ -7,6 +7,8 @@ use crate::provider::{Provider};
 use crate::meta_context::MetaContext;
 use crate::node_analysis::{get_normal_schema_transformations};
 use crate::document_format::DocumentFormat;
+use crate::package::Package;
+use crate::mutations::Mutations;
 
 #[allow(dead_code)]
 pub async fn normalize<P: Provider>(
@@ -87,21 +89,24 @@ pub async fn normalize_text_to_meta_context<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn normalize_text_to_document<P: Provider>(
+pub async fn normalize_text_to_package<P: Provider>(
     provider: Arc<P>,
     text: String,
     _options: &Option<Options>,
-) -> Result<Document, Errors> {
-    log::trace!("In normalize_text_to_document");
+) -> Result<Package, Errors> {
+    log::trace!("In normalize_text_to_package");
 
     let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
         DocumentVersion::OrganizedDocument
-    );
+    )?;
 
-    normalized_document
+    Ok(Package {
+        document: normalized_document,
+        mutations: Mutations::default(),
+    })
 }
 
 #[allow(dead_code)]
@@ -113,13 +118,13 @@ pub async fn normalize_text<P: Provider>(
 ) -> Result<String, Errors> {
     log::trace!("In normalize_text");
 
-    let document = normalize_text_to_document(
+    let package = normalize_text_to_package(
         Arc::clone(&provider),
         text,
         _options,
     ).await?;
 
-    Ok(document.to_string(document_format))
+    Ok(package.to_string(document_format))
 }
 
 #[allow(dead_code)]
@@ -182,12 +187,12 @@ pub async fn normalize_file_to_meta_context<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn normalize_file_to_document<P: Provider>(
+pub async fn normalize_file_to_package<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Option<Options>,
-) -> Result<Document, Errors> {
-    log::trace!("In normalize_file_to_document");
+) -> Result<Package, Errors> {
+    log::trace!("In normalize_file_to_package");
     log::debug!("file path: {}", path);
 
     let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options).await?;
@@ -195,9 +200,12 @@ pub async fn normalize_file_to_document<P: Provider>(
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
         DocumentVersion::OrganizedDocument
-    );
+    )?;
 
-    normalized_document
+    Ok(Package {
+        document: normalized_document,
+        mutations: Mutations::default(),
+    })
 }
 
 #[allow(dead_code)]
@@ -210,9 +218,9 @@ pub async fn normalize_file_to_text<P: Provider>(
     log::trace!("In normalize_file_to_text");
     log::debug!("file path: {}", path);
 
-    let document = normalize_file_to_document(Arc::clone(&provider), path, _options).await?;
+    let package = normalize_file_to_package(Arc::clone(&provider), path, _options).await?;
 
-    Ok(document.to_string(document_format))
+    Ok(package.to_string(document_format))
 }
 
 #[allow(dead_code)]
@@ -249,12 +257,12 @@ pub async fn normalize_url_to_meta_context<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn normalize_url_to_document<P: Provider>(
+pub async fn normalize_url_to_package<P: Provider>(
     provider: Arc<P>,
     url: &str,
     _options: &Option<Options>,
-) -> Result<Document, Errors> {
-    log::trace!("In normalize_url_to_document");
+) -> Result<Package, Errors> {
+    log::trace!("In normalize_url_to_package");
     log::debug!("URL: {}", url);
 
     let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options).await?;
@@ -262,9 +270,12 @@ pub async fn normalize_url_to_document<P: Provider>(
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
         DocumentVersion::OrganizedDocument
-    );
+    )?;
 
-    normalized_document
+    Ok(Package {
+        document: normalized_document,
+        mutations: Mutations::default(),
+    })
 }
 
 #[allow(dead_code)]
@@ -277,7 +288,7 @@ pub async fn normalize_url_to_text<P: Provider>(
     log::trace!("In normalize_url_to_text");
     log::debug!("URL: {}", url);
 
-    let document = normalize_url_to_document(Arc::clone(&provider), url, _options).await?;
+    let package = normalize_url_to_package(Arc::clone(&provider), url, _options).await?;
 
-    Ok(document.to_string(document_format))
+    Ok(package.to_string(document_format))
 }

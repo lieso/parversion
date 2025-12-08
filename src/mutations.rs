@@ -7,3 +7,11 @@ impl Mutations {
         unimplemented!()
     }
 }
+
+impl Default for Mutations {
+    fn default() -> Self {
+        Self {
+
+        }
+    }
+}

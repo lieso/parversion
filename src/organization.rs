@@ -7,6 +7,8 @@ use crate::meta_context::MetaContext;
 use crate::node_analysis::{get_basis_nodes};
 use crate::network_analysis::{get_basis_networks, get_basis_graph};
 use crate::document_format::DocumentFormat;
+use crate::package::Package;
+use crate::mutations::Mutations;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -94,7 +96,7 @@ pub async fn organize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Option<Options>,
-) -> Result<Document, Errors> {
+) -> Result<Package, Errors> {
     log::trace!("In organize_document");
 
     let meta_context = organize(
@@ -103,9 +105,12 @@ pub async fn organize_document<P: Provider>(
         _options
     ).await?;
 
-    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
+    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
 
-    organized_document
+    Ok(Package {
+        document: organized_document,
+        mutations: Mutations::default(),
+    })
 }
 
 #[allow(dead_code)]
@@ -117,13 +122,13 @@ pub async fn organize_document_to_string<P: Provider>(
 ) -> Result<String, Errors> {
     log::trace!("In organize_document_to_string");
 
-    let document = organize_document(
+    let package = organize_document(
         Arc::clone(&provider),
         document,
         _options,
     ).await?;
 
-    Ok(document.to_string(document_format))
+    Ok(package.to_string(document_format))
 }
 
 #[allow(dead_code)]

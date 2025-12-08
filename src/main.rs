@@ -55,14 +55,14 @@ mod ast;
 mod package;
 
 use crate::prelude::*;
-use crate::document::{Document, DocumentType};
+use crate::document::{DocumentType};
 use crate::provider::{Provider, VoidProvider};
 #[cfg(feature = "yaml-provider")]
 use crate::provider::yaml::{YamlFileProvider};
 #[cfg(feature = "sqlite-provider")]
 use crate::provider::sqlite::{SqliteProvider};
 use crate::config::{CONFIG};
-use crate::mutations::Mutations;
+use crate::package::Package;
 
 const VERSION: &str = "0.0.0";
 const PROGRAM_NAME: &str = "parversion";
@@ -196,11 +196,11 @@ async fn determine_program<P: Provider + ?Sized>(
     options: Options,
     matches: &clap::ArgMatches,
     document_type: DocumentType
-) -> Result<Mutations, Errors> {
+) -> Result<Package, Errors> {
     if let Ok(stdin) = load_stdin() {
         log::info!("Received data from stdin");
 
-        reduction::reduce_text_to_mutations(
+        reduction::reduce_text_to_package(
             provider.clone(),
             stdin,
             &Some(options),
@@ -209,7 +209,7 @@ async fn determine_program<P: Provider + ?Sized>(
     } else if let Some(path) = matches.value_of("file") {
         log::info!("Received a file name");
 
-        reduction::reduce_file_to_mutations(
+        reduction::reduce_file_to_package(
             provider.clone(),
             path,
             &Some(options),
@@ -218,7 +218,7 @@ async fn determine_program<P: Provider + ?Sized>(
     } else if let Some(url) = matches.value_of("url") {
         log::info!("Received a URL");
 
-        reduction::reduce_url_to_mutations(
+        reduction::reduce_url_to_package(
             provider.clone(),
             url,
             &Some(options),
@@ -227,7 +227,7 @@ async fn determine_program<P: Provider + ?Sized>(
     } else if let Some(inline_document) = matches.value_of("inline") {
         log::info!("Received an inline program");
 
-        reduction::reduce_text_to_mutations(
+        reduction::reduce_text_to_package(
             provider.clone(),
             inline_document.to_string(),
             &Some(options),
@@ -243,19 +243,19 @@ async fn determine_document<P: Provider + ?Sized>(
     provider: Arc<P>,
     options: Options,
     matches: &clap::ArgMatches
-) -> Result<Document, Errors> {
+) -> Result<Package, Errors> {
     if let Ok(stdin) = load_stdin() {
         log::info!("Received data from stdin");
 
         if let Some(json_schema) = maybe_json_schema {
-            translation::translate_text_to_document(
+            translation::translate_text_to_package(
                 provider.clone(),
                 stdin,
                 &Some(options),
                 &json_schema,
             ).await
         } else {
-            normalization::normalize_text_to_document(
+            normalization::normalize_text_to_package(
                 provider.clone(),
                 stdin,
                 &Some(options),
@@ -265,14 +265,14 @@ async fn determine_document<P: Provider + ?Sized>(
         log::info!("Received a file name");
 
         if let Some(json_schema) = maybe_json_schema {
-            translation::translate_file_to_document(
+            translation::translate_file_to_package(
                 provider.clone(),
                 path,
                 &Some(options),
                 &json_schema,
             ).await
         } else {
-            normalization::normalize_file_to_document(
+            normalization::normalize_file_to_package(
                 provider.clone(),
                 path,
                 &Some(options),
@@ -282,14 +282,14 @@ async fn determine_document<P: Provider + ?Sized>(
         log::info!("Received a URL");
 
         if let Some(json_schema) = maybe_json_schema {
-            translation::translate_url_to_document(
+            translation::translate_url_to_package(
                 provider.clone(),
                 url,
                 &Some(options),
                 &json_schema,
             ).await
         } else {
-            normalization::normalize_url_to_document(
+            normalization::normalize_url_to_package(
                 provider.clone(),
                 url,
                 &Some(options),
@@ -299,14 +299,14 @@ async fn determine_document<P: Provider + ?Sized>(
         log::info!("Received an inline document");
 
         if let Some(json_schema) = maybe_json_schema {
-            translation::translate_text_to_document(
+            translation::translate_text_to_package(
                 provider.clone(),
                 inline_document.to_string(),
                 &Some(options),
                 &json_schema,
             ).await
         } else {
-            normalization::normalize_text_to_document(
+            normalization::normalize_text_to_package(
                 provider.clone(),
                 inline_document.to_string(),
                 &Some(options),
@@ -380,51 +380,32 @@ async fn run() -> Result<(), Errors> {
         ..Options::default()
     };
     log::debug!("options: {:?}", options);
+
+    let maybe_json_schema: Option<String> = get_schema(&matches).await;
     
+    let package = {
+        if document_type == DocumentType::JavaScript {
+            determine_program(
+                provider,
+                options,
+                &matches,
+                document_type,
+            ).await?
+        } else {
+            determine_document(
+                maybe_json_schema,
+                provider,
+                options,
+                &matches
+            ).await?
+        }
+    };
 
+    let document_format = document_format::DocumentFormat::default();
 
+    log::info!("Successfully processed document/program");
 
-
-    if document_type == DocumentType::JavaScript {
-
-
-        let mutations = determine_program(
-            provider,
-            options,
-            &matches,
-            document_type,
-        ).await?;
-
-        log::debug!("Successfully processed program");
-
-        println!("{}", mutations.to_string());
-
-
-    } else {
-
-    
-        ///////////////
-
-        let document_format = document_format::DocumentFormat::default();
-        let maybe_json_schema: Option<String> = get_schema(&matches).await;
-
-        let document = determine_document(
-            maybe_json_schema,
-            provider,
-            options,
-            &matches
-        ).await?;
-
-        log::info!("Successfully processed document");
-
-        println!("{}", document.to_string(&Some(document_format)));
-
-        //////////////
-
-
-
-    }
-
+    println!("{}", package.to_string(&Some(document_format)));
 
     let elapsed = start.elapsed();
     log::info!("Elapsed: {:.2?}", elapsed);

@@ -1,5 +1,6 @@
 use crate::document::Document;
 use crate::mutations::Mutations;
+use crate::document_format::DocumentFormat;
 
 pub struct Package {
     pub document: Document,
@@ -7,7 +8,7 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn to_string(&self) -> String {
+    pub fn to_string(&self, document_format: &Option<DocumentFormat>) -> String {
         unimplemented!()
     }
 }

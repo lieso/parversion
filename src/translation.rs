@@ -9,6 +9,8 @@ use crate::meta_context::MetaContext;
 use crate::schema::Schema;
 use crate::node_analysis::get_translation_schema_transformations;
 use crate::document_format::DocumentFormat;
+use crate::package::Package;
+use crate::mutations::Mutations;
 
 #[allow(dead_code)]
 pub async fn translate<P: Provider>(
@@ -99,13 +101,13 @@ pub async fn translate_text_to_meta_context<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn translate_text_to_document<P: Provider>(
+pub async fn translate_text_to_package<P: Provider>(
     provider: Arc<P>,
     text: String,
     _options: &Option<Options>,
     json_schema: &str,
-) -> Result<Document, Errors> {
-    log::trace!("In translate_text_to_document");
+) -> Result<Package, Errors> {
+    log::trace!("In translate_text_to_package");
 
     let meta_context = translate_text_to_meta_context(
         Arc::clone(&provider),
@@ -117,9 +119,12 @@ pub async fn translate_text_to_document<P: Provider>(
     let translated_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
         DocumentVersion::OrganizedDocument
-    );
+    )?;
 
-    translated_document
+    Ok(Package {
+        document: translated_document,
+        mutations: Mutations::default(),
+    })
 }
 
 #[allow(dead_code)]
@@ -132,7 +137,7 @@ pub async fn translate_text<P: Provider>(
 ) -> Result<String, Errors> {
     log::trace!("In translate_text");
 
-    let document = translate_text_to_document(
+    let document = translate_text_to_package(
         provider,
         text,
         _options,
@@ -219,22 +224,25 @@ pub async fn translate_file_to_meta_context<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn translate_file_to_document<P: Provider>(
+pub async fn translate_file_to_package<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Option<Options>,
     json_schema: &str,
-) -> Result<Document, Errors> {
-    log::trace!("In translate_file_to_document");
+) -> Result<Package, Errors> {
+    log::trace!("In translate_file_to_package");
 
     let meta_context = translate_file_to_meta_context(Arc::clone(&provider), path, _options, json_schema).await?;
 
     let translated_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
         DocumentVersion::OrganizedDocument
-    );
+    )?;
 
-    translated_document
+    Ok(Package {
+        document: translated_document,
+        mutations: Mutations::default(),
+    })
 }
 
 #[allow(dead_code)]
@@ -247,14 +255,14 @@ pub async fn translate_file_to_text<P: Provider>(
 ) -> Result<String, Errors> {
     log::trace!("In translate_file_to_text");
 
-    let document = translate_file_to_document(
+    let package = translate_file_to_package(
         provider,
         path,
         _options,
         json_schema
     ).await?;
 
-    Ok(document.to_string(document_format))
+    Ok(package.to_string(document_format))
 }
 
 #[allow(dead_code)]
@@ -299,13 +307,13 @@ pub async fn translate_url_to_meta_context<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn translate_url_to_document<P: Provider>(
+pub async fn translate_url_to_package<P: Provider>(
     provider: Arc<P>,
     url: &str,
     _options: &Option<Options>,
     json_schema: &str
-) -> Result<Document, Errors> {
-    log::trace!("In translate_url_to_document");
+) -> Result<Package, Errors> {
+    log::trace!("In translate_url_to_package");
     log::debug!("url: {}", url);
 
     let meta_context = translate_url_to_meta_context(Arc::clone(&provider), url, _options, json_schema).await?;
@@ -313,7 +321,10 @@ pub async fn translate_url_to_document<P: Provider>(
     let translated_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
         DocumentVersion::OrganizedDocument
-    );
+    )?;
 
-    translated_document
+    Ok(Package {
+        document: translated_document,
+        mutations: Mutations::default(),
+    })
 }
