@@ -28,6 +28,12 @@ pub async fn reduce_text_to_mutations<P: Provider>(
 
     let functions = program_to_functions(text);
 
+
+    for function in functions.iter() {
+        log::debug!("hash: {}", function.hash);
+        log::debug!("{}\n", function.code);
+    }
+
     log::debug!("functions: {}", functions.len());
 
 

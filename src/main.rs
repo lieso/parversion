@@ -52,6 +52,7 @@ mod reduction;
 mod mutations;
 mod function;
 mod ast;
+mod package;
 
 use crate::prelude::*;
 use crate::document::{Document, DocumentType};
