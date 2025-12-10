@@ -35,7 +35,6 @@ pub mod node_analysis;
 pub mod schema_node;
 pub mod schema_context;
 pub mod path;
-pub mod reduction;
 pub mod mutations;
 pub mod function;
 pub mod ast;

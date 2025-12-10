@@ -48,7 +48,6 @@ mod node_analysis;
 mod schema_node;
 mod schema_context;
 mod path;
-mod reduction;
 mod mutations;
 mod function;
 mod ast;
@@ -191,54 +190,7 @@ fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors>
     }
 }
 
-async fn determine_program<P: Provider + ?Sized>(
-    provider: Arc<P>,
-    options: Options,
-    matches: &clap::ArgMatches,
-    document_type: DocumentType
-) -> Result<Package, Errors> {
-    if let Ok(stdin) = load_stdin() {
-        log::info!("Received data from stdin");
-
-        reduction::reduce_text_to_package(
-            provider.clone(),
-            stdin,
-            &Some(options),
-            document_type.clone(),
-        ).await
-    } else if let Some(path) = matches.value_of("file") {
-        log::info!("Received a file name");
-
-        reduction::reduce_file_to_package(
-            provider.clone(),
-            path,
-            &Some(options),
-            document_type.clone(),
-        ).await
-    } else if let Some(url) = matches.value_of("url") {
-        log::info!("Received a URL");
-
-        reduction::reduce_url_to_package(
-            provider.clone(),
-            url,
-            &Some(options),
-            document_type.clone(),
-        ).await
-    } else if let Some(inline_document) = matches.value_of("inline") {
-        log::info!("Received an inline program");
-
-        reduction::reduce_text_to_package(
-            provider.clone(),
-            inline_document.to_string(),
-            &Some(options),
-            document_type.clone(),
-        ).await
-    } else {
-        Err(Errors::DocumentNotProvided)
-    }
-}
-
-async fn determine_document<P: Provider + ?Sized>(
+async fn determine<P: Provider + ?Sized>(
     maybe_json_schema: Option<String>,
     provider: Arc<P>,
     options: Options,
@@ -383,23 +335,12 @@ async fn run() -> Result<(), Errors> {
 
     let maybe_json_schema: Option<String> = get_schema(&matches).await;
     
-    let package = {
-        if document_type == DocumentType::JavaScript {
-            determine_program(
-                provider,
-                options,
-                &matches,
-                document_type,
-            ).await?
-        } else {
-            determine_document(
-                maybe_json_schema,
-                provider,
-                options,
-                &matches
-            ).await?
-        }
-    };
+    let package = determine(
+        maybe_json_schema,
+        provider,
+        options,
+        &matches,
+    ).await?;
 
     let document_format = document_format::DocumentFormat::default();
 
