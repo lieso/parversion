@@ -10,7 +10,7 @@ use crate::schema::Schema;
 use crate::node_analysis::get_translation_schema_transformations;
 use crate::document_format::DocumentFormat;
 use crate::package::Package;
-use crate::mutations::Mutations;
+use crate::mutation::Mutation;
 
 #[allow(dead_code)]
 pub async fn translate<P: Provider>(
@@ -130,7 +130,7 @@ pub async fn translate_text_to_package<P: Provider>(
 
     Ok(Package {
         document: translated_document,
-        mutations: Mutations::default(),
+        mutations: Vec::new(),
     })
 }
 
@@ -263,7 +263,7 @@ pub async fn translate_file_to_package<P: Provider>(
 
     Ok(Package {
         document: translated_document,
-        mutations: Mutations::default(),
+        mutations: Vec::new(),
     })
 }
 
@@ -353,6 +353,6 @@ pub async fn translate_url_to_package<P: Provider>(
 
     Ok(Package {
         document: translated_document,
-        mutations: Mutations::default(),
+        mutations: Vec::new(),
     })
 }

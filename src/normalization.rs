@@ -8,7 +8,7 @@ use crate::meta_context::MetaContext;
 use crate::node_analysis::{get_normal_schema_transformations};
 use crate::document_format::DocumentFormat;
 use crate::package::Package;
-use crate::mutations::Mutations;
+use crate::mutation::Mutation;
 
 #[allow(dead_code)]
 pub async fn normalize<P: Provider>(
@@ -109,7 +109,7 @@ pub async fn normalize_text_to_package<P: Provider>(
 
     Ok(Package {
         document: normalized_document,
-        mutations: Mutations::default(),
+        mutations: Vec::new(),
     })
 }
 
@@ -215,7 +215,7 @@ pub async fn normalize_file_to_package<P: Provider>(
 
     Ok(Package {
         document: normalized_document,
-        mutations: Mutations::default(),
+        mutations: Vec::new(),
     })
 }
 
@@ -289,7 +289,7 @@ pub async fn normalize_url_to_package<P: Provider>(
 
     Ok(Package {
         document: normalized_document,
-        mutations: Mutations::default(),
+        mutations: Vec::new(),
     })
 }
 

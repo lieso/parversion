@@ -48,11 +48,12 @@ mod node_analysis;
 mod schema_node;
 mod schema_context;
 mod path;
-mod mutations;
+mod mutation;
 mod function;
 mod ast;
 mod package;
 mod metadata;
+mod function_analysis;
 
 use crate::prelude::*;
 use crate::document::{DocumentType};

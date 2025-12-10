@@ -1,10 +1,10 @@
 use crate::document::Document;
-use crate::mutations::Mutations;
+use crate::mutation::Mutation;
 use crate::document_format::DocumentFormat;
 
 pub struct Package {
     pub document: Document,
-    pub mutations: Mutations,
+    pub mutations: Vec<Mutation>,
 }
 
 impl Package {

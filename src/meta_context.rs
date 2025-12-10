@@ -12,6 +12,7 @@ use crate::transformation::SchemaTransformation;
 use crate::document::{Document};
 use crate::schema::Schema;
 use crate::schema_context::SchemaContext;
+use crate::function::Function;
 
 pub struct MetaContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
@@ -27,6 +28,7 @@ pub struct MetaContext {
     pub translation_schema: Option<Arc<Schema>>,
     pub translation_schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
     pub translation_schema_graph_root: Option<Graph>,
+    pub functions: Option<Vec<Function>>,
 }
 
 impl MetaContext {
@@ -45,6 +47,7 @@ impl MetaContext {
             translation_schema: None,
             translation_schema_contexts: None,
             translation_schema_graph_root: None,
+            functions: None,
         }
     }
 
@@ -165,6 +168,10 @@ impl MetaContext {
         );
 
         document
+    }
+
+    pub fn update_functions(&mut self, functions: Vec<Function>) {
+        self.functions = Some(functions);
     }
 }
 

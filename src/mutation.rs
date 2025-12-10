@@ -1,14 +1,14 @@
-pub struct Mutations {
+pub struct Mutation {
 
 }
 
-impl Mutations {
+impl Mutation {
     pub fn to_string(&self) -> String {
         unimplemented!()
     }
 }
 
-impl Default for Mutations {
+impl Default for Mutation {
     fn default() -> Self {
         Self {
 

@@ -8,8 +8,9 @@ use crate::node_analysis::{get_basis_nodes};
 use crate::network_analysis::{get_basis_networks, get_basis_graph};
 use crate::document_format::DocumentFormat;
 use crate::package::Package;
-use crate::mutations::Mutations;
+use crate::mutation::Mutation;
 use crate::ast::program_to_functions;
+use crate::function_analysis::functions_to_mutations;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -46,6 +47,17 @@ pub async fn organize<P: Provider>(
         }
 
         log::debug!("function count: {}", functions.len());
+
+        {
+            let mut lock = write_lock!(meta_context);
+            lock.update_functions(functions);
+        }
+
+        let something = functions_to_mutations(
+            Arc::clone(&provider),
+            meta_context.clone()
+        ).await?;
+
 
 
 
@@ -145,7 +157,7 @@ pub async fn organize_document<P: Provider>(
 
     Ok(Package {
         document: organized_document,
-        mutations: Mutations::default(),
+        mutations: Vec::new(),
     })
 }
 
