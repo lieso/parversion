@@ -9,6 +9,6 @@ pub struct Package {
 
 impl Package {
     pub fn to_string(&self, document_format: &Option<DocumentFormat>) -> String {
-        unimplemented!()
+        self.document.to_string(document_format)
     }
 }

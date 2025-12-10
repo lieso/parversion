@@ -47,6 +47,8 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
            .collect()
     };
 
+    log::debug!("values: {:?}", values);
+
     let mut explorer = AstExplorer {
         hash_to_code: HashMap::new(),
         values: &values,
