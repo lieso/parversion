@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
-use crate::document::{Document};
+use crate::document::{Document, DocumentType};
 use crate::provider::Provider;
 use crate::meta_context::MetaContext;
 use crate::node_analysis::{get_basis_nodes};
@@ -9,6 +9,7 @@ use crate::network_analysis::{get_basis_networks, get_basis_graph};
 use crate::document_format::DocumentFormat;
 use crate::package::Package;
 use crate::mutations::Mutations;
+use crate::ast::program_to_functions;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -25,6 +26,38 @@ pub async fn organize<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.add_document_version(DocumentVersion::InputDocument, document.clone());
     }
+
+
+
+
+
+    // ******************************************************************************************************
+
+
+    if metadata.document_type == Some(DocumentType::JavaScript) {
+
+
+
+        let functions = program_to_functions(document.data.clone());
+
+        for function in functions.iter() {
+            log::debug!("hash: {}", function.hash);
+            log::debug!("{}\n", function.code);
+        }
+
+        log::debug!("function count: {}", functions.len());
+
+
+
+        unimplemented!();
+    }
+
+
+    // ******************************************************************************************************
+
+
+
+
 
     log::info!("Performing document analysis");
     let profile = document.perform_analysis(Arc::clone(&provider)).await?;
