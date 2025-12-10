@@ -250,17 +250,18 @@ impl Document {
 
     pub fn from_string(
         value: String,
-        options: &Option<Options>,
+        options: &Options,
+        metadata: &Metadata,
     ) -> Result<Self, Errors> {
         if value.trim().is_empty() {
             return Err(Errors::DocumentNotProvided);
         }
-
+        
         Ok(Document {
-            document_type: DocumentType::PlainText,
+            document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
-                origin: options.as_ref().and_then(|opts| opts.origin.clone()),
-                date: options.as_ref().and_then(|opts| opts.date.clone()),
+                origin: options.origin.clone(),
+                date: options.date.clone(),
             },
             data: value,
             schema: None,

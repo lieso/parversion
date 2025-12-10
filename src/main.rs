@@ -52,6 +52,7 @@ mod mutations;
 mod function;
 mod ast;
 mod package;
+mod metadata;
 
 use crate::prelude::*;
 use crate::document::{DocumentType};
@@ -194,7 +195,8 @@ async fn determine<P: Provider + ?Sized>(
     maybe_json_schema: Option<String>,
     provider: Arc<P>,
     options: Options,
-    matches: &clap::ArgMatches
+    matches: &clap::ArgMatches,
+    metadata: Metadata,
 ) -> Result<Package, Errors> {
     if let Ok(stdin) = load_stdin() {
         log::info!("Received data from stdin");
@@ -203,14 +205,16 @@ async fn determine<P: Provider + ?Sized>(
             translation::translate_text_to_package(
                 provider.clone(),
                 stdin,
-                &Some(options),
+                &options,
+                &metadata,
                 &json_schema,
             ).await
         } else {
             normalization::normalize_text_to_package(
                 provider.clone(),
                 stdin,
-                &Some(options),
+                &options,
+                &metadata,
             ).await
         }
     } else if let Some(path) = matches.value_of("file") {
@@ -220,14 +224,16 @@ async fn determine<P: Provider + ?Sized>(
             translation::translate_file_to_package(
                 provider.clone(),
                 path,
-                &Some(options),
+                &options,
+                &metadata,
                 &json_schema,
             ).await
         } else {
             normalization::normalize_file_to_package(
                 provider.clone(),
                 path,
-                &Some(options),
+                &options,
+                &metadata,
             ).await
         }
     } else if let Some(url) = matches.value_of("url") {
@@ -237,14 +243,16 @@ async fn determine<P: Provider + ?Sized>(
             translation::translate_url_to_package(
                 provider.clone(),
                 url,
-                &Some(options),
+                &options,
+                &metadata,
                 &json_schema,
             ).await
         } else {
             normalization::normalize_url_to_package(
                 provider.clone(),
                 url,
-                &Some(options),
+                &options,
+                &metadata,
             ).await
         }
     } else if let Some(inline_document) = matches.value_of("inline") {
@@ -254,14 +262,16 @@ async fn determine<P: Provider + ?Sized>(
             translation::translate_text_to_package(
                 provider.clone(),
                 inline_document.to_string(),
-                &Some(options),
+                &options,
+                &metadata,
                 &json_schema,
             ).await
         } else {
             normalization::normalize_text_to_package(
                 provider.clone(),
                 inline_document.to_string(),
-                &Some(options),
+                &options,
+                &metadata,
             ).await
         }
     } else {
@@ -324,14 +334,17 @@ async fn run() -> Result<(), Errors> {
         return Ok(());
     }
 
-    let document_type = get_document_type(&matches)?;
-
     let provider = init_provider().await?;
 
     let options = Options {
         ..Options::default()
     };
     log::debug!("options: {:?}", options);
+
+    let metadata = Metadata {
+        document_type: Some(get_document_type(&matches)?)
+    };
+    log::debug!("metadata: {:?}", metadata);
 
     let maybe_json_schema: Option<String> = get_schema(&matches).await;
     
@@ -340,6 +353,7 @@ async fn run() -> Result<(), Errors> {
         provider,
         options,
         &matches,
+        metadata,
     ).await?;
 
     let document_format = document_format::DocumentFormat::default();

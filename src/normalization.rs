@@ -14,7 +14,8 @@ use crate::mutations::Mutations;
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
 
@@ -67,36 +68,39 @@ pub async fn normalize<P: Provider>(
 pub async fn normalize_meta_context<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_meta_context");
 
-    normalize(Arc::clone(&provider), meta_context, _options).await
+    normalize(Arc::clone(&provider), meta_context, _options, metadata).await
 }
 
 #[allow(dead_code)]
 pub async fn normalize_text_to_meta_context<P: Provider>(
     provider: Arc<P>,
     text: String,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_text_to_meta_context");
 
-    let document = Document::from_string(text, _options)?;
-    let meta_context = organize(Arc::clone(&provider), document, _options).await?;
+    let document = Document::from_string(text, _options, metadata)?;
+    let meta_context = organize(Arc::clone(&provider), document, _options, metadata).await?;
 
-    normalize_meta_context(Arc::clone(&provider), meta_context, _options).await
+    normalize_meta_context(Arc::clone(&provider), meta_context, _options, metadata).await
 }
 
 #[allow(dead_code)]
 pub async fn normalize_text_to_package<P: Provider>(
     provider: Arc<P>,
     text: String,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_text_to_package");
 
-    let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await?;
+    let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options, metadata).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
@@ -113,7 +117,8 @@ pub async fn normalize_text_to_package<P: Provider>(
 pub async fn normalize_text<P: Provider>(
     provider: Arc<P>,
     text: String,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
     document_format: &Option<DocumentFormat>
 ) -> Result<String, Errors> {
     log::trace!("In normalize_text");
@@ -122,6 +127,7 @@ pub async fn normalize_text<P: Provider>(
         Arc::clone(&provider),
         text,
         _options,
+        metadata
     ).await?;
 
     Ok(package.to_string(document_format))
@@ -131,24 +137,26 @@ pub async fn normalize_text<P: Provider>(
 pub async fn normalize_document_to_meta_context<P: Provider>(
     provider: Arc<P>,
     document: Document,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_document_to_meta_context");
 
-    let meta_context = organize(Arc::clone(&provider), document, _options).await?;
+    let meta_context = organize(Arc::clone(&provider), document, _options, metadata).await?;
 
-    normalize_meta_context(Arc::clone(&provider), meta_context, _options).await
+    normalize_meta_context(Arc::clone(&provider), meta_context, _options, metadata).await
 }
 
 #[allow(dead_code)]
 pub async fn normalize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_document");
 
-    let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options).await?;
+    let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options, metadata).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
@@ -162,12 +170,13 @@ pub async fn normalize_document<P: Provider>(
 pub async fn normalize_document_to_text<P: Provider>(
     provider: Arc<P>,
     document: Document,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
     document_format: &Option<DocumentFormat>
 ) -> Result<String, Errors> {
     log::trace!("In normalize_document_to_text");
 
-    let document = normalize_document(Arc::clone(&provider), document, _options).await?;
+    let document = normalize_document(Arc::clone(&provider), document, _options, metadata).await?;
 
     Ok(document.to_string(document_format))
 }
@@ -176,26 +185,28 @@ pub async fn normalize_document_to_text<P: Provider>(
 pub async fn normalize_file_to_meta_context<P: Provider>(
     provider: Arc<P>,
     path: &str,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_file_to_meta_context");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path)?;
 
-    normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await
+    normalize_text_to_meta_context(Arc::clone(&provider), text, _options, metadata).await
 }
 
 #[allow(dead_code)]
 pub async fn normalize_file_to_package<P: Provider>(
     provider: Arc<P>,
     path: &str,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_file_to_package");
     log::debug!("file path: {}", path);
 
-    let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options).await?;
+    let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options, metadata).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
@@ -212,13 +223,14 @@ pub async fn normalize_file_to_package<P: Provider>(
 pub async fn normalize_file_to_text<P: Provider>(
     provider: Arc<P>,
     path: &str,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
     document_format: &Option<DocumentFormat>
 ) -> Result<String, Errors> {
     log::trace!("In normalize_file_to_text");
     log::debug!("file path: {}", path);
 
-    let package = normalize_file_to_package(Arc::clone(&provider), path, _options).await?;
+    let package = normalize_file_to_package(Arc::clone(&provider), path, _options, metadata).await?;
 
     Ok(package.to_string(document_format))
 }
@@ -227,13 +239,14 @@ pub async fn normalize_file_to_text<P: Provider>(
 pub async fn normalize_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
     document_format: &Option<DocumentFormat>
 ) -> Result<(), Errors> {
     log::trace!("In normalize_file");
     log::debug!("file path: {}", path);
 
-    let text = normalize_file_to_text(Arc::clone(&provider), path, _options, document_format).await?;
+    let text = normalize_file_to_text(Arc::clone(&provider), path, _options, metadata, document_format).await?;
     let new_path = append_to_filename(path, "_normalized")?;
 
     write_text_to_file(&new_path, &text).map_err(|err| {
@@ -246,26 +259,28 @@ pub async fn normalize_file<P: Provider>(
 pub async fn normalize_url_to_meta_context<P: Provider>(
     provider: Arc<P>,
     url: &str,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_url_to_meta_context");
     log::debug!("URL: {}", url);
 
     let text = fetch_url_as_text(url).await?;
 
-    normalize_text_to_meta_context(Arc::clone(&provider), text, _options).await
+    normalize_text_to_meta_context(Arc::clone(&provider), text, _options, metadata).await
 }
 
 #[allow(dead_code)]
 pub async fn normalize_url_to_package<P: Provider>(
     provider: Arc<P>,
     url: &str,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_url_to_package");
     log::debug!("URL: {}", url);
 
-    let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options).await?;
+    let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options, metadata).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
@@ -282,13 +297,14 @@ pub async fn normalize_url_to_package<P: Provider>(
 pub async fn normalize_url_to_text<P: Provider>(
     provider: Arc<P>,
     url: &str,
-    _options: &Option<Options>,
+    _options: &Options,
+    metadata: &Metadata,
     document_format: &Option<DocumentFormat>
 ) -> Result<String, Errors> {
     log::trace!("In normalize_url_to_text");
     log::debug!("URL: {}", url);
 
-    let package = normalize_url_to_package(Arc::clone(&provider), url, _options).await?;
+    let package = normalize_url_to_package(Arc::clone(&provider), url, _options, metadata).await?;
 
     Ok(package.to_string(document_format))
 }
