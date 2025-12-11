@@ -62,6 +62,15 @@ pub trait Provider: Send + Sync + Sized + 'static {
         target_schema: Option<&Hash>,
         schema_transformation: SchemaTransformation,
     ) -> Result<(), Errors>;
+    async fn get_mutation_by_hash(
+        &self,
+        hash: &Hash,
+    ) -> Result<Option<Mutation>, Errors>;
+    async fn save_mutation(
+        &self,
+        hash: &Hash,
+        mutation: Mutation
+    ) -> Result<(), Errors>;
 }
 
 pub struct VoidProvider;
