@@ -40,19 +40,9 @@ pub async fn run() -> Result<(), Errors> {
     }
 
     let provider = init_provider().await?;
-
-    let options = Options {
-        ..Options::default()
-    };
-    log::debug!("options: {:?}", options);
-
-    let metadata = Metadata {
-        document_type: Some(get_document_type(&matches)?)
-    };
-    log::debug!("metadata: {:?}", metadata);
-
+    let options = get_options(&matches)?;
+    let metadata = get_metadata(&matches)?;
     let schema: Option<String> = get_schema(&matches).await?;
-
     let document: String = get_document(&matches).await?;
     
     let package = determine_document(
@@ -65,7 +55,7 @@ pub async fn run() -> Result<(), Errors> {
 
     let document_format = document_format::DocumentFormat::default();
 
-    log::info!("Successfully processed document/program");
+    log::info!("Successfully processed document");
 
     println!("{}", package.to_string(&Some(document_format)));
 
@@ -154,6 +144,18 @@ fn parse_arguments() -> clap::ArgMatches {
         .get_matches()
 }
 
+fn get_metadata(matches: &clap::ArgMatches) -> Result<Metadata, Errors> {
+    Ok(Metadata {
+        document_type: Some(get_document_type(&matches)?)
+    })
+}
+
+fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
+    Ok(Options {
+        ..Options::default()
+    })
+}
+
 async fn get_schema(matches: &clap::ArgMatches) -> Result<Option<String>, Errors> {
     if let Some(schema) = matches.value_of("schema") {
         return if is_valid_url(schema) {
@@ -214,6 +216,10 @@ async fn determine_document<P: Provider + ?Sized>(
     options: Options,
     metadata: Metadata,
 ) -> Result<Package, Errors> {
+
+    log::debug!("options: {:?}", options);
+    log::debug!("metadata: {:?}", metadata);
+
     if let Some(schema) = schema {
         translation::translate_text_to_package(
             provider.clone(),
