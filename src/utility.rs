@@ -3,6 +3,8 @@ use std::fs::File;
 use std::path::{Path};
 use fantoccini::{error::CmdError, ClientBuilder, Locator};
 use reqwest::Client;
+use url::Url;
+use serde_json;
 
 use crate::types::*;
 
@@ -121,4 +123,16 @@ pub async fn fetch_url_as_text_complex(url: &str) -> Result<String, Errors> {
     client.close().await?;
 
     Ok(html)
+}
+
+pub fn is_valid_url(string: &str) -> bool {
+    Url::parse(string).is_ok()
+}
+
+pub fn is_valid_unix_path(string: &str) -> bool {
+    Path::new(string).exists()
+}
+
+pub fn is_valid_json(string: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(string).is_ok()
 }

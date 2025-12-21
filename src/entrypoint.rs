@@ -51,7 +51,7 @@ pub async fn run() -> Result<(), Errors> {
     };
     log::debug!("metadata: {:?}", metadata);
 
-    let maybe_json_schema: Option<String> = get_schema(&matches).await;
+    let maybe_json_schema: Option<String> = get_schema(&matches).await?;
     
     let package = determine(
         maybe_json_schema,
@@ -146,18 +146,10 @@ fn parse_arguments() -> clap::ArgMatches {
             .long("inline")
             .value_name("INLINE")
             .help("Provide document directly in parameter"))
-        .arg(Arg::with_name("schema-file")
-            .long("schema-file")
-            .value_name("SCHEMA_FILE")
-            .help("Provide file as schema for translation"))
-        .arg(Arg::with_name("schema-url")
-            .long("schema-url")
-            .value_name("SCHEMA_URL")
-            .help("Provide url as schema for translation"))
-        .arg(Arg::with_name("schema-inline")
-            .long("schema-inline")
-            .value_name("SCHEMA_INLINE")
-            .help("Provide schema directly in parameter value for translation"))
+        .arg(Arg::with_name("schema")
+            .long("schema")
+            .value_name("SCHEMA")
+            .help("Provide schema for translation"))
         .arg(Arg::with_name("version")
             .short('v')
             .long("version")
@@ -170,17 +162,21 @@ fn parse_arguments() -> clap::ArgMatches {
         .get_matches()
 }
 
-async fn get_schema(matches: &clap::ArgMatches) -> Option<String> {
-    if let Some(schema) = matches.value_of("schema-inline") {
-        Some(schema.to_string())
-    } else if let Some(path) = matches.value_of("schema-file") {
-        let text = get_file_as_text(path).expect("Could not get schema file");
-        Some(text)
-    } else if let Some(url) = matches.value_of("schema-url") {
-        let text = fetch_url_as_text(url).await.expect("Could not get schema from URL");
-        Some(text)
+async fn get_schema(matches: &clap::ArgMatches) -> Result<Option<String>, Errors> {
+    if let Some(schema) = matches.value_of("schema") {
+        if is_valid_url(schema) {
+            let text = fetch_url_as_text(schema).await.expect("Could not get schema from URL");
+            Ok(Some(text))
+        } else if is_valid_unix_path(schema) {
+            let text = get_file_as_text(schema).expect("Could not get schema file");
+            Ok(Some(text))
+        } else if is_valid_json(schema) {
+            Ok(Some(schema.to_string()))
+        } else {
+            Err(Errors::SchemaNotValid)
+        }
     } else {
-        None
+        Ok(None)
     }
 }
 

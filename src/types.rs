@@ -29,6 +29,7 @@ pub enum Errors {
     BasisGraphNotProvided,
     ContextTooLarge,
     SchemaNotProvided,
+    SchemaNotValid,
     JsonSchemaParseError(String),
     DeficientMetaContextError(String),
     DocumentVersionNotFound,
