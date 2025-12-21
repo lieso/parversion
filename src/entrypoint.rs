@@ -164,20 +164,20 @@ fn parse_arguments() -> clap::ArgMatches {
 
 async fn get_schema(matches: &clap::ArgMatches) -> Result<Option<String>, Errors> {
     if let Some(schema) = matches.value_of("schema") {
-        if is_valid_url(schema) {
-            let text = fetch_url_as_text(schema).await.expect("Could not get schema from URL");
+        return if is_valid_url(schema) {
+            let text = fetch_url_as_text(schema).await?;
             Ok(Some(text))
         } else if is_valid_unix_path(schema) {
-            let text = get_file_as_text(schema).expect("Could not get schema file");
+            let text = get_file_as_text(schema)?;
             Ok(Some(text))
         } else if is_valid_json(schema) {
             Ok(Some(schema.to_string()))
         } else {
             Err(Errors::SchemaNotValid)
-        }
-    } else {
-        Ok(None)
+        };
     }
+
+    Ok(None)
 }
 
 fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors> {
