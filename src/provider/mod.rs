@@ -7,6 +7,7 @@ use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::transformation::SchemaTransformation;
+use crate::mutation::Mutation;
 
 #[cfg(feature = "yaml-provider")]
 pub mod yaml;
@@ -151,5 +152,20 @@ impl Provider for VoidProvider {
         _schema_transformation: SchemaTransformation
     ) -> Result<(), Errors> {
         Ok(())
+    }
+
+    async fn get_mutation_by_hash(
+        &self,
+        hash: &Hash,
+    ) -> Result<Option<Mutation>, Errors> {
+	Ok(None)
+    }
+
+    async fn save_mutation(
+        &self,
+        hash: &Hash,
+        mutation: Mutation
+    ) -> Result<(), Errors> {
+	Ok(())
     }
 }
