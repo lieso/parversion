@@ -51,13 +51,15 @@ pub async fn run() -> Result<(), Errors> {
     };
     log::debug!("metadata: {:?}", metadata);
 
-    let maybe_json_schema: Option<String> = get_schema(&matches).await?;
+    let schema: Option<String> = get_schema(&matches).await?;
+
+    let document: String = get_document(&matches).await?;
     
-    let package = determine(
-        maybe_json_schema,
+    let package = determine_document(
         provider,
+        schema,
+        document,
         options,
-        &matches,
         metadata,
     ).await?;
 
@@ -131,21 +133,11 @@ fn handle_error(err: Errors) {
 fn parse_arguments() -> clap::ArgMatches {
     App::new(PROGRAM_NAME)
         .version(VERSION)
-        .arg(Arg::with_name("file")
-             .short('f')
-             .long("file")
-             .value_name("FILE")
-             .help("Provide file as document for processing"))
-        .arg(Arg::with_name("url")
-            .short('u')
-            .long("url")
-            .value_name("URL")
-            .help("Provide url as document for processing"))
-        .arg(Arg::with_name("inline")
-            .short('i')
-            .long("inline")
-            .value_name("INLINE")
-            .help("Provide document directly in parameter"))
+        .arg(Arg::with_name("document")
+             .short('d')
+             .long("document")
+             .value_name("DOCUMENT")
+             .help("Provide document for processing"))
         .arg(Arg::with_name("schema")
             .long("schema")
             .value_name("SCHEMA")
@@ -155,7 +147,7 @@ fn parse_arguments() -> clap::ArgMatches {
             .long("version")
             .help("Display program version"))
         .arg(Arg::with_name("document-type")
-            .short('d')
+            .short('t')
             .long("document-type")
             .value_name("DOCUMENT_TYPE")
             .help("The document type : html, xml, js"))
@@ -180,6 +172,28 @@ async fn get_schema(matches: &clap::ArgMatches) -> Result<Option<String>, Errors
     Ok(None)
 }
 
+async fn get_document(matches: &clap::ArgMatches) -> Result<String, Errors> {
+    if let Ok(stdin) = load_stdin() {
+        log::info!("Received data from stdin");
+        return Ok(stdin);
+    }
+
+    if let Some(document) = matches.value_of("document") {
+        return if is_valid_url(document) {
+            let text = fetch_url_as_text(document).await?;
+            Ok(text)
+        } else if is_valid_unix_path(document) {
+            let text = get_file_as_text(document)?;
+            Ok(text)
+        } else {
+            log::info!("Received inline document");
+            Ok(document.to_string())
+        }
+    }
+
+    Err(Errors::DocumentNotProvided)
+}
+
 fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors> {
     if let Some(document_type_input) = matches.value_of("document-type") {
         match document_type_input {
@@ -193,91 +207,28 @@ fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors>
     }
 }
 
-async fn determine<P: Provider + ?Sized>(
-    maybe_json_schema: Option<String>,
+async fn determine_document<P: Provider + ?Sized>(
     provider: Arc<P>,
+    schema: Option<String>,
+    document: String,
     options: Options,
-    matches: &clap::ArgMatches,
     metadata: Metadata,
 ) -> Result<Package, Errors> {
-    if let Ok(stdin) = load_stdin() {
-        log::info!("Received data from stdin");
-
-        if let Some(json_schema) = maybe_json_schema {
-            translation::translate_text_to_package(
-                provider.clone(),
-                stdin,
-                &options,
-                &metadata,
-                &json_schema,
-            ).await
-        } else {
-            normalization::normalize_text_to_package(
-                provider.clone(),
-                stdin,
-                &options,
-                &metadata,
-            ).await
-        }
-    } else if let Some(path) = matches.value_of("file") {
-        log::info!("Received a file name");
-
-        if let Some(json_schema) = maybe_json_schema {
-            translation::translate_file_to_package(
-                provider.clone(),
-                path,
-                &options,
-                &metadata,
-                &json_schema,
-            ).await
-        } else {
-            normalization::normalize_file_to_package(
-                provider.clone(),
-                path,
-                &options,
-                &metadata,
-            ).await
-        }
-    } else if let Some(url) = matches.value_of("url") {
-        log::info!("Received a URL");
-
-        if let Some(json_schema) = maybe_json_schema {
-            translation::translate_url_to_package(
-                provider.clone(),
-                url,
-                &options,
-                &metadata,
-                &json_schema,
-            ).await
-        } else {
-            normalization::normalize_url_to_package(
-                provider.clone(),
-                url,
-                &options,
-                &metadata,
-            ).await
-        }
-    } else if let Some(inline_document) = matches.value_of("inline") {
-        log::info!("Received an inline document");
-
-        if let Some(json_schema) = maybe_json_schema {
-            translation::translate_text_to_package(
-                provider.clone(),
-                inline_document.to_string(),
-                &options,
-                &metadata,
-                &json_schema,
-            ).await
-        } else {
-            normalization::normalize_text_to_package(
-                provider.clone(),
-                inline_document.to_string(),
-                &options,
-                &metadata,
-            ).await
-        }
+    if let Some(schema) = schema {
+        translation::translate_text_to_package(
+            provider.clone(),
+            document,
+            &options,
+            &metadata,
+            &schema,
+        ).await
     } else {
-        Err(Errors::DocumentNotProvided)
+        normalization::normalize_text_to_package(
+            provider.clone(),
+            document,
+            &options,
+            &metadata,
+        ).await
     }
 }
 
