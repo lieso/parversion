@@ -61,6 +61,17 @@ struct MatchSchemaNodeResponse {
 }
 
 impl OpenAI {
+    pub async fn code_to_http(code: &str) -> Result<(), Errors> {
+        log::trace!("In code_to_http");
+
+        if code.len() > 10000 {
+            return Err(Errors::ContextTooLarge);
+        }
+
+
+        unimplemented!()
+    }
+
     pub async fn match_schema_nodes(
         marked_schema_node: &String,
         target_schema: Arc<String>

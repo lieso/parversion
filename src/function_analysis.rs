@@ -10,6 +10,7 @@ use crate::meta_context::MetaContext;
 use crate::mutation::Mutation;
 use crate::function::Function;
 use crate::config::{CONFIG};
+use crate::llm::LLM;
 
 pub async fn functions_to_mutations<P: Provider>(
     provider: Arc<P>,
@@ -84,6 +85,14 @@ async fn function_to_mutation<P: Provider>(
     function: Function
 ) -> Result<Mutation, Errors> {
     log::trace!("In function_to_mutation");
+
+    if let Some(mutation) = provider.get_mutation_by_hash(&function.hash).await? {
+        log::info!("Provider has supplied mutation");
+
+        return Ok(mutation);
+    }
+
+    let something = LLM::code_to_http(&function.code).await?;
 
     unimplemented!()
 }
