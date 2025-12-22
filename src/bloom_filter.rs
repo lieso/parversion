@@ -1,9 +1,10 @@
 use serde::{Serialize, Deserialize};
+use sha2::{Sha256, Digest};
 
 use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct BloomFilter {
+pub struct BloomFilter {
     size: usize,
     bits: Vec<bool>,
     num_hashes: usize,
@@ -19,7 +20,12 @@ impl BloomFilter {
     }
 
     fn hash(&self, value: &Hash, seed: u64) -> usize {
-        usize::from_str_radix(&value.to_string().unwrap(), 16).unwrap() % self.size
+        let mut hasher = Sha256::new();
+        hasher.update(format!("{}{}", &value.to_string().unwrap(), seed));
+        let hash_value = hasher.finalize();
+        let hash_bytes = &hash_value[..];
+        let hash_num = usize::from_le_bytes(hash_bytes[0..8].try_into().unwrap());
+        hash_num % self.size
     }
 
     pub fn add(&mut self, hash: &Hash) {

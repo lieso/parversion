@@ -13,6 +13,7 @@ use crate::profile::Profile;
 use crate::provider::Provider;
 use crate::transformation::SchemaTransformation;
 use crate::operation::Operation;
+use crate::bloom_filter::BloomFilter;
 
 #[cfg(feature = "yaml-provider")]
 pub struct YamlFileProvider {
@@ -355,21 +356,39 @@ impl Provider for YamlFileProvider {
     async fn get_operation_by_hash(&self, hash: &Hash) -> Result<Option<Operation>, Errors> {
         let yaml = self.load_data().await?;
 
-        let operations: Vec<Operation> = yaml
-            .get("operations")
-            .and_then(|operation| {
-                let deserialized: Result<Vec<Operation>, _> = serde_yaml::from_value(operation.clone());
+        let bloom_filter = yaml
+            .get("no_op")
+            .and_then(|data| {
+                let deserialized: Result<BloomFilter, _> = serde_yaml::from_value(data.clone());
 
                 if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for operations: {:?}", err);
+                    log::error!("Deserialization error for operation bloom filter: {:?}", err);
                 }
                 deserialized.ok()
             })
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_else(|| BloomFilter::new(100, 7));
 
-        for operation in operations {
-            if &operation.hash == hash {
-                return Ok(Some(operation));
+        if bloom_filter.contains(hash) {
+            log::info!("bloom filter: operation might be a no-op");
+        } else {
+            log::info!("bloom filter: operation definitely not no-op");
+
+            let operations: Vec<Operation> = yaml
+                .get("operations")
+                .and_then(|data| {
+                    let deserialized: Result<Vec<Operation>, _> = serde_yaml::from_value(data.clone());
+
+                    if let Err(ref err) = deserialized {
+                        log::error!("Deserialization error for operations: {:?}", err);
+                    }
+                    deserialized.ok()
+                })
+                .unwrap_or_else(Vec::new);
+
+            for operation in operations {
+                if &operation.hash == hash {
+                    return Ok(Some(operation));
+                }
             }
         }
 
@@ -381,8 +400,29 @@ impl Provider for YamlFileProvider {
         hash: &Hash,
         operation: Operation
     ) -> Result<(), Errors> {
-
         let mut yaml = self.load_data().await?;
+
+        let mut bloom_filter = yaml
+            .get("no_op")
+            .and_then(|data| {
+                let deserialized: Result<BloomFilter, _> = serde_yaml::from_value(data.clone());
+
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error for operation bloom filter: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(|| BloomFilter::new(1_048_576, 7));
+
+        if operation.is_no_op() {
+            bloom_filter.add(hash);
+
+            let serialized_bloom_filter = serde_yaml::to_value(bloom_filter)
+                .map_err(|_| Errors::UnexpectedError)?;
+            yaml["no_op"] = serialized_bloom_filter;
+
+            return self.save_data(&yaml).await;
+        }
 
         let serialized_operation = serde_yaml::to_value(&operation).map_err(|_| Errors::UnexpectedError)?;
 

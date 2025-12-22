@@ -22,7 +22,7 @@ impl Operation {
         }
     }
 
-    pub fn is_null_operation(&self) -> bool {
+    pub fn is_no_op(&self) -> bool {
         self.query.is_none() && self.mutation.is_none()
     }
 }
