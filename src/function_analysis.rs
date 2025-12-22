@@ -7,16 +7,16 @@ use std::collections::HashMap;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::meta_context::MetaContext;
-use crate::mutation::Mutation;
+use crate::operation::Operation;
 use crate::function::Function;
 use crate::config::{CONFIG};
 use crate::llm::LLM;
 
-pub async fn functions_to_mutations<P: Provider>(
+pub async fn functions_to_operations<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-) -> Result<HashMap<Hash, Arc<Mutation>>, Errors> {
-    log::trace!("In functions_to_mutations");
+) -> Result<HashMap<Hash, Arc<Operation>>, Errors> {
+    log::trace!("In functions_to_operations");
 
     let functions: Vec<Function> = {
         let lock = read_lock!(meta_context);
@@ -38,7 +38,7 @@ pub async fn functions_to_mutations<P: Provider>(
         for function in functions.iter() {
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
-            let result = function_to_mutation(
+            let result = function_to_operation(
                 cloned_provider,
                 cloned_meta_context,
                 function.clone(),
@@ -59,7 +59,7 @@ pub async fn functions_to_mutations<P: Provider>(
             
             let handle = task::spawn(async move {
                 let _permit = permit;
-                let result = function_to_mutation(
+                let result = function_to_operation(
                     cloned_provider,
                     cloned_meta_context,
                     function.clone(),
@@ -71,25 +71,25 @@ pub async fn functions_to_mutations<P: Provider>(
             handles.push(handle);
         }
 
-        let results: Vec<Result<(Hash, Arc<Mutation>), Errors>> = try_join_all(handles).await?;
+        let results: Vec<Result<(Hash, Arc<Operation>), Errors>> = try_join_all(handles).await?;
 
-        let hashmap_results: HashMap<Hash, Arc<Mutation>> = results.into_iter().collect::<Result<_, _>>()?;
+        let hashmap_results: HashMap<Hash, Arc<Operation>> = results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }
 }
 
-async fn function_to_mutation<P: Provider>(
+async fn function_to_operation<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     function: Function
-) -> Result<Mutation, Errors> {
-    log::trace!("In function_to_mutation");
+) -> Result<Operation, Errors> {
+    log::trace!("In function_to_operation");
 
-    if let Some(mutation) = provider.get_mutation_by_hash(&function.hash).await? {
-        log::info!("Provider has supplied mutation");
+    if let Some(operation) = provider.get_operation_by_hash(&function.hash).await? {
+        log::info!("Provider has supplied operation");
 
-        return Ok(mutation);
+        return Ok(operation);
     }
 
     let something = LLM::code_to_http(&function.code).await?;

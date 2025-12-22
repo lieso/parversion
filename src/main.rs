@@ -43,6 +43,8 @@ mod metadata;
 mod function_analysis;
 mod entrypoint;
 mod options;
+mod operation;
+mod query;
 
 use crate::entrypoint::run;
 

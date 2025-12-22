@@ -7,7 +7,7 @@ use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::transformation::SchemaTransformation;
-use crate::mutation::Mutation;
+use crate::operation::Operation;
 
 #[cfg(feature = "yaml-provider")]
 pub mod yaml;
@@ -63,14 +63,14 @@ pub trait Provider: Send + Sync + Sized + 'static {
         target_schema: Option<&Hash>,
         schema_transformation: SchemaTransformation,
     ) -> Result<(), Errors>;
-    async fn get_mutation_by_hash(
+    async fn get_operation_by_hash(
         &self,
         hash: &Hash,
-    ) -> Result<Option<Mutation>, Errors>;
-    async fn save_mutation(
+    ) -> Result<Option<Operation>, Errors>;
+    async fn save_operation(
         &self,
         hash: &Hash,
-        mutation: Mutation
+        operation: Operation
     ) -> Result<(), Errors>;
 }
 
@@ -154,18 +154,18 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
-    async fn get_mutation_by_hash(
+    async fn get_operation_by_hash(
         &self,
         hash: &Hash,
-    ) -> Result<Option<Mutation>, Errors> {
-	Ok(None)
+    ) -> Result<Option<Operation>, Errors> {
+      Ok(None)
     }
 
-    async fn save_mutation(
+    async fn save_operation(
         &self,
         hash: &Hash,
-        mutation: Mutation
+        operation: Operation
     ) -> Result<(), Errors> {
-	Ok(())
+      Ok(())
     }
 }

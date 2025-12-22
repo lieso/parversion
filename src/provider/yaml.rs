@@ -12,7 +12,7 @@ use crate::prelude::*;
 use crate::profile::Profile;
 use crate::provider::Provider;
 use crate::transformation::SchemaTransformation;
-use crate::mutation::Mutation;
+use crate::operation::Operation;
 
 #[cfg(feature = "yaml-provider")]
 pub struct YamlFileProvider {
@@ -352,31 +352,31 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_mutation_by_hash(&self, hash: &Hash) -> Result<Option<Mutation>, Errors> {
+    async fn get_operation_by_hash(&self, hash: &Hash) -> Result<Option<Operation>, Errors> {
         let yaml = self.load_data().await?;
 
-        let mutations: Vec<Mutation> = yaml
-            .get("mutations")
-            .and_then(|mutation| {
-                let deserialized: Result<Vec<Mutation>, _> = serde_yaml::from_value(mutation.clone());
+        let operations: Vec<Operation> = yaml
+            .get("operations")
+            .and_then(|operation| {
+                let deserialized: Result<Vec<Operation>, _> = serde_yaml::from_value(operation.clone());
 
                 if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for mutations: {:?}", err);
+                    log::error!("Deserialization error for operations: {:?}", err);
                 }
                 deserialized.ok()
             })
             .unwrap_or_else(Vec::new);
 
-        for mutation in mutations {
-            if &mutation.hash == hash {
-                return Ok(Some(mutation));
+        for operation in operations {
+            if &operation.hash == hash {
+                return Ok(Some(operation));
             }
         }
 
         Ok(None)
     }
 
-    async fn save_mutation(&self, hash: &Hash, mutation: Mutation) -> Result<(), Errors> {
+    async fn save_operation(&self, hash: &Hash, operation: Operation) -> Result<(), Errors> {
         unimplemented!()
     }
 }

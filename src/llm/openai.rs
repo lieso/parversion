@@ -79,7 +79,7 @@ impl OpenAI {
 
         if !eliminate_response.is_query_or_mutation {
             log::info!("Function is not a query or mutation");
-            return None;
+            return Ok(None);
         }
 
 
