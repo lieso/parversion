@@ -85,14 +85,25 @@ async fn function_to_operation<P: Provider>(
     function: Function
 ) -> Result<Operation, Errors> {
     log::trace!("In function_to_operation");
+    
+    let hash: &Hash = &function.hash;
 
-    if let Some(operation) = provider.get_operation_by_hash(&function.hash).await? {
+    if let Some(operation) = provider.get_operation_by_hash(hash).await? {
         log::info!("Provider has supplied operation");
 
         return Ok(operation);
     }
 
-    let something = LLM::code_to_http(&function.code).await?;
+    if let Some(something) = LLM::code_to_http(&function.code).await? {
+        unimplemented!()
+    } else {
+        let operation = Operation::new(hash);
 
-    unimplemented!()
+        provider.save_operation(
+            hash,
+            operation.clone()
+        ).await?;
+
+        Ok(operation)
+    }
 }

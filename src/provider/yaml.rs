@@ -376,7 +376,29 @@ impl Provider for YamlFileProvider {
         Ok(None)
     }
 
-    async fn save_operation(&self, hash: &Hash, operation: Operation) -> Result<(), Errors> {
-        unimplemented!()
+    async fn save_operation(
+        &self,
+        hash: &Hash,
+        operation: Operation
+    ) -> Result<(), Errors> {
+
+        let mut yaml = self.load_data().await?;
+
+        let serialized_operation = serde_yaml::to_value(&operation).map_err(|_| Errors::UnexpectedError)?;
+
+        if let Some(operations) = yaml.get_mut("operations") {
+            operations
+                .as_sequence_mut()
+                .ok_or_else(|| {
+                    Errors::YamlParseError(
+                        "Failed to get mutable sequence for operations".to_string()
+                    )
+                })?
+                .push(serialized_operation);
+        } else {
+            yaml["operations"] = serde_yaml::Value::Sequence(vec![serialized_operation]);
+        }
+
+        self.save_data(&yaml).await
     }
 }

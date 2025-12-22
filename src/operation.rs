@@ -5,12 +5,24 @@ use crate::mutation::Mutation;
 use crate::query::Query;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum QueryOrMutation {
-    Query(Query),
-    Mutation(Mutation),
+pub struct Operation {
+    pub id: ID,
+    pub hash: Hash,
+    pub query: Option<Query>,
+    pub mutation: Option<Mutation>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Operation {
-    operation: QueryOrMutation,
+impl Operation {
+    pub fn new(hash: &Hash) -> Self {
+        Operation {
+            id: ID::new(),
+            hash: hash.clone(),
+            query: None,
+            mutation: None,
+        }
+    }
+
+    pub fn is_null_operation(&self) -> bool {
+        self.query.is_none() && self.mutation.is_none()
+    }
 }

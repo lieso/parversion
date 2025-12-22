@@ -114,11 +114,7 @@ impl LLM {
         Ok((name, matches, description))
     }
 
-    pub async fn code_to_http(code: &str) -> Result<(), Errors> {
-        log::trace!("In code_to_http");
-
-        let something = openai::OpenAI::code_to_http(&code).await?;
-
-        unimplemented!()
+    pub async fn code_to_http(code: &str) -> Result<Option<()>, Errors> {
+        openai::OpenAI::code_to_http(&code).await
     }
 }
