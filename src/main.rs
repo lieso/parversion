@@ -42,6 +42,7 @@ mod package;
 mod metadata;
 mod function_analysis;
 mod entrypoint;
+mod options;
 
 use crate::entrypoint::run;
 

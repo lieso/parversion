@@ -42,3 +42,4 @@ pub mod package;
 pub mod metadata;
 pub mod function_analysis;
 pub mod entrypoint;
+pub mod options;
