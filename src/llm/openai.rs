@@ -56,6 +56,11 @@ struct NormalResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+struct ShouldEliminateCodeResponse {
+    pub is_query_or_mutation: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct MatchSchemaNodeResponse {
     pub json_path: Option<String>,
 }
@@ -67,6 +72,10 @@ impl OpenAI {
         if code.len() > 10000 {
             return Err(Errors::ContextTooLarge);
         }
+
+        let eliminate_response = Self::should_eliminate_code(&code).await?;
+
+        log::debug!("eliminate_response: {:?}", eliminate_response);
 
 
         unimplemented!()
@@ -907,6 +916,55 @@ Example {}:
 
                 log::debug!("╔═══════════════════════════════════════╗");
                 log::debug!("║    SHOULD ELIMINATE FIELD END         ║");
+                log::debug!("╚═══════════════════════════════════════╝");
+
+                Ok(response)
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
+    async fn should_eliminate_code(code: &str) -> Result<ShouldEliminateCodeResponse, Errors> {
+        let system_prompt = format!(r##"
+Your task is to determine whether a pseudo-javascript function performs any kind of query or mutation on a remote server. 
+        "##);
+        let user_prompt = format!("{}", code);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "name": "query_or_mutation",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "is_query_or_mutation": {
+                        "type": "boolean"
+                    }
+                },
+                "required": ["is_query_or_mutation"],
+                "additionalProperties": false
+            }
+        });
+
+        match Self::send_openai_request(
+            &system_prompt,
+            &user_prompt,
+            response_format
+        ).await {
+            Ok(response) => {
+                log::debug!("╔════════════════════════════════════════╗");
+                log::debug!("║    SHOULD ELIMINATE CODE START         ║");
+                log::debug!("╚════════════════════════════════════════╝");
+
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
+
+                log::debug!("╔═══════════════════════════════════════╗");
+                log::debug!("║    SHOULD ELIMINATE CODE END          ║");
                 log::debug!("╚═══════════════════════════════════════╝");
 
                 Ok(response)
