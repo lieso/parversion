@@ -353,7 +353,27 @@ impl Provider for YamlFileProvider {
     }
 
     async fn get_mutation_by_hash(&self, hash: &Hash) -> Result<Option<Mutation>, Errors> {
-        unimplemented!()
+        let yaml = self.load_data().await?;
+
+        let mutations: Vec<Mutation> = yaml
+            .get("mutations")
+            .and_then(|mutation| {
+                let deserialized: Result<Vec<Mutation>, _> = serde_yaml::from_value(mutation.clone());
+
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error for mutations: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(Vec::new);
+
+        for mutation in mutations {
+            if &mutation.hash == hash {
+                return Ok(Some(mutation));
+            }
+        }
+
+        Ok(None)
     }
 
     async fn save_mutation(&self, hash: &Hash, mutation: Mutation) -> Result<(), Errors> {
