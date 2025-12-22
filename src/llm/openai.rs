@@ -103,6 +103,41 @@ impl OpenAI {
 
         log::debug!("operation_response: {:?}", operation_response);
 
+        if operation_response.url.len() == 0 {
+            log::warn!("Unexpected blank operation");
+            
+            // TODO
+            /*
+            function fn() {
+                const v0 = document.createElement("link").relList;
+                if (v0 && v0.supports && v0.supports("modulepreload")) return;
+                for (const j of document.querySelectorAll('link[rel="modulepreload"]'))o(j);
+                new MutationObserver((j)=>{
+                    for (const w of j)if (w.type === "childList") for (const sl of w.addedNodes)sl.tagName === "LINK" && sl.rel === "modulepreload" && o(sl);
+                }).observe(document, {
+                    childList: !0,
+                    subtree: !0
+                });
+                function $(p0) {
+                    const v0 = {};
+                    return p0.integrity && (v0.integrity = p0.integrity), p0.referrerPolicy && (v0.referrerPolicy = p0.referrerPolicy), p0.crossOrigin === "use-credentials" ? v0.credentials = "include" : p0.crossOrigin === "anonymous" ? v0.credentials = "omit" : v0.credentials = "same-origin", v0;
+                }
+                function o(p0) {
+                    if (p0.ep) return;
+                    p0.ep = !0;
+                    const v0 = $(p0);
+                    fetch(p0.href, v0);
+                }
+            }
+
+            The function contains a call to fetch(p0.href, v0), which is a standard JavaScript method for making HTTP requests to a remote server. This is a direct query or mutation operation, as it sends a request to the URL specified by p0.href, potentially retrieving or modifying data on a remote server.
+            */
+        }
+
+
+
+
+
 
         unimplemented!()
     }
