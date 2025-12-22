@@ -94,7 +94,7 @@ async fn function_to_operation<P: Provider>(
         return Ok(operation);
     }
 
-    if let Some(something) = LLM::code_to_http(&function.code).await? {
+    if let Some(something) = LLM::function_to_operation(&function.code).await? {
         unimplemented!()
     } else {
         let operation = Operation::new(hash);

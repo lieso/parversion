@@ -114,7 +114,7 @@ impl LLM {
         Ok((name, matches, description))
     }
 
-    pub async fn code_to_http(code: &str) -> Result<Option<()>, Errors> {
-        openai::OpenAI::code_to_http(&code).await
+    pub async fn function_to_operation(code: &str) -> Result<Option<()>, Errors> {
+        openai::OpenAI::function_to_operation(&code).await
     }
 }

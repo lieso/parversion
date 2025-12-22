@@ -56,20 +56,37 @@ struct NormalResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct ShouldEliminateCodeResponse {
-    pub is_query_or_mutation: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 struct MatchSchemaNodeResponse {
     pub json_path: Option<String>,
 }
 
-impl OpenAI {
-    pub async fn code_to_http(code: &str) -> Result<Option<()>, Errors> {
-        log::trace!("In code_to_http");
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct ShouldEliminateCodeResponse {
+    pub is_query_or_mutation: bool,
+    pub justification: String,
+}
 
-        if code.len() > 10000 {
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct CodeToHttpResponseHeaders {
+    pub content_type: String,
+    pub accept: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct CodeToHttpResponse {
+    method: String,
+    url: String,
+    headers: CodeToHttpResponseHeaders,
+    query_params: Vec<String>,
+    body: Vec<String>,
+}
+
+impl OpenAI {
+    pub async fn function_to_operation(code: &str) -> Result<Option<()>, Errors> {
+        log::trace!("In function_to_operation");
+
+        if code.len() > 20000 {
+            log::debug!("{}", code);
             return Err(Errors::ContextTooLarge);
         }
 
@@ -81,6 +98,10 @@ impl OpenAI {
             log::info!("Function is not a query or mutation");
             return Ok(None);
         }
+
+        let operation_response = Self::code_to_http(&code).await?;
+
+        log::debug!("operation_response: {:?}", operation_response);
 
 
         unimplemented!()
@@ -934,7 +955,11 @@ Example {}:
 
     async fn should_eliminate_code(code: &str) -> Result<ShouldEliminateCodeResponse, Errors> {
         let system_prompt = format!(r##"
-Your task is to determine whether a pseudo-javascript function performs any kind of query or mutation on a remote server. 
+Your task is to determine whether a pseudo-javascript function directly performs any kind of query or mutation on a remote server. 
+
+Look for the presence of URLs, http methods, JSON payloads and other things normally required for javascript to perform a query or mutation.
+
+Please include a justification for your response
         "##);
         let user_prompt = format!("{}", code);
 
@@ -947,9 +972,12 @@ Your task is to determine whether a pseudo-javascript function performs any kind
                 "properties": {
                     "is_query_or_mutation": {
                         "type": "boolean"
+                    },
+                    "justification": {
+                        "type": "string"
                     }
                 },
-                "required": ["is_query_or_mutation"],
+                "required": ["is_query_or_mutation", "justification"],
                 "additionalProperties": false
             }
         });
@@ -970,6 +998,97 @@ Your task is to determine whether a pseudo-javascript function performs any kind
 
                 log::debug!("╔═══════════════════════════════════════╗");
                 log::debug!("║    SHOULD ELIMINATE CODE END          ║");
+                log::debug!("╚═══════════════════════════════════════╝");
+
+                Ok(response)
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenAI: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
+    async fn code_to_http(code: &str) -> Result<CodeToHttpResponse, Errors> {
+        let system_prompt = format!(r##"
+Your task is to convert a pseudo-javascript function into a json object that contains all the information needed to reconstruct the network request or API call.
+
+If you do not see an appropriate value for any of the keys in the response format, of if you do not think the code represents a network request, please leave blank.
+
+Please include a justification for your response.
+        "##);
+        let user_prompt = format!("{}", code);
+
+        let response_format = json!({
+            "type": "json_schema",
+            "name": "js_http",
+            "strict": true,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "method": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "headers": {
+                        "type": "object",
+                        "properties": {
+                            "content_type": {
+                                "type": "string"
+                            },
+                            "accept": {
+                                "type": "string"
+                            }
+                        },
+                        "required": ["content_type", "accept"],
+                        "additionalProperties": false
+                    },
+                    "query_params": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "body": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "justification": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "method",
+                    "url",
+                    "headers",
+                    "query_params",
+                    "body",
+                    "justification",
+                ],
+                "additionalProperties": false
+            }
+        });
+
+        match Self::send_openai_request(
+            &system_prompt,
+            &user_prompt,
+            response_format
+        ).await {
+            Ok(response) => {
+                log::debug!("╔════════════════════════════════════════╗");
+                log::debug!("║    CODE TO HTTP START                  ║");
+                log::debug!("╚════════════════════════════════════════╝");
+
+                log::debug!("***system_prompt***\n{}", system_prompt);
+                log::debug!("***user_prompt***\n{}", user_prompt);
+                log::debug!("***response***\n{:?}", response);
+
+                log::debug!("╔═══════════════════════════════════════╗");
+                log::debug!("║    CODE TO HTTP END                   ║");
                 log::debug!("╚═══════════════════════════════════════╝");
 
                 Ok(response)
