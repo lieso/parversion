@@ -66,7 +66,7 @@ struct MatchSchemaNodeResponse {
 }
 
 impl OpenAI {
-    pub async fn code_to_http(code: &str) -> Result<(), Errors> {
+    pub async fn code_to_http(code: &str) -> Result<Option<()>, Errors> {
         log::trace!("In code_to_http");
 
         if code.len() > 10000 {
@@ -76,6 +76,11 @@ impl OpenAI {
         let eliminate_response = Self::should_eliminate_code(&code).await?;
 
         log::debug!("eliminate_response: {:?}", eliminate_response);
+
+        if !eliminate_response.is_query_or_mutation {
+            log::info!("Function is not a query or mutation");
+            return None;
+        }
 
 
         unimplemented!()

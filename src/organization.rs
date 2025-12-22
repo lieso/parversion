@@ -10,7 +10,7 @@ use crate::document_format::DocumentFormat;
 use crate::package::Package;
 use crate::mutation::Mutation;
 use crate::ast::program_to_functions;
-use crate::function_analysis::functions_to_mutations;
+use crate::function_analysis::functions_to_operations;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -53,7 +53,7 @@ pub async fn organize<P: Provider>(
             lock.update_functions(functions);
         }
 
-        let something = functions_to_mutations(
+        let something = functions_to_operations(
             Arc::clone(&provider),
             meta_context.clone()
         ).await?;
