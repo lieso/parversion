@@ -132,6 +132,8 @@ impl OpenAI {
 
             The function contains a call to fetch(p0.href, v0), which is a standard JavaScript method for making HTTP requests to a remote server. This is a direct query or mutation operation, as it sends a request to the URL specified by p0.href, potentially retrieving or modifying data on a remote server.
             */
+
+            return Ok(None);
         }
 
 

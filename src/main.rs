@@ -45,6 +45,7 @@ mod entrypoint;
 mod options;
 mod operation;
 mod query;
+mod bloom_filter;
 
 use crate::entrypoint::run;
 
