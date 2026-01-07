@@ -128,16 +128,9 @@ impl XMLElementTransformation {
     fn prefix(&self, element: String, attributes: HashMap<String, String>) -> String {
         let element_code = format!("let element = '{}';", element);
 
-        let attributes_code = {
-            let attributes_list: Vec<String> = attributes
-                .into_iter()
-                .map(|(key, value)| {
-                    let escaped_value = value.replace("\"", "\\\"");
-                    format!("\"{}\": \"{}\"", key, escaped_value)
-                })
-                .collect();
-            format!("let attributes = {{ {} }};", attributes_list.join(", "))
-        };
+        let attributes_json = serde_json::to_string(&attributes)
+            .expect("Could not serialize attributes");
+        let attributes_code = format!("let attributes = {};", attributes_json);
 
         format!("{}\n{}", element_code, attributes_code)
     }
