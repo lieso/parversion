@@ -197,6 +197,8 @@ pub async fn get_basis_nodes<P: Provider>(
 
     let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
 
+    log::info!("Number of context groups: {}", context_groups.len());
+
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
     if max_concurrency == 1 {
