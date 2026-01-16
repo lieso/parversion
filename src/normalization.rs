@@ -37,7 +37,8 @@ pub async fn normalize<P: Provider>(
     log::info!("Getting normal schema transformations");
     let schema_transformations = get_normal_schema_transformations(
         Arc::clone(&provider),
-        Arc::clone(&meta_context)
+        Arc::clone(&meta_context),
+        _options
     ).await?;
 
     {

@@ -22,6 +22,7 @@ use crate::path::Path;
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_translation_schema_transformations");
 
@@ -82,6 +83,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                 cloned_meta_context,
                 schema_context.clone(),
                 target_schema.clone(),
+                options,
             ).await?;
 
             results.insert(result.lineage.clone(), Arc::new(result));
@@ -97,6 +99,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
             let cloned_target_schema = Arc::clone(&target_schema);
+            let cloned_options = options.clone();
 
             let handle = task::spawn(async move {
                 let _permit = permit;
@@ -105,6 +108,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                     cloned_meta_context,
                     schema_context.clone(),
                     cloned_target_schema,
+                    &cloned_options,
                 ).await?;
 
                 Ok((transformation.lineage.clone(), Arc::new(transformation)))
@@ -122,7 +126,8 @@ pub async fn get_translation_schema_transformations<P: Provider>(
 
 pub async fn get_normal_schema_transformations<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>
+    meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_normal_schema_transformations");
 
@@ -152,7 +157,8 @@ pub async fn get_normal_schema_transformations<P: Provider>(
             let result = get_normal_schema_transformation(
                 cloned_provider,
                 cloned_meta_context,
-                schema_context.clone()
+                schema_context.clone(),
+                options,
             ).await?;
 
             results.insert(result.lineage.clone(), Arc::new(result));
@@ -167,13 +173,15 @@ pub async fn get_normal_schema_transformations<P: Provider>(
             let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_options = options.clone();
 
             let handle = task::spawn(async move {
                 let _permit = permit;
                 let transformation = get_normal_schema_transformation(
                     cloned_provider,
                     cloned_meta_context,
-                    schema_context.clone()
+                    schema_context.clone(),
+                    &cloned_options,
                 ).await?;
 
                 Ok((transformation.lineage.clone(), Arc::new(transformation)))
@@ -192,6 +200,7 @@ pub async fn get_normal_schema_transformations<P: Provider>(
 pub async fn get_basis_nodes<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
 
@@ -210,7 +219,8 @@ pub async fn get_basis_nodes<P: Provider>(
             let result = get_basis_node(
                 cloned_provider,
                 cloned_meta_context,
-                context_group.clone()
+                context_group.clone(),
+                options
             ).await?;
 
             results.insert(result.id.clone(), Arc::new(result));
@@ -225,13 +235,15 @@ pub async fn get_basis_nodes<P: Provider>(
             let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_options = options.clone();
 
             let handle = task::spawn(async move {
                 let _permit = permit;
                 let basis_node = get_basis_node(
                     cloned_provider,
                     cloned_meta_context,
-                    context_group.clone()
+                    context_group.clone(),
+                    &cloned_options,
                 ).await?;
 
                 Ok((basis_node.id.clone(), Arc::new(basis_node)))
@@ -251,15 +263,18 @@ async fn get_normal_schema_transformation<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     schema_context: Arc<SchemaContext>,
+    options: &Options,
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_normal_schema_transformation");
 
     let lineage = &schema_context.lineage;
 
-    if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, None).await? {
-        log::info!("Provider has supplied normal schema transformation");
+    if !options.regenerate {
+        if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, None).await? {
+            log::info!("Provider has supplied normal schema transformation");
 
-        return Ok(schema_transformation);
+            return Ok(schema_transformation);
+        };
     }
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
@@ -289,6 +304,7 @@ async fn get_translation_schema_transformation<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
     schema_context: Arc<SchemaContext>,
     target_schema: Arc<String>,
+    options: &Options,
 ) -> Result<SchemaTransformation, Errors> {
     log::trace!("In get_translation_schema_transformation");
 
@@ -308,10 +324,12 @@ async fn get_translation_schema_transformation<P: Provider>(
         lock.subgraph_hash.clone()
     };
 
-    if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, Some(&subgraph_hash)).await? {
-        log::info!("Provider has supplied translation schema transformtion"); 
+    if !options.regenerate {
+        if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, Some(&subgraph_hash)).await? {
+            log::info!("Provider has supplied translation schema transformtion");
 
-        return Ok(schema_transformation);
+            return Ok(schema_transformation);
+        };
     }
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
@@ -363,6 +381,7 @@ async fn get_basis_node<P: Provider>(
     provider: Arc<P>,
     _meta_context: Arc<RwLock<MetaContext>>,
     context_group: ContextGroup,
+    options: &Options,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
 
@@ -371,11 +390,13 @@ async fn get_basis_node<P: Provider>(
     let hash = data_node.hash.clone();
     let description = data_node.description.clone();
 
-    if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
-        log::info!("Provider has supplied basis node");
+    if !options.regenerate {
+        if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
+            log::info!("Provider has supplied basis node");
 
-        return Ok(basis_node);
-    };
+            return Ok(basis_node);
+        };
+    }
 
     let field_transformations: Vec<FieldTransformation> = LLM::get_field_transformations(
         context_group.clone()

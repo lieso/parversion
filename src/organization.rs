@@ -16,7 +16,7 @@ use crate::function_analysis::functions_to_operations;
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
     mut document: Document,
-    _options: &Options,
+    options: &Options,
     metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
@@ -92,6 +92,7 @@ pub async fn organize<P: Provider>(
     let basis_graph = get_basis_graph(
         Arc::clone(&provider),
         meta_context.clone(),
+        &options,
     ).await?;
 
     {
@@ -103,6 +104,7 @@ pub async fn organize<P: Provider>(
     let basis_nodes = get_basis_nodes(
         Arc::clone(&provider),
         meta_context.clone(),
+        &options,
     ).await?;
 
     {
@@ -114,6 +116,7 @@ pub async fn organize<P: Provider>(
     let basis_networks = get_basis_networks(
         Arc::clone(&provider),
         meta_context.clone(),
+        &options,
     ).await?;
 
     {

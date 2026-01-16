@@ -16,7 +16,7 @@ use crate::mutation::Mutation;
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    _options: &Options,
+    options: &Options,
     metadata: &Metadata,
     json_schema: &str,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
@@ -55,7 +55,8 @@ pub async fn translate<P: Provider>(
     log::info!("Getting translation schema transformations");
     let schema_transformations = get_translation_schema_transformations(
         Arc::clone(&provider),
-        Arc::clone(&meta_context)
+        Arc::clone(&meta_context),
+        options,
     ).await?;
 
     {

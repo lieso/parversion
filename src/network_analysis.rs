@@ -19,6 +19,7 @@ use crate::basis_graph::BasisGraph;
 pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
 ) -> Result<Arc<BasisGraph>, Errors> {
     log::trace!("In get_basis_graph");
 
@@ -32,11 +33,13 @@ pub async fn get_basis_graph<P: Provider>(
     };
     let lineage = read_lock!(graph_root).lineage.clone();
 
-    if let Some(basis_graph) = provider.get_basis_graph_by_lineage(&lineage).await? {
-        log::info!("Provider has supplied basis graph");
+    if !options.regenerate {
+        if let Some(basis_graph) = provider.get_basis_graph_by_lineage(&lineage).await? {
+            log::info!("Provider has supplied basis graph");
 
-        return Ok(Arc::new(basis_graph));
-    };
+            return Ok(Arc::new(basis_graph));
+        };
+    }
 
     let (name, description, structure) = LLM::categorize_and_summarize(original_document).await?;
 
@@ -59,6 +62,7 @@ pub async fn get_basis_graph<P: Provider>(
 pub async fn get_basis_networks<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In get_basis_networks");
 
@@ -104,7 +108,8 @@ pub async fn get_basis_networks<P: Provider>(
             let result = get_basis_network(
                 cloned_provider,
                 cloned_meta_context,
-                subgraph.clone()
+                subgraph.clone(),
+                options
             ).await?;
 
             results.insert(result.id.clone(), Arc::new(result));
@@ -119,13 +124,15 @@ pub async fn get_basis_networks<P: Provider>(
             let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_options = options.clone();
 
             let handle = task::spawn(async move {
                 let _permit = permit;
                 let basis_network = get_basis_network(
                     cloned_provider,
                     cloned_meta_context,
-                    subgraph.clone()
+                    subgraph.clone(),
+                    &cloned_options,
                 ).await?;
 
                 Ok((basis_network.id.clone(), Arc::new(basis_network)))
@@ -143,7 +150,8 @@ pub async fn get_basis_networks<P: Provider>(
 async fn get_basis_network<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    graph: Graph
+    graph: Graph,
+    options: &Options
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
 
@@ -165,11 +173,13 @@ async fn get_basis_network<P: Provider>(
         return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
     }
 
-    if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(&target_subgraph_hash.to_string().unwrap()).await? {
-        log::info!("Provider has supplied basis network");
+    if !options.regenerate {
+        if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(&target_subgraph_hash.to_string().unwrap()).await? {
+            log::info!("Provider has supplied basis network");
 
-        return Ok(basis_network);
-    };
+            return Ok(basis_network);
+        };
+    }
 
     log::info!("Generating json for siblings...");
 
