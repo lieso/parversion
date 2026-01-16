@@ -44,7 +44,7 @@ pub async fn run() -> Result<(), Errors> {
     let metadata = get_metadata(&matches)?;
     let schema: Option<String> = get_schema(&matches).await?;
     let document: String = get_document(&matches).await?;
-    
+
     let package = determine_document(
         provider,
         schema,
@@ -136,6 +136,10 @@ fn parse_arguments() -> clap::ArgMatches {
             .short('v')
             .long("version")
             .help("Display program version"))
+        .arg(Arg::with_name("regenerate")
+            .short('r')
+            .long("regenerate")
+            .help("Regenerate interpretation of document"))
         .arg(Arg::with_name("document-type")
             .short('t')
             .long("document-type")
@@ -152,6 +156,7 @@ fn get_metadata(matches: &clap::ArgMatches) -> Result<Metadata, Errors> {
 
 fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
     Ok(Options {
+        regenerate: if matches.is_present("regenerate") { true } else { false },
         ..Options::default()
     })
 }

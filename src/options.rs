@@ -2,6 +2,7 @@
 pub struct Options {
     pub origin: Option<String>,
     pub date: Option<String>,
+    pub regenerate: bool,
 }
 
 impl Default for Options {
@@ -9,6 +10,7 @@ impl Default for Options {
         Options {
             origin: None,
             date: None,
+            regenerate: false,
         }
     }
 }
