@@ -164,7 +164,7 @@ impl Provider for YamlFileProvider {
 
     async fn save_basis_node(
         &self,
-        _lineage: &Lineage,
+        lineage: &Lineage,
         basis_node: BasisNode,
     ) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
@@ -173,14 +173,24 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&basis_node).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(basis_nodes) = yaml.get_mut("basis_nodes") {
-            basis_nodes
+            let sequence = basis_nodes
                 .as_sequence_mut()
                 .ok_or_else(|| {
                     Errors::YamlParseError(
                         "Failed to get mutable sequence for 'basis_nodes'.".to_string(),
                     )
-                })?
-                .push(serialized_basis_node);
+                })?;
+
+            // Remove existing entry with matching lineage
+            sequence.retain(|node| {
+                if let Ok(existing_node) = serde_yaml::from_value::<BasisNode>(node.clone()) {
+                    &existing_node.lineage != lineage
+                } else {
+                    true
+                }
+            });
+
+            sequence.push(serialized_basis_node);
         } else {
             yaml["basis_nodes"] = serde_yaml::Value::Sequence(vec![serialized_basis_node]);
         }
@@ -216,7 +226,7 @@ impl Provider for YamlFileProvider {
 
     async fn save_basis_network(
         &self,
-        _subgraph_hash: String,
+        subgraph_hash: String,
         basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
@@ -225,14 +235,24 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&basis_network).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(basis_networks) = yaml.get_mut("basis_networks") {
-            basis_networks
+            let sequence = basis_networks
                 .as_sequence_mut()
                 .ok_or_else(|| {
                     Errors::YamlParseError(
                         "Failed to get mutable sequence for 'basis_networks'.".to_string(),
                     )
-                })?
-                .push(serialized_basis_network);
+                })?;
+
+            // Remove existing entry with matching subgraph_hash
+            sequence.retain(|network| {
+                if let Ok(existing_network) = serde_yaml::from_value::<BasisNetwork>(network.clone()) {
+                    existing_network.subgraph_hash != subgraph_hash
+                } else {
+                    true
+                }
+            });
+
+            sequence.push(serialized_basis_network);
         } else {
             yaml["basis_networks"] = serde_yaml::Value::Sequence(vec![serialized_basis_network]);
         }
@@ -277,14 +297,24 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&basis_graph).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(basis_graphs) = yaml.get_mut("basis_graphs") {
-            basis_graphs
+            let sequence = basis_graphs
                 .as_sequence_mut()
                 .ok_or_else(|| {
                     Errors::YamlParseError(
                         "Failed to get mutable sequence for 'basis_graphs'.".to_string(),
                     )
-                })?
-                .push(serialized_basis_graph);
+                })?;
+
+            // Remove existing entry with matching lineage
+            sequence.retain(|graph| {
+                if let Ok(existing_graph) = serde_yaml::from_value::<BasisGraph>(graph.clone()) {
+                    existing_graph.lineage != *lineage
+                } else {
+                    true
+                }
+            });
+
+            sequence.push(serialized_basis_graph);
         } else {
             yaml["basis_graphs"] = serde_yaml::Value::Sequence(vec![serialized_basis_graph]);
         }
@@ -337,14 +367,26 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&schema_transformation).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(schema_transformations) = yaml.get_mut("schema_transformations") {
-            schema_transformations
+            let sequence = schema_transformations
                 .as_sequence_mut()
                 .ok_or_else(|| {
                     Errors::YamlParseError(
                         "Failed to get mutable sequence for 'schema_transformations'.".to_string(),
                     )
-                })?
-                .push(serialized_schema_transformation);
+                })?;
+
+            // Remove existing entry with matching lineage and subgraph_hash
+            let target_schema_cloned = target_schema.cloned();
+            sequence.retain(|transformation| {
+                if let Ok(existing_transformation) = serde_yaml::from_value::<SchemaTransformation>(transformation.clone()) {
+                    !(existing_transformation.lineage == *lineage
+                        && existing_transformation.subgraph_hash == target_schema_cloned)
+                } else {
+                    true
+                }
+            });
+
+            sequence.push(serialized_schema_transformation);
         } else {
             yaml["schema_transformations"] =
                 serde_yaml::Value::Sequence(vec![serialized_schema_transformation]);
