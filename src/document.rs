@@ -282,7 +282,10 @@ impl Document {
         if let Some(dom) = self.to_dom() {
 
             let mut xml = String::from("");
+            
+            // TODO: do we want to do anything with this?
             let mut extracted_docs: Vec<Document> = Vec::new();
+
             walk(&mut xml, &dom.document, 0, &mut extracted_docs);
 
             let reader = std::io::Cursor::new(xml);
@@ -431,22 +434,27 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize, extracted_docs: &mut
                 let attr_name = &*attr.name.local.trim();
                 let attr_value = &*attr.value.trim();
 
-                // TODO: Check if attr_value contains valid HTML or JavaScript
-                // and extract them as new Documents
-                // Placeholder for future implementation
-                let _is_html = false;  // Check if attr_value is valid HTML
-                let _is_javascript = false;  // Check if attr_value is valid JavaScript
+                let is_html = is_likely_html(attr_value);
+                let _is_javascript = false;  // TODO: Check if attr_value is valid JavaScript
 
-                if _is_html {
-                    // TODO: Parse as HTML and create Document
+                if is_html {
+                    let html_doc = Document {
+                        document_type: DocumentType::Html,
+                        data: attr_value.to_string(),
+                        metadata: DocumentMetadata {
+                            origin: None,
+                            date: None,
+                        },
+                        schema: None,
+                    };
+                    extracted_docs.push(html_doc);
                 }
 
                 if _is_javascript {
                     // TODO: Parse as JavaScript and create Document
                 }
 
-                // Only include attribute in xhtml if it's not HTML or JavaScript
-                if !_is_html && !_is_javascript {
+                if !is_html && !_is_javascript {
                     let escaped_attr_value = escape_xml(attr_value);
                     xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), escaped_attr_value));
                 }
@@ -462,6 +470,75 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize, extracted_docs: &mut
         },
         _ => {}
     }
+}
+
+fn is_likely_html(value: &str) -> bool {
+    // Quick heuristic checks first
+    if value.len() < 3 {
+        return false;
+    }
+
+    // Check if string contains HTML tag patterns
+    if !value.contains('<') || !value.contains('>') {
+        return false;
+    }
+
+    // Simple regex-like check for tag patterns: <letters...>
+    let has_tag_pattern = value.chars()
+        .collect::<Vec<char>>()
+        .windows(3)
+        .any(|window| {
+            window[0] == '<' && window[1].is_alphabetic()
+        });
+
+    if !has_tag_pattern {
+        return false;
+    }
+
+    // Fallback to parsing and counting element nodes
+    let test_doc = Document {
+        document_type: DocumentType::Html,
+        data: value.to_string(),
+        metadata: DocumentMetadata {
+            origin: None,
+            date: None,
+        },
+        schema: None,
+    };
+
+    if let Some(dom) = test_doc.to_dom() {
+        let element_count = count_element_nodes(&dom.document);
+        // If we have more than just the auto-generated wrapper elements (html, head, body)
+        // then this is likely real HTML content
+        element_count > 3
+    } else {
+        false
+    }
+}
+
+fn count_element_nodes(handle: &Handle) -> usize {
+    let mut count = 0;
+
+    match &handle.data {
+        NodeData::Element { .. } => {
+            count += 1;
+            for child in handle.children.borrow().iter() {
+                count += count_element_nodes(child);
+            }
+        }
+        NodeData::Document => {
+            for child in handle.children.borrow().iter() {
+                count += count_element_nodes(child);
+            }
+        }
+        _ => {
+            for child in handle.children.borrow().iter() {
+                count += count_element_nodes(child);
+            }
+        }
+    }
+
+    count
 }
 
 fn escape_xml(data: &str) -> String {
