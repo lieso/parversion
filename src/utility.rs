@@ -126,7 +126,21 @@ pub async fn fetch_url_as_text_complex(url: &str) -> Result<String, Errors> {
 }
 
 pub fn is_valid_url(string: &str) -> bool {
-    Url::parse(string).is_ok()
+    match Url::parse(string) {
+        Ok(url) => {
+            let scheme = url.scheme();
+            if scheme != "http" && scheme != "https" {
+                return false;
+            }
+
+            if url.host_str().is_none() || url.host_str().unwrap().is_empty() {
+                return false;
+            }
+
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 pub fn is_valid_unix_path(string: &str) -> bool {
