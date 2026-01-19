@@ -155,7 +155,16 @@ impl DocumentNode {
         attributes.sort_by(|a, b| a.0.cmp(b.0));
 
         for (attr, value) in attributes {
-            tag.push_str(&format!(" {}=\"{}\"", attr, value.replace("\"", "&quot;")));
+            let fixed_value = {
+                if is_valid_url(value) {
+                    return shorten_url(value);
+                }
+
+                value
+            };
+
+
+            tag.push_str(&format!(" {}=\"{}\"", attr, fixed_value.replace("\"", "&quot;")));
         }
         tag.push('>');
 

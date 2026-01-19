@@ -143,6 +143,33 @@ pub fn is_valid_url(string: &str) -> bool {
     }
 }
 
+pub fn shorten_url(url_string: &str) -> String {
+    const MAX_PARAM_LENGTH: usize = 30;
+
+    let mut url = Url::parse(url_string).expect("Invalid URL");
+
+    let query_pairs: Vec<(String, String)> = url
+        .query_pairs()
+        .map(|(key, value)| {
+            let shortened_value = if value.len() > MAX_PARAM_LENGTH {
+                format!("{}...", &value[..MAX_PARAM_LENGTH])
+            } else {
+                value.to_string()
+            };
+            (key.to_string(), shortened_value)
+        })
+        .collect();
+
+    if !query_pairs.is_empty() {
+        url.query_pairs_mut().clear();
+        for (key, value) in query_pairs {
+            url.query_pairs_mut().append_pair(&key, &value);
+        }
+    }
+
+    url.to_string()
+}
+
 pub fn is_valid_unix_path(string: &str) -> bool {
     Path::new(string).exists()
 }
