@@ -282,7 +282,8 @@ impl Document {
         if let Some(dom) = self.to_dom() {
 
             let mut xml = String::from("");
-            walk(&mut xml, &dom.document, 0);
+            let mut extracted_docs: Vec<Document> = Vec::new();
+            walk(&mut xml, &dom.document, 0, &mut extracted_docs);
 
             let reader = std::io::Cursor::new(xml);
 
@@ -396,14 +397,14 @@ fn get_xml_features(
     }
 }
 
-fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
+fn walk(xhtml: &mut String, handle: &Handle, indent: usize, extracted_docs: &mut Vec<Document>) {
     let node = handle;
     let real_indent = " ".repeat(indent * 2);
 
     match node.data {
         NodeData::Document => {
             for child in node.children.borrow().iter() {
-                walk(xhtml, child, indent);
+                walk(xhtml, child, indent, extracted_docs);
             }
         }
         NodeData::Text { ref contents } => {
@@ -428,15 +429,33 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize) {
 
             for attr in attrs.borrow().iter() {
                 let attr_name = &*attr.name.local.trim();
-                let attr_value = escape_xml(&*attr.value.trim());
+                let attr_value = &*attr.value.trim();
 
-                xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), attr_value));
+                // TODO: Check if attr_value contains valid HTML or JavaScript
+                // and extract them as new Documents
+                // Placeholder for future implementation
+                let _is_html = false;  // Check if attr_value is valid HTML
+                let _is_javascript = false;  // Check if attr_value is valid JavaScript
+
+                if _is_html {
+                    // TODO: Parse as HTML and create Document
+                }
+
+                if _is_javascript {
+                    // TODO: Parse as JavaScript and create Document
+                }
+
+                // Only include attribute in xhtml if it's not HTML or JavaScript
+                if !_is_html && !_is_javascript {
+                    let escaped_attr_value = escape_xml(attr_value);
+                    xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), escaped_attr_value));
+                }
             }
 
             xhtml.push_str(">\n");
 
             for child in node.children.borrow().iter() {
-                walk(xhtml, child, indent + 1);
+                walk(xhtml, child, indent + 1, extracted_docs);
             }
 
             xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
