@@ -145,12 +145,23 @@ fn parse_arguments() -> clap::ArgMatches {
             .long("document-type")
             .value_name("DOCUMENT_TYPE")
             .help("The document type : html, xml, js"))
+        .arg(Arg::with_name("origin")
+            .short('o')
+            .long("origin")
+            .value_name("ORIGIN")
+            .required(true)
+            .help("Specify the origin of the document"))
         .get_matches()
 }
 
 fn get_metadata(matches: &clap::ArgMatches) -> Result<Metadata, Errors> {
+    let origin = matches.value_of("origin")
+        .ok_or(Errors::OriginNotProvidedError)?
+        .to_string();
+
     Ok(Metadata {
-        document_type: Some(get_document_type(&matches)?)
+        document_type: Some(get_document_type(&matches)?),
+        origin,
     })
 }
 

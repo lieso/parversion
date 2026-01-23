@@ -33,7 +33,8 @@ pub enum Errors {
     JsonSchemaParseError(String),
     DeficientMetaContextError(String),
     DocumentVersionNotFound,
-    BasisGraphNotFound
+    BasisGraphNotFound,
+    OriginNotProvidedError
 }
 
 impl From<JoinError> for Errors {
