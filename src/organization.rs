@@ -81,7 +81,7 @@ pub async fn organize<P: Provider>(
     }
 
     log::info!("Traversing document");
-    let (contexts, graph_root) = document.get_contexts(meta_context.clone())?;
+    let (contexts, graph_root) = document.get_contexts(meta_context.clone(), metadata)?;
 
     {
         let mut lock = write_lock!(meta_context);

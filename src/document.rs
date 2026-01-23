@@ -147,6 +147,7 @@ impl Document {
     pub fn get_contexts(
         &self,
         meta_context: Arc<RwLock<MetaContext>>,
+        metadata: &Metadata,
     ) -> Result<(
         HashMap<ID, Arc<Context>>, // context
         Arc<RwLock<GraphNode>> // graph root
@@ -236,10 +237,13 @@ impl Document {
             graph_node
         }
 
+        let origin_hash = Hash::from_str(&metadata.origin);
+        let initial_lineage = Lineage::new().with_hash(origin_hash);
+
         let graph_root = recurse(
             Arc::clone(&document_root),
             &mut data_nodes,
-            &Lineage::new(),
+            &initial_lineage,
             &mut contexts,
             Vec::new(),
             &profile
