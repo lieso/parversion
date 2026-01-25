@@ -19,12 +19,6 @@ struct EliminationResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct PeripheralResponse {
-    pub is_peripheral: bool,
-    pub justification: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 struct PrimaryResponse {
     pub name: String,
     pub description: String,
@@ -374,29 +368,6 @@ In addition to the new property name:
             return None;
         }
 
-        log::info!("Determining if field is peripheral...");
-
-        let peripheral = Self::get_peripheral_if_applicable(
-            lineage,
-            field,
-            value,
-            snippets.clone(),
-        ).await.expect("Could not determine if field is peripheral");
-
-        if peripheral.is_peripheral {
-            log::info!("Field identified as secondary/peripheral");
-
-            let transformation = FieldTransformation {
-                id: ID::new(),
-                description: String::from("Related content description"),
-                field: field.to_string(),
-                image: String::from("related_content"),
-                meta: FieldMetadata {}
-            };
-
-            return Some(transformation);
-        }
-
         log::info!("Determining primary field name and metadata...");
 
         let primary_content = Self::get_primary_content(
@@ -735,105 +706,6 @@ Example {}:
                 log::debug!("╔══════════════════════════════╗");
                 log::debug!("║          PRIMARY END         ║");
                 log::debug!("╚══════════════════════════════╝");
-
-                Ok(response)
-            }
-            Err(e) => {
-                log::error!("Failed to get response from OpenAI: {}", e);
-                Err(Errors::UnexpectedError)
-            }
-        }
-    }
-
-    async fn get_peripheral_if_applicable(
-        lineage: &Lineage,
-        field: &str,
-        value: &str,
-        snippets: Vec<String>,
-    ) -> Result<PeripheralResponse, Errors> {
-        log::trace!("In get_peripheral_if_applicable");
-
-        let field_value = if field == "text" { value } else { field };
-
-        let system_prompt = format!(r##"
-You interpret the contextual meaning of HTML attributes or text nodes and infer if it is content pertaining to the core purpose of the website, or if it is peripheral/secondary content. Peripheral content is not the primary focus of the website's message or purpose.
-
-Primary content is defined as content that is essential to the website's core purpose and cannot be removed without altering the fundamental experience of interacting with the
-content. This includes:
-* Content that directly contributes to the main purpose of the site, such as articles, user profiles, or discussion threads on news and social platforms.
-* Elements that are integral to user engagement and understanding of the site's main offerings.
-
-Peripheral content includes:
-* Website menu bars, footers, or sidebars that link to unrelated pages or external resources.
-* Links to administrative pages such as login, signup, or settings that do not enhance the understanding or interaction with the main content.
-* Advertisements or promotional banners that do not contribute to the main purpose of the site.
-
-Include the following in your response:
-1. (is_peripheral): If this is peripheral content.
-2. (justification): Provide justification for your response.
-
-One or more examples of the attribute or text node will be provided, contained within an HTML snippet, providing crucial context for you to use.
-
-The target attribute or text node will be delimited with an HTML comment like so:
-<!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->.
-
-When providing your response, you must generalize across all possible values for the text node or attribute, which are not limited to just the set of values in the example snippet(s).
-        "##);
-        let examples = snippets.iter().enumerate().fold(
-            String::new(),
-            |mut acc, (index, snippet)| {
-                acc.push_str(&format!(r##"
-Example {}:
-{}
-"##, index + 1, snippet));
-                acc
-            }
-        );
-        let user_prompt = format!(r##"
-[attribute/text]
-{}
-
-[Examples]
-{}
-        "##, field_value, examples);
-
-        let response_format = json!({
-            "type": "json_schema",
-            "name": "meaningful_response",
-            "strict": true,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "is_peripheral": {
-                        "type": "boolean"
-                    },
-                    "justification": {
-                        "type": "string"
-                    }
-                },
-                "required": ["is_peripheral", "justification"],
-                "additionalProperties": false
-            }
-        });
-
-        match Self::send_openai_request(
-            &system_prompt,
-            &user_prompt,
-            response_format
-        ).await {
-            Ok(response) => {
-                log::debug!("╔════════════════════════════════════════╗");
-                log::debug!("║          IS PERIPHERAL START           ║");
-                log::debug!("╚════════════════════════════════════════╝");
-
-                log::debug!("***lineage***\n{}", lineage.to_string());
-                log::debug!("***system_prompt***\n{}", system_prompt);
-                log::debug!("***user_prompt***\n{}", user_prompt);
-                log::debug!("***response***\n{:?}", response);
-
-                log::debug!("╔═══════════════════════════════════════╗");
-                log::debug!("║          IS PERIPHERAL END            ║");
-                log::debug!("╚═══════════════════════════════════════╝");
 
                 Ok(response)
             }
