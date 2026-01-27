@@ -21,11 +21,11 @@ impl LLM {
     )>, Errors> {
         log::trace!("In get_translation_schema");
 
-        let maybe_json_path = openai::OpenAI::match_schema_nodes(
+        let (maybe_json_path, _source_path, _target_path) = openai::OpenAI::match_schema_nodes(
             marked_schema,
             Arc::clone(&target_schema)
         ).await?;
-            
+
         if let Some(json_path) = maybe_json_path {
             let translation_schema = {
                 let lock = read_lock!(meta_context);

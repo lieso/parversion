@@ -52,6 +52,8 @@ struct NormalResponse {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct MatchSchemaNodeResponse {
     pub json_path: Option<String>,
+    pub source_path: String,
+    pub target_path: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -141,7 +143,7 @@ impl OpenAI {
     pub async fn match_schema_nodes(
         marked_schema_node: &String,
         target_schema: Arc<String>
-    ) -> Result<Option<String>, Errors> {
+    ) -> Result<(Option<String>, Option<String>, Option<String>), Errors> {
         log::trace!("In match_schema_nodes");
 
         if marked_schema_node.len() > 10000 || target_schema.len() > 10000 {
@@ -155,9 +157,22 @@ The first JSON schema will be an incomplete snippet, and the schema field to mat
 START TARGET SCHEMA KEY >>>
 <<< END TARGET SCHEMA KEY
 
-Provide a JSON path against the JSON schema of the second schema indicating which field is equivalent to the target schema field, or null if there is no equivalent.
+Provide three pieces of information:
 
-Important: The JSON path should be relative to the JSON schema itself, not the resulting JSON document. This means you should identify the path within the schema structure where the equivalent field resides.
+1. (json_path): A JSON path against the JSON schema of the second schema indicating which field is equivalent to the target schema field, or null if there is no equivalent. The JSON path should be relative to the JSON schema itself, not the resulting JSON document.
+
+2. (source_path): The path in the source document structure where data values are found. Leave as empty string if you cannot determine an appropriate path.
+
+3. (target_path): The path in the target document structure where data values should be placed. Leave as empty string if you cannot determine an appropriate path.
+
+   Path mapping rules:
+   - Use dot notation for object properties (e.g., invoice.date)
+   - Use bracket notation with concrete indices for specific array positions (e.g., items[0], items[1])
+   - Use bracket notation with variable names for array indices that should be preserved/mapped between source and target (e.g., [x], [y], [z])
+   - You can use any single-letter variable names you need (a, b, c, ..., x, y, z, etc.)
+   - Each unique array index position that needs to be mapped gets its own variable
+   - The same variable in source_path and target_path means "preserve this array index correspondence"
+   - If you cannot determine an appropriate mapping for either side, leave that field as an empty string
 
 For example, if the first JSON schema is this, representing an invoice:
 {{
@@ -203,7 +218,10 @@ And the second JSON schema is this:
    }}
  }}
 
-Your response should be the JSON path '$.properties.issueDate' since the 'date' field on the first schema represents an invoice issue date, just like the 'issueDate' field on the second JSON schema.
+Your response should include:
+- json_path: '$.properties.issueDate' (since the 'date' field matches the 'issueDate' field)
+- source_path: 'date' (path to the data value in source document)
+- target_path: 'issueDate' (path to the data value in target document)
 
 Please also provide a justification for your response.
         "##);
@@ -225,11 +243,17 @@ Please also provide a justification for your response.
                     "json_path": {
                         "type": "string"
                     },
+                    "source_path": {
+                        "type": "string"
+                    },
+                    "target_path": {
+                        "type": "string"
+                    },
                     "justification": {
                         "type": "string"
                     }
                 },
-                "required": ["json_path", "justification"],
+                "required": ["json_path", "source_path", "target_path", "justification"],
                 "additionalProperties": false
             }
         });
@@ -248,7 +272,19 @@ Please also provide a justification for your response.
                 log::debug!("║       TRANSLATE SCHEMA END   ║");
                 log::debug!("╚══════════════════════════════╝");
 
-                Ok(response.json_path)
+                let source_path = if response.source_path.is_empty() {
+                    None
+                } else {
+                    Some(response.source_path)
+                };
+
+                let target_path = if response.target_path.is_empty() {
+                    None
+                } else {
+                    Some(response.target_path)
+                };
+
+                Ok((response.json_path, source_path, target_path))
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);
