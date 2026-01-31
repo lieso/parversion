@@ -146,7 +146,7 @@ impl OpenAI {
     ) -> Result<(Option<String>, Option<String>, Option<String>), Errors> {
         log::trace!("In match_schema_nodes");
 
-        if marked_schema_node.len() > 10000 || target_schema.len() > 10000 {
+        if marked_schema_node.len() > 20000 || target_schema.len() > 10000 {
             return Err(Errors::ContextTooLarge);
         }
 
@@ -171,7 +171,9 @@ Provide three pieces of information:
    - Use bracket notation with variable names for array indices that should be preserved/mapped between source and target (e.g., [x], [y], [z])
    - You can use any single-letter variable names you need (a, b, c, ..., x, y, z, etc.)
    - Each unique array index position that needs to be mapped gets its own variable
-   - The same variable in source_path and target_path means "preserve this array index correspondence"
+   - CRITICAL: The same variable MUST appear in both source_path and target_path to preserve array index correspondence
+   - CRITICAL: If the source_path contains an array with a variable index (e.g., [x]), the target_path MUST also contain that same variable (e.g., [x]) to maintain the element correspondence
+   - If the source has multiple array levels with different variables (e.g., items[x].subitems[y]), ensure all variables appear in the target path as well
    - If you cannot determine an appropriate mapping for either side, leave that field as an empty string
 
 For example, if the first JSON schema is this, representing an invoice:

@@ -285,7 +285,8 @@ async fn get_normal_schema_transformation<P: Provider>(
         id: ID::new(),
         description,
         key,
-        path,
+        source_path: String::new(),
+        target_path: String::new(),
         lineage: lineage.clone(),
         subgraph_hash: None,
     };
@@ -340,12 +341,13 @@ async fn get_translation_schema_transformation<P: Provider>(
         Arc::clone(&target_schema)
     ).await?;
 
-    if let Some((key, description, path)) = result {
+    if let Some((key, description, source_path, target_path)) = result {
         let schema_transformation = SchemaTransformation {
             id: ID::new(),
             description,
             key,
-            path,
+            source_path,
+            target_path,
             lineage: lineage.clone(),
             subgraph_hash: Some(subgraph_hash.clone()),
         };
@@ -362,7 +364,8 @@ async fn get_translation_schema_transformation<P: Provider>(
             id: ID::new(),
             description: schema_context.schema_node.description.clone(),
             key: schema_context.schema_node.name.clone(),
-            path: Path::new(),
+            source_path: String::new(),
+            target_path: String::new(),
             lineage: lineage.clone(),
             subgraph_hash: Some(subgraph_hash.clone()),
         };

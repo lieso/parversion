@@ -15,18 +15,19 @@ impl LLM {
         marked_schema: &String,
         target_schema: Arc<String>
     ) -> Result<Option<(
-        String,
-        String,
-        Path
+        String, // name
+        String, // description
+        String, // source path
+        String // target path
     )>, Errors> {
         log::trace!("In get_translation_schema");
 
-        let (maybe_json_path, _source_path, _target_path) = openai::OpenAI::match_schema_nodes(
+        let (maybe_json_path, maybe_source_path, maybe_target_path) = openai::OpenAI::match_schema_nodes(
             marked_schema,
             Arc::clone(&target_schema)
         ).await?;
 
-        if let Some(json_path) = maybe_json_path {
+        if let (Some(json_path), Some(source_path), Some(target_path)) = (maybe_json_path, maybe_source_path, maybe_target_path) {
             let translation_schema = {
                 let lock = read_lock!(meta_context);
                 lock.translation_schema.clone().unwrap()
@@ -38,7 +39,8 @@ impl LLM {
                 return Ok(Some((
                     schema_node.name.clone(),
                     schema_node.description.clone(),
-                    schema_node.path.clone()
+                    source_path,
+                    target_path
                 )));
             } else {
                 log::warn!("Could not get schema node from target schema using LLM JSON path");

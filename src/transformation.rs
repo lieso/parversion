@@ -26,7 +26,8 @@ pub struct SchemaTransformation {
     pub subgraph_hash: Option<Hash>,
     pub key: String,
     pub description: String,
-    pub path: Path,
+    pub source_path: String,
+    pub target_path: String
 }
 
 impl SchemaTransformation {
@@ -34,7 +35,7 @@ impl SchemaTransformation {
         let mut transformed = schema_node.clone();
         transformed.name = self.key.clone();
         transformed.description = self.description.clone();
-        transformed.path = self.path.clone();
+
 
         transformed
     }
