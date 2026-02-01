@@ -7,53 +7,45 @@ use crate::prelude::*;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PathSegment {
     pub id: ID,
-    pub key: Option<String>,
-    pub index: Option<usize>,
-    pub variable_index: Option<char>,
+    #[serde(flatten)]
+    pub kind: PathSegmentKind,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(tag = "type", content = "value")]
+pub enum PathSegmentKind {
+    Key(String),
+    Index(usize),
+    VariableIndex(char),
 }
 
 impl PathSegment {
     fn new_key_segment(key: String) -> Self {
         PathSegment {
             id: ID::new(),
-            key: Some(key),
-            index: None,
-            variable_index: None,
+            kind: PathSegmentKind::Key(key),
         }
     }
 
     fn new_index_segment(index: usize) -> Self {
         PathSegment {
             id: ID::new(),
-            key: None,
-            index: Some(index),
-            variable_index: None,
+            kind: PathSegmentKind::Index(index),
         }
     }
 
     fn new_variable_index_segment(variable_index: char) -> Self {
         PathSegment {
             id: ID::new(),
-            key: None,
-            index: None,
-            variable_index: Some(variable_index),
+            kind: PathSegmentKind::VariableIndex(variable_index),
         }
     }
 
     pub fn to_string(&self) -> String {
-        match (self.key.clone(), self.index, self.variable_index) {
-            (Some(key), None, None) => {
-                key.to_string()
-            }
-            (None, Some(index), None) => {
-                format!("[{}]", index)
-            }
-            (None, None, Some(_variable_index)) => {
-                "[]".to_string()
-            }
-            _ => {
-                panic!("Invalid PathSegment struct received");
-            }
+        match &self.kind {
+            PathSegmentKind::Key(key) => key.to_string(),
+            PathSegmentKind::Index(index) => format!("[{}]", index),
+            PathSegmentKind::VariableIndex(var) => format!("[{}]", var),
         }
     }
 }
