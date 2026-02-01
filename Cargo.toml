@@ -45,6 +45,7 @@ swc_ecma_ast = "19.0.0"
 swc_ecma_visit = "19.0.0"
 swc_ecma_codegen = "21.0.0"
 swc_atoms = "9.0.0"
+openrouter-rs = "0.4.7"
 
 [lib]
 name = "parversion"
