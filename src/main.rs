@@ -35,6 +35,7 @@ mod node_analysis;
 mod schema_node;
 mod schema_context;
 mod path;
+mod path_segment;
 mod mutation;
 mod function;
 mod ast;

@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::prelude::*;
-use crate::path::{Path, PathSegment};
+use crate::path::{Path};
+use crate::path_segment::{PathSegment};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaNode {
