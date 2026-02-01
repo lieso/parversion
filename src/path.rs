@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use regex::Regex;
 
 use crate::prelude::*;
 use crate::path_segment::PathSegment;
@@ -21,8 +22,33 @@ impl Path {
         }
     }
 
-    pub fn from_json_path(json_path: &String) -> Self {
-        unimplemented!()
+    // Parses bespoke json paths like: a.b[2].c.d[x].e[y].z[0]
+    pub fn from_str(path: &str) -> Self {
+        let path = path.trim_start_matches('$');
+        let mut result = Path::new();
+
+        let re = Regex::new(r"[^.\[]+|\[[^\]]*\]").unwrap();
+
+        for cap in re.find_iter(path) {
+            let segment = cap.as_str();
+
+            if segment.starts_with('[') {
+                let content = &segment[1..segment.len() - 1];
+
+                if content.is_empty() {
+                    result = result.with_variable_index_segment('x');
+                } else if let Ok(index) = content.parse::<usize>() {
+                    result = result.with_index_segment(index);
+                } else {
+                    let variable = content.chars().next().unwrap_or('x');
+                    result = result.with_variable_index_segment(variable);
+                }
+            } else {
+                result = result.with_key_segment(segment.to_string());
+            }
+        }
+
+        result
     }
 
     pub fn to_string(&self) -> String {
@@ -51,17 +77,13 @@ impl Path {
         new_path
     }
 
-    pub fn with_variable_index_segment(&self) -> Self {
+    pub fn with_variable_index_segment(&self, variable: char) -> Self {
         let mut new_path = self.clone();
-        new_path.segments.push(PathSegment::new_variable_index_segment('x'));
+        new_path.segments.push(PathSegment::new_variable_index_segment(variable));
         new_path
     }
 
-    pub fn arrayify(&mut self, target_segment_id: &ID) {
-        if let Some(position) = self.segments.iter().position(|segment| segment.id == *target_segment_id) {
-            self.segments.insert(position + 1, PathSegment::new_variable_index_segment('x'));
-        } else {
-            panic!("Could not find segment with id: {}", target_segment_id.to_string());
-        }
+    pub fn arrayify(&mut self, target_segment_id: &ID, variable: char) {
+        unimplemented!()
     }
 }

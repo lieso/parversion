@@ -58,10 +58,7 @@ impl LLM {
     ), Errors> {
         log::trace!("In get_normal_schema");
 
-        let (key, description, aliases, json_path) = openai::OpenAI::get_normal_schema(marked_schema).await?;
-        let path = Path::from_json_path(&json_path);
-
-        Ok((key, description, aliases, path))
+        unimplemented!()
     }
 
     pub async fn categorize_and_summarize(document: String) -> Result<(

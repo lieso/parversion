@@ -69,7 +69,6 @@ impl Document {
 
         let mut result: HashMap<String, Value> = HashMap::new();
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-        let path: Path = Path::from_key(&basis_graph.name);
 
         process_network(
             Arc::clone(&meta_context),
@@ -77,7 +76,6 @@ impl Document {
             &mut result,
             &mut inner_schema,
             &basis_graph.lineage,
-            &path,
         )?;
 
         let data = {
@@ -622,6 +620,15 @@ fn apply_schema_transformations_json(
 
                             log::debug!("transformation: {:?}", transformation);
                             log::debug!("-----------------------------------------------------------------------------------------------------");
+
+                            let source = Path::from_str(&transformation.source_path);
+                            let target = Path::from_str(&transformation.target_path);
+
+                            log::debug!("source: {}", source.to_string());
+                            log::debug!("target: {}", target.to_string());
+
+                            log::debug!("-----------------------------------------------------------------------------------------------------");
+
                         }
                     }
                 };
@@ -667,7 +674,6 @@ fn process_network(
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
     schema_lineage: &Lineage,
-    path: &Path,
 ) -> Result<(), Errors> {
     log::trace!("In process_network");
 
@@ -695,7 +701,6 @@ fn process_network(
             result,
             schema,
             schema_lineage,
-            path,
         )?;
 
         for (index, child) in children.iter().enumerate() {
@@ -731,7 +736,6 @@ fn process_network(
                         &object_name,
                         &object_description,
                         schema_lineage,
-                        &path.with_key_segment(object_name.to_string()),
                         "object",
                     );
 
@@ -765,7 +769,6 @@ fn process_network(
                                 &mut inner_result,
                                 &mut inner_schema,
                                 &schema_node.lineage,
-                                &schema_node.path,
                             )?;
 
                             associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
@@ -779,7 +782,6 @@ fn process_network(
                         &mut inner_result,
                         &mut inner_schema,
                         &schema_node.lineage,
-                        &schema_node.path,
                     )?;
 
                     let inner_result_value = serde_json::to_value(inner_result)
@@ -797,13 +799,7 @@ fn process_network(
 
                         let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
                         if existing_schema_node.data_type != "array" {
-                            let last_path_segment_id = existing_schema_node
-                                .get_last_path_segment()
-                                .unwrap()
-                                .id
-                                .clone();
-
-                            arrayify_schema_node(existing_schema_node, &last_path_segment_id);
+                            arrayify_schema_node(existing_schema_node);
                         }
                     } else {
                         schema_node.properties = inner_schema;
@@ -830,7 +826,6 @@ fn process_node(
     result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
     schema_lineage: &Lineage,
-    path: &Path,
 ) -> Result<(), Errors> {
     log::trace!("In process_node");
 
@@ -859,7 +854,6 @@ fn process_node(
                 &key,
                 &json_node.description,
                 schema_lineage,
-                path,
                 "string",
             );
 

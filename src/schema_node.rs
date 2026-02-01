@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::prelude::*;
-use crate::path::{Path};
-use crate::path_segment::{PathSegment};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaNode {
@@ -19,41 +17,10 @@ pub struct SchemaNode {
     pub data_type: String,
     pub properties: HashMap<String, SchemaNode>,
     pub items: Option<Vec<SchemaNode>>,
-    pub path: Path,
 }
 
-pub fn arrayify_schema_node(schema_node: &mut SchemaNode, target_path_segment: &ID) {
+pub fn arrayify_schema_node(schema_node: &mut SchemaNode) {
     schema_node.data_type = "array".to_string();
-
-    fn recurse(
-        node: &mut SchemaNode,
-        target: &ID
-    ) {
-        node.path.arrayify(target);
-
-        for child_node in node.properties.values_mut() {
-            recurse(
-                child_node,
-                target,
-            );
-        }
-
-        if let Some(items) = &mut node.items {
-            for item in items {
-                recurse(
-                    item,
-                    target,
-                );
-            }
-        }
-    }
-
-    for node in schema_node.properties.values_mut() {
-        recurse(
-            node,
-            target_path_segment,
-        );
-    }
 }
 
 impl SchemaNode {
@@ -61,7 +28,6 @@ impl SchemaNode {
         name: &str,
         description: &str,
         parent_lineage: &Lineage,
-        parent_path: &Path,
         data_type: &str,
     ) -> Self {
         let hash: Hash = Hash::from_str(&name);
@@ -77,14 +43,9 @@ impl SchemaNode {
             data_type: data_type.to_string(),
             properties: HashMap::new(),
             items: None,
-            path: parent_path.clone(),
         }
     }
 
-    pub fn get_last_path_segment(&self) -> Option<PathSegment> {
-        self.path.segments.last().cloned()
-    }
-    
     pub fn get_children(&self) -> Vec<SchemaNode> {
         let mut schema_nodes: Vec<SchemaNode> = Vec::new();
 
@@ -105,7 +66,6 @@ impl SchemaNode {
         value: &Value,
         name: &str,
         parent_lineage: &Lineage,
-        parent_path: &Path,
         was_array: bool
     ) -> Result<Self, Errors> {
         log::trace!("In from_serde_value");
@@ -113,8 +73,6 @@ impl SchemaNode {
 
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
-
-        let mut path = parent_path.clone();
 
         let description = value.get("description")
             .and_then(|v| v.as_str())
@@ -128,18 +86,10 @@ impl SchemaNode {
             props
                 .iter()
                 .map(|(key, val)| {
-                    let new_path = if was_array {
-                        let with_key = path.with_key_segment(name.to_string());
-                        with_key.with_variable_index_segment()
-                    } else {
-                        path.with_key_segment(name.to_string())
-                    };
-
                     match Self::from_serde_value(
                         &val,
                         &key,
                         &lineage,
-                        &new_path,
                         data_type == "array"
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
@@ -162,7 +112,6 @@ impl SchemaNode {
                                     item_value,
                                     name,
                                     &lineage,
-                                    &path,
                                     data_type == "array"
                                 )
                             )
@@ -174,7 +123,6 @@ impl SchemaNode {
                         items_value,
                         name,
                         &lineage,
-                        &path,
                         data_type == "array"
                     )?;
 
@@ -187,10 +135,6 @@ impl SchemaNode {
             None
         };
 
-        if data_type == "array" {
-            path = path.with_variable_index_segment();
-        }
-
         let schema_node = SchemaNode {
             id: ID::new(),
             hash,
@@ -201,7 +145,6 @@ impl SchemaNode {
             data_type: data_type.to_string(),
             properties,
             items,
-            path,
         };
 
         Ok(schema_node)
