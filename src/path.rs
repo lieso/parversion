@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use regex::Regex;
 
 use crate::prelude::*;
-use crate::path_segment::PathSegment;
+use crate::path_segment::{PathSegment, PathSegmentKind};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Path {
@@ -61,10 +61,12 @@ impl Path {
     }
 
     pub fn to_string(&self) -> String {
-        self.segments.iter().fold(
+        self.segments.iter().enumerate().fold(
             String::new(),
-            |acc, segment| {
-                format!("{}{}", acc, segment.to_string())
+            |acc, (i, segment)| {
+                let needs_dot = i > 0 && matches!(segment.kind, PathSegmentKind::Key(_));
+                let prefix = if needs_dot { "." } else { "" };
+                format!("{}{}{}", acc, prefix, segment.to_string())
             })
     }
 
