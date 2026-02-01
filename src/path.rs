@@ -27,6 +27,9 @@ impl Path {
         let path = path.trim_start_matches('$');
         let mut result = Path::new();
 
+        let available_variables: Vec<char> = ('a'..='z').collect();
+        let mut used_variables = Vec::new();
+
         let re = Regex::new(r"[^.\[]+|\[[^\]]*\]").unwrap();
 
         for cap in re.find_iter(path) {
@@ -36,11 +39,17 @@ impl Path {
                 let content = &segment[1..segment.len() - 1];
 
                 if content.is_empty() {
-                    result = result.with_variable_index_segment('x');
+                    let variable = available_variables.iter()
+                        .find(|&v| !used_variables.contains(v))
+                        .expect("Ran out of variable index characters");
+
+                    used_variables.push(*variable);
+                    result = result.with_variable_index_segment(*variable);
                 } else if let Ok(index) = content.parse::<usize>() {
                     result = result.with_index_segment(index);
                 } else {
-                    let variable = content.chars().next().unwrap_or('x');
+                    let variable = content.chars().next().unwrap_or('a');
+                    used_variables.push(variable);
                     result = result.with_variable_index_segment(variable);
                 }
             } else {
