@@ -563,7 +563,8 @@ fn apply_schema_transformations_json(
         let lock = read_lock!(meta_context);
         lock.basis_graph.clone().ok_or(Errors::BasisGraphNotFound)?
     };
-    let start_path: Path = Path::from_key(&basis_graph.name);
+    //let start_path: Path = Path::from_key(&basis_graph.name);
+    let start_path = Path::new();
 
     fn recurse(
         meta_context: Arc<RwLock<MetaContext>>,
@@ -603,9 +604,6 @@ fn apply_schema_transformations_json(
             _ => {
 
 
-                log::debug!("path: {:?}", path);
-                log::debug!("-----------------------------------------------------------------------------------------------------");
-
                 {
                     let current_schema_node = schema_nodes.get(parent_lineage).unwrap();
 
@@ -624,8 +622,16 @@ fn apply_schema_transformations_json(
                             let source = Path::from_str(&transformation.source_path);
                             let target = Path::from_str(&transformation.target_path);
 
+                            log::debug!("path: {:?}", path.to_string());
                             log::debug!("source: {}", source.to_string());
                             log::debug!("target: {}", target.to_string());
+
+                            let mapping = Path::map_variables_to_indices(
+                                &source,
+                                &path,
+                            );
+
+                            log::debug!("mapping: {:?}", mapping);
 
                             log::debug!("-----------------------------------------------------------------------------------------------------");
 

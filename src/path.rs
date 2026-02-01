@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use regex::Regex;
+use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::path_segment::{PathSegment, PathSegmentKind};
@@ -68,6 +69,37 @@ impl Path {
                 let prefix = if needs_dot { "." } else { "" };
                 format!("{}{}{}", acc, prefix, segment.to_string())
             })
+    }
+
+    pub fn map_variables_to_indices(variable_path: &Path, index_path: &Path) -> HashMap<char, usize> {
+        if variable_path.segments.len() != index_path.segments.len() {
+            panic!("Paths have different lengths");
+        }
+
+        let mut mapping = HashMap::new();
+
+        for (var_segment, idx_segment) in variable_path.segments.iter().zip(index_path.segments.iter()) {
+            match (&var_segment.kind, &idx_segment.kind) {
+                (PathSegmentKind::Key(key1), PathSegmentKind::Key(key2)) => {
+                    if key1 != key2 {
+                        panic!("Key mismatch: {} != {}", key1, key2);
+                    }
+                }
+                (PathSegmentKind::VariableIndex(var), PathSegmentKind::Index(idx)) => {
+                    mapping.insert(*var, *idx);
+                }
+                (PathSegmentKind::Index(idx1), PathSegmentKind::Index(idx2)) => {
+                    if idx1 != idx2 {
+                        panic!("Index mismatch: {} != {}", idx1, idx2);
+                    }
+                }
+                _ => {
+                    panic!("Segment type mismatch at position");
+                }
+            }
+        }
+
+        mapping
     }
 
     pub fn with_key_segment(&self, key: String) -> Self {
