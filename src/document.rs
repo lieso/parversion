@@ -604,34 +604,35 @@ fn apply_schema_transformations_json(
             },
             _ => {
 
-                // TODO: why might schema_nodes be missing parent_lineage?
-                if !schema_nodes.contains_key(parent_lineage) {
-                    return;
-                }
 
-                let schema_node: SchemaNode = {
+                log::debug!("path: {:?}", path);
+                log::debug!("-----------------------------------------------------------------------------------------------------");
+
+                {
                     let current_schema_node = schema_nodes.get(parent_lineage).unwrap();
+
+                    log::debug!("current_schema_node: {:?}", current_schema_node);
+                log::debug!("-----------------------------------------------------------------------------------------------------");
 
                     let lock = read_lock!(meta_context);
 
                     if let Some(schema_transformations) = &lock.schema_transformations {
                         if let Some(transformation) = schema_transformations.get(parent_lineage) {
-                            transformation.transform(current_schema_node)
-                        } else {
-                            current_schema_node.clone()
+                            //transformation.transform(current_schema_node);
+
+                            log::debug!("transformation: {:?}", transformation);
+                            log::debug!("-----------------------------------------------------------------------------------------------------");
                         }
-                    } else {
-                        current_schema_node.clone()
                     }
                 };
 
-                let indexed_path = schema_node.path.merge_path(path.clone());
+                //let indexed_path = schema_node.path.merge_path(path.clone());
 
-                indexed_path.insert_into_map(
-                    result,
-                    schema_node.name.to_string(),
-                    value.as_str().unwrap().to_string()
-                );
+                //indexed_path.insert_into_map(
+                //    result,
+                //    schema_node.name.to_string(),
+                //    value.as_str().unwrap().to_string()
+                //);
             }
         }
     }
@@ -654,6 +655,8 @@ fn apply_schema_transformations_json(
         },
         schema: None,
     };
+
+    panic!("test");
 
     Ok(document)
 }
