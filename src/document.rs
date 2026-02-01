@@ -69,7 +69,7 @@ impl Document {
 
         let mut result: HashMap<String, Value> = HashMap::new();
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-        let path: Path = Path::from_str(&basis_graph.name);
+        let path: Path = Path::from_key(&basis_graph.name);
 
         process_network(
             Arc::clone(&meta_context),
@@ -565,7 +565,7 @@ fn apply_schema_transformations_json(
         let lock = read_lock!(meta_context);
         lock.basis_graph.clone().ok_or(Errors::BasisGraphNotFound)?
     };
-    let start_path: Path = Path::from_str(&basis_graph.name);
+    let start_path: Path = Path::from_key(&basis_graph.name);
 
     fn recurse(
         meta_context: Arc<RwLock<MetaContext>>,
