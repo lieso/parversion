@@ -11,11 +11,7 @@ impl Translation {
     ) -> Result<Option<String>, Errors> {
         log::trace!("In match_target_schema");
 
-        let api_key = get_env_variable("OPENROUTER_API_KEY");
-        let client = OpenRouterClient::builder()
-            .api_key(api_key)
-            .build()
-            .expect("Could not build open router client");
+        let client = Self::build_client();
 
         // Send chat completion
         let request = ChatCompletionRequest::builder()
@@ -31,5 +27,13 @@ impl Translation {
 
 
         unimplemented!()
+    }
+
+    fn build_client() -> OpenRouterClient {
+        let api_key = get_env_variable("OPENROUTER_API_KEY");
+        OpenRouterClient::builder()
+            .api_key(api_key)
+            .build()
+            .expect("Could not build open router client")
     }
 }
