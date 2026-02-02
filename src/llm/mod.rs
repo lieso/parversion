@@ -19,14 +19,34 @@ impl LLM {
     ) -> Result<Option<SchemaTransformation>, Errors> {
         log::trace!("In translate_schema_node");
 
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  TRANSLATE SCHEMA NODE START                  ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+        log::debug!("┌─── SCHEMA NODE ───────────────────────────────────────────────┐");
+        log::debug!("{}", schema_context.schema_node.to_string());
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+
         let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-        let result = translation::Translation::match_target_schema(
+        let match_response = translation::Translation::match_target_schema(
             &snippet,
             &target_schema
         ).await?;
 
-        unimplemented!()
+        log::debug!("match_response: {:?}", match_response);
+
+        log::debug!("");
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  TRANSLATE SCHEMA NODE END                    ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        Ok(None)
     }
 
     pub async fn get_normal_schema(marked_schema: &String) -> Result<(

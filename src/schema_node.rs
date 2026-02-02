@@ -149,4 +149,14 @@ impl SchemaNode {
 
         Ok(schema_node)
     }
+
+    pub fn to_string(&self) -> String {
+        format!(
+            "SchemaNode {{ name: {}, description: {}, data_type: {}, lineage: {} }}",
+            self.name,
+            self.description,
+            self.data_type,
+            self.lineage.to_string()
+        )
+    }
 }
