@@ -2288,6 +2288,7 @@ dependencies = [
  "cfg-if",
  "chrono",
  "clap",
+ "curl",
  "dirs",
  "dot",
  "dotenv",

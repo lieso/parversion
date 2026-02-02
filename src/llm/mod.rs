@@ -7,6 +7,7 @@ use crate::path::Path;
 use crate::schema_context::SchemaContext;
 
 mod openai;
+mod translation;
 
 pub struct LLM {}
 
@@ -17,6 +18,13 @@ impl LLM {
         target_schema: Arc<String>
     ) -> Result<Option<SchemaTransformation>, Errors> {
         log::trace!("In translate_schema_node");
+
+        let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
+
+        let result = translation::Translation::match_target_schema(
+            &snippet,
+            &target_schema
+        ).await?;
 
         unimplemented!()
     }

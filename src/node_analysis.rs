@@ -325,7 +325,8 @@ async fn get_translation_schema_transformation<P: Provider>(
         lock.subgraph_hash.clone()
     };
 
-    if !options.regenerate {
+    //if !options.regenerate {
+    if false {
         if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, Some(&subgraph_hash)).await? {
             log::info!("Provider has supplied translation schema transformtion");
 
