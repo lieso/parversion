@@ -39,12 +39,36 @@ impl LLM {
 
         log::debug!("match_response: {:?}", match_response);
 
+        if match_response.is_incompatible || match_response.json_path.is_none() {
+            log::debug!("Schema node is incompatible with target schema");
+            return Ok(None);
+        }
+
+        let json_path = match_response.json_path.unwrap();
+
+        let translation_schema = {
+            let lock = read_lock!(meta_context);
+            lock.translation_schema.clone().unwrap()
+        };
+
+        let maybe_schema_node = translation_schema.get_schema_node_by_json_path(&json_path);
+
+        if let Some(target_schema_node) = maybe_schema_node {
+            log::info!("Found target schema node");
+        } else {
+            log::warn!("Schema node determined to be compatible but could not find target schema node");
+            panic!("test");
+        }
+
+
         log::debug!("");
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
         log::debug!("║                  TRANSLATE SCHEMA NODE END                    ║");
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        unimplemented!();
 
         Ok(None)
     }
