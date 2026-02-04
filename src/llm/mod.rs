@@ -55,11 +55,32 @@ impl LLM {
 
         if let Some(target_schema_node) = maybe_schema_node {
             log::info!("Found target schema node");
-        } else {
-            log::warn!("Schema node determined to be compatible but could not find target schema node");
-            panic!("test");
-        }
 
+
+
+
+            let lock = read_lock!(meta_context);
+
+
+            let schema_contexts = lock.schema_contexts.clone().unwrap();
+            let schema_node_path: Path = schema_context.to_path(
+                schema_contexts
+            )?;
+
+            log::debug!("schema_node_path: {}", schema_node_path.to_string());
+
+
+
+
+
+
+
+
+
+
+        } else {
+            log::error!("Schema node determined to be compatible but could not find target schema node");
+        }
 
         log::debug!("");
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");

@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::schema_node::SchemaNode;
 use crate::graph_node::{Graph, GraphNode, GraphNodeID};
 use crate::config::{CONFIG};
+use crate::path::Path;
 
 #[derive(Clone, Debug)]
 pub struct SchemaContext {
@@ -16,6 +17,15 @@ pub struct SchemaContext {
 }
 
 impl SchemaContext {
+    pub fn to_path(
+        &self,
+        schema_contexts: HashMap<ID, Arc<SchemaContext>>,
+    ) -> Result<Path, Errors> {
+        log::trace!("In to_path");
+
+        unimplemented!()
+    }
+
     pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {
         log::trace!("In generate_snippet");
 
