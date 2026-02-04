@@ -23,6 +23,34 @@ impl SchemaContext {
     ) -> Result<Path, Errors> {
         log::trace!("In to_path");
 
+        let mut node_sequence: Vec<Arc<SchemaNode>> = Vec::new();
+
+        let start_node = self.graph_node.clone();
+        let mut queue: VecDeque<Graph> = VecDeque::new();
+        queue.push_back(Arc::clone(&start_node));
+
+        while let Some(current_node) = queue.pop_front() {
+            let schema_node: Arc<SchemaNode> = {
+                let schema_context = schema_contexts
+                    .get(&read_lock!(current_node).id)
+                    .unwrap();
+
+                Arc::clone(&schema_context.schema_node)
+            };
+
+            node_sequence.push(schema_node);
+
+            let parents = read_lock!(current_node).parents.clone();
+
+            if parents.len() == 1 {
+                queue.push_back(parents.get(0).unwrap().clone());
+            }
+        }
+
+        node_sequence.reverse();
+
+        log::debug!("node_sequence: {:?}", node_sequence);
+
         unimplemented!()
     }
 

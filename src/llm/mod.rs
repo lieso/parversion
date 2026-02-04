@@ -72,6 +72,7 @@ impl LLM {
 
 
 
+            unimplemented!();
 
 
 
@@ -88,8 +89,6 @@ impl LLM {
         log::debug!("║                  TRANSLATE SCHEMA NODE END                    ║");
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-
-        unimplemented!();
 
         Ok(None)
     }

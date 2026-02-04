@@ -257,6 +257,8 @@ impl Schema {
         let path = json_path.strip_prefix("$.").unwrap_or(json_path);
         let mut segments = path.split('.');
 
+        log::debug!("segments: {:?}", segments);
+
         if segments.next() != Some(&self.name) {
             log::info!("First segment does not match schema name '{}', continuing without it.", self.name);
             segments = path.split('.');
