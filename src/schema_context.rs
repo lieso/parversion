@@ -49,9 +49,21 @@ impl SchemaContext {
 
         node_sequence.reverse();
 
-        log::debug!("node_sequence: {:?}", node_sequence);
+        let mut path = Path::new();
+        let available_variables: Vec<char> = ('a'..='z').collect();
+        let mut used_variable_index = 0;
 
-        unimplemented!()
+        for node in node_sequence.iter() {
+            path = path.with_key_segment(node.name.clone());
+
+            if node.data_type == "array" {
+                let variable = available_variables[used_variable_index];
+                path = path.with_variable_index_segment(variable);
+                used_variable_index += 1;
+            }
+        }
+
+        Ok(path)
     }
 
     pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {
