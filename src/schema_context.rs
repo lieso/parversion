@@ -56,6 +56,8 @@ impl SchemaContext {
         for node in node_sequence.iter() {
             path = path.with_key_segment(node.name.clone());
 
+            log::debug!("node: {:?}", node);
+
             if node.data_type == "array" {
                 let variable = available_variables[used_variable_index];
                 path = path.with_variable_index_segment(variable);

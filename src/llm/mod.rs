@@ -58,9 +58,7 @@ impl LLM {
 
 
 
-
             let lock = read_lock!(meta_context);
-
 
             let schema_contexts = lock.schema_contexts.clone().unwrap();
             let schema_node_path: Path = schema_context.to_path(
@@ -69,8 +67,19 @@ impl LLM {
 
             log::debug!("schema_node_path: {}", schema_node_path.to_string());
 
+            let target_schema_context = lock.translation_schema_contexts
+                .as_ref()
+                .unwrap()
+                .values()
+                .find(|sc| sc.schema_node.id == target_schema_node.id)
+                .unwrap();
 
+            let target_schema_contexts = lock.translation_schema_contexts.clone().unwrap();
+            let target_node_path: Path = target_schema_context.to_path(
+                target_schema_contexts
+            )?;
 
+            log::debug!("target_node_path: {}", target_node_path.to_string());
 
             unimplemented!();
 
