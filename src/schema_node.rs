@@ -66,7 +66,6 @@ impl SchemaNode {
         value: &Value,
         name: &str,
         parent_lineage: &Lineage,
-        was_array: bool
     ) -> Result<Self, Errors> {
         log::trace!("In from_serde_value");
         log::debug!("name: {}", name);
@@ -90,7 +89,6 @@ impl SchemaNode {
                         &val,
                         &key,
                         &lineage,
-                        data_type == "array"
                     ) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),
@@ -110,23 +108,20 @@ impl SchemaNode {
                             .map(|item_value|
                                 Self::from_serde_value(
                                     item_value,
-                                    name,
+                                    "",
                                     &lineage,
-                                    data_type == "array"
                                 )
                             )
                             .collect::<Result<Vec<_>, Errors>>()?
                     )
                 } else {
-
                     let schema_node = Self::from_serde_value(
                         items_value,
-                        name,
+                        "",
                         &lineage,
-                        data_type == "array"
                     )?;
 
-                    return Ok(schema_node);
+                    Some(vec![schema_node])
                 }
             } else {
                 None

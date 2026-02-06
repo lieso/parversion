@@ -54,14 +54,14 @@ impl SchemaContext {
         let mut used_variable_index = 0;
 
         for node in node_sequence.iter() {
-            path = path.with_key_segment(node.name.clone());
+            if node.name.len() > 0 {
+                path = path.with_key_segment(node.name.clone());
 
-            log::debug!("node: {:?}", node);
-
-            if node.data_type == "array" {
-                let variable = available_variables[used_variable_index];
-                path = path.with_variable_index_segment(variable);
-                used_variable_index += 1;
+                if node.data_type == "array" {
+                    let variable = available_variables[used_variable_index];
+                    path = path.with_variable_index_segment(variable);
+                    used_variable_index += 1;
+                }
             }
         }
 
@@ -150,24 +150,43 @@ impl SchemaContext {
         };
 
         if is_current_neighbour || is_current_target {
-            if schema_node.data_type == "array" {
-                format!(r#""{}": {{ "description": "{}", "data_type": "array", "items": {{ {} }} }}"#,
-                    json_schema_key,
-                    schema_node.description,
-                    inner_schema.join(", ")
-                )
-            } else if schema_node.data_type == "object" {
-                format!(r#""{}": {{ "description": "{}", "data_type": "object", "properties": {{ {} }} }}"#,
-                    json_schema_key,
-                    schema_node.description,
-                    inner_schema.join(", ")
-                )
+            if schema_node.name.is_empty() {
+                if schema_node.data_type == "array" {
+                    format!(r#""description": "{}", "data_type": "array", "items": {{ {} }}"#,
+                        schema_node.description,
+                        inner_schema.join(", ")
+                    )
+                } else if schema_node.data_type == "object" {
+                    format!(r#""description": "{}", "data_type": "object", "properties": {{ {} }}"#,
+                        schema_node.description,
+                        inner_schema.join(", ")
+                    )
+                } else {
+                    format!(r#""description": "{}", "data_type": "{}""#,
+                        schema_node.description,
+                        schema_node.data_type
+                    )
+                }
             } else {
-                format!(r#""{}": {{ "description": "{}", "data_type": "{}" }}"#,
-                    json_schema_key,
-                    schema_node.description,
-                    schema_node.data_type
-                )
+                if schema_node.data_type == "array" {
+                    format!(r#""{}": {{ "description": "{}", "data_type": "array", "items": {{ {} }} }}"#,
+                        json_schema_key,
+                        schema_node.description,
+                        inner_schema.join(", ")
+                    )
+                } else if schema_node.data_type == "object" {
+                    format!(r#""{}": {{ "description": "{}", "data_type": "object", "properties": {{ {} }} }}"#,
+                        json_schema_key,
+                        schema_node.description,
+                        inner_schema.join(", ")
+                    )
+                } else {
+                    format!(r#""{}": {{ "description": "{}", "data_type": "{}" }}"#,
+                        json_schema_key,
+                        schema_node.description,
+                        schema_node.data_type
+                    )
+                }
             }
         } else {
             inner_schema.join(", ")
