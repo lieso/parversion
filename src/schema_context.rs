@@ -5,7 +5,7 @@ use crate::prelude::*;
 use crate::schema_node::SchemaNode;
 use crate::graph_node::{Graph, GraphNode, GraphNodeID};
 use crate::config::{CONFIG};
-use crate::path::Path;
+use crate::path::{Path, AVAILABLE_VARIABLES};
 
 #[derive(Clone, Debug)]
 pub struct SchemaContext {
@@ -50,7 +50,6 @@ impl SchemaContext {
         node_sequence.reverse();
 
         let mut path = Path::new();
-        let available_variables: Vec<char> = ('a'..='z').collect();
         let mut used_variable_index = 0;
 
         for node in node_sequence.iter() {
@@ -58,7 +57,7 @@ impl SchemaContext {
                 path = path.with_key_segment(node.name.clone());
 
                 if node.data_type == "array" {
-                    let variable = available_variables[used_variable_index];
+                    let variable = AVAILABLE_VARIABLES[used_variable_index];
                     path = path.with_variable_index_segment(variable);
                     used_variable_index += 1;
                 }

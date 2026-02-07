@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use openrouter_rs::{OpenRouterClient, api::chat::*, types::{Role, ResponseFormat}};
+use serde::{Serialize, Deserialize};
+use serde_json::json;
+
 use crate::prelude::*;
 use crate::environment::get_env_variable;
 use crate::path::Path;
 use crate::path_segment::PathSegmentKind;
-use openrouter_rs::{OpenRouterClient, api::chat::*, types::{Role, ResponseFormat}};
-use serde::{Serialize, Deserialize};
-use serde_json::json;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MatchTargetSchemaResponse {

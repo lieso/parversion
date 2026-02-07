@@ -1,9 +1,14 @@
 use serde::{Serialize, Deserialize};
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::prelude::*;
 use crate::path_segment::{PathSegment, PathSegmentKind};
+
+pub const AVAILABLE_VARIABLES: &[char] = &[
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+];
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Path {
@@ -28,7 +33,6 @@ impl Path {
         let path = path.trim_start_matches('$');
         let mut result = Path::new();
 
-        let available_variables: Vec<char> = ('a'..='z').collect();
         let mut used_variables = Vec::new();
 
         let re = Regex::new(r"[^.\[]+|\[[^\]]*\]").unwrap();
@@ -40,7 +44,7 @@ impl Path {
                 let content = &segment[1..segment.len() - 1];
 
                 if content.is_empty() {
-                    let variable = available_variables.iter()
+                    let variable = AVAILABLE_VARIABLES.iter()
                         .find(|&v| !used_variables.contains(v))
                         .expect("Ran out of variable index characters");
 
@@ -123,6 +127,58 @@ impl Path {
     pub fn with_variable_index_segment(&self, variable: char) -> Self {
         let mut new_path = self.clone();
         new_path.segments.push(PathSegment::new_variable_index_segment(variable));
+        new_path
+    }
+
+    pub fn with_unique_variables(&self, other: &Path) -> Self {
+        // Collect all variable characters used in the other path
+        let mut used_variables: HashSet<char> = other.segments
+            .iter()
+            .filter_map(|seg| {
+                if let PathSegmentKind::VariableIndex(var) = seg.kind {
+                    Some(var)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Mapping from old variables to new variables
+        let mut variable_mapping: HashMap<char, char> = HashMap::new();
+
+        // Create new path with unique variables
+        let mut new_path = Path::new();
+
+        for segment in &self.segments {
+            match &segment.kind {
+                PathSegmentKind::Key(key) => {
+                    new_path = new_path.with_key_segment(key.clone());
+                }
+                PathSegmentKind::Index(idx) => {
+                    new_path = new_path.with_index_segment(*idx);
+                }
+                PathSegmentKind::VariableIndex(var) => {
+                    // Check if we already mapped this variable
+                    let new_var = if let Some(&mapped_var) = variable_mapping.get(var) {
+                        mapped_var
+                    } else {
+                        // Find a new unique variable
+                        let new_var = AVAILABLE_VARIABLES
+                            .iter()
+                            .find(|&v| !used_variables.contains(v))
+                            .copied()
+                            .expect("Ran out of available variable characters");
+
+                        used_variables.insert(new_var);
+                        variable_mapping.insert(*var, new_var);
+                        new_var
+                    };
+
+                    new_path = new_path.with_variable_index_segment(new_var);
+                }
+            }
+        }
+
         new_path
     }
 
