@@ -1,5 +1,8 @@
+use std::collections::HashMap;
 use crate::prelude::*;
 use crate::environment::get_env_variable;
+use crate::path::Path;
+use crate::path_segment::PathSegmentKind;
 use openrouter_rs::{OpenRouterClient, api::chat::*, types::{Role, ResponseFormat}};
 use serde::{Serialize, Deserialize};
 use serde_json::json;
@@ -151,6 +154,17 @@ For example, if the target field matches a field called "issueDate" nested under
                 Err(Errors::UnexpectedError)
             }
         }
+    }
+
+    pub async fn match_path_variables(
+        schema_node_path: &Path,
+        target_node_path: &Path,
+        snippet: &String,
+        target_schema: &String,
+    ) -> Result<HashMap<char, PathSegmentKind>, Errors> {
+        log::trace!("In match_path_variables");
+
+        unimplemented!()
     }
 
     fn build_client() -> OpenRouterClient {

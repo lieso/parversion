@@ -56,16 +56,12 @@ impl LLM {
         if let Some(target_schema_node) = maybe_schema_node {
             log::info!("Found target schema node");
 
-
-
             let lock = read_lock!(meta_context);
 
             let schema_contexts = lock.schema_contexts.clone().unwrap();
             let schema_node_path: Path = schema_context.to_path(
                 schema_contexts
             )?;
-
-            log::debug!("schema_node_path: {}", schema_node_path.to_string());
 
             let target_schema_context = lock.translation_schema_contexts
                 .as_ref()
@@ -79,7 +75,19 @@ impl LLM {
                 target_schema_contexts
             )?;
 
+            log::debug!("*****************************************************************************************************");
+            log::debug!("schema_node_path: {}", schema_node_path.to_string());
             log::debug!("target_node_path: {}", target_node_path.to_string());
+            log::debug!("*****************************************************************************************************");
+
+
+
+
+
+
+
+
+
 
             unimplemented!();
 
@@ -90,6 +98,7 @@ impl LLM {
 
         } else {
             log::error!("Schema node determined to be compatible but could not find target schema node");
+            unimplemented!();
         }
 
         log::debug!("");
