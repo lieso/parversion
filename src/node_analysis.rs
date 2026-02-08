@@ -279,25 +279,7 @@ async fn get_normal_schema_transformation<P: Provider>(
 
     let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-    let (key, description, _aliases, path) = LLM::get_normal_schema(&snippet).await?;
-
-    let schema_transformation = SchemaTransformation {
-        id: ID::new(),
-        description,
-        key,
-        source_path: String::new(),
-        target_path: String::new(),
-        lineage: lineage.clone(),
-        subgraph_hash: None,
-    };
-
-    provider.save_schema_transformation(
-        &lineage,
-        None,
-        schema_transformation.clone(),
-    ).await?;
-
-    Ok(schema_transformation)
+    unimplemented!()
 }
 
 async fn get_translation_schema_transformation<P: Provider>(
@@ -340,7 +322,17 @@ async fn get_translation_schema_transformation<P: Provider>(
         Arc::clone(&target_schema)
     ).await?;
 
-    if let Some(schema_transformation) = result {
+    if let Some((source, target)) = result {
+        let schema_transformation = SchemaTransformation {
+            id: ID::new(),
+            description: schema_context.schema_node.description.clone(),
+            key: schema_context.schema_node.name.clone(),
+            source: Some(source),
+            target: Some(target),
+            lineage: lineage.clone(),
+            subgraph_hash: Some(subgraph_hash.clone()),
+        };
+
         provider.save_schema_transformation(
             &lineage,
             Some(&subgraph_hash),
@@ -353,8 +345,8 @@ async fn get_translation_schema_transformation<P: Provider>(
             id: ID::new(),
             description: schema_context.schema_node.description.clone(),
             key: schema_context.schema_node.name.clone(),
-            source_path: String::new(),
-            target_path: String::new(),
+            source: None,
+            target: None,
             lineage: lineage.clone(),
             subgraph_hash: Some(subgraph_hash.clone()),
         };

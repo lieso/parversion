@@ -16,7 +16,7 @@ impl LLM {
         meta_context: Arc<RwLock<MetaContext>>,
         schema_context: SchemaContext,
         target_schema: Arc<String>
-    ) -> Result<Option<SchemaTransformation>, Errors> {
+    ) -> Result<Option<(Path, Path)>, Errors> {
         log::trace!("In translate_schema_node");
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -91,36 +91,14 @@ impl LLM {
 
             let target_node_path = target_node_path.with_mapped_variables(&variable_mapping);
 
-            log::debug!("*****************************************************************************************************");
             log::debug!("schema_node_path: {}", schema_node_path.to_string());
             log::debug!("target_node_path: {}", target_node_path.to_string());
-            log::debug!("*****************************************************************************************************");
 
-
-
-
-
-
-            unimplemented!();
-
-
-
-
-
-
+            return Ok(Some((schema_node_path, target_node_path)));
         } else {
             log::error!("Schema node determined to be compatible but could not find target schema node");
-            unimplemented!();
+            unimplemented!()
         }
-
-        log::debug!("");
-        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-        log::debug!("║                                                               ║");
-        log::debug!("║                  TRANSLATE SCHEMA NODE END                    ║");
-        log::debug!("║                                                               ║");
-        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-
-        Ok(None)
     }
 
     pub async fn get_normal_schema(marked_schema: &String) -> Result<(
