@@ -130,6 +130,12 @@ impl Path {
         new_path
     }
 
+    pub fn with_segment(&self, segment: PathSegment) -> Self {
+        let mut new_path = self.clone();
+        new_path.segments.push(segment);
+        new_path
+    }
+
     pub fn with_unique_variables(&self, other: &Path) -> Self {
         // Collect all variable characters used in the other path
         let mut used_variables: HashSet<char> = other.segments
@@ -175,6 +181,35 @@ impl Path {
                     };
 
                     new_path = new_path.with_variable_index_segment(new_var);
+                }
+            }
+        }
+
+        new_path
+    }
+
+    pub fn with_mapped_variables(&self, mapping: &HashMap<char, PathSegmentKind>) -> Self {
+        let mut new_path = Path::new();
+
+        for segment in &self.segments {
+            match &segment.kind {
+                PathSegmentKind::Key(key) => {
+                    new_path = new_path.with_key_segment(key.clone());
+                }
+                PathSegmentKind::Index(idx) => {
+                    new_path = new_path.with_index_segment(*idx);
+                }
+                PathSegmentKind::VariableIndex(var) => {
+                    let new_segment = if let Some(mapped_segment_kind) = mapping.get(var) {
+                        PathSegment {
+                            id: ID::new(),
+                            kind: mapped_segment_kind.clone()
+                        }
+                    } else {
+                        segment.clone()
+                    };
+
+                    new_path = new_path.with_segment(new_segment);
                 }
             }
         }

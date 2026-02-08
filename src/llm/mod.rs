@@ -80,11 +80,6 @@ impl LLM {
                 (schema_node_path, target_node_path)
             };
 
-            log::debug!("*****************************************************************************************************");
-            log::debug!("schema_node_path: {}", schema_node_path.to_string());
-            log::debug!("target_node_path: {}", target_node_path.to_string());
-            log::debug!("*****************************************************************************************************");
-
             let variable_mapping = translation::Translation::match_path_variables(
                 &schema_node_path,
                 &target_node_path,
@@ -94,6 +89,12 @@ impl LLM {
 
             log::debug!("variable_mapping: {:?}", variable_mapping);
 
+            let target_node_path = target_node_path.with_mapped_variables(&variable_mapping);
+
+            log::debug!("*****************************************************************************************************");
+            log::debug!("schema_node_path: {}", schema_node_path.to_string());
+            log::debug!("target_node_path: {}", target_node_path.to_string());
+            log::debug!("*****************************************************************************************************");
 
 
 
