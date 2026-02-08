@@ -14,6 +14,12 @@ pub struct MatchTargetSchemaResponse {
     pub json_path: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct PathVariableMapping {
+    pub variable: char,
+    pub maps_to: String, // Either a variable char or a concrete index
+}
+
 pub struct Translation;
 
 impl Translation {
@@ -165,7 +171,173 @@ For example, if the target field matches a field called "issueDate" nested under
     ) -> Result<HashMap<char, PathSegmentKind>, Errors> {
         log::trace!("In match_path_variables");
 
-        unimplemented!()
+        let system_prompt = r##"
+Your task is to map variable indices in a target path to either variable indices or concrete indices in a schema path.
+
+You will be provided with:
+1. A schema path with variable indices (e.g., items[a].data[b])
+2. A target path with variable indices (e.g., entries[c].values[d])
+3. JSON schema snippets for both paths to understand the structure
+
+Your goal is to determine how each variable in the target path should map:
+- To a variable in the schema path if they represent corresponding array iterations
+- To a concrete index if the target variable should map to a specific index
+
+For example:
+- If both paths iterate over similar arrays, target variable 'c' might map to schema variable 'a'
+- If the target iterates but the schema doesn't, target variable 'c' might map to concrete index 0
+
+Return a mapping for each variable in the target path.
+"##;
+
+        let user_prompt = format!(r##"
+[SCHEMA PATH]:
+{}
+
+[TARGET PATH]:
+{}
+
+[SCHEMA SNIPPET]:
+{}
+
+[TARGET SCHEMA]:
+{}
+"##,
+            schema_node_path.to_string(),
+            target_node_path.to_string(),
+            snippet,
+            target_schema
+        );
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║             MATCH PATH VARIABLES - LLM REQUEST                ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+        log::debug!("┌─── SCHEMA PATH ───────────────────────────────────────────────┐");
+        log::debug!("{}", schema_node_path.to_string());
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+        log::debug!("┌─── TARGET PATH ───────────────────────────────────────────────┐");
+        log::debug!("{}", target_node_path.to_string());
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+
+        let client = Self::build_client();
+
+        let response_format = ResponseFormat::json_schema(
+            "match_path_variables",
+            true,
+            json!({
+                "type": "object",
+                "properties": {
+                    "mappings": {
+                        "type": "array",
+                        "description": "Array of variable mappings from target path to schema path",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "variable": {
+                                    "type": "string",
+                                    "description": "The variable character from the target path"
+                                },
+                                "maps_to": {
+                                    "type": "string",
+                                    "description": "Either a variable character from schema path or a concrete index number"
+                                }
+                            },
+                            "required": ["variable", "maps_to"],
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "required": ["mappings"],
+                "additionalProperties": false
+            })
+        );
+
+        let request = ChatCompletionRequest::builder()
+            .model("google/gemini-3-pro-preview")
+            .messages(vec![
+                Message::new(Role::System, system_prompt),
+                Message::new(Role::User, user_prompt)
+            ])
+            .response_format(response_format)
+            .build()
+            .expect("could not create request");
+
+        match client.send_chat_completion(&request).await {
+            Ok(response) => {
+                log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
+                log::debug!("{:?}", response);
+                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                log::debug!("");
+
+                if let Some(content) = response.choices[0].content() {
+                    log::debug!("┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐");
+                    log::debug!("{}", content);
+                    log::debug!("└───────────────────────────────────────────────────────────────┘");
+                    log::debug!("");
+
+                    #[derive(Deserialize)]
+                    struct Response {
+                        mappings: Vec<PathVariableMapping>,
+                    }
+
+                    match serde_json::from_str::<Response>(content) {
+                        Ok(parsed_response) => {
+                            log::debug!("┌─── PARSED RESPONSE ───────────────────────────────────────────┐");
+                            log::debug!("{:?}", parsed_response.mappings);
+                            log::debug!("└───────────────────────────────────────────────────────────────┘");
+                            log::debug!("");
+
+                            // Convert to HashMap<char, PathSegmentKind>
+                            let mut result = HashMap::new();
+                            for mapping in parsed_response.mappings {
+                                let segment_kind = if let Ok(index) = mapping.maps_to.parse::<usize>() {
+                                    PathSegmentKind::Index(index)
+                                } else {
+                                    let mapped_var = mapping.maps_to.chars().next()
+                                        .ok_or_else(|| Errors::UnexpectedError)?;
+                                    PathSegmentKind::VariableIndex(mapped_var)
+                                };
+
+                                result.insert(mapping.variable, segment_kind);
+                            }
+
+                            log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+                            log::debug!("║                                                               ║");
+                            log::debug!("║          MATCH PATH VARIABLES - REQUEST COMPLETE              ║");
+                            log::debug!("║                                                               ║");
+                            log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+                            Ok(result)
+                        }
+                        Err(e) => {
+                            log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                            log::error!("║                    PARSE ERROR                                ║");
+                            log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                            log::error!("Failed to parse LLM response: {}", e);
+                            Err(Errors::UnexpectedError)
+                        }
+                    }
+                } else {
+                    log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                    log::error!("║                    NO CONTENT ERROR                           ║");
+                    log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                    log::error!("No content in LLM response");
+                    Err(Errors::UnexpectedError)
+                }
+            }
+            Err(e) => {
+                log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                log::error!("║                    REQUEST ERROR                              ║");
+                log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                log::error!("Failed to get response from OpenRouter: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
     }
 
     fn build_client() -> OpenRouterClient {

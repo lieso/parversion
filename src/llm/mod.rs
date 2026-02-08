@@ -56,7 +56,6 @@ impl LLM {
         if let Some(target_schema_node) = maybe_schema_node {
             log::info!("Found target schema node");
 
-
             let (schema_node_path, target_node_path) = {
                 let lock = read_lock!(meta_context);
 
