@@ -254,19 +254,25 @@ impl Schema {
         log::debug!("json_path: {}", json_path);
 
         let path = json_path.strip_prefix("$.").unwrap_or(json_path);
-        let mut segments = path.split('.');
+        log::debug!("Stripped json_path: {}", path);
 
-        log::debug!("segments: {:?}", segments);
+        let mut segments = path.split('.');
+        log::debug!("Initial segments: {:?}", segments);
 
         if segments.next() != Some(&self.name) {
             log::info!("First segment does not match schema name '{}', continuing without it.", self.name);
             segments = path.split('.');
+        } else {
+            log::debug!("First segment matches schema name '{}'", self.name);
         }
 
         let mut current_node: Option<&SchemaNode> = None;
 
-        if let Some(_root_properties_segment) = segments.next() {
+        if let Some(root_properties_segment) = segments.next() {
+            log::debug!("root_properties_segment: {:?}", root_properties_segment);
+
             if let Some(first_segment) = segments.next() {
+                log::debug!("first segment: {:?}", first_segment);
                 current_node = self.properties.get(first_segment);
             }
         }
