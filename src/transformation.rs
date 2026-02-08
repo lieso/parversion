@@ -22,6 +22,7 @@ pub enum Runtime {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaTransformation {
     pub id: ID,
+    pub timestamp: Timestamp,
     pub lineage: Lineage,
     pub subgraph_hash: Option<Hash>,
     pub key: String,

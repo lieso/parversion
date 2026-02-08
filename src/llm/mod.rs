@@ -96,9 +96,10 @@ impl LLM {
 
             return Ok(Some((schema_node_path, target_node_path)));
         } else {
-            log::error!("Schema node determined to be compatible but could not find target schema node");
-            unimplemented!()
+            log::warn!("Schema node determined to be compatible but could not find target schema node");
         }
+
+        Ok(None)
     }
 
     pub async fn get_normal_schema(marked_schema: &String) -> Result<(

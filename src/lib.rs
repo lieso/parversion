@@ -47,3 +47,4 @@ pub mod options;
 pub mod operation;
 pub mod query;
 pub mod bloom_filter;
+pub mod timestamp;

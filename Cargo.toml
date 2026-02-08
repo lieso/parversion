@@ -36,7 +36,7 @@ serde_yaml = { version = "0.9.34", optional = true }
 fantoccini = "0.21.3"
 once_cell = { version = "1.20.2", optional = true }
 hex = "0.4.3"
-chrono = "0.4.41"
+chrono = { version = "0.4.41", features = ["serde"]}
 cfg-if = "1.0.4"
 dirs = "6.0.0"
 rusqlite = { version = "0.37.0", features = ["bundled"], optional = true }

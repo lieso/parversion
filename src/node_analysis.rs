@@ -325,6 +325,7 @@ async fn get_translation_schema_transformation<P: Provider>(
     if let Some((source, target)) = result {
         let schema_transformation = SchemaTransformation {
             id: ID::new(),
+            timestamp: Timestamp::now(),
             description: schema_context.schema_node.description.clone(),
             key: schema_context.schema_node.name.clone(),
             source: Some(source),
@@ -343,6 +344,7 @@ async fn get_translation_schema_transformation<P: Provider>(
     } else {
         let schema_transformation = SchemaTransformation {
             id: ID::new(),
+            timestamp: Timestamp::now(),
             description: schema_context.schema_node.description.clone(),
             key: schema_context.schema_node.name.clone(),
             source: None,

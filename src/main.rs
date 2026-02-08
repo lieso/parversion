@@ -47,6 +47,7 @@ mod options;
 mod operation;
 mod query;
 mod bloom_filter;
+mod timestamp;
 
 use crate::entrypoint::run;
 
