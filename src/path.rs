@@ -75,9 +75,10 @@ impl Path {
             })
     }
 
-    pub fn map_variables_to_indices(variable_path: &Path, index_path: &Path) -> HashMap<char, usize> {
+    pub fn map_variables_to_indices(variable_path: &Path, index_path: &Path) -> Result<HashMap<char, usize>, Errors> {
         if variable_path.segments.len() != index_path.segments.len() {
-            panic!("Paths have different lengths");
+            log::error!("Paths have different lengths");
+            return Err(Errors::UnexpectedError);
         }
 
         let mut mapping = HashMap::new();
@@ -86,7 +87,8 @@ impl Path {
             match (&var_segment.kind, &idx_segment.kind) {
                 (PathSegmentKind::Key(key1), PathSegmentKind::Key(key2)) => {
                     if key1 != key2 {
-                        panic!("Key mismatch: {} != {}", key1, key2);
+                        log::error!("Key mismatch: {} != {}", key1, key2);
+                        return Err(Errors::UnexpectedError);
                     }
                 }
                 (PathSegmentKind::VariableIndex(var), PathSegmentKind::Index(idx)) => {
@@ -94,16 +96,18 @@ impl Path {
                 }
                 (PathSegmentKind::Index(idx1), PathSegmentKind::Index(idx2)) => {
                     if idx1 != idx2 {
-                        panic!("Index mismatch: {} != {}", idx1, idx2);
+                        log::error!("Index mismatch: {} != {}", idx1, idx2);
+                        return Err(Errors::UnexpectedError);
                     }
                 }
                 _ => {
-                    panic!("Segment type mismatch at position");
+                    log::error!("Segment type mismatch at position");
+                    return Err(Errors::UnexpectedError);
                 }
             }
         }
 
-        mapping
+        Ok(mapping)
     }
 
     pub fn with_key_segment(&self, key: String) -> Self {
