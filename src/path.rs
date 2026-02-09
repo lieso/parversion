@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use serde_json::{json, Value, Map};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
@@ -219,6 +220,106 @@ impl Path {
         }
 
         new_path
+    }
+
+    pub fn insert_into_map(
+        &self,
+        map: &mut Map<String, Value>,
+        value: String,
+    ) {
+        let mut segments_iter = self.segments.iter().peekable();
+
+        let first_segment = match segments_iter.next() {
+            Some(segment) => segment,
+            None => panic!("Path has no segments!"),
+        };
+
+        let root_key = match &first_segment.kind {
+            PathSegmentKind::Key(k) => k,
+            _ => panic!("Root segment must be a Key"),
+        };
+
+        let next_is_index = matches!(
+            segments_iter.peek(),
+            Some(seg) if matches!(seg.kind, PathSegmentKind::Index(_))
+        );
+
+        let root_default = if next_is_index {
+            Value::Array(Vec::new())
+        } else {
+            Value::Object(Map::new())
+        };
+
+        if segments_iter.peek().is_none() {
+            map.insert(root_key.clone(), Value::String(value));
+            return;
+        }
+
+        let mut cursor: &mut Value = map
+            .entry(root_key.clone())
+            .or_insert(root_default);
+
+        while let Some(segment) = segments_iter.next() {
+            let next_segment_opt = segments_iter.peek();
+
+            match &segment.kind {
+                PathSegmentKind::Key(key) => {
+                    let obj = cursor.as_object_mut().expect("Path traverses through non-object");
+
+                    // Final segment
+                    if next_segment_opt.is_none() {
+                        obj.insert(key.clone(), Value::String(value.clone()));
+                        return;
+                    }
+
+                    // Middle segment
+                    let next_is_index = matches!(
+                        next_segment_opt,
+                        Some(s) if matches!(s.kind, PathSegmentKind::Index(_))
+                    );
+
+                    let default = if next_is_index {
+                        Value::Array(Vec::new())
+                    } else {
+                        Value::Object(Map::new())
+                    };
+
+                    cursor = obj.entry(key.clone()).or_insert(default);
+                }
+                PathSegmentKind::Index(idx) => {
+                    let vec = cursor.as_array_mut().expect("Path traverses through non-array");
+
+                    // Ensure array is large enough
+                    while vec.len() <= *idx {
+                        vec.push(Value::Null);
+                    }
+
+                    // Final segment
+                    if next_segment_opt.is_none() {
+                        vec[*idx] = Value::String(value.clone());
+                    }
+                    
+                    // Middle segment
+                    let next_is_index = matches!(
+                        next_segment_opt,
+                        Some(s) if matches!(s.kind, PathSegmentKind::Index(_))
+                    );
+
+                    if vec[*idx].is_null() {
+                        vec[*idx] = if next_is_index {
+                            Value::Array(Vec::new())
+                        } else {
+                            Value::Object(Map::new())
+                        };
+                    }
+
+                    cursor = &mut vec[*idx];
+                }
+                PathSegmentKind::VariableIndex(_) => {
+                    panic!("Variables not supported");
+                }
+            }
+        }
     }
 
     pub fn arrayify(&mut self, target_segment_id: &ID, variable: char) {
