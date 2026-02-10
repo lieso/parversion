@@ -602,64 +602,37 @@ fn apply_schema_transformations_json(
                 }
             },
             _ => {
+                if let Some(current_schema_node) = schema_nodes.get(parent_lineage) {
+                    let lock = read_lock!(meta_context);
 
+                    if let Some(schema_transformations) = &lock.schema_transformations {
+                        if let Some(transformation) = schema_transformations.get(parent_lineage) {
+                            if let Some(source) = &transformation.source {
+                                if let Some(target) = &transformation.target {
+                                    if let Ok(mapping) = Path::map_variables_to_indices(
+                                        &source,
+                                        &path
+                                    ) {
+                                        let mapping_segments = mapping.iter()
+                                            .map(|(var, &idx)| {
+                                                (var.clone(), PathSegmentKind::Index(idx))
+                                            })
+                                            .collect();
 
-                {
-                    if let Some(current_schema_node) = schema_nodes.get(parent_lineage) {
-                        log::debug!("current_schema_node: {:?}", current_schema_node);
-                        log::debug!("-----------------------------------------------------------------------------------------------------");
+                                        let indexed_target = target.with_mapped_variables(&mapping_segments);
 
-                        let lock = read_lock!(meta_context);
-
-                        if let Some(schema_transformations) = &lock.schema_transformations {
-                            if let Some(transformation) = schema_transformations.get(parent_lineage) {
-                                //transformation.transform(current_schema_node);
-
-                                log::debug!("transformation: {:?}", transformation);
-                                log::debug!("-----------------------------------------------------------------------------------------------------");
-
-                                if let Some(source) = &transformation.source {
-                                    if let Some(target) = &transformation.target {
-
-
-                                        log::debug!("path: {:?}", path.to_string());
-                                        log::debug!("source: {}", source.to_string());
-                                        log::debug!("target: {}", target.to_string());
-
-
-                                        if let Ok(mapping) = Path::map_variables_to_indices(
-                                            &source,
-                                            &path
-                                        ) {
-                                            log::debug!("mapping: {:?}", mapping);
-
-                                            let mapping_segments = mapping.iter()
-                                                .map(|(var, &idx)| {
-                                                    (var.clone(), PathSegmentKind::Index(idx))
-                                                })
-                                                .collect();
-
-                                            let indexed_target = target.with_mapped_variables(&mapping_segments);
-
-                                            log::debug!("indexed_target: {:?}", indexed_target);
-
-                                            indexed_target.insert_into_map(
-                                                result,
-                                                value.as_str().unwrap().to_string()
-                                            );
-
-
-                                        } else {
-                                            // TODO
-                                        }
-
-
+                                        indexed_target.insert_into_map(
+                                            result,
+                                            value.as_str().unwrap().to_string()
+                                        );
+                                    } else {
+                                        // TODO
                                     }
                                 }
                             }
                         }
                     }
-                };
+                }
             }
         }
     }
