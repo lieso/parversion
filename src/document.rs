@@ -3,8 +3,8 @@ use serde::{Serialize, Deserialize};
 use serde_json::{json, Value, Map, to_string};
 use xmltree::{Element};
 use html5ever::parse_document;
+use markup5ever_arcdom::{Handle, NodeData, ArcDom};
 use html5ever::tendril::TendrilSink;
-use markup5ever_rcdom::{Handle, NodeData, RcDom};
 use std::collections::{HashSet, HashMap, VecDeque};
 
 use crate::prelude::*;
@@ -359,10 +359,10 @@ impl Document {
         }
     }
 
-    fn to_dom(&self) -> Option<RcDom> {
+    fn to_dom(&self) -> Option<ArcDom> {
         let sanitized = self.data.replace("\n", "");
 
-        parse_document(RcDom::default(), Default::default())
+        parse_document(ArcDom::default(), Default::default())
             .from_utf8()
             .read_from(&mut sanitized.as_bytes())
             .ok()
