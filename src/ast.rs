@@ -6,7 +6,6 @@ use swc_ecma_ast::Program;
 use swc_ecma_ast::*;
 use swc_ecma_visit::{Visit, VisitMut, VisitMutWith, VisitWith};
 use swc_ecma_codegen::{Emitter, text_writer::JsWriter};
-use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
 use swc_atoms::Atom;
 use std::fs;
@@ -70,7 +69,7 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
 fn parse(text: String) -> Program {
     let cm: Lrc<SourceMap> = Default::default();
 
-    let source_file = cm.new_source_file(Rc::new(FileName::Custom("inline.js".into())), text.to_string());
+    let source_file = cm.new_source_file(Lrc::new(FileName::Custom("inline.js".into())), text.to_string());
 
     let lexer = Lexer::new(
         Syntax::Es(Default::default()),
