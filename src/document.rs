@@ -2,9 +2,8 @@ use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
 use serde_json::{json, Value, Map, to_string};
 use xmltree::{Element};
-use html5ever::parse_document;
-use markup5ever_arcdom::{Handle, NodeData, ArcDom};
-use html5ever::tendril::TendrilSink;
+use scraper::{Html, ElementRef, Node};
+use ego_tree::NodeRef;
 use std::collections::{HashSet, HashMap, VecDeque};
 
 use crate::prelude::*;
@@ -285,11 +284,11 @@ impl Document {
         if let Some(dom) = self.to_dom() {
 
             let mut xml = String::from("");
-            
+
             // TODO: do we want to do anything with this?
             let mut extracted_docs: Vec<Document> = Vec::new();
 
-            walk(&mut xml, &dom.document, 0, &mut extracted_docs);
+            walk(&mut xml, dom.tree.root(), 0, &mut extracted_docs);
 
             let reader = std::io::Cursor::new(xml);
 
@@ -320,7 +319,7 @@ impl Document {
             let mut features: HashSet<String> = HashSet::new();
 
             get_xml_features(
-                &dom.document,
+                dom.tree.root(),
                 &mut String::from(""),
                 &mut features,
             );
@@ -359,43 +358,34 @@ impl Document {
         }
     }
 
-    fn to_dom(&self) -> Option<ArcDom> {
+    fn to_dom(&self) -> Option<Html> {
         let sanitized = self.data.replace("\n", "");
-
-        parse_document(ArcDom::default(), Default::default())
-            .from_utf8()
-            .read_from(&mut sanitized.as_bytes())
-            .ok()
+        Some(Html::parse_document(&sanitized))
     }
 }
 
 fn get_xml_features(
-    node: &Handle,
+    node: NodeRef<Node>,
     path: &mut String,
     features: &mut HashSet<String>,
 ) {
-    match &node.data {
-        NodeData::Document => {
-            for child in node.children.borrow().iter() {
+    match node.value() {
+        Node::Document => {
+            for child in node.children() {
                 get_xml_features(child, path, features);
             }
         }
-        NodeData::Text { .. } => {
+        Node::Text(_) => {
             features.insert(format!("{}/text", path));
         }
-        NodeData::Element {
-            ref name,
-            ref attrs,
-            ..
-        } => {
-            let mut new_path = format!("{}/{}", path, name.local);
+        Node::Element(element) => {
+            let mut new_path = format!("{}/{}", path, element.name());
 
-            for attr in attrs.borrow().iter() {
-                let attr_name = attr.name.local.trim();
-                features.insert(format!("{}.{}", new_path, attr_name));
+            for (attr_name, _) in element.attrs() {
+                features.insert(format!("{}.{}", new_path, attr_name.trim()));
             }
 
-            for child in node.children.borrow().iter() {
+            for child in node.children() {
                 get_xml_features(child, &mut new_path, features);
             }
         }
@@ -403,39 +393,34 @@ fn get_xml_features(
     }
 }
 
-fn walk(xhtml: &mut String, handle: &Handle, indent: usize, extracted_docs: &mut Vec<Document>) {
-    let node = handle;
+fn walk(xhtml: &mut String, node: NodeRef<Node>, indent: usize, extracted_docs: &mut Vec<Document>) {
     let real_indent = " ".repeat(indent * 2);
 
-    match node.data {
-        NodeData::Document => {
-            for child in node.children.borrow().iter() {
+    match node.value() {
+        Node::Document => {
+            for child in node.children() {
                 walk(xhtml, child, indent, extracted_docs);
             }
         }
-        NodeData::Text { ref contents } => {
-            let contents = &contents.borrow();
-            let text = format!("{}{}\n", real_indent, escape_xml(contents.trim()));
+        Node::Text(text) => {
+            let text_content = text.trim();
+            let text = format!("{}{}\n", real_indent, escape_xml(text_content));
 
             if !text.trim().is_empty() {
                 xhtml.push_str(&text);
             }
         },
-        NodeData::Comment { ref contents } => {
-            log::warn!("Ignoring HTML comment: {}", contents.escape_default());
+        Node::Comment(_) => {
+            // Ignoring HTML comments
         },
-        NodeData::Element {
-            ref name,
-            ref attrs,
-            ..
-        } => {
-            let tag_name = &name.local;
+        Node::Element(element) => {
+            let tag_name = element.name();
 
             xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
 
-            for attr in attrs.borrow().iter() {
-                let attr_name = &*attr.name.local.trim();
-                let attr_value = &*attr.value.trim();
+            for (attr_name, attr_value) in element.attrs() {
+                let attr_name = attr_name.trim();
+                let attr_value = attr_value.trim();
 
                 let is_html = is_likely_html(attr_value);
                 let _is_javascript = false;  // TODO: Check if attr_value is valid JavaScript
@@ -459,13 +444,13 @@ fn walk(xhtml: &mut String, handle: &Handle, indent: usize, extracted_docs: &mut
 
                 if !is_html && !_is_javascript {
                     let escaped_attr_value = escape_xml(attr_value);
-                    xhtml.push_str(&format!(" {}=\"{}\"", attr_name.escape_default(), escaped_attr_value));
+                    xhtml.push_str(&format!(" {}=\"{}\"", attr_name, escaped_attr_value));
                 }
             }
 
             xhtml.push_str(">\n");
 
-            for child in node.children.borrow().iter() {
+            for child in node.children() {
                 walk(xhtml, child, indent + 1, extracted_docs);
             }
 
@@ -510,7 +495,7 @@ fn is_likely_html(value: &str) -> bool {
     };
 
     if let Some(dom) = test_doc.to_dom() {
-        let element_count = count_element_nodes(&dom.document);
+        let element_count = count_element_nodes(dom.tree.root());
         // If we have more than just the auto-generated wrapper elements (html, head, body)
         // then this is likely real HTML content
         element_count > 3
@@ -519,23 +504,23 @@ fn is_likely_html(value: &str) -> bool {
     }
 }
 
-fn count_element_nodes(handle: &Handle) -> usize {
+fn count_element_nodes(node: NodeRef<Node>) -> usize {
     let mut count = 0;
 
-    match &handle.data {
-        NodeData::Element { .. } => {
+    match node.value() {
+        Node::Element(_) => {
             count += 1;
-            for child in handle.children.borrow().iter() {
+            for child in node.children() {
                 count += count_element_nodes(child);
             }
         }
-        NodeData::Document => {
-            for child in handle.children.borrow().iter() {
+        Node::Document => {
+            for child in node.children() {
                 count += count_element_nodes(child);
             }
         }
         _ => {
-            for child in handle.children.borrow().iter() {
+            for child in node.children() {
                 count += count_element_nodes(child);
             }
         }
