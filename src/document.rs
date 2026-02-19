@@ -311,50 +311,54 @@ impl Document {
     ) -> Result<Profile, Errors> {
         log::trace!("In perform_analysis");
 
-        if let Some(dom) = self.to_dom() {
-            log::info!("It seems to be possible to parse this document as XML");
+        let features: Option<HashSet<Hash>> = {
+            if let Some(dom) = self.to_dom() {
+                log::info!("It seems to be possible to parse this document as XML");
 
-            self.document_type = DocumentType::Xml;
+                self.document_type = DocumentType::Xml;
 
-            let mut features: HashSet<String> = HashSet::new();
+                let mut raw_features: HashSet<String> = HashSet::new();
 
-            get_xml_features(
-                dom.tree.root(),
-                &mut String::from(""),
-                &mut features,
-            );
+                get_xml_features(
+                    dom.tree.root(),
+                    &mut String::from(""),
+                    &mut raw_features,
+                );
 
-            let features: HashSet<Hash> = features.iter().map(|feature| {
-                let mut hash = Hash::new();
-                hash.push(feature).finalize().clear_items();
-                hash.clone()
-            }).collect();
-
-            if let Some(profile) = provider.get_profile(&features).await? {
-                log::info!("Found a profile");
-
-                if profile.xml_element_transformation.is_none() {
-                    log::info!("Profile provided but xml transformation missing");
-                    unimplemented!();
-                }
-
-                if profile.hash_transformation.is_none() {
-                    log::info!("Profile provided but hash transformation is missing");
-                    unimplemented!();
-                }
-
-                Ok(profile)
+                Some(raw_features.iter().map(|feature| {
+                    let mut hash = Hash::new();
+                    hash.push(feature).finalize().clear_items();
+                    hash.clone()
+                }).collect())
             } else {
-                log::info!("Profile not provided, we will create a new one");
-
-                let profile = Profile::create_profile(&features).await?;
-
-                provider.save_profile(&profile).await?;
-
-                Ok(profile)
+                None
             }
+        };
+
+        let features = features.ok_or(Errors::UnexpectedDocumentType)?;
+
+        if let Some(profile) = provider.get_profile(&features).await? {
+            log::info!("Found a profile");
+
+            if profile.xml_element_transformation.is_none() {
+                log::info!("Profile provided but xml transformation missing");
+                unimplemented!();
+            }
+
+            if profile.hash_transformation.is_none() {
+                log::info!("Profile provided but hash transformation is missing");
+                unimplemented!();
+            }
+
+            Ok(profile)
         } else {
-             Err(Errors::UnexpectedDocumentType)
+            log::info!("Profile not provided, we will create a new one");
+
+            let profile = Profile::create_profile(&features).await?;
+
+            provider.save_profile(&profile).await?;
+
+            Ok(profile)
         }
     }
 
