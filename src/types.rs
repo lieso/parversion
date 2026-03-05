@@ -34,7 +34,8 @@ pub enum Errors {
     DeficientMetaContextError(String),
     DocumentVersionNotFound,
     BasisGraphNotFound,
-    OriginNotProvidedError
+    OriginNotProvidedError,
+    InsufficientPrerequisites(String),
 }
 
 impl From<JoinError> for Errors {

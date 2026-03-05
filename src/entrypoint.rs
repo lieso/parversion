@@ -10,6 +10,7 @@ use dirs;
 use std::path::PathBuf;
 use std::fs;
 use std::time::Instant;
+use std::env;
 
 use crate::prelude::*;
 use crate::document::{DocumentType};
@@ -29,6 +30,8 @@ const PROGRAM_NAME: &str = "parversion";
 
 pub async fn run() -> Result<(), Errors> {
     let start = Instant::now();
+
+    let _ = ensure_prerequisites()?;
 
     setup();
 
@@ -61,6 +64,21 @@ pub async fn run() -> Result<(), Errors> {
 
     let elapsed = start.elapsed();
     log::info!("Elapsed: {:.2?}", elapsed);
+
+    Ok(())
+}
+
+fn ensure_prerequisites() -> Result<(), Errors> {
+    let env_vars = &["OPENAI_API_KEY", "OPENROUTER_API_KEY"];
+
+    for &var in env_vars {
+        if env::var(var).is_err() {
+            return Err(Errors::InsufficientPrerequisites(format!(
+                "{} environment variable must be set",
+                var
+            )));
+        }
+    }
 
     Ok(())
 }
