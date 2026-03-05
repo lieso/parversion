@@ -1,9 +1,9 @@
-use sled::Db;
 use once_cell::sync::Lazy;
+use sled::Db;
 use std::sync::Arc;
 
+use crate::config::CONFIG;
 use crate::prelude::*;
-use crate::config::{CONFIG};
 
 static DB: Lazy<Arc<Db>> = Lazy::new(|| {
     let debug_dir = &read_lock!(CONFIG).dev.debug_dir;
@@ -37,13 +37,16 @@ impl Cache {
     fn get_cached_response(key: &str) -> Option<String> {
         let db = DB.clone();
         match db.get(key).expect("Could not get value from cache") {
-            Some(data) => Some(String::from_utf8(data.to_vec()).expect("Could not deserialize data")),
+            Some(data) => {
+                Some(String::from_utf8(data.to_vec()).expect("Could not deserialize data"))
+            }
             None => None,
         }
     }
 
     fn set_cached_response(key: &str, value: &str) {
         let db = DB.clone();
-        db.insert(key, value.to_string().into_bytes()).expect("Could not store value in cache");
+        db.insert(key, value.to_string().into_bytes())
+            .expect("Could not store value in cache");
     }
 }

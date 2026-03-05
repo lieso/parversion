@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::prelude::*;
 use crate::mutation::Mutation;
+use crate::prelude::*;
 use crate::query::Query;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

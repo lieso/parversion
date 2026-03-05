@@ -1,11 +1,11 @@
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
-use std::collections::{HashSet, HashMap, VecDeque};
 
+use crate::config::CONFIG;
+use crate::graph_node::{Graph, GraphNode, GraphNodeID};
+use crate::path::{Path, AVAILABLE_VARIABLES};
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
-use crate::graph_node::{Graph, GraphNode, GraphNodeID};
-use crate::config::{CONFIG};
-use crate::path::{Path, AVAILABLE_VARIABLES};
 
 #[derive(Clone, Debug)]
 pub struct SchemaContext {
@@ -31,9 +31,7 @@ impl SchemaContext {
 
         while let Some(current_node) = queue.pop_front() {
             let schema_node: Arc<SchemaNode> = {
-                let schema_context = schema_contexts
-                    .get(&read_lock!(current_node).id)
-                    .unwrap();
+                let schema_context = schema_contexts.get(&read_lock!(current_node).id).unwrap();
 
                 Arc::clone(&schema_context.schema_node)
             };
@@ -73,10 +71,7 @@ impl SchemaContext {
         let mut neighbour_ids = HashSet::new();
         let graph_node = self.graph_node.clone();
 
-        Self::traverse_for_neighbours(
-            Arc::clone(&graph_node),
-            &mut neighbour_ids
-        );
+        Self::traverse_for_neighbours(Arc::clone(&graph_node), &mut neighbour_ids);
 
         let lock = read_lock!(meta_context);
         let graph_root = lock.schema_graph_root.clone().unwrap();
@@ -84,9 +79,7 @@ impl SchemaContext {
 
         let schema_contexts: HashMap<ID, Arc<SchemaContext>> = {
             let lock = read_lock!(meta_context);
-            lock.schema_contexts
-                .clone()
-                .unwrap()
+            lock.schema_contexts.clone().unwrap()
         };
 
         let snippet = Self::traverse_for_snippet(
@@ -104,7 +97,7 @@ impl SchemaContext {
         current_node: Graph,
         is_neighbour: &F,
         is_target: &G,
-    ) -> String 
+    ) -> String
     where
         F: Fn(&GraphNodeID) -> bool,
         G: Fn(&GraphNodeID) -> bool,
@@ -117,9 +110,7 @@ impl SchemaContext {
         let is_current_target = is_target(id);
 
         let schema_node: Arc<SchemaNode> = {
-            let schema_context = schema_contexts
-                .get(&read_lock!(current_node).id)
-                .unwrap();
+            let schema_context = schema_contexts.get(&read_lock!(current_node).id).unwrap();
             Arc::clone(&schema_context.schema_node)
         };
 
@@ -142,7 +133,10 @@ impl SchemaContext {
 
         let json_schema_key: String = {
             if is_current_target {
-                format!(r#"START TARGET SCHEMA KEY >>>{}<<< END TARGET SCHEMA KEY"#, schema_node.name)
+                format!(
+                    r#"START TARGET SCHEMA KEY >>>{}<<< END TARGET SCHEMA KEY"#,
+                    schema_node.name
+                )
             } else {
                 schema_node.name.clone()
             }
@@ -151,39 +145,42 @@ impl SchemaContext {
         if is_current_neighbour || is_current_target {
             if schema_node.name.is_empty() {
                 if schema_node.data_type == "array" {
-                    format!(r#""description": "{}", "data_type": "array", "items": {{ {} }}"#,
+                    format!(
+                        r#""description": "{}", "data_type": "array", "items": {{ {} }}"#,
                         schema_node.description,
                         inner_schema.join(", ")
                     )
                 } else if schema_node.data_type == "object" {
-                    format!(r#""description": "{}", "data_type": "object", "properties": {{ {} }}"#,
+                    format!(
+                        r#""description": "{}", "data_type": "object", "properties": {{ {} }}"#,
                         schema_node.description,
                         inner_schema.join(", ")
                     )
                 } else {
-                    format!(r#""description": "{}", "data_type": "{}""#,
-                        schema_node.description,
-                        schema_node.data_type
+                    format!(
+                        r#""description": "{}", "data_type": "{}""#,
+                        schema_node.description, schema_node.data_type
                     )
                 }
             } else {
                 if schema_node.data_type == "array" {
-                    format!(r#""{}": {{ "description": "{}", "data_type": "array", "items": {{ {} }} }}"#,
+                    format!(
+                        r#""{}": {{ "description": "{}", "data_type": "array", "items": {{ {} }} }}"#,
                         json_schema_key,
                         schema_node.description,
                         inner_schema.join(", ")
                     )
                 } else if schema_node.data_type == "object" {
-                    format!(r#""{}": {{ "description": "{}", "data_type": "object", "properties": {{ {} }} }}"#,
+                    format!(
+                        r#""{}": {{ "description": "{}", "data_type": "object", "properties": {{ {} }} }}"#,
                         json_schema_key,
                         schema_node.description,
                         inner_schema.join(", ")
                     )
                 } else {
-                    format!(r#""{}": {{ "description": "{}", "data_type": "{}" }}"#,
-                        json_schema_key,
-                        schema_node.description,
-                        schema_node.data_type
+                    format!(
+                        r#""{}": {{ "description": "{}", "data_type": "{}" }}"#,
+                        json_schema_key, schema_node.description, schema_node.data_type
                     )
                 }
             }

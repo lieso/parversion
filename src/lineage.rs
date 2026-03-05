@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::hash::{Hash};
+use crate::hash::Hash;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct Lineage {
@@ -51,7 +51,6 @@ impl PartialEq for Lineage {
 impl Eq for Lineage {}
 
 fn derive_identity(source_hashes: Vec<Hash>) -> Hash {
-
     let mut hashes = source_hashes.clone();
 
     // We must ensure hashes are finalized

@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::prelude::*;
 
@@ -24,12 +24,7 @@ pub fn arrayify_schema_node(schema_node: &mut SchemaNode) {
 }
 
 impl SchemaNode {
-    pub fn new(
-        name: &str,
-        description: &str,
-        parent_lineage: &Lineage,
-        data_type: &str,
-    ) -> Self {
+    pub fn new(name: &str, description: &str, parent_lineage: &Lineage, data_type: &str) -> Self {
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
 
@@ -73,27 +68,26 @@ impl SchemaNode {
         let hash: Hash = Hash::from_str(&name);
         let lineage = parent_lineage.with_hash(hash.clone());
 
-        let description = value.get("description")
+        let description = value
+            .get("description")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Errors::JsonSchemaParseError("Unable to obtain description".to_string()))?;
+            .ok_or_else(|| {
+                Errors::JsonSchemaParseError("Unable to obtain description".to_string())
+            })?;
 
-        let data_type = value.get("type")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| Errors::JsonSchemaParseError("Unable to obtain data type".to_string()))?;
+        let data_type = value.get("type").and_then(|v| v.as_str()).ok_or_else(|| {
+            Errors::JsonSchemaParseError("Unable to obtain data type".to_string())
+        })?;
 
         let properties = if let Some(props) = value["properties"].as_object() {
             props
                 .iter()
-                .map(|(key, val)| {
-                    match Self::from_serde_value(
-                        &val,
-                        &key,
-                        &lineage,
-                    ) {
+                .map(
+                    |(key, val)| match Self::from_serde_value(&val, &key, &lineage) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),
-                    }
-                })
+                    },
+                )
                 .collect::<Result<HashMap<_, _>, Errors>>()?
         } else {
             HashMap::new()
@@ -103,23 +97,15 @@ impl SchemaNode {
             if let Some(items_value) = value.get("items") {
                 if items_value.is_array() {
                     Some(
-                        items_value.as_array().unwrap()
+                        items_value
+                            .as_array()
+                            .unwrap()
                             .iter()
-                            .map(|item_value|
-                                Self::from_serde_value(
-                                    item_value,
-                                    "",
-                                    &lineage,
-                                )
-                            )
-                            .collect::<Result<Vec<_>, Errors>>()?
+                            .map(|item_value| Self::from_serde_value(item_value, "", &lineage))
+                            .collect::<Result<Vec<_>, Errors>>()?,
                     )
                 } else {
-                    let schema_node = Self::from_serde_value(
-                        items_value,
-                        "",
-                        &lineage,
-                    )?;
+                    let schema_node = Self::from_serde_value(items_value, "", &lineage)?;
 
                     Some(vec![schema_node])
                 }

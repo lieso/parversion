@@ -1,29 +1,29 @@
-use std::io::{self, Read};
 use atty::Stream;
-use std::sync::Arc;
-use clap::{Arg, App};
-use log::LevelFilter;
-use std::io::stdout;
-use fern::Dispatch;
 use cfg_if::cfg_if;
+use clap::{App, Arg};
 use dirs;
-use std::path::PathBuf;
-use std::fs;
-use std::time::Instant;
+use fern::Dispatch;
+use log::LevelFilter;
 use std::env;
+use std::fs;
+use std::io::stdout;
+use std::io::{self, Read};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Instant;
 
-use crate::prelude::*;
-use crate::document::{DocumentType};
-use crate::provider::{Provider, VoidProvider};
-#[cfg(feature = "yaml-provider")]
-use crate::provider::yaml::{YamlFileProvider};
-#[cfg(feature = "sqlite-provider")]
-use crate::provider::sqlite::{SqliteProvider};
-use crate::config::{CONFIG};
-use crate::package::Package;
-use crate::normalization;
-use crate::translation;
+use crate::config::CONFIG;
+use crate::document::DocumentType;
 use crate::document_format;
+use crate::normalization;
+use crate::package::Package;
+use crate::prelude::*;
+#[cfg(feature = "sqlite-provider")]
+use crate::provider::sqlite::SqliteProvider;
+#[cfg(feature = "yaml-provider")]
+use crate::provider::yaml::YamlFileProvider;
+use crate::provider::{Provider, VoidProvider};
+use crate::translation;
 
 const VERSION: &str = "0.0.0";
 const PROGRAM_NAME: &str = "parversion";
@@ -48,13 +48,7 @@ pub async fn run() -> Result<(), Errors> {
     let schema: Option<String> = get_schema(&matches).await?;
     let document: String = get_document(&matches).await?;
 
-    let package = determine_document(
-        provider,
-        schema,
-        document,
-        options,
-        metadata,
-    ).await?;
+    let package = determine_document(provider, schema, document, options, metadata).await?;
 
     let document_format = document_format::DocumentFormat::default();
 
@@ -141,39 +135,52 @@ fn handle_error(err: Errors) {
 fn parse_arguments() -> clap::ArgMatches {
     App::new(PROGRAM_NAME)
         .version(VERSION)
-        .arg(Arg::with_name("document")
-             .short('d')
-             .long("document")
-             .value_name("DOCUMENT")
-             .help("Provide document for processing"))
-        .arg(Arg::with_name("schema")
-            .long("schema")
-            .value_name("SCHEMA")
-            .help("Provide schema for translation"))
-        .arg(Arg::with_name("version")
-            .short('v')
-            .long("version")
-            .help("Display program version"))
-        .arg(Arg::with_name("regenerate")
-            .short('r')
-            .long("regenerate")
-            .help("Regenerate interpretation of document"))
-        .arg(Arg::with_name("document-type")
-            .short('t')
-            .long("document-type")
-            .value_name("DOCUMENT_TYPE")
-            .help("The document type : html, xml, js"))
-        .arg(Arg::with_name("origin")
-            .short('o')
-            .long("origin")
-            .value_name("ORIGIN")
-            .required(true)
-            .help("Specify the origin of the document"))
+        .arg(
+            Arg::with_name("document")
+                .short('d')
+                .long("document")
+                .value_name("DOCUMENT")
+                .help("Provide document for processing"),
+        )
+        .arg(
+            Arg::with_name("schema")
+                .long("schema")
+                .value_name("SCHEMA")
+                .help("Provide schema for translation"),
+        )
+        .arg(
+            Arg::with_name("version")
+                .short('v')
+                .long("version")
+                .help("Display program version"),
+        )
+        .arg(
+            Arg::with_name("regenerate")
+                .short('r')
+                .long("regenerate")
+                .help("Regenerate interpretation of document"),
+        )
+        .arg(
+            Arg::with_name("document-type")
+                .short('t')
+                .long("document-type")
+                .value_name("DOCUMENT_TYPE")
+                .help("The document type : html, xml, js"),
+        )
+        .arg(
+            Arg::with_name("origin")
+                .short('o')
+                .long("origin")
+                .value_name("ORIGIN")
+                .required(true)
+                .help("Specify the origin of the document"),
+        )
         .get_matches()
 }
 
 fn get_metadata(matches: &clap::ArgMatches) -> Result<Metadata, Errors> {
-    let origin = matches.value_of("origin")
+    let origin = matches
+        .value_of("origin")
         .ok_or(Errors::OriginNotProvidedError)?
         .to_string();
 
@@ -185,7 +192,11 @@ fn get_metadata(matches: &clap::ArgMatches) -> Result<Metadata, Errors> {
 
 fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
     Ok(Options {
-        regenerate: if matches.is_present("regenerate") { true } else { false },
+        regenerate: if matches.is_present("regenerate") {
+            true
+        } else {
+            false
+        },
         ..Options::default()
     })
 }
@@ -224,7 +235,7 @@ async fn get_document(matches: &clap::ArgMatches) -> Result<String, Errors> {
         } else {
             log::info!("Received inline document");
             Ok(document.to_string())
-        }
+        };
     }
 
     Err(Errors::DocumentNotProvided)
@@ -250,7 +261,6 @@ async fn determine_document<P: Provider + ?Sized>(
     options: Options,
     metadata: Metadata,
 ) -> Result<Package, Errors> {
-
     log::debug!("options: {:?}", options);
     log::debug!("metadata: {:?}", metadata);
 
@@ -261,14 +271,11 @@ async fn determine_document<P: Provider + ?Sized>(
             &options,
             &metadata,
             &schema,
-        ).await
+        )
+        .await
     } else {
-        normalization::normalize_text_to_package(
-            provider.clone(),
-            document,
-            &options,
-            &metadata,
-        ).await
+        normalization::normalize_text_to_package(provider.clone(), document, &options, &metadata)
+            .await
     }
 }
 
@@ -276,41 +283,41 @@ async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
     log::info!("Initializing data provider...");
 
     cfg_if::cfg_if! {
-        if #[cfg(feature = "yaml-provider")] {
-            log::info!("Using yaml file provider");
+         if #[cfg(feature = "yaml-provider")] {
+             log::info!("Using yaml file provider");
 
-            let data_dir = dirs::data_dir()
-                .ok_or_else(|| Errors::ProviderError("Could not find data directory".into()))?;
+             let data_dir = dirs::data_dir()
+                 .ok_or_else(|| Errors::ProviderError("Could not find data directory".into()))?;
 
-            let provider_path = data_dir.join(PROGRAM_NAME).join("provider.yaml");
-            
-            if let Some(parent_dir) = provider_path.parent() {
-                fs::create_dir_all(parent_dir).expect("Unable to create directory");
-            }
+             let provider_path = data_dir.join(PROGRAM_NAME).join("provider.yaml");
 
-            log::debug!("provider_path: {}", provider_path.display());
+             if let Some(parent_dir) = provider_path.parent() {
+                 fs::create_dir_all(parent_dir).expect("Unable to create directory");
+             }
 
-            Ok(Arc::new(YamlFileProvider::new(provider_path.to_string_lossy().into_owned())))
-        
-        } else if #[cfg(feature = "sqlite-provider")] {
-            log::info!("Using sqlite provider");
+             log::debug!("provider_path: {}", provider_path.display());
 
-            let data_dir = dirs::data_dir()
-                .ok_or_else(|| Errors::ProviderError("Could not find data directory".into()))?;
+             Ok(Arc::new(YamlFileProvider::new(provider_path.to_string_lossy().into_owned())))
 
-            let provider_path = data_dir.join(PROGRAM_NAME).join("provider.sqlite");
-            
-            if let Some(parent_dir) = provider_path.parent() {
-                fs::create_dir_all(parent_dir).expect("Unable to create directory");
-            }
+         } else if #[cfg(feature = "sqlite-provider")] {
+             log::info!("Using sqlite provider");
 
-            log::debug!("provider_path: {}", provider_path.display());
+             let data_dir = dirs::data_dir()
+                 .ok_or_else(|| Errors::ProviderError("Could not find data directory".into()))?;
 
-            Ok(Arc::new(SqliteProvider::new(provider_path.to_string_lossy().into_owned())))
-        
-        } else {
-            log::warn!("Using VoidProvider, document will be completely reprocessed each time");
-            Ok(Arc::new(VoidProvider))
-        }
-   }
+             let provider_path = data_dir.join(PROGRAM_NAME).join("provider.sqlite");
+
+             if let Some(parent_dir) = provider_path.parent() {
+                 fs::create_dir_all(parent_dir).expect("Unable to create directory");
+             }
+
+             log::debug!("provider_path: {}", provider_path.display());
+
+             Ok(Arc::new(SqliteProvider::new(provider_path.to_string_lossy().into_owned())))
+
+         } else {
+             log::warn!("Using VoidProvider, document will be completely reprocessed each time");
+             Ok(Arc::new(VoidProvider))
+         }
+    }
 }

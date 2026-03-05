@@ -1,5 +1,5 @@
-use xmltree::{XMLNode, Element};
 use std::collections::HashMap;
+use xmltree::{Element, XMLNode};
 
 use crate::prelude::*;
 use crate::transformation::XMLElementTransformation;
@@ -25,11 +25,9 @@ impl DocumentNode {
                 let closing_tag = DocumentNode::get_closing_tag(&element_node);
 
                 (opening_tag, Some(closing_tag))
-            },
-            XMLNode::Text(text_node) => {
-                (text_node.to_string(), None)
-            },
-            _ => panic!("Unexpected XML node type")
+            }
+            XMLNode::Text(text_node) => (text_node.to_string(), None),
+            _ => panic!("Unexpected XML node type"),
         }
     }
 
@@ -47,7 +45,7 @@ impl DocumentNode {
         match &xml_node {
             XMLNode::Element(element_node) => {
                 let mut element: Option<String> = Some(element_node.name.clone());
-                let mut attributes: HashMap<String, String>  = HashMap::new();
+                let mut attributes: HashMap<String, String> = HashMap::new();
 
                 for (attr, val) in element_node.attributes.iter() {
                     attributes.insert(attr.to_string(), val.to_string());
@@ -55,10 +53,8 @@ impl DocumentNode {
 
                 log::info!("Applying XML element transformation...");
 
-                let (transformed_element, transformed_attributes) = xml_element_transformation.transform(
-                    element.unwrap().clone(),
-                    attributes.clone()
-                );
+                let (transformed_element, transformed_attributes) = xml_element_transformation
+                    .transform(element.unwrap().clone(), attributes.clone());
 
                 attributes = transformed_attributes;
 
@@ -81,11 +77,9 @@ impl DocumentNode {
 
                     DocumentNode::new(transformed_node)
                 })
-            },
-            XMLNode::Text(_text_node) => {
-                Some(DocumentNode::new(xml_node))
-            },
-            _ => panic!("Unexpected XML node type")
+            }
+            XMLNode::Text(_text_node) => Some(DocumentNode::new(xml_node)),
+            _ => panic!("Unexpected XML node type"),
         }
     }
 
@@ -96,53 +90,52 @@ impl DocumentNode {
                 fields.insert("tag".to_string(), element_node.name.clone());
                 fields
             }
-            XMLNode::Text(text_node) => HashMap::from([
-                ("text".to_string(), text_node.to_string())
-            ]),
-            _ => panic!("Unexpected XML node type")
+            XMLNode::Text(text_node) => {
+                HashMap::from([("text".to_string(), text_node.to_string())])
+            }
+            _ => panic!("Unexpected XML node type"),
         }
     }
 
     pub fn get_description(&self) -> String {
         match &self.data {
-            XMLNode::Element(element_node) => {
-                element_node.name.clone()
-            },
+            XMLNode::Element(element_node) => element_node.name.clone(),
             XMLNode::Text(text_node) => {
                 let mut description = text_node.to_string();
 
-                let truncate_at = description.char_indices().nth(20).map_or(description.len(), |(idx, _)| idx);
+                let truncate_at = description
+                    .char_indices()
+                    .nth(20)
+                    .map_or(description.len(), |(idx, _)| idx);
                 description.truncate(truncate_at);
 
                 description
-            },
-            _ => panic!("Unexpected XML node type")
+            }
+            _ => panic!("Unexpected XML node type"),
         }
     }
 
     pub fn get_children(
         &self,
-        xml_element_transformation: Option<XMLElementTransformation>
+        xml_element_transformation: Option<XMLElementTransformation>,
     ) -> Vec<DocumentNode> {
         match &self.data {
-            XMLNode::Element(element_node) => {
-                element_node.children
-                    .iter()
-                    .filter_map(|child| {
-
-                        if let Some(xml_element_transformation) = &xml_element_transformation {
-                            DocumentNode::from_transformations(
-                                child.clone(),
-                                xml_element_transformation.clone()
-                            )
-                        } else {
-                            Some(DocumentNode::new(child.clone()))
-                        }
-                    })
-                    .collect()
-            },
+            XMLNode::Element(element_node) => element_node
+                .children
+                .iter()
+                .filter_map(|child| {
+                    if let Some(xml_element_transformation) = &xml_element_transformation {
+                        DocumentNode::from_transformations(
+                            child.clone(),
+                            xml_element_transformation.clone(),
+                        )
+                    } else {
+                        Some(DocumentNode::new(child.clone()))
+                    }
+                })
+                .collect(),
             XMLNode::Text(_text_node) => Vec::new(),
-            _ => panic!("Unexpected XML node type")
+            _ => panic!("Unexpected XML node type"),
         }
     }
 
@@ -163,8 +156,11 @@ impl DocumentNode {
                 value
             };
 
-
-            tag.push_str(&format!(" {}=\"{}\"", attr, fixed_value.replace("\"", "&quot;")));
+            tag.push_str(&format!(
+                " {}=\"{}\"",
+                attr,
+                fixed_value.replace("\"", "&quot;")
+            ));
         }
         tag.push('>');
 

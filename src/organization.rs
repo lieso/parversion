@@ -1,16 +1,16 @@
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::document::{Document, DocumentType};
-use crate::provider::Provider;
-use crate::meta_context::MetaContext;
-use crate::node_analysis::{get_basis_nodes};
-use crate::network_analysis::{get_basis_networks, get_basis_graph};
-use crate::document_format::DocumentFormat;
-use crate::package::Package;
-use crate::mutation::Mutation;
 use crate::ast::program_to_functions;
+use crate::document::{Document, DocumentType};
+use crate::document_format::DocumentFormat;
 use crate::function_analysis::functions_to_operations;
+use crate::meta_context::MetaContext;
+use crate::mutation::Mutation;
+use crate::network_analysis::{get_basis_graph, get_basis_networks};
+use crate::node_analysis::get_basis_nodes;
+use crate::package::Package;
+use crate::prelude::*;
+use crate::provider::Provider;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -28,17 +28,9 @@ pub async fn organize<P: Provider>(
         lock.add_document_version(DocumentVersion::InputDocument, document.clone());
     }
 
-
-
-
-
     // ******************************************************************************************************
 
-
     if metadata.document_type == Some(DocumentType::JavaScript) {
-
-
-
         let functions = program_to_functions(document.data.clone());
 
         for function in functions.iter() {
@@ -53,23 +45,13 @@ pub async fn organize<P: Provider>(
             lock.update_functions(functions);
         }
 
-        let something = functions_to_operations(
-            Arc::clone(&provider),
-            meta_context.clone()
-        ).await?;
-
-
-
+        let something =
+            functions_to_operations(Arc::clone(&provider), meta_context.clone()).await?;
 
         unimplemented!();
     }
 
-
     // ******************************************************************************************************
-
-
-
-
 
     log::info!("Performing document analysis");
     let profile = document.perform_analysis(Arc::clone(&provider)).await?;
@@ -89,11 +71,8 @@ pub async fn organize<P: Provider>(
     }
 
     log::info!("Getting basis graph");
-    let basis_graph = get_basis_graph(
-        Arc::clone(&provider),
-        meta_context.clone(),
-        &options,
-    ).await?;
+    let basis_graph =
+        get_basis_graph(Arc::clone(&provider), meta_context.clone(), &options).await?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -101,11 +80,8 @@ pub async fn organize<P: Provider>(
     }
 
     log::info!("Getting basis nodes");
-    let basis_nodes = get_basis_nodes(
-        Arc::clone(&provider),
-        meta_context.clone(),
-        &options,
-    ).await?;
+    let basis_nodes =
+        get_basis_nodes(Arc::clone(&provider), meta_context.clone(), &options).await?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -113,11 +89,8 @@ pub async fn organize<P: Provider>(
     }
 
     log::info!("Generating basis networks");
-    let basis_networks = get_basis_networks(
-        Arc::clone(&provider),
-        meta_context.clone(),
-        &options,
-    ).await?;
+    let basis_networks =
+        get_basis_networks(Arc::clone(&provider), meta_context.clone(), &options).await?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -127,14 +100,17 @@ pub async fn organize<P: Provider>(
     {
         let organized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
         let result = format!("{}", organized.to_string(&None));
-        log::debug!("\n\n\
+        log::debug!(
+            "\n\n\
         =======================================================\n\
         =============   ORGANIZED DOCUMENT START   =================\n\
         =======================================================\n\
         {}
         =======================================================\n\
         =============    ORGANIZED DOCUMENT END    =================\n\
-        =======================================================\n\n", result);
+        =======================================================\n\n",
+            result
+        );
     }
 
     Ok(meta_context)
@@ -149,12 +125,7 @@ pub async fn organize_document<P: Provider>(
 ) -> Result<Package, Errors> {
     log::trace!("In organize_document");
 
-    let meta_context = organize(
-        Arc::clone(&provider),
-        document,
-        _options,
-        metadata
-    ).await?;
+    let meta_context = organize(Arc::clone(&provider), document, _options, metadata).await?;
 
     let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
 
@@ -170,16 +141,11 @@ pub async fn organize_document_to_string<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>
+    document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In organize_document_to_string");
 
-    let package = organize_document(
-        Arc::clone(&provider),
-        document,
-        _options,
-        metadata,
-    ).await?;
+    let package = organize_document(Arc::clone(&provider), document, _options, metadata).await?;
 
     Ok(package.to_string(document_format))
 }
@@ -255,12 +221,13 @@ pub async fn organize_file_to_string<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>
+    document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In organize_file_to_string");
     log::debug!("file path: {}", path);
 
-    let document = organize_file_to_document(Arc::clone(&provider), path, _options, metadata).await?;
+    let document =
+        organize_file_to_document(Arc::clone(&provider), path, _options, metadata).await?;
 
     Ok(document.to_string(document_format))
 }

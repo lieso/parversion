@@ -1,12 +1,8 @@
-use serde::{Serialize, Deserialize};
-use std::collections::{HashSet};
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 use crate::prelude::*;
-use crate::transformation::{
-    XMLElementTransformation,
-    HashTransformation,
-    Runtime
-};
+use crate::transformation::{HashTransformation, Runtime, XMLElementTransformation};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Profile {
@@ -21,9 +17,10 @@ pub struct Profile {
 impl Profile {
     pub fn get_similar_profile(
         profiles: &Vec<Profile>,
-        features: &HashSet<Hash>
+        features: &HashSet<Hash>,
     ) -> Option<Profile> {
-        profiles.iter()
+        profiles
+            .iter()
             .find(|profile| {
                 let similarity = jaccard_similarity(features, &profile.features);
 
@@ -34,9 +31,7 @@ impl Profile {
             .map(|profile| profile.clone())
     }
 
-    pub async fn create_profile(
-        features: &HashSet<Hash>
-    ) -> Result<Profile, Errors> {
+    pub async fn create_profile(features: &HashSet<Hash>) -> Result<Profile, Errors> {
         log::trace!("In create_profile");
 
         let profile = Profile {

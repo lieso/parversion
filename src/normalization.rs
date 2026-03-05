@@ -1,14 +1,14 @@
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::document::{Document};
-use crate::organization::{organize};
-use crate::provider::{Provider};
-use crate::meta_context::MetaContext;
-use crate::node_analysis::{get_normal_schema_transformations};
+use crate::document::Document;
 use crate::document_format::DocumentFormat;
-use crate::package::Package;
+use crate::meta_context::MetaContext;
 use crate::mutation::Mutation;
+use crate::node_analysis::get_normal_schema_transformations;
+use crate::organization::organize;
+use crate::package::Package;
+use crate::prelude::*;
+use crate::provider::Provider;
 
 #[allow(dead_code)]
 pub async fn normalize<P: Provider>(
@@ -38,8 +38,9 @@ pub async fn normalize<P: Provider>(
     let schema_transformations = get_normal_schema_transformations(
         Arc::clone(&provider),
         Arc::clone(&meta_context),
-        _options
-    ).await?;
+        _options,
+    )
+    .await?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -49,17 +50,20 @@ pub async fn normalize<P: Provider>(
     {
         let normalized = Document::from_schema_transformations(
             Arc::clone(&meta_context),
-            DocumentVersion::OrganizedDocument
+            DocumentVersion::OrganizedDocument,
         )?;
         let result = format!("{}", normalized.to_string(&None));
-        log::debug!("\n\n\
+        log::debug!(
+            "\n\n\
         =======================================================\n\
         =============   NORMALIZED DOCUMENT START   =================\n\
         =======================================================\n\
         {}
         =======================================================\n\
         =============    NORMALIZED DOCUMENT END    =================\n\
-        =======================================================\n\n", result);
+        =======================================================\n\n",
+            result
+        );
     }
 
     Ok(meta_context)
@@ -101,11 +105,12 @@ pub async fn normalize_text_to_package<P: Provider>(
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_text_to_package");
 
-    let meta_context = normalize_text_to_meta_context(Arc::clone(&provider), text, _options, metadata).await?;
+    let meta_context =
+        normalize_text_to_meta_context(Arc::clone(&provider), text, _options, metadata).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument
+        DocumentVersion::OrganizedDocument,
     )?;
 
     Ok(Package {
@@ -120,16 +125,12 @@ pub async fn normalize_text<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>
+    document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In normalize_text");
 
-    let package = normalize_text_to_package(
-        Arc::clone(&provider),
-        text,
-        _options,
-        metadata
-    ).await?;
+    let package =
+        normalize_text_to_package(Arc::clone(&provider), text, _options, metadata).await?;
 
     Ok(package.to_string(document_format))
 }
@@ -157,11 +158,13 @@ pub async fn normalize_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_document");
 
-    let meta_context = normalize_document_to_meta_context(Arc::clone(&provider), document, _options, metadata).await?;
+    let meta_context =
+        normalize_document_to_meta_context(Arc::clone(&provider), document, _options, metadata)
+            .await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument
+        DocumentVersion::OrganizedDocument,
     );
 
     normalized_document
@@ -173,7 +176,7 @@ pub async fn normalize_document_to_text<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>
+    document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In normalize_document_to_text");
 
@@ -207,11 +210,12 @@ pub async fn normalize_file_to_package<P: Provider>(
     log::trace!("In normalize_file_to_package");
     log::debug!("file path: {}", path);
 
-    let meta_context = normalize_file_to_meta_context(Arc::clone(&provider), path, _options, metadata).await?;
+    let meta_context =
+        normalize_file_to_meta_context(Arc::clone(&provider), path, _options, metadata).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument
+        DocumentVersion::OrganizedDocument,
     )?;
 
     Ok(Package {
@@ -226,12 +230,13 @@ pub async fn normalize_file_to_text<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>
+    document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In normalize_file_to_text");
     log::debug!("file path: {}", path);
 
-    let package = normalize_file_to_package(Arc::clone(&provider), path, _options, metadata).await?;
+    let package =
+        normalize_file_to_package(Arc::clone(&provider), path, _options, metadata).await?;
 
     Ok(package.to_string(document_format))
 }
@@ -242,12 +247,19 @@ pub async fn normalize_file<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>
+    document_format: &Option<DocumentFormat>,
 ) -> Result<(), Errors> {
     log::trace!("In normalize_file");
     log::debug!("file path: {}", path);
 
-    let text = normalize_file_to_text(Arc::clone(&provider), path, _options, metadata, document_format).await?;
+    let text = normalize_file_to_text(
+        Arc::clone(&provider),
+        path,
+        _options,
+        metadata,
+        document_format,
+    )
+    .await?;
     let new_path = append_to_filename(path, "_normalized")?;
 
     write_text_to_file(&new_path, &text).map_err(|err| {
@@ -281,11 +293,12 @@ pub async fn normalize_url_to_package<P: Provider>(
     log::trace!("In normalize_url_to_package");
     log::debug!("URL: {}", url);
 
-    let meta_context = normalize_url_to_meta_context(Arc::clone(&provider), url, _options, metadata).await?;
+    let meta_context =
+        normalize_url_to_meta_context(Arc::clone(&provider), url, _options, metadata).await?;
 
     let normalized_document = Document::from_schema_transformations(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument
+        DocumentVersion::OrganizedDocument,
     )?;
 
     Ok(Package {
@@ -300,7 +313,7 @@ pub async fn normalize_url_to_text<P: Provider>(
     url: &str,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>
+    document_format: &Option<DocumentFormat>,
 ) -> Result<String, Errors> {
     log::trace!("In normalize_url_to_text");
     log::debug!("URL: {}", url);

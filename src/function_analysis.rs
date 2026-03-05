@@ -1,16 +1,16 @@
-use std::sync::{Arc, RwLock};
-use tokio::task;
-use tokio::sync::Semaphore;
 use futures::future::try_join_all;
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use tokio::sync::Semaphore;
+use tokio::task;
 
-use crate::prelude::*;
-use crate::provider::Provider;
+use crate::config::CONFIG;
+use crate::function::Function;
+use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::operation::Operation;
-use crate::function::Function;
-use crate::config::{CONFIG};
-use crate::llm::LLM;
+use crate::prelude::*;
+use crate::provider::Provider;
 
 pub async fn functions_to_operations<P: Provider>(
     provider: Arc<P>,
@@ -21,13 +21,9 @@ pub async fn functions_to_operations<P: Provider>(
     let functions: Vec<Function> = {
         let lock = read_lock!(meta_context);
 
-        lock.functions
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientMetaContextError(
-                    "Missings functions from meta context".to_string()
-                )
-            })?
+        lock.functions.clone().ok_or_else(|| {
+            Errors::DeficientMetaContextError("Missings functions from meta context".to_string())
+        })?
     };
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
@@ -38,15 +34,13 @@ pub async fn functions_to_operations<P: Provider>(
         for function in functions.iter() {
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
-            let result = function_to_operation(
-                cloned_provider,
-                cloned_meta_context,
-                function.clone(),
-            ).await?;
+            let result =
+                function_to_operation(cloned_provider, cloned_meta_context, function.clone())
+                    .await?;
 
             results.insert(function.hash.clone(), Arc::new(result));
         }
-        
+
         Ok(results)
     } else {
         let semaphore = Arc::new(Semaphore::new(max_concurrency));
@@ -56,14 +50,12 @@ pub async fn functions_to_operations<P: Provider>(
             let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
-            
+
             let handle = task::spawn(async move {
                 let _permit = permit;
-                let result = function_to_operation(
-                    cloned_provider,
-                    cloned_meta_context,
-                    function.clone(),
-                ).await?;
+                let result =
+                    function_to_operation(cloned_provider, cloned_meta_context, function.clone())
+                        .await?;
 
                 Ok((function.hash.clone(), Arc::new(result)))
             });
@@ -73,7 +65,8 @@ pub async fn functions_to_operations<P: Provider>(
 
         let results: Vec<Result<(Hash, Arc<Operation>), Errors>> = try_join_all(handles).await?;
 
-        let hashmap_results: HashMap<Hash, Arc<Operation>> = results.into_iter().collect::<Result<_, _>>()?;
+        let hashmap_results: HashMap<Hash, Arc<Operation>> =
+            results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }
@@ -82,10 +75,10 @@ pub async fn functions_to_operations<P: Provider>(
 async fn function_to_operation<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    function: Function
+    function: Function,
 ) -> Result<Operation, Errors> {
     log::trace!("In function_to_operation");
-    
+
     let hash: &Hash = &function.hash;
 
     if let Some(operation) = provider.get_operation_by_hash(hash).await? {
@@ -99,10 +92,7 @@ async fn function_to_operation<P: Provider>(
     } else {
         let operation = Operation::new(hash);
 
-        provider.save_operation(
-            hash,
-            operation.clone()
-        ).await?;
+        provider.save_operation(hash, operation.clone()).await?;
 
         Ok(operation)
     }

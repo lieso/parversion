@@ -1,6 +1,6 @@
 use crate::document::Document;
-use crate::mutation::Mutation;
 use crate::document_format::DocumentFormat;
+use crate::mutation::Mutation;
 
 pub struct Package {
     pub document: Document,

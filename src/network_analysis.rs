@@ -1,20 +1,17 @@
+use futures::future::try_join_all;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
-use tokio::task;
 use tokio::sync::Semaphore;
-use futures::future::try_join_all;
+use tokio::task;
 
-use crate::prelude::*;
-use crate::provider::Provider;
-use crate::graph_node::{Graph};
-use crate::basis_network::{
-    BasisNetwork,
-    NetworkRelationship,
-};
-use crate::config::{CONFIG};
+use crate::basis_graph::BasisGraph;
+use crate::basis_network::{BasisNetwork, NetworkRelationship};
+use crate::config::CONFIG;
+use crate::graph_node::Graph;
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
-use crate::basis_graph::BasisGraph;
+use crate::prelude::*;
+use crate::provider::Provider;
 
 pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
@@ -29,7 +26,9 @@ pub async fn get_basis_graph<P: Provider>(
     };
     let graph_root = {
         let lock = read_lock!(meta_context);
-        lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?
+        lock.graph_root
+            .clone()
+            .ok_or(Errors::GraphRootNotProvided)?
     };
     let lineage = read_lock!(graph_root).lineage.clone();
 
@@ -51,11 +50,10 @@ pub async fn get_basis_graph<P: Provider>(
         lineage: lineage.clone(),
     };
 
-    provider.save_basis_graph(
-        &lineage,
-        basis_graph.clone()
-    ).await?;
-    
+    provider
+        .save_basis_graph(&lineage, basis_graph.clone())
+        .await?;
+
     Ok(Arc::new(basis_graph))
 }
 
@@ -68,7 +66,9 @@ pub async fn get_basis_networks<P: Provider>(
 
     let graph_root = {
         let lock = read_lock!(meta_context);
-        lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?
+        lock.graph_root
+            .clone()
+            .ok_or(Errors::GraphRootNotProvided)?
     };
 
     let mut queue = VecDeque::new();
@@ -109,8 +109,9 @@ pub async fn get_basis_networks<P: Provider>(
                 cloned_provider,
                 cloned_meta_context,
                 subgraph.clone(),
-                options
-            ).await?;
+                options,
+            )
+            .await?;
 
             results.insert(result.id.clone(), Arc::new(result));
         }
@@ -133,7 +134,8 @@ pub async fn get_basis_networks<P: Provider>(
                     cloned_meta_context,
                     subgraph.clone(),
                     &cloned_options,
-                ).await?;
+                )
+                .await?;
 
                 Ok((basis_network.id.clone(), Arc::new(basis_network)))
             });
@@ -141,7 +143,8 @@ pub async fn get_basis_networks<P: Provider>(
         }
 
         let results: Vec<Result<(ID, Arc<BasisNetwork>), Errors>> = try_join_all(handles).await?;
-        let hashmap_results: HashMap<ID, Arc<BasisNetwork>> = results.into_iter().collect::<Result<_, _>>()?;
+        let hashmap_results: HashMap<ID, Arc<BasisNetwork>> =
+            results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }
@@ -151,7 +154,7 @@ async fn get_basis_network<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     graph: Graph,
-    options: &Options
+    options: &Options,
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
 
@@ -161,11 +164,16 @@ async fn get_basis_network<P: Provider>(
     };
     let basis_graph = {
         let lock = read_lock!(meta_context);
-        lock.basis_graph.clone().ok_or(Errors::BasisGraphNotProvided)?
+        lock.basis_graph
+            .clone()
+            .ok_or(Errors::BasisGraphNotProvided)?
     };
 
     let target_subgraph_hash = read_lock!(graph).subgraph_hash.clone();
-    log::debug!("target_subgraph_hash: {}", target_subgraph_hash.to_string().unwrap());
+    log::debug!(
+        "target_subgraph_hash: {}",
+        target_subgraph_hash.to_string().unwrap()
+    );
 
     if read_lock!(graph).parents.is_empty() {
         log::info!("Node is root node; going to create null network for this node");
@@ -174,7 +182,10 @@ async fn get_basis_network<P: Provider>(
     }
 
     if !options.regenerate {
-        if let Some(basis_network) = provider.get_basis_network_by_subgraph_hash(&target_subgraph_hash.to_string().unwrap()).await? {
+        if let Some(basis_network) = provider
+            .get_basis_network_by_subgraph_hash(&target_subgraph_hash.to_string().unwrap())
+            .await?
+        {
             log::info!("Provider has supplied basis network");
 
             return Ok(basis_network);
@@ -183,19 +194,12 @@ async fn get_basis_network<P: Provider>(
 
     log::info!("Generating json for siblings...");
 
-    let parent: Graph = read_lock!(graph).parents
-        .first()
-        .unwrap()
-        .clone();
+    let parent: Graph = read_lock!(graph).parents.first().unwrap().clone();
 
-    let sibling_contexts: Vec<_> = read_lock!(parent).children
+    let sibling_contexts: Vec<_> = read_lock!(parent)
+        .children
         .iter()
-        .map(|sibling| {
-            contexts
-                .get(&read_lock!(sibling).id)
-                .unwrap()
-                .clone()
-        })
+        .map(|sibling| contexts.get(&read_lock!(sibling).id).unwrap().clone())
         .collect();
 
     log::info!("Number of sibling contexts: {}", sibling_contexts.len());
@@ -203,19 +207,21 @@ async fn get_basis_network<P: Provider>(
     let mut sibling_jsons = Vec::new();
 
     for (index, sibling_context) in sibling_contexts.iter().enumerate() {
-        log::debug!("Processing sibling context {}/{}", index + 1, sibling_contexts.len());
+        log::debug!(
+            "Processing sibling context {}/{}",
+            index + 1,
+            sibling_contexts.len()
+        );
 
-        let mut sibling_json = sibling_context.generate_json(
-            Arc::clone(&provider),
-            Arc::clone(&meta_context)
-        ).await?;
+        let mut sibling_json = sibling_context
+            .generate_json(Arc::clone(&provider), Arc::clone(&meta_context))
+            .await?;
 
-        
-
-        let truncate_at = sibling_json.char_indices().nth(2000).map_or(sibling_json.len(), |(idx, _)| idx);
+        let truncate_at = sibling_json
+            .char_indices()
+            .nth(2000)
+            .map_or(sibling_json.len(), |(idx, _)| idx);
         sibling_json.truncate(truncate_at);
-
-
 
         let subgraph_hash = read_lock!(sibling_context.graph_node).subgraph_hash.clone();
         log::debug!("Other subgraph hash: {}", subgraph_hash);
@@ -234,7 +240,9 @@ async fn get_basis_network<P: Provider>(
     log::info!("Completed processing all sibling contexts.");
 
     if sibling_jsons.len() <= 1 {
-        log::info!("Only one subgraph contains meaningful JSON; we will not investigate it further.");
+        log::info!(
+            "Only one subgraph contains meaningful JSON; we will not investigate it further."
+        );
 
         return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
     }
@@ -256,8 +264,9 @@ async fn get_basis_network<P: Provider>(
     let (name, matches, description) = LLM::get_relationships(
         overall_context.clone(),
         target_subgraph_hash.to_string().unwrap().clone(),
-        sibling_jsons.clone()
-    ).await?;
+        sibling_jsons.clone(),
+    )
+    .await?;
 
     log::info!("Done asking LLM for relationships");
 
@@ -269,7 +278,9 @@ async fn get_basis_network<P: Provider>(
 
     log::info!("LLM determined subgraphs are associated: {:?}", matches);
 
-    let associated_subgraphs = matches.iter().cloned()
+    let associated_subgraphs = matches
+        .iter()
+        .cloned()
         //.chain(std::iter::once(target_subgraph_hash.to_string().unwrap().clone()))
         .collect();
 
@@ -281,10 +292,12 @@ async fn get_basis_network<P: Provider>(
         relationship: NetworkRelationship::Association(associated_subgraphs),
     };
 
-    provider.save_basis_network(
-        target_subgraph_hash.to_string().unwrap().clone(),
-        basis_network.clone(),
-    ).await?;
+    provider
+        .save_basis_network(
+            target_subgraph_hash.to_string().unwrap().clone(),
+            basis_network.clone(),
+        )
+        .await?;
 
     Ok(basis_network)
 }
@@ -293,14 +306,14 @@ async fn add_null_network<P: Provider>(
     provider: Arc<P>,
     target_subgraph_hash: Hash,
 ) -> Result<BasisNetwork, Errors> {
-    let basis_network = BasisNetwork::new_null_network(
-        &target_subgraph_hash.to_string().unwrap()
-    );
+    let basis_network = BasisNetwork::new_null_network(&target_subgraph_hash.to_string().unwrap());
 
-    provider.save_basis_network(
-        target_subgraph_hash.to_string().unwrap().clone(),
-        basis_network.clone(),
-    ).await?;
+    provider
+        .save_basis_network(
+            target_subgraph_hash.to_string().unwrap().clone(),
+            basis_network.clone(),
+        )
+        .await?;
 
     Ok(basis_network)
 }

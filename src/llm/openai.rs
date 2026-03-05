@@ -1,14 +1,14 @@
-use std::sync::{Arc};
-use serde::{Serialize, Deserialize};
 use reqwest::header;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::sync::Arc;
 
-use crate::prelude::*;
-use crate::transformation::{FieldTransformation, FieldMetadata};
 #[cfg(feature = "caching")]
 use crate::cache::Cache;
-use crate::environment::{get_env_variable};
+use crate::environment::get_env_variable;
+use crate::prelude::*;
+use crate::transformation::{FieldMetadata, FieldTransformation};
 
 pub struct OpenAI;
 
@@ -101,7 +101,7 @@ impl OpenAI {
 
         if operation_response.url.len() == 0 {
             log::warn!("Unexpected blank operation");
-            
+
             // TODO
             /*
             function fn() {
@@ -132,17 +132,12 @@ impl OpenAI {
             return Ok(None);
         }
 
-
-
-
-
-
         unimplemented!()
     }
 
     pub async fn match_schema_nodes(
         marked_schema_node: &String,
-        target_schema: Arc<String>
+        target_schema: Arc<String>,
     ) -> Result<(Option<String>, Option<String>, Option<String>), Errors> {
         log::trace!("In match_schema_nodes");
 
@@ -150,7 +145,8 @@ impl OpenAI {
             return Err(Errors::ContextTooLarge);
         }
 
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 Your task to compare two JSON schemas and attempt to match a target schema field from the first with the second, if there is an appropriate equivalent.
 
 The first JSON schema will be an incomplete snippet, and the schema field to match against will be found inside delimiter strings:
@@ -226,14 +222,18 @@ Your response should include:
 - target_path: 'issueDate' (path to the data value in target document)
 
 Please also provide a justification for your response.
-        "##);
-        let user_prompt = format!(r##"
+        "##
+        );
+        let user_prompt = format!(
+            r##"
 [FIRST JSON SCHEMA]:
 {}
 
 [SECOND JSON SCHEMA]:
 {}
-        "##, marked_schema_node, target_schema);
+        "##,
+            marked_schema_node, target_schema
+        );
 
         let response_format = json!({
             "type": "json_schema",
@@ -260,7 +260,13 @@ Please also provide a justification for your response.
             }
         });
 
-        match Self::send_openai_request::<MatchSchemaNodeResponse>(&system_prompt, &user_prompt, response_format).await {
+        match Self::send_openai_request::<MatchSchemaNodeResponse>(
+            &system_prompt,
+            &user_prompt,
+            response_format,
+        )
+        .await
+        {
             Ok(response) => {
                 log::debug!("╔═════════════════════════════════╗");
                 log::debug!("║       TRANSLATE SCHEMA START    ║");
@@ -296,7 +302,7 @@ Please also provide a justification for your response.
     }
 
     pub async fn get_normal_schema(
-        marked_schema: &String
+        marked_schema: &String,
     ) -> Result<(String, String, Vec<String>, String), Errors> {
         log::trace!("In get_normal_schema");
 
@@ -305,7 +311,8 @@ Please also provide a justification for your response.
             return Err(Errors::ContextTooLarge);
         }
 
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 Your task is to analyze a particular property in a JSON schema, with respect to the overall schema, and to offer an alternative, streamlined, more generalizable property name that may be used instead. The property name should be appropriate considering the overall context of the JSON schema and the resources it represents.
 
 Additionally, you must provide a JSON path (excluding the new property name), for an imagined alternative schema representing that same resource in the current schema, but more streamlined and generalizable.
@@ -321,7 +328,8 @@ In addition to the new property name:
 2. (description): suggest a more appropriate json schema description for the target schema key/property.
 3. (json_path): the JSON path, excluding the new property name, for an alternative, more generic schema this property may be found in.
 4. (justification): provide a justification for your response
-        "##);
+        "##
+        );
         let user_prompt = format!(r##"Schema: {}"##, marked_schema);
 
         let response_format = json!({
@@ -355,7 +363,13 @@ In addition to the new property name:
             }
         });
 
-        match Self::send_openai_request::<NormalResponse>(&system_prompt, &user_prompt, response_format).await {
+        match Self::send_openai_request::<NormalResponse>(
+            &system_prompt,
+            &user_prompt,
+            response_format,
+        )
+        .await
+        {
             Ok(response) => {
                 log::debug!("╔══════════════════════════════╗");
                 log::debug!("║       NORMAL SCHEMA START    ║");
@@ -369,7 +383,12 @@ In addition to the new property name:
                 log::debug!("║       NORMAL SCHEMA END   ║");
                 log::debug!("╚═══════════════════════════╝");
 
-                Ok((response.new_property_name, response.description, response.alternative_property_names, response.json_path))
+                Ok((
+                    response.new_property_name,
+                    response.description,
+                    response.alternative_property_names,
+                    response.json_path,
+                ))
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);
@@ -389,16 +408,12 @@ In addition to the new property name:
         log::info!("Determining if field is meaningful...");
 
         let elimination = match field {
-            "text" => {
-                Self::should_eliminate_text(lineage, snippets.clone())
-                    .await
-                    .expect("Could not determine if text should be eliminated")
-            },
-            _ => {
-                Self::should_eliminate_attribute(lineage, field, snippets.clone())
-                    .await
-                    .expect("Could not determine if attribute should be eliminated")
-            }
+            "text" => Self::should_eliminate_text(lineage, snippets.clone())
+                .await
+                .expect("Could not determine if text should be eliminated"),
+            _ => Self::should_eliminate_attribute(lineage, field, snippets.clone())
+                .await
+                .expect("Could not determine if attribute should be eliminated"),
         };
 
         if elimination.is_unmeaningful {
@@ -408,12 +423,9 @@ In addition to the new property name:
 
         log::info!("Determining primary field name and metadata...");
 
-        let primary_content = Self::get_primary_content(
-            lineage,
-            field,
-            value,
-            snippets.clone(),
-        ).await.expect("Could not obtain primary content");
+        let primary_content = Self::get_primary_content(lineage, field, value, snippets.clone())
+            .await
+            .expect("Could not obtain primary content");
 
         let transformation = FieldTransformation {
             id: ID::new(),
@@ -426,7 +438,9 @@ In addition to the new property name:
         Some(transformation)
     }
 
-    pub async fn categorize_summarize(document: &String) -> Result<(String, String, String), Errors> {
+    pub async fn categorize_summarize(
+        document: &String,
+    ) -> Result<(String, String, String), Errors> {
         log::trace!("In categorize_summarize");
 
         let document = if document.len() > 3000 {
@@ -436,16 +450,21 @@ In addition to the new property name:
             document
         };
 
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
  You analyze a condensed website, extrapolate from this minimized version, and provide the following information about the original website the condensed document was derived from:
  1. category: Use one or two words to categorize this type of website. Provide response in snake case.
  2. description: A short paragraph describing what content this website shows.
  3. structure: A detailed description on how the HTML of the page is structured and the way content is organized from a technical perspective.
-     "##);
-        let user_prompt = format!(r##"
+     "##
+        );
+        let user_prompt = format!(
+            r##"
  [Document]
  {}
-     "##, document);
+     "##,
+            document
+        );
 
         let response_format = json!({
             "type": "json_schema",
@@ -472,8 +491,10 @@ In addition to the new property name:
         match Self::send_openai_request::<SummaryResponse>(
             &system_prompt,
             &user_prompt,
-            response_format
-        ).await {
+            response_format,
+        )
+        .await
+        {
             Ok(response) => {
                 log::debug!("╔════════════════════════════╗");
                 log::debug!("║       SUMMARY START        ║");
@@ -507,7 +528,8 @@ In addition to the new property name:
             panic!("Expected at least one subgraph");
         }
 
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 The data model for a website has been fragmented into distinct objects. You must interpret JSON fragments and attempt to reconstitute the original objects by matching fragment IDs to other fragment IDs.
 
 A target fragment ID will be provided, and a list of fragments with corresponding fragment ID. Attempt to determine what other fragment IDs may match the target fragment ID by considering the contextual meaning of JSON values and their potential relationship to other fragments of particular type IDs.
@@ -579,20 +601,25 @@ Fragment ID: 2
 
 The response should indicate that fragment ID 2 matches the target fragment ID 1, as we can merge pairs of fragments with IDs 1 and 2 to get coherent typed objects representing user accounts.
 
-"##);
+"##
+        );
 
         let fragments = subgraphs.iter().enumerate().fold(
             String::new(),
             |mut acc, (index, (subgraph_hash, json))| {
-                acc.push_str(&format!(r##"
+                acc.push_str(&format!(
+                    r##"
 Fragment ID: {}:
 {}
-    "##, subgraph_hash, json));
+    "##,
+                    subgraph_hash, json
+                ));
                 acc
             },
         );
 
-        let user_prompt = format!(r##"
+        let user_prompt = format!(
+            r##"
 ===================================================
 
 Consider this website context when deciding how to match fragment type IDs:
@@ -608,7 +635,9 @@ Consider this website context when deciding how to match fragment type IDs:
 
 [Fragments]
 {}
-"##, overall_context, target_subgraph_hash, fragments);
+"##,
+            overall_context, target_subgraph_hash, fragments
+        );
 
         let response_format = json!({
             "type": "json_schema",
@@ -638,7 +667,13 @@ Consider this website context when deciding how to match fragment type IDs:
             }
         });
 
-        match Self::send_openai_request::<AssociationsResponse>(&system_prompt, &user_prompt, response_format).await {
+        match Self::send_openai_request::<AssociationsResponse>(
+            &system_prompt,
+            &user_prompt,
+            response_format,
+        )
+        .await
+        {
             Ok(response) => {
                 log::debug!("╔══════════════════════════════╗");
                 log::debug!("║       ASSOCIATIONS START     ║");
@@ -652,7 +687,11 @@ Consider this website context when deciding how to match fragment type IDs:
                 log::debug!("║       ASSOCIATIONS END    ║");
                 log::debug!("╚═══════════════════════════╝");
 
-                Ok((response.name, response.matching_fragments, response.description))
+                Ok((
+                    response.name,
+                    response.matching_fragments,
+                    response.description,
+                ))
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);
@@ -671,7 +710,8 @@ Consider this website context when deciding how to match fragment type IDs:
 
         let field_value = if field == "text" { value } else { field };
 
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 You interpret the contextual meaning of HTML attributes or text nodes and reverse engineer the data model that was possibly used when building the website.
 
 Please provide the following information:
@@ -685,24 +725,33 @@ The target attribute or text node will be delimited with an HTML comment like so
 <!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->.
 
 When providing your response, you must generalize across all possible values for the text node or attribute, which are not limited to just the set of values in the example snippets. 
-        "##);
-        let examples = snippets.iter().enumerate().fold(
-            String::new(),
-            |mut acc, (index, snippet)| {
-                acc.push_str(&format!(r##"
+        "##
+        );
+        let examples =
+            snippets
+                .iter()
+                .enumerate()
+                .fold(String::new(), |mut acc, (index, snippet)| {
+                    acc.push_str(&format!(
+                        r##"
 Example {}:
 {}
-"##, index + 1, snippet));
-                acc
-            }
-        );
-        let user_prompt = format!(r##"
+"##,
+                        index + 1,
+                        snippet
+                    ));
+                    acc
+                });
+        let user_prompt = format!(
+            r##"
 [attribute/text]
 {}
 
 [Examples]
 {}
-        "##, field_value, examples);
+        "##,
+            field_value, examples
+        );
 
         let response_format = json!({
             "type": "json_schema",
@@ -726,11 +775,7 @@ Example {}:
             }
         });
 
-        match Self::send_openai_request(
-            &system_prompt,
-            &user_prompt,
-            response_format
-        ).await {
+        match Self::send_openai_request(&system_prompt, &user_prompt, response_format).await {
             Ok(response) => {
                 log::debug!("╔═════════════════════════════════╗");
                 log::debug!("║          PRIMARY START          ║");
@@ -757,11 +802,12 @@ Example {}:
     async fn should_eliminate_attribute(
         lineage: &Lineage,
         field: &str,
-        snippets: Vec<String>
+        snippets: Vec<String>,
     ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate_attribute");
 
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 You interpret the contextual meaning of a specific HTML attribute, and infer if the attribute represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary content. If a user would intentionally read the attribute's value as part of their usage, it is likely meaningful content.
 
 Carefully examine the HTML attribute along with its surrounding content providing crucial context, and determine if any of the following applies to it:
@@ -779,36 +825,46 @@ The attribute will be contained/delimited with an HTML comment like so:
 <!-- Target node: Start --><a href="https://example.com" other-attribute="val"><!-- Target node: End -->
 
 When providing your response, you must generalize across all possible values for the attribute, which is not limited to just the set of values in the example snippets. 
-        "##);
-        let examples = snippets.iter().enumerate().fold(
-            String::new(),
-            |mut acc, (index, snippet)| {
-                acc.push_str(&format!(r##"
+        "##
+        );
+        let examples =
+            snippets
+                .iter()
+                .enumerate()
+                .fold(String::new(), |mut acc, (index, snippet)| {
+                    acc.push_str(&format!(
+                        r##"
 Example {}:
 {}
-"##, index + 1, snippet));
-                acc
-            }
-        );
-        let user_prompt = format!(r##"
+"##,
+                        index + 1,
+                        snippet
+                    ));
+                    acc
+                });
+        let user_prompt = format!(
+            r##"
 [Attribute]
 {}
 
 [Examples]
 {}
-        "##, field.trim(), examples);
-
+        "##,
+            field.trim(),
+            examples
+        );
 
         Self::should_eliminate(lineage, &system_prompt, &user_prompt).await
     }
 
     async fn should_eliminate_text(
         lineage: &Lineage,
-        snippets: Vec<String>
+        snippets: Vec<String>,
     ) -> Result<EliminationResponse, Errors> {
         log::trace!("In should_eliminate_text");
 
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 You interpret the contextual meaning of a type of HTML text node, and infer if the text node represents meaningful natural language meant to be consumed by humans as part of their core purpose in visiting a website, as opposed to ancillary or presentational text.
 
 Carefully examine the provided HTML text node along with supplementary information providing crucial context, and determine if any of the following applies to it:
@@ -827,21 +883,30 @@ The text nodes will be contained/delimited with an HTML comment like so:
 <!-- Target node: Start -->Text node content here<!-- Target node: End -->
 
 When providing your response, you must generalize across all possible values for the text node, which is not limited to just the set of values in the example snippets. 
-        "##);
-        let examples = snippets.iter().enumerate().fold(
-            String::new(),
-            |mut acc, (index, snippet)| {
-                acc.push_str(&format!(r##"
+        "##
+        );
+        let examples =
+            snippets
+                .iter()
+                .enumerate()
+                .fold(String::new(), |mut acc, (index, snippet)| {
+                    acc.push_str(&format!(
+                        r##"
 Example {}:
 {}
-"##, index + 1, snippet));
-                acc
-            }
-        );
-        let user_prompt = format!(r##"
+"##,
+                        index + 1,
+                        snippet
+                    ));
+                    acc
+                });
+        let user_prompt = format!(
+            r##"
 [Examples]
 {}
-        "##, examples);
+        "##,
+            examples
+        );
 
         Self::should_eliminate(lineage, &system_prompt, &user_prompt).await
     }
@@ -872,11 +937,7 @@ Example {}:
             }
         });
 
-        match Self::send_openai_request(
-            &system_prompt,
-            &user_prompt,
-            response_format
-        ).await {
+        match Self::send_openai_request(&system_prompt, &user_prompt, response_format).await {
             Ok(response) => {
                 log::debug!("╔════════════════════════════════════════╗");
                 log::debug!("║    SHOULD ELIMINATE FIELD START        ║");
@@ -901,13 +962,15 @@ Example {}:
     }
 
     async fn should_eliminate_code(code: &str) -> Result<ShouldEliminateCodeResponse, Errors> {
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 Your task is to determine whether a pseudo-javascript function directly performs any kind of query or mutation on a remote server. 
 
 Look for the presence of URLs, http methods, JSON payloads and other things normally required for javascript to perform a query or mutation.
 
 Please include a justification for your response
-        "##);
+        "##
+        );
         let user_prompt = format!("{}", code);
 
         let response_format = json!({
@@ -929,11 +992,7 @@ Please include a justification for your response
             }
         });
 
-        match Self::send_openai_request(
-            &system_prompt,
-            &user_prompt,
-            response_format
-        ).await {
+        match Self::send_openai_request(&system_prompt, &user_prompt, response_format).await {
             Ok(response) => {
                 log::debug!("╔════════════════════════════════════════╗");
                 log::debug!("║    SHOULD ELIMINATE CODE START         ║");
@@ -957,13 +1016,15 @@ Please include a justification for your response
     }
 
     async fn code_to_http(code: &str) -> Result<CodeToHttpResponse, Errors> {
-        let system_prompt = format!(r##"
+        let system_prompt = format!(
+            r##"
 Your task is to convert a pseudo-javascript function into a json object that contains all the information needed to reconstruct the network request or API call.
 
 If you do not see an appropriate value for any of the keys in the response format, of if you do not think the code represents a network request, please leave blank.
 
 Please include a justification for your response.
-        "##);
+        "##
+        );
         let user_prompt = format!("{}", code);
 
         let response_format = json!({
@@ -1020,11 +1081,7 @@ Please include a justification for your response.
             }
         });
 
-        match Self::send_openai_request(
-            &system_prompt,
-            &user_prompt,
-            response_format
-        ).await {
+        match Self::send_openai_request(&system_prompt, &user_prompt, response_format).await {
             Ok(response) => {
                 log::debug!("╔════════════════════════════════════════╗");
                 log::debug!("║    CODE TO HTTP START                  ║");
@@ -1060,7 +1117,7 @@ Please include a justification for your response.
         let mut hash = Hash::from_items(vec![
             system_prompt,
             user_prompt,
-            &response_format.to_string()
+            &response_format.to_string(),
         ]);
         let hash = hash.finalize();
 
@@ -1120,7 +1177,8 @@ Please include a justification for your response.
                     None
                 }
             }
-        }).await;
+        })
+        .await;
 
         let json_response = response.ok_or("Failed to get response from OpenAI")?;
         let parsed_response: T = serde_json::from_str(&json_response)?;

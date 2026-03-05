@@ -1,20 +1,20 @@
+use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::fs;
+use std::io;
+use std::path::Path;
+use swc_atoms::Atom;
 use swc_common::sync::Lrc;
-use swc_common::{SourceMap, FileName, BytePos, SyntaxContext};
-use swc_ecma_parser::{Syntax, Parser, StringInput};
-use swc_ecma_parser::lexer::Lexer;
+use swc_common::{BytePos, FileName, SourceMap, SyntaxContext};
 use swc_ecma_ast::Program;
 use swc_ecma_ast::*;
+use swc_ecma_codegen::{text_writer::JsWriter, Emitter};
+use swc_ecma_parser::lexer::Lexer;
+use swc_ecma_parser::{Parser, StringInput, Syntax};
 use swc_ecma_visit::{Visit, VisitMut, VisitMutWith, VisitWith};
-use swc_ecma_codegen::{Emitter, text_writer::JsWriter};
-use std::collections::{HashMap, HashSet};
-use swc_atoms::Atom;
-use std::fs;
-use std::path::Path;
-use std::io;
-use std::fmt;
 
-use crate::prelude::*;
 use crate::function::Function as ParversionFunction;
+use crate::prelude::*;
 
 pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
     log::trace!("In program_to_functions");
@@ -30,9 +30,7 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
 
         program.visit_with(&mut collector);
 
-        let values = std::mem::take(
-            &mut collector.values
-        );
+        let values = std::mem::take(&mut collector.values);
 
         values
             .into_iter()
@@ -43,7 +41,7 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
                     Some((k, v))
                 }
             })
-           .collect()
+            .collect()
     };
 
     log::debug!("values: {:?}", values);
@@ -56,7 +54,8 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
 
     program.visit_with(&mut explorer);
 
-    explorer.hash_to_code
+    explorer
+        .hash_to_code
         .iter()
         .map(|(k, v)| ParversionFunction {
             id: ID::new(),
@@ -69,7 +68,10 @@ pub fn program_to_functions(source: String) -> Vec<ParversionFunction> {
 fn parse(text: String) -> Program {
     let cm: Lrc<SourceMap> = Default::default();
 
-    let source_file = cm.new_source_file(Lrc::new(FileName::Custom("inline.js".into())), text.to_string());
+    let source_file = cm.new_source_file(
+        Lrc::new(FileName::Custom("inline.js".into())),
+        text.to_string(),
+    );
 
     let lexer = Lexer::new(
         Syntax::Es(Default::default()),
@@ -90,7 +92,6 @@ struct Normalizer<'a> {
 
 impl VisitMut for Normalizer<'_> {
     fn visit_mut_function(&mut self, f: &mut Function) {
-
         for (idx, param) in f.params.iter_mut().enumerate() {
             if let Pat::Ident(bi) = &mut param.pat {
                 let old = bi.id.sym.clone();
@@ -176,21 +177,13 @@ impl AstExplorer<'_> {
 
 impl Visit for AstExplorer<'_> {
     fn visit_function(&mut self, f: &Function) {
-
-
         let mut cloned_fn = f.clone();
-
-
 
         let mut normalizer = Normalizer {
             rename_map: HashMap::new(),
             values: self.values,
         };
         cloned_fn.visit_mut_with(&mut normalizer);
-
-
-
-
 
         let func_decl = FnDecl {
             ident: Ident::new("fn".into(), f.span, SyntaxContext::empty()),
@@ -220,7 +213,7 @@ impl Visit for AstExplorer<'_> {
         let output = String::from_utf8(buf).expect("non-utf8 output from emitter");
 
         let hash = Hash::from_str(&output);
-        
+
         self.hash_to_code.insert(hash, output);
 
         f.visit_children_with(self);
@@ -261,10 +254,10 @@ enum JavaScriptValue {
 impl fmt::Display for JavaScriptValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            JavaScriptValue::Number(n)      => write!(f, "{n}"),
-            JavaScriptValue::String(s)      => write!(f, "{s}"),
-            JavaScriptValue::Bool(b)        => write!(f, "{b}"),
-            JavaScriptValue::Indeterminate  => write!(f, ""),
+            JavaScriptValue::Number(n) => write!(f, "{n}"),
+            JavaScriptValue::String(s) => write!(f, "{s}"),
+            JavaScriptValue::Bool(b) => write!(f, "{b}"),
+            JavaScriptValue::Indeterminate => write!(f, ""),
         }
     }
 }
@@ -282,10 +275,13 @@ impl ValueCollector {
                 Lit::Num(n) => JavaScriptValue::Number(n.value),
                 Lit::Bool(b) => JavaScriptValue::Bool(b.value),
                 _ => JavaScriptValue::Indeterminate,
-            }
+            },
             Expr::Ident(id) => {
                 let name = id.sym.to_string();
-                self.values.get(&name).cloned().unwrap_or(JavaScriptValue::Indeterminate)
+                self.values
+                    .get(&name)
+                    .cloned()
+                    .unwrap_or(JavaScriptValue::Indeterminate)
             }
             Expr::Bin(bin) => {
                 let left = self.resolve_expr(&bin.left);
@@ -298,7 +294,7 @@ impl ValueCollector {
                     (BinaryOp::Add, JavaScriptValue::String(a), JavaScriptValue::String(b)) => {
                         JavaScriptValue::String(format!("{}{}", a, b))
                     }
-                    _ => JavaScriptValue::Indeterminate
+                    _ => JavaScriptValue::Indeterminate,
                 }
             }
             Expr::Object(obj) => {
@@ -311,7 +307,6 @@ impl ValueCollector {
                                     self.values.insert(key_str, value);
                                 }
                             }
-
                         }
                         _ => {}
                     }
@@ -319,7 +314,7 @@ impl ValueCollector {
 
                 JavaScriptValue::Indeterminate
             }
-            _ => JavaScriptValue::Indeterminate
+            _ => JavaScriptValue::Indeterminate,
         }
     }
 

@@ -1,18 +1,18 @@
-use std::sync::{Arc};
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
-use crate::prelude::*;
-use crate::graph_node::{Graph};
-use crate::context::{Context};
 use crate::basis_graph::BasisGraph;
-use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
+use crate::basis_node::BasisNode;
+use crate::context::Context;
+use crate::document::Document;
+use crate::function::Function;
+use crate::graph_node::Graph;
+use crate::prelude::*;
 use crate::profile::Profile;
-use crate::transformation::SchemaTransformation;
-use crate::document::{Document};
 use crate::schema::Schema;
 use crate::schema_context::SchemaContext;
-use crate::function::Function;
+use crate::transformation::SchemaTransformation;
 
 pub struct MetaContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
@@ -51,32 +51,23 @@ impl MetaContext {
         }
     }
 
-    pub fn add_document_version(
-        &mut self,
-        document_version: DocumentVersion,
-        document: Document
-    ) {
-        self.document_versions.insert(document_version, Arc::new(document));
+    pub fn add_document_version(&mut self, document_version: DocumentVersion, document: Document) {
+        self.document_versions
+            .insert(document_version, Arc::new(document));
     }
 
-    pub fn get_document(
-        &self,
-        version: DocumentVersion
-    ) -> Option<Arc<Document>> {
+    pub fn get_document(&self, version: DocumentVersion) -> Option<Arc<Document>> {
         self.document_versions.get(&version).cloned()
     }
 
-    pub fn update_translation_schema(
-        &mut self,
-        schema: Schema
-    ) {
+    pub fn update_translation_schema(&mut self, schema: Schema) {
         self.translation_schema = Some(Arc::new(schema));
     }
 
     pub fn update_schema_context(
         &mut self,
         contexts: HashMap<ID, Arc<SchemaContext>>,
-        graph_root: Graph
+        graph_root: Graph,
     ) {
         self.schema_contexts = Some(contexts);
         self.schema_graph_root = Some(graph_root);
@@ -85,7 +76,7 @@ impl MetaContext {
     pub fn update_translation_schema_context(
         &mut self,
         contexts: HashMap<ID, Arc<SchemaContext>>,
-        graph_root: Graph
+        graph_root: Graph,
     ) {
         self.translation_schema_contexts = Some(contexts);
         self.translation_schema_graph_root = Some(graph_root);
@@ -93,10 +84,10 @@ impl MetaContext {
 
     pub fn get_basis_network_by_subgraph_hash(
         &self,
-        subgraph_hash: &String
+        subgraph_hash: &String,
     ) -> Result<Option<Arc<BasisNetwork>>, Errors> {
         log::trace!("In get_basis_network_by_subgraph_hash");
-        
+
         let basis_networks = self.basis_networks.as_ref().unwrap();
 
         for basis_network in basis_networks.values() {
@@ -110,7 +101,7 @@ impl MetaContext {
 
     pub fn get_basis_node_by_lineage(
         &self,
-        lineage: &Lineage
+        lineage: &Lineage,
     ) -> Result<Option<Arc<BasisNode>>, Errors> {
         log::trace!("In get_basis_node_by_lineage");
 
@@ -127,7 +118,7 @@ impl MetaContext {
 
     pub fn update_schema_transformations(
         &mut self,
-        schema_transformations: HashMap<Lineage, Arc<SchemaTransformation>>
+        schema_transformations: HashMap<Lineage, Arc<SchemaTransformation>>,
     ) {
         self.schema_transformations = Some(schema_transformations);
     }
@@ -136,7 +127,11 @@ impl MetaContext {
         self.profile = Some(profile);
     }
 
-    pub fn update_data_structures(&mut self, contexts: HashMap<ID, Arc<Context>>, graph_root: Graph) {
+    pub fn update_data_structures(
+        &mut self,
+        contexts: HashMap<ID, Arc<Context>>,
+        graph_root: Graph,
+    ) {
         self.contexts = Some(contexts);
         self.graph_root = Some(graph_root);
     }
@@ -179,7 +174,7 @@ fn traverse_for_condensed_document(
     meta_context: &MetaContext,
     current_node: Graph,
     visited_lineages: &mut HashSet<Lineage>,
-    document: &mut String
+    document: &mut String,
 ) {
     let lock = read_lock!(current_node);
     let current_id = lock.id.clone();
@@ -203,7 +198,7 @@ fn traverse_for_condensed_document(
             &meta_context,
             Arc::clone(child),
             visited_lineages,
-            document
+            document,
         );
     }
 
@@ -213,4 +208,3 @@ fn traverse_for_condensed_document(
         document.push_str(b.as_deref().unwrap_or(""));
     }
 }
-

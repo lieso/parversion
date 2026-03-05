@@ -1,8 +1,8 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
 use crate::data_node::DataNode;
+use crate::prelude::*;
 use crate::schema_node::SchemaNode;
 
 pub type Graph = Arc<RwLock<GraphNode>>;

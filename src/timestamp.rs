@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Timestamp {
@@ -9,8 +9,6 @@ pub struct Timestamp {
 
 impl Timestamp {
     pub fn now() -> Self {
-        Timestamp {
-            time: Utc::now(),
-        }
+        Timestamp { time: Utc::now() }
     }
 }

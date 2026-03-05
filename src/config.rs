@@ -1,14 +1,14 @@
-use serde::{Serialize, Deserialize};
 use lazy_static::lazy_static;
-use std::sync::RwLock;
-use std::path::Path;
+use serde::{Deserialize, Serialize};
 use std::env;
+use std::path::Path;
+use std::sync::RwLock;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 enum LlmProvider {
     OpenAI,
     Anthropic,
-    Groq
+    Groq,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -82,7 +82,6 @@ impl Config {
 }
 
 lazy_static! {
-    pub static ref CONFIG: RwLock<Config> = RwLock::new(
-        Config::load_or_create_default("settings.toml"),
-    );
+    pub static ref CONFIG: RwLock<Config> =
+        RwLock::new(Config::load_or_create_default("settings.toml"),);
 }

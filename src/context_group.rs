@@ -1,11 +1,11 @@
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
-use std::collections::{HashSet, HashMap};
 
-use crate::prelude::*;
-use crate::data_node::DataNodeFields;
-use crate::config::{CONFIG};
-use crate::meta_context::MetaContext;
+use crate::config::CONFIG;
 use crate::context::Context;
+use crate::data_node::DataNodeFields;
+use crate::meta_context::MetaContext;
+use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct ContextGroup {
@@ -50,7 +50,7 @@ impl ContextGroup {
                     lineage,
                     fields,
                     contexts,
-                    snippets
+                    snippets,
                 }
             })
             .collect()

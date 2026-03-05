@@ -1,14 +1,14 @@
-use std::sync::{Arc, RwLock};
-use std::collections::{HashMap, HashSet, VecDeque};
 use serde_json::{json, Value};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
 use crate::data_node::DataNode;
-use crate::graph_node::{GraphNode, GraphNodeID};
 use crate::document_node::DocumentNode;
-use crate::meta_context::MetaContext;
-use crate::provider::Provider;
+use crate::graph_node::{GraphNode, GraphNodeID};
 use crate::json_node::JsonNode;
+use crate::meta_context::MetaContext;
+use crate::prelude::*;
+use crate::provider::Provider;
 
 pub type ContextID = ID;
 
@@ -38,16 +38,13 @@ impl Context {
 
         let mut queue = VecDeque::new();
         queue.push_back(self.graph_node.clone());
-        
+
         while let Some(current) = queue.pop_front() {
             for child in &read_lock!(current).children {
                 queue.push_back(child.clone());
             }
 
-            let context = contexts
-                .get(&read_lock!(current).id)
-                .unwrap()
-                .clone();
+            let context = contexts.get(&read_lock!(current).id).unwrap().clone();
 
             let data_node = &context.data_node;
 
@@ -58,12 +55,13 @@ impl Context {
             };
 
             if let Some(basis_node) = maybe_basis_node {
-
-                let json_nodes: Vec<JsonNode> = basis_node.transformations
+                let json_nodes: Vec<JsonNode> = basis_node
+                    .transformations
                     .clone()
                     .into_iter()
                     .map(|transformation| {
-                        transformation.transform(Arc::clone(&data_node))
+                        transformation
+                            .transform(Arc::clone(&data_node))
                             .expect("Could not transform data node field")
                     })
                     .collect();
@@ -91,7 +89,8 @@ impl Context {
         if result.is_empty() {
             Ok(String::new())
         } else {
-            let json_string = serde_json::to_string(&result).expect("Could not convert to json string");
+            let json_string =
+                serde_json::to_string(&result).expect("Could not convert to json string");
             Ok(json_string)
         }
     }
@@ -101,11 +100,8 @@ impl Context {
 
         let mut neighbour_ids = HashSet::new();
         let graph_node = self.graph_node.clone();
-        
-        Self::traverse_for_neighbours(
-            Arc::clone(&graph_node),
-            &mut neighbour_ids
-        );
+
+        Self::traverse_for_neighbours(Arc::clone(&graph_node), &mut neighbour_ids);
 
         let mut snippet = String::new();
         let lock = read_lock!(meta_context);
@@ -116,7 +112,7 @@ impl Context {
             Arc::clone(&graph_root),
             &neighbour_ids,
             &read_lock!(graph_node).id,
-            &mut snippet
+            &mut snippet,
         );
 
         snippet

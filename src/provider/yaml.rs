@@ -8,12 +8,12 @@ use tokio::sync::RwLock as AsyncRwLock;
 use crate::basis_graph::BasisGraph;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
+use crate::bloom_filter::BloomFilter;
+use crate::operation::Operation;
 use crate::prelude::*;
 use crate::profile::Profile;
 use crate::provider::Provider;
 use crate::transformation::SchemaTransformation;
-use crate::operation::Operation;
-use crate::bloom_filter::BloomFilter;
 
 #[cfg(feature = "yaml-provider")]
 pub struct YamlFileProvider {
@@ -173,13 +173,11 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&basis_node).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(basis_nodes) = yaml.get_mut("basis_nodes") {
-            let sequence = basis_nodes
-                .as_sequence_mut()
-                .ok_or_else(|| {
-                    Errors::YamlParseError(
-                        "Failed to get mutable sequence for 'basis_nodes'.".to_string(),
-                    )
-                })?;
+            let sequence = basis_nodes.as_sequence_mut().ok_or_else(|| {
+                Errors::YamlParseError(
+                    "Failed to get mutable sequence for 'basis_nodes'.".to_string(),
+                )
+            })?;
 
             // Remove existing entry with matching lineage
             sequence.retain(|node| {
@@ -235,17 +233,17 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&basis_network).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(basis_networks) = yaml.get_mut("basis_networks") {
-            let sequence = basis_networks
-                .as_sequence_mut()
-                .ok_or_else(|| {
-                    Errors::YamlParseError(
-                        "Failed to get mutable sequence for 'basis_networks'.".to_string(),
-                    )
-                })?;
+            let sequence = basis_networks.as_sequence_mut().ok_or_else(|| {
+                Errors::YamlParseError(
+                    "Failed to get mutable sequence for 'basis_networks'.".to_string(),
+                )
+            })?;
 
             // Remove existing entry with matching subgraph_hash
             sequence.retain(|network| {
-                if let Ok(existing_network) = serde_yaml::from_value::<BasisNetwork>(network.clone()) {
+                if let Ok(existing_network) =
+                    serde_yaml::from_value::<BasisNetwork>(network.clone())
+                {
                     existing_network.subgraph_hash != subgraph_hash
                 } else {
                     true
@@ -297,13 +295,11 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&basis_graph).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(basis_graphs) = yaml.get_mut("basis_graphs") {
-            let sequence = basis_graphs
-                .as_sequence_mut()
-                .ok_or_else(|| {
-                    Errors::YamlParseError(
-                        "Failed to get mutable sequence for 'basis_graphs'.".to_string(),
-                    )
-                })?;
+            let sequence = basis_graphs.as_sequence_mut().ok_or_else(|| {
+                Errors::YamlParseError(
+                    "Failed to get mutable sequence for 'basis_graphs'.".to_string(),
+                )
+            })?;
 
             // Remove existing entry with matching lineage
             sequence.retain(|graph| {
@@ -367,18 +363,18 @@ impl Provider for YamlFileProvider {
             serde_yaml::to_value(&schema_transformation).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(schema_transformations) = yaml.get_mut("schema_transformations") {
-            let sequence = schema_transformations
-                .as_sequence_mut()
-                .ok_or_else(|| {
-                    Errors::YamlParseError(
-                        "Failed to get mutable sequence for 'schema_transformations'.".to_string(),
-                    )
-                })?;
+            let sequence = schema_transformations.as_sequence_mut().ok_or_else(|| {
+                Errors::YamlParseError(
+                    "Failed to get mutable sequence for 'schema_transformations'.".to_string(),
+                )
+            })?;
 
             // Remove existing entry with matching lineage and subgraph_hash
             let target_schema_cloned = target_schema.cloned();
             sequence.retain(|transformation| {
-                if let Ok(existing_transformation) = serde_yaml::from_value::<SchemaTransformation>(transformation.clone()) {
+                if let Ok(existing_transformation) =
+                    serde_yaml::from_value::<SchemaTransformation>(transformation.clone())
+                {
                     !(existing_transformation.lineage == *lineage
                         && existing_transformation.subgraph_hash == target_schema_cloned)
                 } else {
@@ -404,7 +400,10 @@ impl Provider for YamlFileProvider {
                 let deserialized: Result<BloomFilter, _> = serde_yaml::from_value(data.clone());
 
                 if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for operation bloom filter: {:?}", err);
+                    log::error!(
+                        "Deserialization error for operation bloom filter: {:?}",
+                        err
+                    );
                 }
                 deserialized.ok()
             })
@@ -418,7 +417,8 @@ impl Provider for YamlFileProvider {
             let operations: Vec<Operation> = yaml
                 .get("operations")
                 .and_then(|data| {
-                    let deserialized: Result<Vec<Operation>, _> = serde_yaml::from_value(data.clone());
+                    let deserialized: Result<Vec<Operation>, _> =
+                        serde_yaml::from_value(data.clone());
 
                     if let Err(ref err) = deserialized {
                         log::error!("Deserialization error for operations: {:?}", err);
@@ -437,11 +437,7 @@ impl Provider for YamlFileProvider {
         Ok(None)
     }
 
-    async fn save_operation(
-        &self,
-        hash: &Hash,
-        operation: Operation
-    ) -> Result<(), Errors> {
+    async fn save_operation(&self, hash: &Hash, operation: Operation) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
 
         let mut bloom_filter = yaml
@@ -450,7 +446,10 @@ impl Provider for YamlFileProvider {
                 let deserialized: Result<BloomFilter, _> = serde_yaml::from_value(data.clone());
 
                 if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for operation bloom filter: {:?}", err);
+                    log::error!(
+                        "Deserialization error for operation bloom filter: {:?}",
+                        err
+                    );
                 }
                 deserialized.ok()
             })
@@ -459,21 +458,22 @@ impl Provider for YamlFileProvider {
         if operation.is_no_op() {
             bloom_filter.add(hash);
 
-            let serialized_bloom_filter = serde_yaml::to_value(bloom_filter)
-                .map_err(|_| Errors::UnexpectedError)?;
+            let serialized_bloom_filter =
+                serde_yaml::to_value(bloom_filter).map_err(|_| Errors::UnexpectedError)?;
             yaml["no_op"] = serialized_bloom_filter;
 
             return self.save_data(&yaml).await;
         }
 
-        let serialized_operation = serde_yaml::to_value(&operation).map_err(|_| Errors::UnexpectedError)?;
+        let serialized_operation =
+            serde_yaml::to_value(&operation).map_err(|_| Errors::UnexpectedError)?;
 
         if let Some(operations) = yaml.get_mut("operations") {
             operations
                 .as_sequence_mut()
                 .ok_or_else(|| {
                     Errors::YamlParseError(
-                        "Failed to get mutable sequence for operations".to_string()
+                        "Failed to get mutable sequence for operations".to_string(),
                     )
                 })?
                 .push(serialized_operation);

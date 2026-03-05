@@ -1,23 +1,20 @@
-use std::sync::{Arc, RwLock};
-use tokio::task;
-use tokio::sync::Semaphore;
 use futures::future::try_join_all;
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use tokio::sync::Semaphore;
+use tokio::task;
 
-use crate::prelude::*;
 use crate::basis_node::BasisNode;
-use crate::provider::Provider;
-use crate::config::{CONFIG};
+use crate::config::CONFIG;
 use crate::context_group::ContextGroup;
+use crate::graph_node::Graph;
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
-use crate::transformation::{
-    FieldTransformation,
-    SchemaTransformation
-};
-use crate::schema_context::SchemaContext;
-use crate::graph_node::Graph;
 use crate::path::Path;
+use crate::prelude::*;
+use crate::provider::Provider;
+use crate::schema_context::SchemaContext;
+use crate::transformation::{FieldTransformation, SchemaTransformation};
 
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -33,7 +30,7 @@ pub async fn get_translation_schema_transformations<P: Provider>(
             .clone()
             .ok_or_else(|| {
                 Errors::DeficientMetaContextError(
-                    "Schema contexts not provided in meta context".to_string()
+                    "Schema contexts not provided in meta context".to_string(),
                 )
             })?
             .values()
@@ -43,20 +40,19 @@ pub async fn get_translation_schema_transformations<P: Provider>(
     let target_schema: String = {
         let lock = read_lock!(meta_context);
 
-        let graph_root = lock.translation_schema_graph_root
+        let graph_root = lock
+            .translation_schema_graph_root
             .clone()
             .ok_or_else(|| {
                 Errors::DeficientMetaContextError(
-                    "Translation schema graph root not provided in meta context".to_string()
+                    "Translation schema graph root not provided in meta context".to_string(),
                 )
             })?
             .clone();
 
         let schema_contexts_map: HashMap<ID, Arc<SchemaContext>> = {
             let lock = read_lock!(meta_context);
-            lock.translation_schema_contexts
-                .clone()
-                .unwrap()
+            lock.translation_schema_contexts.clone().unwrap()
         };
 
         let snippet = &SchemaContext::traverse_for_snippet(
@@ -84,7 +80,8 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                 schema_context.clone(),
                 target_schema.clone(),
                 options,
-            ).await?;
+            )
+            .await?;
 
             results.insert(result.lineage.clone(), Arc::new(result));
         }
@@ -109,16 +106,19 @@ pub async fn get_translation_schema_transformations<P: Provider>(
                     schema_context.clone(),
                     cloned_target_schema,
                     &cloned_options,
-                ).await?;
+                )
+                .await?;
 
                 Ok((transformation.lineage.clone(), Arc::new(transformation)))
             });
             handles.push(handle);
         }
 
-        let results: Vec<Result<(Lineage, Arc<SchemaTransformation>), Errors>> = try_join_all(handles).await?;
+        let results: Vec<Result<(Lineage, Arc<SchemaTransformation>), Errors>> =
+            try_join_all(handles).await?;
 
-        let hashmap_results: HashMap<Lineage, Arc<SchemaTransformation>> = results.into_iter().collect::<Result<_, _>>()?;
+        let hashmap_results: HashMap<Lineage, Arc<SchemaTransformation>> =
+            results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }
@@ -138,7 +138,7 @@ pub async fn get_normal_schema_transformations<P: Provider>(
             .clone()
             .ok_or_else(|| {
                 Errors::DeficientMetaContextError(
-                    "Normal schema contexts not provided in meta context".to_string()
+                    "Normal schema contexts not provided in meta context".to_string(),
                 )
             })?
             .values()
@@ -159,7 +159,8 @@ pub async fn get_normal_schema_transformations<P: Provider>(
                 cloned_meta_context,
                 schema_context.clone(),
                 options,
-            ).await?;
+            )
+            .await?;
 
             results.insert(result.lineage.clone(), Arc::new(result));
         }
@@ -182,16 +183,19 @@ pub async fn get_normal_schema_transformations<P: Provider>(
                     cloned_meta_context,
                     schema_context.clone(),
                     &cloned_options,
-                ).await?;
+                )
+                .await?;
 
                 Ok((transformation.lineage.clone(), Arc::new(transformation)))
             });
             handles.push(handle);
         }
 
-        let results: Vec<Result<(Lineage, Arc<SchemaTransformation>), Errors>> = try_join_all(handles).await?;
+        let results: Vec<Result<(Lineage, Arc<SchemaTransformation>), Errors>> =
+            try_join_all(handles).await?;
 
-        let hashmap_results: HashMap<Lineage, Arc<SchemaTransformation>> = results.into_iter().collect::<Result<_, _>>()?;
+        let hashmap_results: HashMap<Lineage, Arc<SchemaTransformation>> =
+            results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }
@@ -220,8 +224,9 @@ pub async fn get_basis_nodes<P: Provider>(
                 cloned_provider,
                 cloned_meta_context,
                 context_group.clone(),
-                options
-            ).await?;
+                options,
+            )
+            .await?;
 
             results.insert(result.id.clone(), Arc::new(result));
         }
@@ -244,7 +249,8 @@ pub async fn get_basis_nodes<P: Provider>(
                     cloned_meta_context,
                     context_group.clone(),
                     &cloned_options,
-                ).await?;
+                )
+                .await?;
 
                 Ok((basis_node.id.clone(), Arc::new(basis_node)))
             });
@@ -253,7 +259,8 @@ pub async fn get_basis_nodes<P: Provider>(
 
         let results: Vec<Result<(ID, Arc<BasisNode>), Errors>> = try_join_all(handles).await?;
 
-        let hashmap_results: HashMap<ID, Arc<BasisNode>> = results.into_iter().collect::<Result<_, _>>()?;
+        let hashmap_results: HashMap<ID, Arc<BasisNode>> =
+            results.into_iter().collect::<Result<_, _>>()?;
 
         Ok(hashmap_results)
     }
@@ -270,7 +277,9 @@ async fn get_normal_schema_transformation<P: Provider>(
     let lineage = &schema_context.lineage;
 
     if !options.regenerate {
-        if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, None).await? {
+        if let Some(schema_transformation) =
+            provider.get_schema_transformation(&lineage, None).await?
+        {
             log::info!("Provider has supplied normal schema transformation");
 
             return Ok(schema_transformation);
@@ -294,13 +303,11 @@ async fn get_translation_schema_transformation<P: Provider>(
     let lineage = &schema_context.lineage;
     let schema_root: Graph = {
         let lock = read_lock!(meta_context);
-        lock.translation_schema_graph_root
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientMetaContextError(
-                    "Schema contexts not provided in meta context".to_string()
-                )
-            })?
+        lock.translation_schema_graph_root.clone().ok_or_else(|| {
+            Errors::DeficientMetaContextError(
+                "Schema contexts not provided in meta context".to_string(),
+            )
+        })?
     };
     let subgraph_hash: Hash = {
         let lock = read_lock!(schema_root);
@@ -308,7 +315,10 @@ async fn get_translation_schema_transformation<P: Provider>(
     };
 
     if !options.regenerate {
-        if let Some(schema_transformation) = provider.get_schema_transformation(&lineage, Some(&subgraph_hash)).await? {
+        if let Some(schema_transformation) = provider
+            .get_schema_transformation(&lineage, Some(&subgraph_hash))
+            .await?
+        {
             log::info!("Provider has supplied translation schema transformtion");
 
             return Ok(schema_transformation);
@@ -318,8 +328,9 @@ async fn get_translation_schema_transformation<P: Provider>(
     let result = LLM::translate_schema_node(
         Arc::clone(&meta_context),
         (*schema_context).clone(),
-        Arc::clone(&target_schema)
-    ).await?;
+        Arc::clone(&target_schema),
+    )
+    .await?;
 
     if let Some((source, target)) = result {
         let schema_transformation = SchemaTransformation {
@@ -333,11 +344,13 @@ async fn get_translation_schema_transformation<P: Provider>(
             subgraph_hash: Some(subgraph_hash.clone()),
         };
 
-        provider.save_schema_transformation(
-            &lineage,
-            Some(&subgraph_hash),
-            schema_transformation.clone(),
-        ).await?;
+        provider
+            .save_schema_transformation(
+                &lineage,
+                Some(&subgraph_hash),
+                schema_transformation.clone(),
+            )
+            .await?;
 
         Ok(schema_transformation)
     } else {
@@ -352,11 +365,13 @@ async fn get_translation_schema_transformation<P: Provider>(
             subgraph_hash: Some(subgraph_hash.clone()),
         };
 
-        provider.save_schema_transformation(
-            &lineage,
-            Some(&subgraph_hash),
-            schema_transformation.clone(),
-        ).await?;
+        provider
+            .save_schema_transformation(
+                &lineage,
+                Some(&subgraph_hash),
+                schema_transformation.clone(),
+            )
+            .await?;
 
         Ok(schema_transformation)
     }
@@ -383,9 +398,8 @@ async fn get_basis_node<P: Provider>(
         };
     }
 
-    let field_transformations: Vec<FieldTransformation> = LLM::get_field_transformations(
-        context_group.clone()
-    ).await?;
+    let field_transformations: Vec<FieldTransformation> =
+        LLM::get_field_transformations(context_group.clone()).await?;
 
     log::info!("Obtained field transformation");
 
@@ -397,10 +411,9 @@ async fn get_basis_node<P: Provider>(
         transformations: field_transformations,
     };
 
-    provider.save_basis_node(
-        &lineage,
-        basis_node.clone(),
-    ).await?;
+    provider
+        .save_basis_node(&lineage, basis_node.clone())
+        .await?;
 
     Ok(basis_node)
 }

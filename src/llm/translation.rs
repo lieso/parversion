@@ -1,12 +1,16 @@
-use std::collections::HashMap;
-use openrouter_rs::{OpenRouterClient, api::chat::*, types::{Role, ResponseFormat}};
-use serde::{Serialize, Deserialize};
+use openrouter_rs::{
+    api::chat::*,
+    types::{ResponseFormat, Role},
+    OpenRouterClient,
+};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 
-use crate::prelude::*;
 use crate::environment::get_env_variable;
 use crate::path::Path;
 use crate::path_segment::PathSegmentKind;
+use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MatchTargetSchemaResponse {
@@ -25,7 +29,7 @@ pub struct Translation;
 impl Translation {
     pub async fn match_target_schema(
         marked_schema_node: &String,
-        target_schema: &String
+        target_schema: &String,
     ) -> Result<MatchTargetSchemaResponse, Errors> {
         log::trace!("In match_target_schema");
 
@@ -47,13 +51,16 @@ Please provide the following information:
 For example, if the target field matches a field called "issueDate" nested under "properties" in the second schema, the json_path would be: '$.properties.issueDate'
 "##;
 
-        let user_prompt = format!(r##"
+        let user_prompt = format!(
+            r##"
 [FIRST JSON SCHEMA]:
 {}
 
 [SECOND JSON SCHEMA]:
 {}
-"##, marked_schema_node, target_schema);
+"##,
+            marked_schema_node, target_schema
+        );
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
@@ -97,14 +104,14 @@ For example, if the target field matches a field called "issueDate" nested under
                 },
                 "required": ["is_incompatible", "json_path"],
                 "additionalProperties": false
-            })
+            }),
         );
 
         let request = ChatCompletionRequest::builder()
             .model("google/gemini-3-pro-preview")
             .messages(vec![
                 Message::new(Role::System, system_prompt),
-                Message::new(Role::User, user_prompt)
+                Message::new(Role::User, user_prompt),
             ])
             .response_format(response_format)
             .build()
@@ -118,37 +125,67 @@ For example, if the target field matches a field called "issueDate" nested under
                 log::debug!("");
 
                 if let Some(content) = response.choices[0].content() {
-                    log::debug!("┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐");
+                    log::debug!(
+                        "┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐"
+                    );
                     log::debug!("{}", content);
-                    log::debug!("└───────────────────────────────────────────────────────────────┘");
+                    log::debug!(
+                        "└───────────────────────────────────────────────────────────────┘"
+                    );
                     log::debug!("");
 
                     match serde_json::from_str::<MatchTargetSchemaResponse>(content) {
                         Ok(parsed_response) => {
-                            log::debug!("┌─── PARSED RESPONSE ───────────────────────────────────────────┐");
+                            log::debug!(
+                                "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
+                            );
                             log::debug!("{:?}", parsed_response);
-                            log::debug!("└───────────────────────────────────────────────────────────────┘");
+                            log::debug!(
+                                "└───────────────────────────────────────────────────────────────┘"
+                            );
                             log::debug!("");
-                            log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-                            log::debug!("║                                                               ║");
-                            log::debug!("║            MATCH TARGET SCHEMA - REQUEST COMPLETE             ║");
-                            log::debug!("║                                                               ║");
-                            log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+                            log::debug!(
+                                "╔═══════════════════════════════════════════════════════════════╗"
+                            );
+                            log::debug!(
+                                "║                                                               ║"
+                            );
+                            log::debug!(
+                                "║            MATCH TARGET SCHEMA - REQUEST COMPLETE             ║"
+                            );
+                            log::debug!(
+                                "║                                                               ║"
+                            );
+                            log::debug!(
+                                "╚═══════════════════════════════════════════════════════════════╝"
+                            );
 
                             Ok(parsed_response)
                         }
                         Err(e) => {
-                            log::error!("╔═══════════════════════════════════════════════════════════════╗");
-                            log::error!("║                    PARSE ERROR                                ║");
-                            log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                            log::error!(
+                                "╔═══════════════════════════════════════════════════════════════╗"
+                            );
+                            log::error!(
+                                "║                    PARSE ERROR                                ║"
+                            );
+                            log::error!(
+                                "╚═══════════════════════════════════════════════════════════════╝"
+                            );
                             log::error!("Failed to parse LLM response: {}", e);
                             Err(Errors::UnexpectedError)
                         }
                     }
                 } else {
-                    log::error!("╔═══════════════════════════════════════════════════════════════╗");
-                    log::error!("║                    NO CONTENT ERROR                           ║");
-                    log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                    log::error!(
+                        "╔═══════════════════════════════════════════════════════════════╗"
+                    );
+                    log::error!(
+                        "║                    NO CONTENT ERROR                           ║"
+                    );
+                    log::error!(
+                        "╚═══════════════════════════════════════════════════════════════╝"
+                    );
                     log::error!("No content in LLM response");
                     Err(Errors::UnexpectedError)
                 }
@@ -190,7 +227,8 @@ For example:
 Return a mapping for each variable in the target path.
 "##;
 
-        let user_prompt = format!(r##"
+        let user_prompt = format!(
+            r##"
 [SCHEMA PATH]:
 {}
 
@@ -254,14 +292,14 @@ Return a mapping for each variable in the target path.
                 },
                 "required": ["mappings"],
                 "additionalProperties": false
-            })
+            }),
         );
 
         let request = ChatCompletionRequest::builder()
             .model("google/gemini-3-pro-preview")
             .messages(vec![
                 Message::new(Role::System, system_prompt),
-                Message::new(Role::User, user_prompt)
+                Message::new(Role::User, user_prompt),
             ])
             .response_format(response_format)
             .build()
@@ -275,9 +313,13 @@ Return a mapping for each variable in the target path.
                 log::debug!("");
 
                 if let Some(content) = response.choices[0].content() {
-                    log::debug!("┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐");
+                    log::debug!(
+                        "┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐"
+                    );
                     log::debug!("{}", content);
-                    log::debug!("└───────────────────────────────────────────────────────────────┘");
+                    log::debug!(
+                        "└───────────────────────────────────────────────────────────────┘"
+                    );
                     log::debug!("");
 
                     #[derive(Deserialize)]
@@ -287,45 +329,75 @@ Return a mapping for each variable in the target path.
 
                     match serde_json::from_str::<Response>(content) {
                         Ok(parsed_response) => {
-                            log::debug!("┌─── PARSED RESPONSE ───────────────────────────────────────────┐");
+                            log::debug!(
+                                "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
+                            );
                             log::debug!("{:?}", parsed_response.mappings);
-                            log::debug!("└───────────────────────────────────────────────────────────────┘");
+                            log::debug!(
+                                "└───────────────────────────────────────────────────────────────┘"
+                            );
                             log::debug!("");
 
                             // Convert to HashMap<char, PathSegmentKind>
                             let mut result = HashMap::new();
                             for mapping in parsed_response.mappings {
-                                let segment_kind = if let Ok(index) = mapping.maps_to.parse::<usize>() {
-                                    PathSegmentKind::Index(index)
-                                } else {
-                                    let mapped_var = mapping.maps_to.chars().next()
-                                        .ok_or_else(|| Errors::UnexpectedError)?;
-                                    PathSegmentKind::VariableIndex(mapped_var)
-                                };
+                                let segment_kind =
+                                    if let Ok(index) = mapping.maps_to.parse::<usize>() {
+                                        PathSegmentKind::Index(index)
+                                    } else {
+                                        let mapped_var = mapping
+                                            .maps_to
+                                            .chars()
+                                            .next()
+                                            .ok_or_else(|| Errors::UnexpectedError)?;
+                                        PathSegmentKind::VariableIndex(mapped_var)
+                                    };
 
                                 result.insert(mapping.variable, segment_kind);
                             }
 
-                            log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-                            log::debug!("║                                                               ║");
-                            log::debug!("║          MATCH PATH VARIABLES - REQUEST COMPLETE              ║");
-                            log::debug!("║                                                               ║");
-                            log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+                            log::debug!(
+                                "╔═══════════════════════════════════════════════════════════════╗"
+                            );
+                            log::debug!(
+                                "║                                                               ║"
+                            );
+                            log::debug!(
+                                "║          MATCH PATH VARIABLES - REQUEST COMPLETE              ║"
+                            );
+                            log::debug!(
+                                "║                                                               ║"
+                            );
+                            log::debug!(
+                                "╚═══════════════════════════════════════════════════════════════╝"
+                            );
 
                             Ok(result)
                         }
                         Err(e) => {
-                            log::error!("╔═══════════════════════════════════════════════════════════════╗");
-                            log::error!("║                    PARSE ERROR                                ║");
-                            log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                            log::error!(
+                                "╔═══════════════════════════════════════════════════════════════╗"
+                            );
+                            log::error!(
+                                "║                    PARSE ERROR                                ║"
+                            );
+                            log::error!(
+                                "╚═══════════════════════════════════════════════════════════════╝"
+                            );
                             log::error!("Failed to parse LLM response: {}", e);
                             Err(Errors::UnexpectedError)
                         }
                     }
                 } else {
-                    log::error!("╔═══════════════════════════════════════════════════════════════╗");
-                    log::error!("║                    NO CONTENT ERROR                           ║");
-                    log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                    log::error!(
+                        "╔═══════════════════════════════════════════════════════════════╗"
+                    );
+                    log::error!(
+                        "║                    NO CONTENT ERROR                           ║"
+                    );
+                    log::error!(
+                        "╚═══════════════════════════════════════════════════════════════╝"
+                    );
                     log::error!("No content in LLM response");
                     Err(Errors::UnexpectedError)
                 }

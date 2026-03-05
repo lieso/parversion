@@ -1,10 +1,10 @@
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::transformation::{FieldTransformation, SchemaTransformation};
 use crate::context_group::ContextGroup;
 use crate::path::Path;
+use crate::prelude::*;
 use crate::schema_context::SchemaContext;
+use crate::transformation::{FieldTransformation, SchemaTransformation};
 
 mod openai;
 mod translation;
@@ -15,7 +15,7 @@ impl LLM {
     pub async fn translate_schema_node(
         meta_context: Arc<RwLock<MetaContext>>,
         schema_context: SchemaContext,
-        target_schema: Arc<String>
+        target_schema: Arc<String>,
     ) -> Result<Option<(Path, Path)>, Errors> {
         log::trace!("In translate_schema_node");
 
@@ -32,10 +32,8 @@ impl LLM {
 
         let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
 
-        let match_response = translation::Translation::match_target_schema(
-            &snippet,
-            &target_schema
-        ).await?;
+        let match_response =
+            translation::Translation::match_target_schema(&snippet, &target_schema).await?;
 
         log::debug!("match_response: {:?}", match_response);
 
@@ -60,11 +58,10 @@ impl LLM {
                 let lock = read_lock!(meta_context);
 
                 let schema_contexts = lock.schema_contexts.clone().unwrap();
-                let schema_node_path: Path = schema_context.to_path(
-                    schema_contexts
-                )?;
+                let schema_node_path: Path = schema_context.to_path(schema_contexts)?;
 
-                let target_schema_context = lock.translation_schema_contexts
+                let target_schema_context = lock
+                    .translation_schema_contexts
                     .as_ref()
                     .unwrap()
                     .values()
@@ -72,9 +69,8 @@ impl LLM {
                     .unwrap();
 
                 let target_schema_contexts = lock.translation_schema_contexts.clone().unwrap();
-                let target_node_path: Path = target_schema_context.to_path(
-                    target_schema_contexts
-                )?;
+                let target_node_path: Path =
+                    target_schema_context.to_path(target_schema_contexts)?;
                 let target_node_path = target_node_path.with_unique_variables(&schema_node_path);
 
                 (schema_node_path, target_node_path)
@@ -85,7 +81,8 @@ impl LLM {
                 &target_node_path,
                 &snippet,
                 &target_schema,
-            ).await?;
+            )
+            .await?;
 
             log::debug!("variable_mapping: {:?}", variable_mapping);
 
@@ -96,31 +93,44 @@ impl LLM {
 
             return Ok(Some((schema_node_path, target_node_path)));
         } else {
-            log::warn!("Schema node determined to be compatible but could not find target schema node");
+            log::warn!(
+                "Schema node determined to be compatible but could not find target schema node"
+            );
         }
 
         Ok(None)
     }
 
-    pub async fn get_normal_schema(marked_schema: &String) -> Result<(
-        String, // key
-        String, // description
-        Vec<String>, // aliases
-        Path
-    ), Errors> {
+    pub async fn get_normal_schema(
+        marked_schema: &String,
+    ) -> Result<
+        (
+            String,      // key
+            String,      // description
+            Vec<String>, // aliases
+            Path,
+        ),
+        Errors,
+    > {
         log::trace!("In get_normal_schema");
 
         unimplemented!()
     }
 
-    pub async fn categorize_and_summarize(document: String) -> Result<(
-        String, // name
-        String, // description
-        String // structure
-    ), Errors> {
+    pub async fn categorize_and_summarize(
+        document: String,
+    ) -> Result<
+        (
+            String, // name
+            String, // description
+            String, // structure
+        ),
+        Errors,
+    > {
         log::trace!("In categorize_and_summarize");
 
-        let (name, description, structure) = openai::OpenAI::categorize_summarize(&document).await?;
+        let (name, description, structure) =
+            openai::OpenAI::categorize_summarize(&document).await?;
 
         Ok((name, description, structure))
     }
@@ -137,8 +147,10 @@ impl LLM {
                 &context_group.lineage,
                 &field,
                 &value,
-                context_group.snippets.clone()
-            ).await {
+                context_group.snippets.clone(),
+            )
+            .await
+            {
                 Some(transformation) => field_transformations.push(transformation),
                 None => {
                     log::info!("Field eliminated");
@@ -152,7 +164,7 @@ impl LLM {
     pub async fn get_relationships(
         overall_context: String,
         target_subgraph_hash: String,
-        subgraphs: Vec<(String, String)>
+        subgraphs: Vec<(String, String)>,
     ) -> Result<(String, Vec<String>, String), Errors> {
         log::trace!("In get_relationships");
 
@@ -160,7 +172,8 @@ impl LLM {
             overall_context.clone(),
             target_subgraph_hash.clone(),
             subgraphs.clone(),
-        ).await?;
+        )
+        .await?;
 
         Ok((name, matches, description))
     }

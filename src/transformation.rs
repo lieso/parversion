@@ -1,15 +1,15 @@
-use std::sync::{Arc};
-use serde::{Serialize, Deserialize};
+use quick_js::Context as QuickContext;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap};
-use quick_js::{Context as QuickContext};
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use crate::prelude::*;
-use crate::id::{ID};
-use crate::json_node::{Json, JsonNode, JsonMetadata};
 use crate::data_node::DataNode;
-use crate::schema_node::SchemaNode;
+use crate::id::ID;
+use crate::json_node::{Json, JsonMetadata, JsonNode};
 use crate::path::Path;
+use crate::prelude::*;
+use crate::schema_node::SchemaNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -66,7 +66,7 @@ impl HashTransformation {
                     })
                     .collect();
                 format!("let fields = {{ {} }};", fields_js.join(", "))
-            },
+            }
             _ => panic!("Unexpected runtime: {:?}", self.runtime),
         }
     }
@@ -75,15 +75,12 @@ impl HashTransformation {
         match self.runtime {
             Runtime::QuickJS => {
                 format!("JSON.stringify({{ hasherItems }})")
-            },
+            }
             _ => panic!("Unexpected runtime: {:?}", self.runtime),
         }
     }
 
-    pub fn transform(
-        &self,
-        fields: HashMap<String, String>
-    ) -> Hash {
+    pub fn transform(&self, fields: HashMap<String, String>) -> Hash {
         log::trace!("In transform");
 
         let prefix = self.prefix(fields.clone());
@@ -111,7 +108,7 @@ impl HashTransformation {
                 } else {
                     panic!("Expected 'hasherItems' to be an array");
                 }
-            },
+            }
             _ => panic!("Unexpected runtime: {:?}", self.runtime),
         }
     }
@@ -129,8 +126,8 @@ impl XMLElementTransformation {
     fn prefix(&self, element: String, attributes: HashMap<String, String>) -> String {
         let element_code = format!("let element = '{}';", element);
 
-        let attributes_json = serde_json::to_string(&attributes)
-            .expect("Could not serialize attributes");
+        let attributes_json =
+            serde_json::to_string(&attributes).expect("Could not serialize attributes");
         let attributes_code = format!("let attributes = {};", attributes_json);
 
         format!("{}\n{}", element_code, attributes_code)
@@ -140,19 +137,16 @@ impl XMLElementTransformation {
         match self.runtime {
             Runtime::QuickJS => {
                 format!("JSON.stringify({{ element, attributes }})")
-            },
+            }
             _ => panic!("unexpected runtime: {:?}", self.runtime),
         }
     }
-    
+
     pub fn transform(
         &self,
         element: String,
-        attributes: HashMap<String, String>
-    ) -> (
-        Option<String>,
-        HashMap<String, String>
-    ) {
+        attributes: HashMap<String, String>,
+    ) -> (Option<String>, HashMap<String, String>) {
         log::trace!("In transform");
 
         let prefix = self.prefix(element, attributes);
@@ -164,32 +158,34 @@ impl XMLElementTransformation {
             Runtime::QuickJS => {
                 let quick_context = QuickContext::new().unwrap();
 
-                let result =  quick_context.eval_as::<String>(&code).unwrap();
+                let result = quick_context.eval_as::<String>(&code).unwrap();
 
                 let parsed: Value = serde_json::from_str(&result).unwrap();
 
-                let transformed_element = parsed.get("element").and_then(|e|
-                    e.as_str().map(String::from));
+                let transformed_element = parsed
+                    .get("element")
+                    .and_then(|e| e.as_str().map(String::from));
 
-                let transformed_attributes = parsed.get("attributes")
+                let transformed_attributes = parsed
+                    .get("attributes")
                     .and_then(|attr| attr.as_object())
                     .map(|attr_obj| {
-                        attr_obj.iter().map(|(k, v)| {
-                            (k.clone(), v.as_str().unwrap_or("").to_string())
-                        }).collect::<HashMap<String, String>>()
-                    }).unwrap_or_default();
+                        attr_obj
+                            .iter()
+                            .map(|(k, v)| (k.clone(), v.as_str().unwrap_or("").to_string()))
+                            .collect::<HashMap<String, String>>()
+                    })
+                    .unwrap_or_default();
 
                 (transformed_element, transformed_attributes)
-            },
+            }
             _ => panic!("Unexpected runtime: {:?}", self.runtime),
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FieldMetadata {
-}
-
+pub struct FieldMetadata {}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldTransformation {

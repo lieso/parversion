@@ -1,23 +1,23 @@
-use uuid::Uuid;
+use serde::de::{Deserialize, Deserializer, Error as SerdeError, Visitor};
 use serde::ser::{Serialize, Serializer};
-use serde::de::{Deserialize, Deserializer, Visitor, Error as SerdeError};
 use std::fmt;
+use uuid::Uuid;
 
 #[derive(Clone, Debug, Hash)]
 pub struct ID {
-    value: String
+    value: String,
 }
 
 impl ID {
     pub fn new() -> Self {
         ID {
-            value: Uuid::new_v4().to_string()
+            value: Uuid::new_v4().to_string(),
         }
     }
-    
+
     pub fn from_str(value: &str) -> Self {
         ID {
-            value: value.to_string()
+            value: value.to_string(),
         }
     }
 

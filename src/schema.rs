@@ -1,13 +1,13 @@
-use serde::{Serialize, Deserialize};
-use std::sync::{Arc, RwLock};
-use std::collections::{HashMap};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::schema_node::SchemaNode;
-use crate::schema_context::SchemaContext;
-use crate::graph_node::{GraphNode, Graph};
+use crate::graph_node::{Graph, GraphNode};
 use crate::path::Path;
+use crate::prelude::*;
+use crate::schema_context::SchemaContext;
+use crate::schema_node::SchemaNode;
 
 pub type SchemaProperties = HashMap<String, SchemaNode>;
 
@@ -27,43 +27,28 @@ impl Schema {
 
         let mut node_map = HashMap::new();
 
-        fn recurse(
-            node: &SchemaNode,
-            node_map: &mut HashMap<Lineage, SchemaNode>
-        ) {
+        fn recurse(node: &SchemaNode, node_map: &mut HashMap<Lineage, SchemaNode>) {
             node_map.insert(node.lineage.clone(), node.clone());
 
             for child_node in node.properties.values() {
-                recurse(
-                    child_node,
-                    node_map
-                );
+                recurse(child_node, node_map);
             }
 
             if let Some(items) = &node.items {
                 for item in items {
-                    recurse(
-                        item,
-                        node_map
-                    );
+                    recurse(item, node_map);
                 }
             }
         }
 
         for node in self.properties.values() {
-            recurse(
-                node,
-                &mut node_map
-            );
+            recurse(node, &mut node_map);
         }
 
         node_map
     }
 
-    pub fn get_contexts(&self) -> Result<(
-        HashMap<ID, Arc<SchemaContext>>,
-        Graph
-    ), Errors> {
+    pub fn get_contexts(&self) -> Result<(HashMap<ID, Arc<SchemaContext>>, Graph), Errors> {
         log::trace!("In get_contexts");
 
         let mut schema_nodes: HashMap<ID, Arc<SchemaNode>> = HashMap::new();
@@ -89,12 +74,10 @@ impl Schema {
         ) -> Graph {
             schema_nodes.insert(current.id.clone(), Arc::clone(&current));
 
-            let graph_node = Arc::new(RwLock::new(
-                GraphNode::from_schema_node(
-                    Arc::clone(&current),
-                    parents.clone(),
-                )
-            ));
+            let graph_node = Arc::new(RwLock::new(GraphNode::from_schema_node(
+                Arc::clone(&current),
+                parents.clone(),
+            )));
 
             let schema_context = Arc::new(SchemaContext {
                 id: ID::new(),
@@ -104,7 +87,10 @@ impl Schema {
             });
 
             contexts.insert(current.id.clone(), Arc::clone(&schema_context));
-            contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&schema_context));
+            contexts.insert(
+                read_lock!(graph_node).id.clone(),
+                Arc::clone(&schema_context),
+            );
 
             {
                 let children: Vec<Graph> = current
@@ -122,7 +108,8 @@ impl Schema {
 
                 let mut write_lock = write_lock!(graph_node);
 
-                let child_hashes: Vec<Hash> = children.iter()
+                let child_hashes: Vec<Hash> = children
+                    .iter()
                     .map(|child| read_lock!(child).hash.clone())
                     .collect();
 
@@ -154,21 +141,22 @@ impl Schema {
             return Err(Errors::SchemaNotProvided);
         }
 
-        let serde_value: Value = serde_json::from_str(value)
-            .expect("Could not parse json schema string");
+        let serde_value: Value =
+            serde_json::from_str(value).expect("Could not parse json schema string");
 
-        let name = serde_value.get("title")
+        let name = serde_value
+            .get("title")
             .and_then(|v| v.as_str())
             .ok_or_else(|| Errors::JsonSchemaParseError("Unable to obtain title".to_string()))?;
         log::debug!("name: {}", name);
 
-        let description = serde_value.get("description")
+        let description = serde_value
+            .get("description")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Errors::JsonSchemaParseError("Unable to obtain description".to_string()))?;
+            .ok_or_else(|| {
+                Errors::JsonSchemaParseError("Unable to obtain description".to_string())
+            })?;
         log::debug!("description: {}", description);
-
-
-
 
         //
 
@@ -177,22 +165,15 @@ impl Schema {
 
         //
 
-
-
-
         let properties = if let Some(props) = serde_value["properties"].as_object() {
             props
                 .iter()
-                .map(|(key, val)| {
-                    match SchemaNode::from_serde_value(
-                        &val,
-                        &key,
-                        &lineage,
-                    ) {
+                .map(
+                    |(key, val)| match SchemaNode::from_serde_value(&val, &key, &lineage) {
                         Ok(schema_node) => Ok((key.clone(), schema_node)),
                         Err(e) => Err(e),
-                    }
-                })
+                    },
+                )
                 .collect::<Result<HashMap<_, _>, Errors>>()?
         } else {
             HashMap::new()
@@ -214,7 +195,14 @@ impl Schema {
             let indent_str = "  ".repeat(indent * 2);
             let mut result = format!(
                 "{}\n{}Name: {}\n{}Description: {}\n{}Data type: {}\n{}",
-                indent_str, indent_str, node.name, indent_str, node.description, indent_str, node.data_type, indent_str
+                indent_str,
+                indent_str,
+                node.name,
+                indent_str,
+                node.description,
+                indent_str,
+                node.data_type,
+                indent_str
             );
 
             if !node.properties.is_empty() {
@@ -260,7 +248,10 @@ impl Schema {
         log::debug!("Initial segments: {:?}", segments);
 
         if segments.next() != Some(&self.name) {
-            log::info!("First segment does not match schema name '{}', continuing without it.", self.name);
+            log::info!(
+                "First segment does not match schema name '{}', continuing without it.",
+                self.name
+            );
             segments = path.split('.');
         } else {
             log::debug!("First segment matches schema name '{}'", self.name);
@@ -302,9 +293,7 @@ impl Schema {
                             return None;
                         }
                     }
-                    _ => {
-                        current_node = node.properties.get(segment)
-                    }
+                    _ => current_node = node.properties.get(segment),
                 }
             } else {
                 return None;

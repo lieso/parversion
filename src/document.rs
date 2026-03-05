@@ -1,32 +1,30 @@
-use std::sync::{Arc, RwLock};
-use serde::{Serialize, Deserialize};
-use serde_json::{json, Value, Map, to_string};
-use xmltree::{Element};
-use scraper::{Html, ElementRef, Node};
 use ego_tree::NodeRef;
-use std::collections::{HashSet, HashMap, VecDeque};
+use scraper::{ElementRef, Html, Node};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, to_string, Map, Value};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{Arc, RwLock};
+use xmltree::Element;
 
-use crate::prelude::*;
-use crate::document_node::{DocumentNode};
-use crate::provider::Provider;
-use crate::profile::Profile;
-use crate::hash::{
-    Hash,
-};
-use crate::schema_node::{SchemaNode, arrayify_schema_node};
-use crate::schema::Schema;
-use crate::graph_node::{GraphNode};
-use crate::context::{Context};
+use crate::basis_graph::BasisGraph;
+use crate::basis_network::BasisNetwork;
+use crate::basis_network::NetworkRelationship;
+use crate::basis_node::BasisNode;
+use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::document_format::DocumentFormat;
-use crate::path::Path;
-use crate::path_segment::{PathSegmentKind};
-use crate::basis_network::{NetworkRelationship};
+use crate::document_node::DocumentNode;
+use crate::graph_node::Graph;
+use crate::graph_node::GraphNode;
+use crate::hash::Hash;
 use crate::json_node::JsonNode;
-use crate::basis_graph::BasisGraph;
-use crate::basis_node::BasisNode;
-use crate::basis_network::BasisNetwork;
-use crate::graph_node::{Graph};
+use crate::path::Path;
+use crate::path_segment::PathSegmentKind;
+use crate::prelude::*;
+use crate::profile::Profile;
+use crate::provider::Provider;
+use crate::schema::Schema;
+use crate::schema_node::{arrayify_schema_node, SchemaNode};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -60,7 +58,9 @@ impl Document {
 
         let graph_root = {
             let lock = read_lock!(meta_context);
-            lock.graph_root.clone().ok_or(Errors::GraphRootNotProvided)?
+            lock.graph_root
+                .clone()
+                .ok_or(Errors::GraphRootNotProvided)?
         };
         let basis_graph: Arc<BasisGraph> = {
             let lock = read_lock!(meta_context);
@@ -100,7 +100,7 @@ impl Document {
                 date: None,
             },
             data,
-            schema: Some(schema)
+            schema: Some(schema),
         };
 
         Ok(document)
@@ -108,33 +108,33 @@ impl Document {
 
     pub fn from_schema_transformations(
         meta_context: Arc<RwLock<MetaContext>>,
-        document_version: DocumentVersion
+        document_version: DocumentVersion,
     ) -> Result<Self, Errors> {
         log::trace!("In from_schema_transformations");
 
         let document: Arc<Document> = {
             let lock = read_lock!(meta_context);
-            lock.get_document(document_version).clone().ok_or(Errors::DocumentVersionNotFound)?
+            lock.get_document(document_version)
+                .clone()
+                .ok_or(Errors::DocumentVersionNotFound)?
         };
 
         match document.document_type {
-            DocumentType::Json => {
-                match serde_json::from_str::<Value>(&document.data) {
-                    Ok(json_value) => {
-                        let schema_nodes = document.schema.clone().unwrap().collect_schema_nodes();
+            DocumentType::Json => match serde_json::from_str::<Value>(&document.data) {
+                Ok(json_value) => {
+                    let schema_nodes = document.schema.clone().unwrap().collect_schema_nodes();
 
-                        apply_schema_transformations_json(
-                            Arc::clone(&meta_context),
-                            &schema_nodes,
-                            &json_value,
-                        )
-                    }
-                    Err(e) => {
-                        log::error!("Failed to parse JSON: {}", e);
-                        Err(Errors::UnexpectedError)
-                    }
+                    apply_schema_transformations_json(
+                        Arc::clone(&meta_context),
+                        &schema_nodes,
+                        &json_value,
+                    )
                 }
-            }
+                Err(e) => {
+                    log::error!("Failed to parse JSON: {}", e);
+                    Err(Errors::UnexpectedError)
+                }
+            },
             _ => {
                 log::error!("Unexpected document type: {:?}", document.document_type);
                 unimplemented!()
@@ -146,10 +146,13 @@ impl Document {
         &self,
         meta_context: Arc<RwLock<MetaContext>>,
         metadata: &Metadata,
-    ) -> Result<(
-        HashMap<ID, Arc<Context>>, // context
-        Arc<RwLock<GraphNode>> // graph root
-    ), Errors> {
+    ) -> Result<
+        (
+            HashMap<ID, Arc<Context>>, // context
+            Arc<RwLock<GraphNode>>,    // graph root
+        ),
+        Errors,
+    > {
         log::trace!("In get_contexts");
 
         let lock = read_lock!(meta_context);
@@ -169,22 +172,18 @@ impl Document {
             parents: Vec<Arc<RwLock<GraphNode>>>,
             profile: &Profile,
         ) -> Arc<RwLock<GraphNode>> {
-            let data_node = Arc::new(
-                DataNode::new(
-                    profile.meaningful_fields.clone().unwrap(),
-                    &profile.hash_transformation.clone().unwrap(),
-                    read_lock!(document_node).get_fields(),
-                    read_lock!(document_node).get_description(),
-                    parent_lineage,
-                )
-            );
-
-            let graph_node = Arc::new(RwLock::new(
-                GraphNode::from_data_node(
-                    Arc::clone(&data_node),
-                    parents.clone(),
-                )
+            let data_node = Arc::new(DataNode::new(
+                profile.meaningful_fields.clone().unwrap(),
+                &profile.hash_transformation.clone().unwrap(),
+                read_lock!(document_node).get_fields(),
+                read_lock!(document_node).get_description(),
+                parent_lineage,
             ));
+
+            let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
+                Arc::clone(&data_node),
+                parents.clone(),
+            )));
 
             let context = Arc::new(Context {
                 id: ID::new(),
@@ -211,14 +210,15 @@ impl Document {
                             &data_node.lineage,
                             contexts,
                             vec![Arc::clone(&graph_node)],
-                            profile
+                            profile,
                         )
                     })
                     .collect();
 
                 let mut write_lock = graph_node.write().unwrap();
 
-                let child_hashes: Vec<Hash> = children.iter()
+                let child_hashes: Vec<Hash> = children
+                    .iter()
                     .map(|child| read_lock!(child).hash.clone())
                     .collect();
 
@@ -244,7 +244,7 @@ impl Document {
             &initial_lineage,
             &mut contexts,
             Vec::new(),
-            &profile
+            &profile,
         );
 
         Ok((contexts, graph_root))
@@ -258,7 +258,7 @@ impl Document {
         if value.trim().is_empty() {
             return Err(Errors::DocumentNotProvided);
         }
-        
+
         Ok(Document {
             document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
@@ -282,7 +282,6 @@ impl Document {
         log::trace!("In document/get_document_node");
 
         if let Some(dom) = self.to_dom() {
-
             let mut xml = String::from("");
 
             // TODO: do we want to do anything with this?
@@ -307,7 +306,7 @@ impl Document {
 
     pub async fn perform_analysis<P: Provider>(
         &mut self,
-        provider: Arc<P>
+        provider: Arc<P>,
     ) -> Result<Profile, Errors> {
         log::trace!("In perform_analysis");
 
@@ -319,17 +318,18 @@ impl Document {
 
                 let mut raw_features: HashSet<String> = HashSet::new();
 
-                get_xml_features(
-                    dom.tree.root(),
-                    &mut String::from(""),
-                    &mut raw_features,
-                );
+                get_xml_features(dom.tree.root(), &mut String::from(""), &mut raw_features);
 
-                Some(raw_features.iter().map(|feature| {
-                    let mut hash = Hash::new();
-                    hash.push(feature).finalize().clear_items();
-                    hash.clone()
-                }).collect())
+                Some(
+                    raw_features
+                        .iter()
+                        .map(|feature| {
+                            let mut hash = Hash::new();
+                            hash.push(feature).finalize().clear_items();
+                            hash.clone()
+                        })
+                        .collect(),
+                )
             } else {
                 None
             }
@@ -368,11 +368,7 @@ impl Document {
     }
 }
 
-fn get_xml_features(
-    node: NodeRef<Node>,
-    path: &mut String,
-    features: &mut HashSet<String>,
-) {
+fn get_xml_features(node: NodeRef<Node>, path: &mut String, features: &mut HashSet<String>) {
     match node.value() {
         Node::Document => {
             for child in node.children() {
@@ -397,7 +393,12 @@ fn get_xml_features(
     }
 }
 
-fn walk(xhtml: &mut String, node: NodeRef<Node>, indent: usize, extracted_docs: &mut Vec<Document>) {
+fn walk(
+    xhtml: &mut String,
+    node: NodeRef<Node>,
+    indent: usize,
+    extracted_docs: &mut Vec<Document>,
+) {
     let real_indent = " ".repeat(indent * 2);
 
     match node.value() {
@@ -413,10 +414,10 @@ fn walk(xhtml: &mut String, node: NodeRef<Node>, indent: usize, extracted_docs: 
             if !text.trim().is_empty() {
                 xhtml.push_str(&text);
             }
-        },
+        }
         Node::Comment(_) => {
             // Ignoring HTML comments
-        },
+        }
         Node::Element(element) => {
             let tag_name = element.name();
 
@@ -427,7 +428,7 @@ fn walk(xhtml: &mut String, node: NodeRef<Node>, indent: usize, extracted_docs: 
                 let attr_value = attr_value.trim();
 
                 let is_html = is_likely_html(attr_value);
-                let _is_javascript = false;  // TODO: Check if attr_value is valid JavaScript
+                let _is_javascript = false; // TODO: Check if attr_value is valid JavaScript
 
                 if is_html {
                     let html_doc = Document {
@@ -459,7 +460,7 @@ fn walk(xhtml: &mut String, node: NodeRef<Node>, indent: usize, extracted_docs: 
             }
 
             xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
-        },
+        }
         _ => {}
     }
 }
@@ -476,12 +477,11 @@ fn is_likely_html(value: &str) -> bool {
     }
 
     // Simple regex-like check for tag patterns: <letters...>
-    let has_tag_pattern = value.chars()
+    let has_tag_pattern = value
+        .chars()
         .collect::<Vec<char>>()
         .windows(3)
-        .any(|window| {
-            window[0] == '<' && window[1].is_alphabetic()
-        });
+        .any(|window| window[0] == '<' && window[1].is_alphabetic());
 
     if !has_tag_pattern {
         return false;
@@ -544,9 +544,8 @@ fn escape_xml(data: &str) -> String {
 fn apply_schema_transformations_json(
     meta_context: Arc<RwLock<MetaContext>>,
     schema_nodes: &HashMap<Lineage, SchemaNode>,
-    json: &Value
+    json: &Value,
 ) -> Result<Document, Errors> {
-
     let mut result: Map<String, Value> = Map::new();
 
     let basis_graph: Arc<BasisGraph> = {
@@ -586,10 +585,10 @@ fn apply_schema_transformations_json(
                         &lineage,
                         schema_nodes,
                         result,
-                        &path.with_key_segment(k.clone())
+                        &path.with_key_segment(k.clone()),
                     );
                 }
-            },
+            }
             _ => {
                 if let Some(current_schema_node) = schema_nodes.get(parent_lineage) {
                     let lock = read_lock!(meta_context);
@@ -598,21 +597,22 @@ fn apply_schema_transformations_json(
                         if let Some(transformation) = schema_transformations.get(parent_lineage) {
                             if let Some(source) = &transformation.source {
                                 if let Some(target) = &transformation.target {
-                                    if let Ok(mapping) = Path::map_variables_to_indices(
-                                        &source,
-                                        &path
-                                    ) {
-                                        let mapping_segments = mapping.iter()
+                                    if let Ok(mapping) =
+                                        Path::map_variables_to_indices(&source, &path)
+                                    {
+                                        let mapping_segments = mapping
+                                            .iter()
                                             .map(|(var, &idx)| {
                                                 (var.clone(), PathSegmentKind::Index(idx))
                                             })
                                             .collect();
 
-                                        let indexed_target = target.with_mapped_variables(&mapping_segments);
+                                        let indexed_target =
+                                            target.with_mapped_variables(&mapping_segments);
 
                                         indexed_target.insert_into_map(
                                             result,
-                                            value.as_str().unwrap().to_string()
+                                            value.as_str().unwrap().to_string(),
                                         );
                                     } else {
                                         // TODO
@@ -700,9 +700,8 @@ fn process_network(
 
             let maybe_basis_network = {
                 let lock = read_lock!(meta_context);
-                lock.get_basis_network_by_subgraph_hash(
-                    &child_subgraph_hash.to_string().unwrap()
-                ).expect("Could not get basis network by subgraph hash")
+                lock.get_basis_network_by_subgraph_hash(&child_subgraph_hash.to_string().unwrap())
+                    .expect("Could not get basis network by subgraph hash")
             };
 
             if let Some(basis_network) = maybe_basis_network {
@@ -742,7 +741,9 @@ fn process_network(
                             subsequent_lock.subgraph_hash.clone()
                         };
 
-                        if associated_graphs.contains(&subsequent_subgraph_hash.to_string().unwrap()) {
+                        if associated_graphs
+                            .contains(&subsequent_subgraph_hash.to_string().unwrap())
+                        {
                             process_network(
                                 meta_context.clone(),
                                 subsequent_child.clone(),
@@ -751,7 +752,9 @@ fn process_network(
                                 &schema_node.lineage,
                             )?;
 
-                            associated_graphs.retain(|item| item != &subsequent_subgraph_hash.to_string().unwrap());
+                            associated_graphs.retain(|item| {
+                                item != &subsequent_subgraph_hash.to_string().unwrap()
+                            });
                             processed_child_ids.insert(subsequent_child_id);
                         }
                     }
@@ -771,10 +774,8 @@ fn process_network(
                         if let Value::Array(ref mut arr) = existing_object {
                             arr.push(inner_result_value.clone());
                         } else {
-                            *existing_object = json!(vec![
-                                existing_object.clone(),
-                                inner_result_value.clone()
-                            ]);
+                            *existing_object =
+                                json!(vec![existing_object.clone(), inner_result_value.clone()]);
                         }
 
                         let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
@@ -816,11 +817,13 @@ fn process_node(
     };
 
     if let Some(basis_node) = maybe_basis_node {
-        let json_nodes: Vec<JsonNode> = basis_node.transformations
+        let json_nodes: Vec<JsonNode> = basis_node
+            .transformations
             .clone()
             .into_iter()
             .map(|transformation| {
-                transformation.transform(Arc::clone(&context.data_node))
+                transformation
+                    .transform(Arc::clone(&context.data_node))
                     .expect("Could not transform data node")
             })
             .collect();
@@ -830,12 +833,8 @@ fn process_node(
             let key = json.key.clone();
             let trimmed_value = json!(json.value.trim().to_string());
 
-            let mut schema_node = SchemaNode::new(
-                &key,
-                &json_node.description,
-                schema_lineage,
-                "string",
-            );
+            let mut schema_node =
+                SchemaNode::new(&key, &json_node.description, schema_lineage, "string");
 
             if let Some(existing_value) = result.get_mut(&schema_node.name) {
                 if let Value::Array(ref mut arr) = existing_value {

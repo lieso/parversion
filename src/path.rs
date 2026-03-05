@@ -1,14 +1,14 @@
-use serde::{Serialize, Deserialize};
-use serde_json::{json, Value, Map};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 
-use crate::prelude::*;
 use crate::path_segment::{PathSegment, PathSegmentKind};
+use crate::prelude::*;
 
 pub const AVAILABLE_VARIABLES: &[char] = &[
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
+    't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -19,7 +19,7 @@ pub struct Path {
 impl Path {
     pub fn new() -> Self {
         Path {
-            segments: Vec::new()
+            segments: Vec::new(),
         }
     }
 
@@ -45,7 +45,8 @@ impl Path {
                 let content = &segment[1..segment.len() - 1];
 
                 if content.is_empty() {
-                    let variable = AVAILABLE_VARIABLES.iter()
+                    let variable = AVAILABLE_VARIABLES
+                        .iter()
                         .find(|&v| !used_variables.contains(v))
                         .expect("Ran out of variable index characters");
 
@@ -67,16 +68,20 @@ impl Path {
     }
 
     pub fn to_string(&self) -> String {
-        self.segments.iter().enumerate().fold(
-            String::new(),
-            |acc, (i, segment)| {
+        self.segments
+            .iter()
+            .enumerate()
+            .fold(String::new(), |acc, (i, segment)| {
                 let needs_dot = i > 0 && matches!(segment.kind, PathSegmentKind::Key(_));
                 let prefix = if needs_dot { "." } else { "" };
                 format!("{}{}{}", acc, prefix, segment.to_string())
             })
     }
 
-    pub fn map_variables_to_indices(variable_path: &Path, index_path: &Path) -> Result<HashMap<char, usize>, Errors> {
+    pub fn map_variables_to_indices(
+        variable_path: &Path,
+        index_path: &Path,
+    ) -> Result<HashMap<char, usize>, Errors> {
         if variable_path.segments.len() != index_path.segments.len() {
             log::error!("Paths have different lengths");
             return Err(Errors::UnexpectedError);
@@ -84,7 +89,11 @@ impl Path {
 
         let mut mapping = HashMap::new();
 
-        for (var_segment, idx_segment) in variable_path.segments.iter().zip(index_path.segments.iter()) {
+        for (var_segment, idx_segment) in variable_path
+            .segments
+            .iter()
+            .zip(index_path.segments.iter())
+        {
             match (&var_segment.kind, &idx_segment.kind) {
                 (PathSegmentKind::Key(key1), PathSegmentKind::Key(key2)) => {
                     if key1 != key2 {
@@ -119,19 +128,25 @@ impl Path {
 
     pub fn with_index_segment(&self, index: usize) -> Self {
         let mut new_path = self.clone();
-        new_path.segments.push(PathSegment::new_index_segment(index));
+        new_path
+            .segments
+            .push(PathSegment::new_index_segment(index));
         new_path
     }
 
     pub fn with_index_segment_increment(&self, index: usize) -> Self {
         let mut new_path = self.clone();
-        new_path.segments.push(PathSegment::new_index_segment(index + 1));
+        new_path
+            .segments
+            .push(PathSegment::new_index_segment(index + 1));
         new_path
     }
 
     pub fn with_variable_index_segment(&self, variable: char) -> Self {
         let mut new_path = self.clone();
-        new_path.segments.push(PathSegment::new_variable_index_segment(variable));
+        new_path
+            .segments
+            .push(PathSegment::new_variable_index_segment(variable));
         new_path
     }
 
@@ -143,7 +158,8 @@ impl Path {
 
     pub fn with_unique_variables(&self, other: &Path) -> Self {
         // Collect all variable characters used in the other path
-        let mut used_variables: HashSet<char> = other.segments
+        let mut used_variables: HashSet<char> = other
+            .segments
             .iter()
             .filter_map(|seg| {
                 if let PathSegmentKind::VariableIndex(var) = seg.kind {
@@ -208,7 +224,7 @@ impl Path {
                     let new_segment = if let Some(mapped_segment_kind) = mapping.get(var) {
                         PathSegment {
                             id: ID::new(),
-                            kind: mapped_segment_kind.clone()
+                            kind: mapped_segment_kind.clone(),
                         }
                     } else {
                         segment.clone()
@@ -222,11 +238,7 @@ impl Path {
         new_path
     }
 
-    pub fn insert_into_map(
-        &self,
-        map: &mut Map<String, Value>,
-        value: String,
-    ) {
+    pub fn insert_into_map(&self, map: &mut Map<String, Value>, value: String) {
         let mut segments_iter = self.segments.iter().peekable();
 
         let first_segment = match segments_iter.next() {
@@ -255,16 +267,16 @@ impl Path {
             return;
         }
 
-        let mut cursor: &mut Value = map
-            .entry(root_key.clone())
-            .or_insert(root_default);
+        let mut cursor: &mut Value = map.entry(root_key.clone()).or_insert(root_default);
 
         while let Some(segment) = segments_iter.next() {
             let next_segment_opt = segments_iter.peek();
 
             match &segment.kind {
                 PathSegmentKind::Key(key) => {
-                    let obj = cursor.as_object_mut().expect("Path traverses through non-object");
+                    let obj = cursor
+                        .as_object_mut()
+                        .expect("Path traverses through non-object");
 
                     // Final segment
                     if next_segment_opt.is_none() {
@@ -287,7 +299,9 @@ impl Path {
                     cursor = obj.entry(key.clone()).or_insert(default);
                 }
                 PathSegmentKind::Index(idx) => {
-                    let vec = cursor.as_array_mut().expect("Path traverses through non-array");
+                    let vec = cursor
+                        .as_array_mut()
+                        .expect("Path traverses through non-array");
 
                     // Ensure array is large enough
                     while vec.len() <= *idx {
@@ -298,7 +312,7 @@ impl Path {
                     if next_segment_opt.is_none() {
                         vec[*idx] = Value::String(value.clone());
                     }
-                    
+
                     // Middle segment
                     let next_is_index = matches!(
                         next_segment_opt,

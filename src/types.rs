@@ -4,7 +4,7 @@ use tokio::task::JoinError;
 pub enum DocumentVersion {
     InputDocument,
     OrganizedDocument,
-    NormalizedDocument
+    NormalizedDocument,
 }
 
 #[derive(Clone, Debug)]
