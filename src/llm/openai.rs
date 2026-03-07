@@ -34,13 +34,6 @@ struct AssociationsResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct SummaryResponse {
-    pub category: String,
-    pub description: String,
-    pub structure: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 struct NormalResponse {
     pub new_property_name: String,
     pub alternative_property_names: Vec<String>,
@@ -436,85 +429,6 @@ In addition to the new property name:
         };
 
         Some(transformation)
-    }
-
-    pub async fn categorize_summarize(
-        document: &String,
-    ) -> Result<(String, String, String), Errors> {
-        log::trace!("In categorize_summarize");
-
-        let document = if document.len() > 3000 {
-            log::warn!("truncating document");
-            &format!("{}...", &document[..3000])
-        } else {
-            document
-        };
-
-        let system_prompt = format!(
-            r##"
- You analyze a condensed website, extrapolate from this minimized version, and provide the following information about the original website the condensed document was derived from:
- 1. category: Use one or two words to categorize this type of website. Provide response in snake case.
- 2. description: A short paragraph describing what content this website shows.
- 3. structure: A detailed description on how the HTML of the page is structured and the way content is organized from a technical perspective.
-     "##
-        );
-        let user_prompt = format!(
-            r##"
- [Document]
- {}
-     "##,
-            document
-        );
-
-        let response_format = json!({
-            "type": "json_schema",
-            "name": "document_summary",
-            "strict": true,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "category": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "structure": {
-                        "type": "string"
-                    }
-                },
-                "required": ["category", "description", "structure"],
-                "additionalProperties": false
-            }
-        });
-
-        match Self::send_openai_request::<SummaryResponse>(
-            &system_prompt,
-            &user_prompt,
-            response_format,
-        )
-        .await
-        {
-            Ok(response) => {
-                log::debug!("╔════════════════════════════╗");
-                log::debug!("║       SUMMARY START        ║");
-                log::debug!("╚════════════════════════════╝");
-
-                log::debug!("***system_prompt***\n{}", system_prompt);
-                log::debug!("***user_prompt***\n{}", user_prompt);
-                log::debug!("***response***\n{:?}", response);
-
-                log::debug!("╔═══════════════════════════╗");
-                log::debug!("║      SUMMARY END          ║");
-                log::debug!("╚═══════════════════════════╝");
-
-                Ok((response.category, response.description, response.structure))
-            }
-            Err(e) => {
-                log::error!("Failed to get response from OpenAI: {}", e);
-                Err(Errors::UnexpectedError)
-            }
-        }
     }
 
     pub async fn get_relationships(

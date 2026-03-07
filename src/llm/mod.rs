@@ -155,24 +155,6 @@ impl LLM {
         unimplemented!()
     }
 
-    pub async fn categorize_and_summarize(
-        document: String,
-    ) -> Result<
-        (
-            String, // name
-            String, // description
-            String, // structure
-        ),
-        Errors,
-    > {
-        log::trace!("In categorize_and_summarize");
-
-        let (name, description, structure) =
-            openai::OpenAI::categorize_summarize(&document).await?;
-
-        Ok((name, description, structure))
-    }
-
     pub async fn get_field_transformations(
         context_group: ContextGroup,
     ) -> Result<Vec<FieldTransformation>, Errors> {
