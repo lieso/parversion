@@ -8,6 +8,7 @@ use crate::transformation::{FieldTransformation, SchemaTransformation};
 
 mod openai;
 mod translation;
+mod categorization;
 
 pub struct LLM {}
 
@@ -99,6 +100,43 @@ impl LLM {
         }
 
         Ok(None)
+    }
+
+    pub async fn categorize(document: String) -> Result<
+        (
+            String, // name
+            String, // description
+            String, // structure
+            Vec<String>, // aliases
+        ),
+        Errors
+    > {
+        log::trace!("In categorize");
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  CATEGORIZE GRAPH START                       ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        let categorization_response = categorization::Categorization::categorize_graph(
+            &document
+        ).await?;
+
+        let result = (
+            categorization_response.category,
+            categorization_response.description,
+            categorization_response.structure,
+            categorization_response.one_word_aliases
+                .iter()
+                .chain(
+                    &categorization_response.two_word_aliases
+                )
+                .cloned()
+                .collect()
+        );
+
+        Ok(result)
     }
 
     pub async fn get_normal_schema(

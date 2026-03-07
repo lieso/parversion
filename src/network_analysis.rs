@@ -40,11 +40,12 @@ pub async fn get_basis_graph<P: Provider>(
         };
     }
 
-    let (name, description, structure) = LLM::categorize_and_summarize(original_document).await?;
+    let (name, description, structure, aliases) = LLM::categorize(original_document).await?;
 
     let basis_graph = BasisGraph {
         id: ID::new(),
         name,
+        aliases,
         description,
         structure,
         lineage: lineage.clone(),
