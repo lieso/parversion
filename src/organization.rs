@@ -15,69 +15,13 @@ use crate::provider::Provider;
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
     provider: Arc<P>,
-    mut document: Document,
+    document: Document,
     options: &Options,
     metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
-
-    let meta_context = Arc::new(RwLock::new(MetaContext::new()));
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.add_document_version(DocumentVersion::InputDocument, document.clone());
-    }
-
-    // ******************************************************************************************************
-
-    if metadata.document_type == Some(DocumentType::JavaScript) {
-        let functions = program_to_functions(document.data.clone());
-
-        for function in functions.iter() {
-            log::debug!("hash: {}", function.hash);
-            log::debug!("{}\n", function.code);
-        }
-
-        log::debug!("function count: {}", functions.len());
-
-        {
-            let mut lock = write_lock!(meta_context);
-            lock.update_functions(functions);
-        }
-
-        let something =
-            functions_to_operations(Arc::clone(&provider), meta_context.clone()).await?;
-
-        unimplemented!();
-    }
-
-    // ******************************************************************************************************
-
-    log::info!("Performing document analysis");
-    let profile = document.perform_analysis(Arc::clone(&provider)).await?;
-    let profile = Arc::new(profile);
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_profile(profile);
-    }
-
-    log::info!("Traversing document");
-    let (contexts, graph_root) = document.get_contexts(meta_context.clone(), metadata)?;
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_data_structures(contexts, graph_root);
-    }
-
-    log::info!("Getting basis graph");
-    let basis_graph =
-        get_basis_graph(Arc::clone(&provider), meta_context.clone(), &options).await?;
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_basis_graph(basis_graph);
-    }
+    let meta_context =
+        organize_to_basis_graph(Arc::clone(&provider), document, options, metadata).await?;
 
     log::info!("Getting basis nodes");
     let basis_nodes =
@@ -114,6 +58,88 @@ pub async fn organize<P: Provider>(
     }
 
     Ok(meta_context)
+}
+
+#[allow(dead_code)]
+pub async fn organize_to_basis_graph<P: Provider>(
+    provider: Arc<P>,
+    mut document: Document,
+    options: &Options,
+    metadata: &Metadata,
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+    log::trace!("In organize_to_basis_graph");
+
+    let meta_context = Arc::new(RwLock::new(MetaContext::new()));
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.add_document_version(DocumentVersion::InputDocument, document.clone());
+    }
+
+    // ******************************************************************************************************
+
+    if metadata.document_type == Some(DocumentType::JavaScript) {
+        let functions = program_to_functions(document.data.clone());
+
+        for function in functions.iter() {
+            log::debug!("hash: {}", function.hash);
+            log::debug!("{}\n", function.code);
+        }
+
+        log::debug!("function count: {}", functions.len());
+
+        {
+            let mut lock = write_lock!(meta_context);
+            lock.update_functions(functions);
+        }
+
+        let _something =
+            functions_to_operations(Arc::clone(&provider), meta_context.clone()).await?;
+
+        unimplemented!();
+    }
+
+    // ******************************************************************************************************
+
+    log::info!("Performing document analysis");
+    let profile = document.perform_analysis(Arc::clone(&provider)).await?;
+    let profile = Arc::new(profile);
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_profile(profile);
+    }
+
+    log::info!("Traversing document");
+    let (contexts, graph_root) = document.get_contexts(meta_context.clone(), metadata)?;
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_data_structures(contexts, graph_root);
+    }
+
+    log::info!("Getting basis graph");
+    let basis_graph =
+        get_basis_graph(Arc::clone(&provider), meta_context.clone(), &options).await?;
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_basis_graph(basis_graph);
+    }
+
+    Ok(meta_context)
+}
+
+#[allow(dead_code)]
+pub async fn organize_document_to_basis_graph<P: Provider>(
+    provider: Arc<P>,
+    document: Document,
+    _options: &Options,
+    metadata: &Metadata,
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+    log::trace!("In organize_document_to_basis_graph");
+
+    organize_to_basis_graph(Arc::clone(&provider), document, _options, metadata).await
 }
 
 #[allow(dead_code)]
@@ -165,6 +191,20 @@ pub async fn organize_text<P: Provider>(
 }
 
 #[allow(dead_code)]
+pub async fn organize_text_to_basis_graph<P: Provider>(
+    provider: Arc<P>,
+    text: String,
+    _options: &Options,
+    metadata: &Metadata,
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+    log::trace!("In organize_text_to_basis_graph");
+
+    let document = Document::from_string(text, _options, metadata)?;
+
+    organize_to_basis_graph(Arc::clone(&provider), document, _options, metadata).await
+}
+
+#[allow(dead_code)]
 pub async fn organize_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -196,6 +236,24 @@ pub async fn organize_file<P: Provider>(
     })?;
 
     organize_text(Arc::clone(&provider), text, _options, metadata).await
+}
+
+#[allow(dead_code)]
+pub async fn organize_file_to_basis_graph<P: Provider>(
+    provider: Arc<P>,
+    path: &str,
+    _options: &Options,
+    metadata: &Metadata,
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+    log::trace!("In organize_file_to_basis_graph");
+    log::debug!("file path: {}", path);
+
+    let text = get_file_as_text(path).map_err(|err| {
+        log::error!("Failed to get file as text: {:?}", err);
+        Errors::FileInputError
+    })?;
+
+    organize_text_to_basis_graph(Arc::clone(&provider), text, _options, metadata).await
 }
 
 #[allow(dead_code)]

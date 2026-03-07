@@ -140,6 +140,10 @@ impl MetaContext {
         self.basis_graph = Some(graph);
     }
 
+    pub fn get_basis_graph_clone(&self) -> Option<Arc<BasisGraph>> {
+        self.basis_graph.as_ref().map(Arc::clone)
+    }
+
     pub fn update_basis_nodes(&mut self, nodes: HashMap<ID, Arc<BasisNode>>) {
         self.basis_nodes = Some(nodes);
     }
