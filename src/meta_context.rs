@@ -140,7 +140,7 @@ impl MetaContext {
         self.basis_graph = Some(graph);
     }
 
-    pub fn get_basis_graph_clone(&self) -> Option<Arc<BasisGraph>> {
+    pub fn get_basis_graph(&self) -> Option<Arc<BasisGraph>> {
         self.basis_graph.as_ref().map(Arc::clone)
     }
 
