@@ -20,6 +20,7 @@ pub async fn organize<P: Provider>(
     metadata: &Metadata,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
+
     let meta_context =
         organize_to_basis_graph(Arc::clone(&provider), document, options, metadata).await?;
 
