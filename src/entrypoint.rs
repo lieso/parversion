@@ -11,6 +11,7 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::sync::mpsc;
 
 use crate::config::CONFIG;
 use crate::document::DocumentType;
@@ -42,13 +43,21 @@ pub async fn run() -> Result<(), Errors> {
         return Ok(());
     }
 
+    let execution_context = init_execution_context();
     let provider = init_provider().await?;
     let options = get_options(&matches)?;
     let metadata = get_metadata(&matches)?;
     let schema: Option<String> = get_schema(&matches).await?;
     let document: String = get_document(&matches).await?;
 
-    let package = determine_document(provider, schema, document, options, metadata).await?;
+    let package = determine_document(
+        provider,
+        schema,
+        document,
+        options,
+        metadata,
+        execution_context.clone(),
+    ).await?;
 
     let document_format = document_format::DocumentFormat::default();
 
@@ -260,6 +269,7 @@ async fn determine_document<P: Provider + ?Sized>(
     document: String,
     options: Options,
     metadata: Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::debug!("options: {:?}", options);
     log::debug!("metadata: {:?}", metadata);
@@ -271,12 +281,26 @@ async fn determine_document<P: Provider + ?Sized>(
             &options,
             &metadata,
             &schema,
+            execution_context.clone()
         )
         .await
     } else {
         normalization::normalize_text_to_package(provider.clone(), document, &options, &metadata)
             .await
     }
+}
+
+fn init_execution_context() -> Arc<ExecutionContext> {
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    let execution_context = ExecutionContext::with_progress(tx);
+
+    tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            println!("Progress: {:?}", event);
+        }
+    });
+
+    execution_context
 }
 
 async fn init_provider() -> Result<Arc<impl Provider>, Errors> {

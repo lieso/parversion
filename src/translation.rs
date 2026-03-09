@@ -117,8 +117,11 @@ pub async fn translate_text_to_package<P: Provider>(
     _options: &Options,
     metadata: &Metadata,
     json_schema: &str,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In translate_text_to_package");
+
+    execution_context.stage_start("Starting translation...");
 
     let meta_context = translate_text_to_meta_context(
         Arc::clone(&provider),
@@ -140,22 +143,22 @@ pub async fn translate_text_to_package<P: Provider>(
     })
 }
 
-#[allow(dead_code)]
-pub async fn translate_text<P: Provider>(
-    provider: Arc<P>,
-    text: String,
-    _options: &Options,
-    metadata: &Metadata,
-    json_schema: &str,
-    document_format: &Option<DocumentFormat>,
-) -> Result<String, Errors> {
-    log::trace!("In translate_text");
-
-    let document =
-        translate_text_to_package(provider, text, _options, metadata, json_schema).await?;
-
-    Ok(document.to_string(document_format))
-}
+//#[allow(dead_code)]
+//pub async fn translate_text<P: Provider>(
+//    provider: Arc<P>,
+//    text: String,
+//    _options: &Options,
+//    metadata: &Metadata,
+//    json_schema: &str,
+//    document_format: &Option<DocumentFormat>,
+//) -> Result<String, Errors> {
+//    log::trace!("In translate_text");
+//
+//    let document =
+//        translate_text_to_package(provider, text, _options, metadata, json_schema).await?;
+//
+//    Ok(document.to_string(document_format))
+//}
 
 #[allow(dead_code)]
 pub async fn translate_document_to_meta_context<P: Provider>(

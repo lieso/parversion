@@ -9,3 +9,4 @@ pub use crate::options::Options;
 pub use crate::timestamp::Timestamp;
 pub use crate::types::*;
 pub use crate::utility::*;
+pub use crate::execution_context::ExecutionContext;
