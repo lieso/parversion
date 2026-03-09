@@ -296,7 +296,7 @@ fn init_execution_context() -> Arc<ExecutionContext> {
 
     tokio::spawn(async move {
         while let Some(event) = rx.recv().await {
-            println!("Progress: {:?}", event);
+            println!("\x1b[38;2;255;0;255m{:?}\x1b[0m", event); // fuchsia
         }
     });
 
