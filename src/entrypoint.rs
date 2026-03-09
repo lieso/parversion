@@ -25,7 +25,7 @@ use crate::provider::yaml::YamlFileProvider;
 use crate::provider::{Provider, VoidProvider};
 use crate::translation;
 
-const VERSION: &str = "0.0.0";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROGRAM_NAME: &str = "parversion";
 
 pub async fn run() -> Result<(), Errors> {
