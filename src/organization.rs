@@ -18,11 +18,18 @@ pub async fn organize<P: Provider>(
     document: Document,
     options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
 
-    let meta_context =
-        organize_to_basis_graph(Arc::clone(&provider), document, options, metadata).await?;
+    let meta_context = organize_to_basis_graph(
+        Arc::clone(&provider),
+        document,
+        options,
+        metadata,
+        execution_context,
+    )
+    .await?;
 
     log::info!("Getting basis nodes");
     let basis_nodes =
@@ -67,8 +74,10 @@ pub async fn organize_to_basis_graph<P: Provider>(
     mut document: Document,
     options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_to_basis_graph");
+    let _ = execution_context;
 
     let meta_context = Arc::new(RwLock::new(MetaContext::new()));
 
@@ -137,10 +146,18 @@ pub async fn organize_document_to_basis_graph<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_document_to_basis_graph");
 
-    organize_to_basis_graph(Arc::clone(&provider), document, _options, metadata).await
+    organize_to_basis_graph(
+        Arc::clone(&provider),
+        document,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await
 }
 
 #[allow(dead_code)]
@@ -149,10 +166,12 @@ pub async fn organize_document<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In organize_document");
 
-    let meta_context = organize(Arc::clone(&provider), document, _options, metadata).await?;
+    let meta_context =
+        organize(Arc::clone(&provider), document, _options, metadata, execution_context).await?;
 
     let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
 
@@ -169,10 +188,18 @@ pub async fn organize_document_to_string<P: Provider>(
     _options: &Options,
     metadata: &Metadata,
     document_format: &Option<DocumentFormat>,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
     log::trace!("In organize_document_to_string");
 
-    let package = organize_document(Arc::clone(&provider), document, _options, metadata).await?;
+    let package = organize_document(
+        Arc::clone(&provider),
+        document,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await?;
 
     Ok(package.to_string(document_format))
 }
@@ -183,12 +210,20 @@ pub async fn organize_text<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_text");
 
     let document = Document::from_string(text, _options, metadata)?;
 
-    organize(Arc::clone(&provider), document, _options, metadata).await
+    organize(
+        Arc::clone(&provider),
+        document,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await
 }
 
 #[allow(dead_code)]
@@ -197,12 +232,20 @@ pub async fn organize_text_to_basis_graph<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_text_to_basis_graph");
 
     let document = Document::from_string(text, _options, metadata)?;
 
-    organize_to_basis_graph(Arc::clone(&provider), document, _options, metadata).await
+    organize_to_basis_graph(
+        Arc::clone(&provider),
+        document,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await
 }
 
 #[allow(dead_code)]
@@ -211,10 +254,12 @@ pub async fn organize_text_to_document<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_text_to_document");
 
-    let meta_context = organize_text(Arc::clone(&provider), text, _options, metadata).await?;
+    let meta_context =
+        organize_text(Arc::clone(&provider), text, _options, metadata, execution_context).await?;
 
     let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
 
@@ -227,6 +272,7 @@ pub async fn organize_file<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_file");
     log::debug!("file path: {}", path);
@@ -236,7 +282,14 @@ pub async fn organize_file<P: Provider>(
         Errors::FileInputError
     })?;
 
-    organize_text(Arc::clone(&provider), text, _options, metadata).await
+    organize_text(
+        Arc::clone(&provider),
+        text,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await
 }
 
 #[allow(dead_code)]
@@ -245,6 +298,7 @@ pub async fn organize_file_to_basis_graph<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize_file_to_basis_graph");
     log::debug!("file path: {}", path);
@@ -254,7 +308,14 @@ pub async fn organize_file_to_basis_graph<P: Provider>(
         Errors::FileInputError
     })?;
 
-    organize_text_to_basis_graph(Arc::clone(&provider), text, _options, metadata).await
+    organize_text_to_basis_graph(
+        Arc::clone(&provider),
+        text,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await
 }
 
 #[allow(dead_code)]
@@ -263,11 +324,13 @@ pub async fn organize_file_to_document<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
     log::trace!("In organize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let meta_context = organize_file(Arc::clone(&provider), path, _options, metadata).await?;
+    let meta_context =
+        organize_file(Arc::clone(&provider), path, _options, metadata, execution_context).await?;
 
     let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
 
@@ -281,12 +344,19 @@ pub async fn organize_file_to_string<P: Provider>(
     _options: &Options,
     metadata: &Metadata,
     document_format: &Option<DocumentFormat>,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
     log::trace!("In organize_file_to_string");
     log::debug!("file path: {}", path);
 
-    let document =
-        organize_file_to_document(Arc::clone(&provider), path, _options, metadata).await?;
+    let document = organize_file_to_document(
+        Arc::clone(&provider),
+        path,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await?;
 
     Ok(document.to_string(document_format))
 }

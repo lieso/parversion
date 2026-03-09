@@ -285,7 +285,13 @@ async fn determine_document<P: Provider + ?Sized>(
         )
         .await
     } else {
-        normalization::normalize_text_to_package(provider.clone(), document, &options, &metadata)
+        normalization::normalize_text_to_package(
+            provider.clone(),
+            document,
+            &options,
+            &metadata,
+            execution_context.clone(),
+        )
             .await
     }
 }
