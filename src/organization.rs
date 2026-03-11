@@ -22,8 +22,6 @@ pub async fn organize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
 
-    let stage = execution_context.enter_stage("organization");
-
     let meta_context = organize_to_basis_graph(
         Arc::clone(&provider),
         document,
@@ -32,8 +30,6 @@ pub async fn organize<P: Provider>(
         execution_context.clone(),
     )
     .await?;
-
-    stage.finish();
 
     log::info!("Getting basis nodes");
     let basis_nodes =
@@ -95,6 +91,8 @@ pub async fn organize_to_basis_graph<P: Provider>(
     log::trace!("In organize_to_basis_graph");
     let _ = execution_context;
 
+    let stage = execution_context.enter_stage("organization");
+
     let meta_context = Arc::new(RwLock::new(MetaContext::new()));
 
     {
@@ -150,7 +148,7 @@ pub async fn organize_to_basis_graph<P: Provider>(
             Arc::clone(&provider),
             meta_context.clone(),
             &options,
-            execution_context.clone(),
+            &stage,
         )
         .await?;
 
@@ -158,6 +156,8 @@ pub async fn organize_to_basis_graph<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.update_basis_graph(basis_graph);
     }
+
+    stage.finish();
 
     Ok(meta_context)
 }

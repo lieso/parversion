@@ -10,18 +10,24 @@ use crate::prelude::*;
 use crate::environment::get_env_variable;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CategorizationResponseMetadata {
+    pub tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CategorizationResponse {
     pub description: String,
     pub structure: String,
     pub category: String,
     pub one_word_aliases: Vec<String>,
     pub two_word_aliases: Vec<String>,
+    pub metadata: CategorizationResponseMetadata,
 }
 
 pub struct Categorization;
 
 impl Categorization {
-    pub async fn categorize_graph(document: &str) -> Result<CategorizationResponse, Errors> {
+    pub async fn categorize_graph(document: &str) -> Result<(CategorizationResponse, CategorizationResponseMetadata), Errors> {
         log::trace!("In categorize_graph");
 
         let system_prompt = r##"
@@ -123,49 +129,65 @@ Your task is to analyze a condensed web page, extrapolate from this minimized ve
                         );
                         log::debug!("");
 
-                        match serde_json::from_str::<CategorizationResponse>(content) {
-                            Ok(parsed_response) => {
-                                log::debug!(
-                                    "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
-                                );
-                                log::debug!("{:?}", parsed_response);
-                                log::debug!(
-                                    "└───────────────────────────────────────────────────────────────┘"
-                                );
-                                log::debug!("");
-                                log::debug!(
-                                    "╔═══════════════════════════════════════════════════════════════╗"
-                                );
-                                log::debug!(
-                                    "║                                                               ║"
-                                );
-                                log::debug!(
-                                    "║            CATEGORIZE DOCUMENT - REQUEST COMPLETE             ║"
-                                );
-                                log::debug!(
-                                    "║                                                               ║"
-                                );
-                                log::debug!(
-                                    "╚═══════════════════════════════════════════════════════════════╝"
-                                );
+                        let categorization_response = {
+                            match serde_json::from_str::<CategorizationResponse>(content) {
+                                Ok(parsed_response) => {
+                                    log::debug!(
+                                        "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
+                                    );
+                                    log::debug!("{:?}", parsed_response);
+                                    log::debug!(
+                                        "└───────────────────────────────────────────────────────────────┘"
+                                    );
+                                    log::debug!("");
+                                    log::debug!(
+                                        "╔═══════════════════════════════════════════════════════════════╗"
+                                    );
+                                    log::debug!(
+                                        "║                                                               ║"
+                                    );
+                                    log::debug!(
+                                        "║            CATEGORIZE DOCUMENT - REQUEST COMPLETE             ║"
+                                    );
+                                    log::debug!(
+                                        "║                                                               ║"
+                                    );
+                                    log::debug!(
+                                        "╚═══════════════════════════════════════════════════════════════╝"
+                                    );
 
-                                Ok(parsed_response)
-                            }
-                            Err(e) => {
-                                log::error!(
-                                    "╔═══════════════════════════════════════════════════════════════╗"
-                                );
-                                log::error!(
-                                    "║                    PARSE ERROR                                ║"
-                                );
-                                log::error!(
-                                    "╚═══════════════════════════════════════════════════════════════╝"
-                                );
-                                log::error!("Failed to parse LLM response: {}", e);
-                                Err(Errors::UnexpectedError)
+                                    Ok(parsed_response)
+                                }
+                                Err(e) => {
+                                    log::error!(
+                                        "╔═══════════════════════════════════════════════════════════════╗"
+                                    );
+                                    log::error!(
+                                        "║                    PARSE ERROR                                ║"
+                                    );
+                                    log::error!(
+                                        "╚═══════════════════════════════════════════════════════════════╝"
+                                    );
+                                    log::error!("Failed to parse LLM response: {}", e);
+                                    Err(Errors::UnexpectedError)
 
+                                }
                             }
-                        }
+                        }?;
+
+                        let metadata = {
+                            if let Some(usage) = response.usage {
+                                CategorizationResponseMetadata {
+                                    tokens: usage.total_tokens.clone() as u64,
+                                }
+                            } else {
+                                CategorizationResponseMetadata {
+                                    tokens: 0,
+                                }
+                            }
+                        };
+
+                        Ok((categorization_response, metadata))
                     } else {
                         log::error!(
                             "╔═══════════════════════════════════════════════════════════════╗"

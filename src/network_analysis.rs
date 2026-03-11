@@ -17,10 +17,9 @@ pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
-    execution_context: Arc<ExecutionContext>,
+    stage_context: &StageContext<'_>,
 ) -> Result<Arc<BasisGraph>, Errors> {
     log::trace!("In get_basis_graph");
-    let _ = execution_context;
 
     let original_document = {
         let lock = read_lock!(meta_context);
@@ -42,7 +41,11 @@ pub async fn get_basis_graph<P: Provider>(
         };
     }
 
-    let (name, description, structure, aliases) = LLM::categorize(original_document).await?;
+    stage_context.record_events("Document categorization", 0);
+
+    let (name, description, structure, aliases, tokens) = LLM::categorize(original_document).await?;
+
+    stage_context.record_events("Document categorization", tokens);
 
     let basis_graph = BasisGraph {
         id: ID::new(),

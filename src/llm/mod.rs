@@ -108,6 +108,7 @@ impl LLM {
             String, // description
             String, // structure
             Vec<String>, // aliases
+            u64, // tokens
         ),
         Errors
     > {
@@ -119,7 +120,7 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
-        let categorization_response = categorization::Categorization::categorize_graph(
+        let (categorization_response, metadata) = categorization::Categorization::categorize_graph(
             &document
         ).await?;
 
@@ -133,7 +134,8 @@ impl LLM {
                     &categorization_response.two_word_aliases
                 )
                 .cloned()
-                .collect()
+                .collect(),
+            metadata.tokens
         );
 
         Ok(result)
