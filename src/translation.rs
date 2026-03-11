@@ -22,7 +22,6 @@ pub async fn translate<P: Provider>(
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
-    let _ = execution_context;
 
     log::info!("Generating organized document");
     let document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
@@ -59,6 +58,7 @@ pub async fn translate<P: Provider>(
         Arc::clone(&provider),
         Arc::clone(&meta_context),
         options,
+        execution_context,
     )
     .await?;
 
@@ -128,8 +128,6 @@ pub async fn translate_text_to_package<P: Provider>(
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In translate_text_to_package");
-
-    execution_context.stage_start("Starting translation...");
 
     let meta_context = translate_text_to_meta_context(
         Arc::clone(&provider),

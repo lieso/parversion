@@ -22,18 +22,28 @@ pub async fn organize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
 
+    let stage = execution_context.enter_stage("organization");
+
     let meta_context = organize_to_basis_graph(
         Arc::clone(&provider),
         document,
         options,
         metadata,
-        execution_context,
+        execution_context.clone(),
     )
     .await?;
 
+    stage.finish();
+
     log::info!("Getting basis nodes");
     let basis_nodes =
-        get_basis_nodes(Arc::clone(&provider), meta_context.clone(), &options).await?;
+        get_basis_nodes(
+            Arc::clone(&provider),
+            meta_context.clone(),
+            &options,
+            execution_context.clone(),
+        )
+        .await?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -42,7 +52,13 @@ pub async fn organize<P: Provider>(
 
     log::info!("Generating basis networks");
     let basis_networks =
-        get_basis_networks(Arc::clone(&provider), meta_context.clone(), &options).await?;
+        get_basis_networks(
+            Arc::clone(&provider),
+            meta_context.clone(),
+            &options,
+            execution_context.clone(),
+        )
+        .await?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -130,7 +146,13 @@ pub async fn organize_to_basis_graph<P: Provider>(
 
     log::info!("Getting basis graph");
     let basis_graph =
-        get_basis_graph(Arc::clone(&provider), meta_context.clone(), &options).await?;
+        get_basis_graph(
+            Arc::clone(&provider),
+            meta_context.clone(),
+            &options,
+            execution_context.clone(),
+        )
+        .await?;
 
     {
         let mut lock = write_lock!(meta_context);

@@ -17,8 +17,10 @@ pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<BasisGraph>, Errors> {
     log::trace!("In get_basis_graph");
+    let _ = execution_context;
 
     let original_document = {
         let lock = read_lock!(meta_context);
@@ -62,8 +64,10 @@ pub async fn get_basis_networks<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In get_basis_networks");
+    let _ = execution_context;
 
     let graph_root = {
         let lock = read_lock!(meta_context);

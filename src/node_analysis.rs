@@ -20,8 +20,10 @@ pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_translation_schema_transformations");
+    let _ = execution_context;
 
     let schema_contexts: Vec<Arc<SchemaContext>> = {
         let lock = read_lock!(meta_context);
@@ -128,8 +130,10 @@ pub async fn get_normal_schema_transformations<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
     log::trace!("In get_normal_schema_transformations");
+    let _ = execution_context;
 
     let schema_contexts: Vec<Arc<SchemaContext>> = {
         let lock = read_lock!(meta_context);
@@ -205,8 +209,10 @@ pub async fn get_basis_nodes<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
+    let _ = execution_context;
 
     let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
 

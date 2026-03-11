@@ -19,7 +19,6 @@ pub async fn normalize<P: Provider>(
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
-    let _ = execution_context;
 
     log::info!("Generating organized document");
     let document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
@@ -41,6 +40,7 @@ pub async fn normalize<P: Provider>(
         Arc::clone(&provider),
         Arc::clone(&meta_context),
         _options,
+        execution_context,
     )
     .await?;
 
