@@ -394,8 +394,6 @@ async fn get_basis_node<P: Provider>(
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
 
-    stage_context.record_events("Get basis node", 0);
-
     let lineage = &context_group.lineage.clone();
     let data_node = &context_group.contexts.first().unwrap().data_node.clone();
     let hash = data_node.hash.clone();
@@ -409,17 +407,8 @@ async fn get_basis_node<P: Provider>(
         };
     }
 
-    let (
-        field_transformations,
-        (
-            tokens
-        )
-    ): (
-        Vec<FieldTransformation>,
-        (
-            u64
-        )
-    ) = LLM::get_field_transformations(context_group.clone()).await?;
+    let field_transformations: Vec<FieldTransformation> =
+        LLM::get_field_transformations(context_group.clone()).await?;
 
     log::info!("Obtained field transformation");
 
@@ -434,8 +423,6 @@ async fn get_basis_node<P: Provider>(
     provider
         .save_basis_node(&lineage, basis_node.clone())
         .await?;
-
-    stage_context.record_events("Get basis node", tokens);
 
     Ok(basis_node)
 }

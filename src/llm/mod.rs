@@ -160,12 +160,7 @@ impl LLM {
 
     pub async fn get_field_transformations(
         context_group: ContextGroup,
-    ) -> Result<(
-        Vec<FieldTransformation>
-        (
-            u64 // tokens
-        )
-    ), Errors> {
+    ) -> Result<Vec<FieldTransformation>, Errors> {
         log::trace!("In get_field_transformation");
 
         let mut field_transformations = Vec::new();
