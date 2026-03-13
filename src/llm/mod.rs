@@ -9,6 +9,7 @@ use crate::transformation::{FieldTransformation, SchemaTransformation};
 mod openai;
 mod translation;
 mod categorization;
+mod node_analysis;
 
 pub struct LLM {}
 
@@ -159,7 +160,12 @@ impl LLM {
 
     pub async fn get_field_transformations(
         context_group: ContextGroup,
-    ) -> Result<Vec<FieldTransformation>, Errors> {
+    ) -> Result<(
+        Vec<FieldTransformation>
+        (
+            u64 // tokens
+        )
+    ), Errors> {
         log::trace!("In get_field_transformation");
 
         let mut field_transformations = Vec::new();

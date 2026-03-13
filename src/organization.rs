@@ -31,13 +31,15 @@ pub async fn organize<P: Provider>(
     )
     .await?;
 
+    let stage = execution_context.enter_stage("Node analysis");
+
     log::info!("Getting basis nodes");
     let basis_nodes =
         get_basis_nodes(
             Arc::clone(&provider),
             meta_context.clone(),
             &options,
-            execution_context.clone(),
+            &stage,
         )
         .await?;
 
@@ -45,6 +47,8 @@ pub async fn organize<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.update_basis_nodes(basis_nodes);
     }
+
+    stage.finish();
 
     log::info!("Generating basis networks");
     let basis_networks =
@@ -91,7 +95,7 @@ pub async fn organize_to_basis_graph<P: Provider>(
     log::trace!("In organize_to_basis_graph");
     let _ = execution_context;
 
-    let stage = execution_context.enter_stage("organization");
+    let stage = execution_context.enter_stage("Document preprocessing and classification");
 
     let meta_context = Arc::new(RwLock::new(MetaContext::new()));
 

@@ -12,12 +12,13 @@ pub enum ProgressEvent {
     },
 }
 
-pub struct StageContext<'a> {
-    parent: &'a ExecutionContext,
+#[derive(Clone)]
+pub struct StageContext {
+    parent: Arc<ExecutionContext>,
     stage: &'static str,
 }
 
-impl<'a> StageContext<'a> {
+impl StageContext {
     pub fn record_events(&self, event_name: &'static str, tokens: u64) {
         self.parent.total_tokens.fetch_add(tokens, Ordering::Relaxed);
 
@@ -51,13 +52,13 @@ impl ExecutionContext {
         })
     }
 
-    pub fn enter_stage(&self, stage: &'static str) -> StageContext<'_> {
+    pub fn enter_stage(self: &Arc<Self>, stage: &'static str) -> StageContext {
         if let Some(tx) = &self.progress_tx {
             let _ = tx.send(ProgressEvent::StageStart(stage));
         }
 
         StageContext {
-            parent: self,
+            parent: Arc::clone(self),
             stage,
         }
     }
