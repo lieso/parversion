@@ -185,7 +185,9 @@ impl XMLElementTransformation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FieldMetadata {}
+pub struct FieldMetadata {
+    pub data_type: String,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldTransformation {

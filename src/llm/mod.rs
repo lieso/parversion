@@ -4,12 +4,14 @@ use crate::context_group::ContextGroup;
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_context::SchemaContext;
-use crate::transformation::{FieldTransformation, SchemaTransformation};
+use crate::transformation::{FieldTransformation, SchemaTransformation, FieldMetadata};
 
 mod openai;
 mod translation;
 mod categorization;
 mod node_analysis;
+
+use node_analysis::NodeAnalysis;
 
 pub struct LLM {}
 
@@ -158,30 +160,53 @@ impl LLM {
         unimplemented!()
     }
 
-    pub async fn get_field_transformations(
+    pub async fn get_node_transformations(
         context_group: ContextGroup,
-    ) -> Result<Vec<FieldTransformation>, Errors> {
-        log::trace!("In get_field_transformation");
+        document_summary: &str
+    ) -> Result<(
+        Vec<FieldTransformation>,
+        (
+            u64 // tokens
+        )
+    ), Errors> {
+        log::trace!("In get_node_transformations");
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  NODE TRANSFORMATION START                    ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
 
         let mut field_transformations = Vec::new();
+        let mut tokens: u64 = 0;
 
         for (field, value) in context_group.fields.into_iter() {
-            match openai::OpenAI::get_field_transformation(
-                &context_group.lineage,
+            let result = NodeAnalysis::get_node_transformation(
                 &field,
                 &value,
                 context_group.snippets.clone(),
-            )
-            .await
-            {
-                Some(transformation) => field_transformations.push(transformation),
-                None => {
-                    log::info!("Field eliminated");
-                }
+                document_summary
+            ).await?;
+
+            if let Some(field_inference_response) = result.data {
+                let transformation = FieldTransformation {
+                    id: ID::new(),
+                    description: field_inference_response.description,
+                    field: field.to_string(),
+                    image: field_inference_response.field_name,
+                    meta: FieldMetadata {
+                        data_type: field_inference_response.data_type,
+                    }
+                };
+
+                field_transformations.push(transformation);
             }
+
+            tokens += result.metadata.tokens;
         }
 
-        Ok(field_transformations)
+        Ok((field_transformations, (tokens)))
     }
 
     pub async fn get_relationships(

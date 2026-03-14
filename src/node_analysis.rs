@@ -217,6 +217,23 @@ pub async fn get_basis_nodes<P: Provider>(
 
     log::info!("Number of context groups: {}", context_groups.len());
 
+    let document_summary = {
+        let lock = read_lock!(meta_context);
+        let basis_graph = lock.get_basis_graph().unwrap();
+
+        format!(r##"
+            [name]
+            {}
+
+            [description]
+            {}
+
+            [structure]
+            {}
+        "##, basis_graph.name, basis_graph.description, basis_graph.structure)
+    };
+    let document_summary_string = Arc::new(document_summary);
+
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
 
     if max_concurrency == 1 {
@@ -231,6 +248,7 @@ pub async fn get_basis_nodes<P: Provider>(
                 context_group.clone(),
                 options,
                 stage_context,
+                &document_summary_string,
             )
             .await?;
 
@@ -248,6 +266,7 @@ pub async fn get_basis_nodes<P: Provider>(
             let cloned_meta_context = Arc::clone(&meta_context);
             let cloned_options = options.clone();
             let cloned_stage_context = stage_context.clone();
+            let cloned_document_summary = Arc::clone(&document_summary_string);
 
             let handle = task::spawn(async move {
                 let _permit = permit;
@@ -257,6 +276,7 @@ pub async fn get_basis_nodes<P: Provider>(
                     context_group.clone(),
                     &cloned_options,
                     &cloned_stage_context,
+                    &cloned_document_summary,
                 )
                 .await?;
 
@@ -391,8 +411,11 @@ async fn get_basis_node<P: Provider>(
     context_group: ContextGroup,
     options: &Options,
     stage_context: &StageContext,
+    document_summary: &str,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
+
+    stage_context.record_events("Node analysis", 0);
 
     let lineage = &context_group.lineage.clone();
     let data_node = &context_group.contexts.first().unwrap().data_node.clone();
@@ -407,8 +430,10 @@ async fn get_basis_node<P: Provider>(
         };
     }
 
-    let field_transformations: Vec<FieldTransformation> =
-        LLM::get_field_transformations(context_group.clone()).await?;
+    let (field_transformations, (tokens)) = LLM::get_node_transformations(
+        context_group.clone(),
+        document_summary
+    ).await?;
 
     log::info!("Obtained field transformation");
 
@@ -423,6 +448,8 @@ async fn get_basis_node<P: Provider>(
     provider
         .save_basis_node(&lineage, basis_node.clone())
         .await?;
+
+    stage_context.record_events("Node analysis", tokens);
 
     Ok(basis_node)
 }

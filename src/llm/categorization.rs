@@ -21,7 +21,6 @@ pub struct CategorizationResponse {
     pub category: String,
     pub one_word_aliases: Vec<String>,
     pub two_word_aliases: Vec<String>,
-    pub metadata: CategorizationResponseMetadata,
 }
 
 pub struct Categorization;

@@ -48,7 +48,7 @@ impl NodeAnalysis {
     pub async fn get_node_transformation(
         field: &str,
         value: &str,
-        field_snippets: Vec<&str>,
+        field_snippets: Vec<String>,
         document_summary: &str
     ) -> Result<NodeTransformationResponse, Errors> {
         log::trace!("In get_node_transformation");
@@ -107,7 +107,7 @@ impl NodeAnalysis {
 
     async fn infer_text_data_field(
         value: &str,
-        snippets: Vec<&str>,
+        snippets: Vec<String>,
         document_summary: &str
     ) -> Result<(FieldInferenceResponse, FieldInferenceResponseMetadata), Errors> {
         log::trace!("In infer_text_data_field");
@@ -178,7 +178,7 @@ Example {}:
 
     async fn infer_attribute_data_field(
         field: &str,
-        snippets: Vec<&str>,
+        snippets: Vec<String>,
         document_summary: &str
     ) -> Result<(FieldInferenceResponse, FieldInferenceResponseMetadata), Errors> {
         log::trace!("In infer_attribute_data_field");
@@ -348,7 +348,7 @@ Example {}:
     }
 
     async fn should_eliminate_text(
-        snippets: Vec<&str>,
+        snippets: Vec<String>,
         document_summary: &str
     ) -> Result<(EliminationResponse, EliminationResponseMetadata), Errors> {
         log::trace!("In should_eliminate_text");
@@ -552,7 +552,7 @@ Example {}:
 
     async fn should_eliminate_attribute(
         field: &str,
-        snippets: Vec<&str>,
+        snippets: Vec<String>,
         document_summary: &str
     ) -> Result<(EliminationResponse, EliminationResponseMetadata), Errors> {
         log::trace!("In should_eliminate_attribute");
