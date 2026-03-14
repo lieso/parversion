@@ -28,7 +28,7 @@ struct EliminationResponseMetadata {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct EliminationResponse {
-    should_eliminate: bool,
+    is_boilerplate: bool,
 }
 
 impl NodeAnalysis {
@@ -53,7 +53,7 @@ impl NodeAnalysis {
             ).await?,
         };
 
-        if should_eliminate_response.should_eliminate {
+        if should_eliminate_response.is_boilerplate {
             tokens += metadata.tokens;
 
             let result = NodeTransformationResponse {
@@ -74,13 +74,58 @@ impl NodeAnalysis {
     ) -> Result<(EliminationResponse, EliminationResponseMetadata), Errors> {
         log::trace!("In should_eliminate_text");
 
-        let system_prompt = r##"
+        let system_prompt = format!(r##"
+You are an expert data engineer specializing in reverse-engineering data models from rendered HTML. 
 
-        "##;
+Your goal is to determine if a specific text node represents "Application Data" (dynamic content that would be stored in a database/API) or "UI Boilerplate" (static text hardcoded into the frontend template).
+
+### Document Context:
+The following is a summary of the website being analyzed:
+{}
+
+### Target Node Identification:
+You will be provided with one or more HTML snippets containing the text node to analyze. 
+To provide crucial context, surrounding HTML is included. The specific text node you must evaluate is explicitly delimited with HTML comments like so:
+<!-- Target node: Start -->Text node content here<!-- Target node: End -->
+
+### Classification Criteria:
+You must flag the target text node as "Boilerplate" (true) if it matches any of the following:
+1. **Structural/Presentational Symbols**: Pipes (|), bullets (•), arrows (→), or characters used solely for visual layout.
+2. **Static UI Affordances**: Labels like "Search", "Add to Cart", "Submit", "Related Posts", or "Follow us on Twitter".
+3. **Hardcoded Metadata**: Copyright notices, "All rights reserved", or version numbers.
+4. **Advertisements**: Promotional text or sponsored content that is ancillary to the page's core data model.
+5. **Empty/Placeholder Text**: Text used as a layout filler that contains no real information.
+
+Respond that it is NOT "Boilerplate" (false) if:
+- The text is dynamic content (e.g., a product name, a user's comment, a news headline, a price, or a date).
+- The text represents the primary information a user came to this specific page to consume.
+
+### Response Format:
+You must respond with valid JSON containing exactly one field:
+{{
+  "is_boilerplate": boolean
+}}
+"##, document_summary);
+
+        let examples = snippets
+            .iter()
+            .enumerate()
+            .fold(String::new(), |mut acc, (index, snippet)| {
+                acc.push_str(&format!(
+                    r##"
+Example {}:
+{}
+"##,
+                    index + 1,
+                    snippet
+                ));
+                acc
+            });
 
         let user_prompt = format!(r##"
-
-        "##);
+[Examples]
+{}
+"##, examples);
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
@@ -100,17 +145,17 @@ impl NodeAnalysis {
         let client = Self::build_client();
 
         let response_format = ResponseFormat::json_schema(
-            "is_unmeaningful_text",
+            "is_boilerplate_text",
             true,
             json!({
                 "type": "object",
                 "properties": {
-                    "is_unmeaningful": {
+                    "is_boilerplate": {
                         "type": "boolean",
-                        "description": "Is the text node unmeaningful"
+                        "description": "Is the text node boilerplate"
                     }
                 },
-                "required": ["is_unmeaningful"],
+                "required": ["is_boilerplate"],
                 "additionalProperties": false
             }),
         );
