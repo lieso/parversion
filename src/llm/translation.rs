@@ -108,7 +108,7 @@ For example, if the target field matches a field called "issueDate" nested under
         );
 
         let request = ChatCompletionRequest::builder()
-            .model("google/gemini-3-pro-preview")
+            .model("gpt-5-mini")
             .messages(vec![
                 Message::new(Role::System, system_prompt),
                 Message::new(Role::User, user_prompt),
@@ -296,7 +296,7 @@ Return a mapping for each variable in the target path.
         );
 
         let request = ChatCompletionRequest::builder()
-            .model("google/gemini-3-pro-preview")
+            .model("gpt-5-mini")
             .messages(vec![
                 Message::new(Role::System, system_prompt),
                 Message::new(Role::User, user_prompt),

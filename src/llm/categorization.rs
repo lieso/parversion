@@ -102,7 +102,7 @@ Your task is to analyze a condensed web page, extrapolate from this minimized ve
               );
 
             let request = ChatCompletionRequest::builder()
-                .model("google/gemini-3-pro-preview")
+                .model("gpt-5-mini")
                 .messages(vec![
                     Message::new(Role::System, system_prompt),
                     Message::new(Role::User, user_prompt),
