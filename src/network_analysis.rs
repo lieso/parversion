@@ -63,7 +63,7 @@ pub async fn get_basis_graph<P: Provider>(
     Ok(Arc::new(basis_graph))
 }
 
-pub async fn get_basis_networks<P: Provider>(
+pub async fn _get_basis_networks<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
@@ -156,6 +156,17 @@ pub async fn get_basis_networks<P: Provider>(
 
         Ok(hashmap_results)
     }
+}
+
+pub async fn get_basis_networks<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
+    stage_context: &StageContext
+) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
+    log::trace!("In get_basis_networks");
+
+    unimplemented!()
 }
 
 async fn get_basis_network<P: Provider>(

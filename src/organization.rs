@@ -49,6 +49,7 @@ pub async fn organize<P: Provider>(
     }
 
     stage.finish();
+    let stage = execution_context.enter_stage("Network analysis");
 
     log::info!("Generating basis networks");
     let basis_networks =
@@ -56,7 +57,7 @@ pub async fn organize<P: Provider>(
             Arc::clone(&provider),
             meta_context.clone(),
             &options,
-            execution_context.clone(),
+            &stage,
         )
         .await?;
 
@@ -64,6 +65,8 @@ pub async fn organize<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.update_basis_networks(basis_networks);
     }
+
+    stage.finish();
 
     {
         let organized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
