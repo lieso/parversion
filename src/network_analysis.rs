@@ -113,7 +113,7 @@ pub async fn _get_basis_networks<P: Provider>(
         for subgraph in unique_subgraphs.values().cloned() {
             let cloned_provider = Arc::clone(&provider);
             let cloned_meta_context = Arc::clone(&meta_context);
-            let result = get_basis_network(
+            let result = _get_basis_network(
                 cloned_provider,
                 cloned_meta_context,
                 subgraph.clone(),
@@ -137,7 +137,7 @@ pub async fn _get_basis_networks<P: Provider>(
 
             let handle = task::spawn(async move {
                 let _permit = permit;
-                let basis_network = get_basis_network(
+                let basis_network = _get_basis_network(
                     cloned_provider,
                     cloned_meta_context,
                     subgraph.clone(),
@@ -168,10 +168,59 @@ pub async fn get_basis_networks<P: Provider>(
 
     let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
 
-    unimplemented!()
+    let max_concurrency = {
+        let config_lock = read_lock!(CONFIG);
+        config_lock.llm.max_concurrency
+    };
+
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let mut handles = Vec::new();
+
+    for subgraph in unique_subgraphs.values().cloned() {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_subgraph = Arc::clone(&subgraph);
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
+
+        let handle = task::spawn(async move {
+            let _permit = permit;
+            let basis_network = get_basis_network(
+                cloned_provider,
+                cloned_meta_context,
+                cloned_subgraph,
+                &cloned_options,
+                &cloned_stage_context,
+            )
+            .await?;
+
+            Ok((basis_network.id.clone(), Arc::new(basis_network)))
+        });
+        handles.push(handle);
+    }
+
+    let results: Vec<Result<(ID, Arc<BasisNetwork>), Errors>> =
+        try_join_all(handles).await?;
+    let hashmap_results: HashMap<ID, Arc<BasisNetwork>> =
+        results.into_iter().collect::<Result<_, _>>()?;
+
+    Ok(hashmap_results)
 }
 
 async fn get_basis_network<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    graph: Graph,
+    options: &Options,
+    stage_context: &StageContext
+) -> Result<BasisNetwork, Errors> {
+    log::trace!("In get_basis_network");
+    
+    unimplemented!()
+}
+
+async fn _get_basis_network<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     graph: Graph,
