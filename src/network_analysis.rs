@@ -166,6 +166,8 @@ pub async fn get_basis_networks<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In get_basis_networks");
 
+    let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
+
     unimplemented!()
 }
 
@@ -335,4 +337,37 @@ async fn add_null_network<P: Provider>(
         .await?;
 
     Ok(basis_network)
+}
+
+fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Graph> {
+
+    let graph_root = {
+        let lock = read_lock!(meta_context);
+        lock.graph_root.as_ref().unwrap().clone()
+    };
+
+    let mut queue = VecDeque::new();
+    let mut unique_subgraphs = HashMap::new();
+
+    queue.push_back(graph_root);
+
+    while let Some(current) = queue.pop_front() {
+        let lock = read_lock!(current);
+
+        if lock.children.is_empty() {
+            continue;
+        }
+
+        if !unique_subgraphs.contains_key(&lock.subgraph_hash) {
+            unique_subgraphs.insert(lock.subgraph_hash.clone(), current.clone());
+        }
+
+        for child in &lock.children {
+            queue.push_back(child.clone());
+        }
+    }
+
+    log::debug!("Number of unique subgraphs: {:?}", unique_subgraphs.len());
+
+    unique_subgraphs
 }
