@@ -5,7 +5,7 @@ use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::basis_graph::BasisGraph;
-use crate::basis_network::{BasisNetwork, NetworkRelationship};
+use crate::basis_network::{BasisNetwork};
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::llm::LLM;
@@ -61,101 +61,6 @@ pub async fn get_basis_graph<P: Provider>(
     stage_context.record_events("Document classification", tokens);
 
     Ok(Arc::new(basis_graph))
-}
-
-pub async fn _get_basis_networks<P: Provider>(
-    provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
-    options: &Options,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
-    log::trace!("In get_basis_networks");
-    let _ = execution_context;
-
-    let graph_root = {
-        let lock = read_lock!(meta_context);
-        lock.graph_root
-            .clone()
-            .ok_or(Errors::GraphRootNotProvided)?
-    };
-
-    let mut queue = VecDeque::new();
-    let mut unique_subgraphs = HashMap::new();
-
-    queue.push_back(graph_root);
-
-    while let Some(current) = queue.pop_front() {
-        let current_read = read_lock!(current);
-
-        if current_read.children.is_empty() {
-            continue;
-        }
-
-        if !unique_subgraphs.contains_key(&current_read.subgraph_hash) {
-            unique_subgraphs.insert(current_read.subgraph_hash.clone(), current.clone());
-        }
-
-        for child in &current_read.children {
-            queue.push_back(child.clone());
-        }
-    }
-
-    log::info!("Number of unique subgraphs: {:?}", unique_subgraphs.len());
-
-    let max_concurrency = {
-        let config_lock = read_lock!(CONFIG);
-        config_lock.llm.max_concurrency
-    };
-
-    if max_concurrency == 1 {
-        let mut results = HashMap::new();
-
-        for subgraph in unique_subgraphs.values().cloned() {
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
-            let result = _get_basis_network(
-                cloned_provider,
-                cloned_meta_context,
-                subgraph.clone(),
-                options,
-            )
-            .await?;
-
-            results.insert(result.id.clone(), Arc::new(result));
-        }
-
-        Ok(results)
-    } else {
-        let semaphore = Arc::new(Semaphore::new(max_concurrency));
-        let mut handles = Vec::new();
-
-        for subgraph in unique_subgraphs.values().cloned() {
-            let permit = semaphore.clone().acquire_owned().await.unwrap();
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
-            let cloned_options = options.clone();
-
-            let handle = task::spawn(async move {
-                let _permit = permit;
-                let basis_network = _get_basis_network(
-                    cloned_provider,
-                    cloned_meta_context,
-                    subgraph.clone(),
-                    &cloned_options,
-                )
-                .await?;
-
-                Ok((basis_network.id.clone(), Arc::new(basis_network)))
-            });
-            handles.push(handle);
-        }
-
-        let results: Vec<Result<(ID, Arc<BasisNetwork>), Errors>> = try_join_all(handles).await?;
-        let hashmap_results: HashMap<ID, Arc<BasisNetwork>> =
-            results.into_iter().collect::<Result<_, _>>()?;
-
-        Ok(hashmap_results)
-    }
 }
 
 pub async fn get_basis_networks<P: Provider>(
@@ -216,180 +121,45 @@ async fn get_basis_network<P: Provider>(
     stage_context: &StageContext
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
-    
-    unimplemented!()
-}
 
-async fn _get_basis_network<P: Provider>(
-    provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
-    graph: Graph,
-    options: &Options,
-) -> Result<BasisNetwork, Errors> {
-    log::trace!("In get_basis_network");
+    stage_context.record_events("Network analysis", 0);
 
-    let contexts = {
-        let lock = read_lock!(meta_context);
-        lock.contexts.clone().ok_or(Errors::ContextsNotProvided)?
-    };
-    let basis_graph = {
-        let lock = read_lock!(meta_context);
-        lock.basis_graph
-            .clone()
-            .ok_or(Errors::BasisGraphNotProvided)?
-    };
+    let lineage = read_lock!(graph).lineage.clone();
+    let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
+    let description = read_lock!(graph).description.clone();
 
-    let target_subgraph_hash = read_lock!(graph).subgraph_hash.clone();
-    log::debug!(
-        "target_subgraph_hash: {}",
-        target_subgraph_hash.to_string().unwrap()
-    );
+    //if !options.regenerate {
+    //    if let Some(basis_network) = provider.get_basis_network_by_lineage_and_subgraph_hash(
+    //        &lineage,
+    //        &subgraph_hash
+    //    ).await? {
+    //        return Ok(basis_network);
+    //    }
+    //}
 
-    if read_lock!(graph).parents.is_empty() {
-        log::info!("Node is root node; going to create null network for this node");
 
-        return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
-    }
+    let (_, (tokens)) = LLM::get_network_transformations(
 
-    if !options.regenerate {
-        if let Some(basis_network) = provider
-            .get_basis_network_by_subgraph_hash(&target_subgraph_hash.to_string().unwrap())
-            .await?
-        {
-            log::info!("Provider has supplied basis network");
-
-            return Ok(basis_network);
-        };
-    }
-
-    log::info!("Generating json for siblings...");
-
-    let parent: Graph = read_lock!(graph).parents.first().unwrap().clone();
-
-    let sibling_contexts: Vec<_> = read_lock!(parent)
-        .children
-        .iter()
-        .map(|sibling| contexts.get(&read_lock!(sibling).id).unwrap().clone())
-        .collect();
-
-    log::info!("Number of sibling contexts: {}", sibling_contexts.len());
-
-    let mut sibling_jsons = Vec::new();
-
-    for (index, sibling_context) in sibling_contexts.iter().enumerate() {
-        log::debug!(
-            "Processing sibling context {}/{}",
-            index + 1,
-            sibling_contexts.len()
-        );
-
-        let mut sibling_json = sibling_context
-            .generate_json(Arc::clone(&provider), Arc::clone(&meta_context))
-            .await?;
-
-        let truncate_at = sibling_json
-            .char_indices()
-            .nth(2000)
-            .map_or(sibling_json.len(), |(idx, _)| idx);
-        sibling_json.truncate(truncate_at);
-
-        let subgraph_hash = read_lock!(sibling_context.graph_node).subgraph_hash.clone();
-        log::debug!("Other subgraph hash: {}", subgraph_hash);
-
-        if sibling_json.is_empty() && subgraph_hash == target_subgraph_hash {
-            log::info!("Target subgraph does not result in any meaningful JSON; we will not investigate it further.");
-
-            return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
-        }
-
-        if !sibling_json.is_empty() {
-            sibling_jsons.push((subgraph_hash.to_string().unwrap().clone(), sibling_json));
-        }
-    }
-
-    log::info!("Completed processing all sibling contexts.");
-
-    if sibling_jsons.len() <= 1 {
-        log::info!(
-            "Only one subgraph contains meaningful JSON; we will not investigate it further."
-        );
-
-        return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
-    }
-
-    let non_target_count = sibling_jsons
-        .iter()
-        .filter(|(fragment_id, _)| *fragment_id != target_subgraph_hash.to_string().unwrap())
-        .count();
-
-    if non_target_count < 1 {
-        log::info!("Sibling subgraphs only contain target subgraph");
-        return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
-    }
-
-    log::info!("Going to consult LLM for relationships between subgraphs...");
-
-    let overall_context = basis_graph.structure.clone();
-
-    let (name, matches, description) = LLM::get_relationships(
-        overall_context.clone(),
-        target_subgraph_hash.to_string().unwrap().clone(),
-        sibling_jsons.clone(),
-    )
-    .await?;
-
-    log::info!("Done asking LLM for relationships");
-
-    if matches.is_empty() {
-        log::info!("LLM did not find any relationships between subgraphs");
-
-        return Ok(add_null_network(provider.clone(), target_subgraph_hash.clone()).await?);
-    }
-
-    log::info!("LLM determined subgraphs are associated: {:?}", matches);
-
-    let associated_subgraphs = matches
-        .iter()
-        .cloned()
-        //.chain(std::iter::once(target_subgraph_hash.to_string().unwrap().clone()))
-        .collect();
+    ).await?;
 
     let basis_network = BasisNetwork {
         id: ID::new(),
-        description: description.clone(),
-        subgraph_hash: target_subgraph_hash.to_string().unwrap().clone(),
-        name: name.clone(),
-        relationship: NetworkRelationship::Association(associated_subgraphs),
+        description,
+        subgraph_hash,
+        lineage,
+        // transformations:
     };
 
     provider
-        .save_basis_network(
-            target_subgraph_hash.to_string().unwrap().clone(),
-            basis_network.clone(),
-        )
+        .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
         .await?;
 
-    Ok(basis_network)
-}
-
-async fn add_null_network<P: Provider>(
-    provider: Arc<P>,
-    target_subgraph_hash: Hash,
-) -> Result<BasisNetwork, Errors> {
-    let basis_network = BasisNetwork::new_null_network(&target_subgraph_hash.to_string().unwrap());
-
-    provider
-        .save_basis_network(
-            target_subgraph_hash.to_string().unwrap().clone(),
-            basis_network.clone(),
-        )
-        .await?;
+    stage_context.record_events("Network analyis", tokens);
 
     Ok(basis_network)
 }
 
 fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Graph> {
-
     let graph_root = {
         let lock = read_lock!(meta_context);
         lock.graph_root.as_ref().unwrap().clone()

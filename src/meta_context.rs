@@ -82,9 +82,9 @@ impl MetaContext {
         self.translation_schema_graph_root = Some(graph_root);
     }
 
-    pub fn get_basis_network_by_subgraph_hash(
+    pub fn get_basis_network_by_lineage_and_subgraph_hash(
         &self,
-        subgraph_hash: &String,
+        subgraph_hash: &Hash,
     ) -> Result<Option<Arc<BasisNetwork>>, Errors> {
         log::trace!("In get_basis_network_by_subgraph_hash");
 

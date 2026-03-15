@@ -209,23 +209,6 @@ impl LLM {
         Ok((field_transformations, (tokens)))
     }
 
-    pub async fn get_relationships(
-        overall_context: String,
-        target_subgraph_hash: String,
-        subgraphs: Vec<(String, String)>,
-    ) -> Result<(String, Vec<String>, String), Errors> {
-        log::trace!("In get_relationships");
-
-        let (name, matches, description) = openai::OpenAI::get_relationships(
-            overall_context.clone(),
-            target_subgraph_hash.clone(),
-            subgraphs.clone(),
-        )
-        .await?;
-
-        Ok((name, matches, description))
-    }
-
     pub async fn function_to_operation(code: &str) -> Result<Option<()>, Errors> {
         openai::OpenAI::function_to_operation(&code).await
     }

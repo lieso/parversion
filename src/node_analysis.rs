@@ -424,8 +424,6 @@ async fn get_basis_node<P: Provider>(
 
     if !options.regenerate {
         if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
-            log::info!("Provider has supplied basis node");
-
             return Ok(basis_node);
         };
     }
@@ -434,8 +432,6 @@ async fn get_basis_node<P: Provider>(
         context_group.clone(),
         document_summary
     ).await?;
-
-    log::info!("Obtained field transformation");
 
     let basis_node = BasisNode {
         id: ID::new(),

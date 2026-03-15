@@ -196,10 +196,12 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_basis_network_by_subgraph_hash(
+    async fn get_basis_network_by_lineage_and_subgraph_hash(
         &self,
-        subgraph_hash: &String,
+        lineage: &Lineage,
+        subgraph_hash: &Hash,
     ) -> Result<Option<BasisNetwork>, Errors> {
+        unimplemented!();
         let yaml = self.load_data().await?;
 
         let basis_networks: Vec<BasisNetwork> = yaml
@@ -224,9 +226,11 @@ impl Provider for YamlFileProvider {
 
     async fn save_basis_network(
         &self,
-        subgraph_hash: String,
+        lineage: &Lineage,
+        subgraph_hash: &Hash,
         basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
+        unimplemented!();
         let mut yaml = self.load_data().await?;
 
         let serialized_basis_network =

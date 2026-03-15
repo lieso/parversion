@@ -8,7 +8,6 @@ use xmltree::Element;
 
 use crate::basis_graph::BasisGraph;
 use crate::basis_network::BasisNetwork;
-use crate::basis_network::NetworkRelationship;
 use crate::basis_node::BasisNode;
 use crate::context::Context;
 use crate::data_node::DataNode;
@@ -698,103 +697,103 @@ fn process_network(
                 child_lock.subgraph_hash.clone()
             };
 
-            let maybe_basis_network = {
-                let lock = read_lock!(meta_context);
-                lock.get_basis_network_by_subgraph_hash(&child_subgraph_hash.to_string().unwrap())
-                    .expect("Could not get basis network by subgraph hash")
-            };
+            //let maybe_basis_network = {
+            //    let lock = read_lock!(meta_context);
+            //    lock.get_basis_network_by_subgraph_hash(&child_subgraph_hash.to_string().unwrap())
+            //        .expect("Could not get basis network by subgraph hash")
+            //};
 
-            if let Some(basis_network) = maybe_basis_network {
-                log::trace!("Found basis network");
+            //if let Some(basis_network) = maybe_basis_network {
+            //    log::trace!("Found basis network");
 
-                if !basis_network.is_null_network() {
-                    let object_name = basis_network.name.clone();
-                    let object_description = basis_network.description.clone();
+            //    if !basis_network.is_null_network() {
+            //        let object_name = basis_network.name.clone();
+            //        let object_description = basis_network.description.clone();
 
-                    let mut schema_node = SchemaNode::new(
-                        &object_name,
-                        &object_description,
-                        schema_lineage,
-                        "object",
-                    );
+            //        let mut schema_node = SchemaNode::new(
+            //            &object_name,
+            //            &object_description,
+            //            schema_lineage,
+            //            "object",
+            //        );
 
-                    let mut inner_result: HashMap<String, Value> = HashMap::new();
-                    let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
+            //        let mut inner_result: HashMap<String, Value> = HashMap::new();
+            //        let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
 
-                    let mut associated_graphs = match &basis_network.relationship {
-                        NetworkRelationship::Association(assoc) => assoc.clone(),
-                        _ => Vec::new(),
-                    };
+            //        let mut associated_graphs = match &basis_network.relationship {
+            //            NetworkRelationship::Association(assoc) => assoc.clone(),
+            //            _ => Vec::new(),
+            //        };
 
-                    for subsequent_child in children.iter().skip(index + 1) {
-                        let subsequent_child_id = {
-                            let subsequent_lock = read_lock!(subsequent_child);
-                            subsequent_lock.id.clone()
-                        };
+            //        for subsequent_child in children.iter().skip(index + 1) {
+            //            let subsequent_child_id = {
+            //                let subsequent_lock = read_lock!(subsequent_child);
+            //                subsequent_lock.id.clone()
+            //            };
 
-                        if processed_child_ids.contains(&subsequent_child_id) {
-                            continue;
-                        }
+            //            if processed_child_ids.contains(&subsequent_child_id) {
+            //                continue;
+            //            }
 
-                        let subsequent_subgraph_hash = {
-                            let subsequent_lock = read_lock!(subsequent_child);
-                            subsequent_lock.subgraph_hash.clone()
-                        };
+            //            let subsequent_subgraph_hash = {
+            //                let subsequent_lock = read_lock!(subsequent_child);
+            //                subsequent_lock.subgraph_hash.clone()
+            //            };
 
-                        if associated_graphs
-                            .contains(&subsequent_subgraph_hash.to_string().unwrap())
-                        {
-                            process_network(
-                                meta_context.clone(),
-                                subsequent_child.clone(),
-                                &mut inner_result,
-                                &mut inner_schema,
-                                &schema_node.lineage,
-                            )?;
+            //            if associated_graphs
+            //                .contains(&subsequent_subgraph_hash.to_string().unwrap())
+            //            {
+            //                process_network(
+            //                    meta_context.clone(),
+            //                    subsequent_child.clone(),
+            //                    &mut inner_result,
+            //                    &mut inner_schema,
+            //                    &schema_node.lineage,
+            //                )?;
 
-                            associated_graphs.retain(|item| {
-                                item != &subsequent_subgraph_hash.to_string().unwrap()
-                            });
-                            processed_child_ids.insert(subsequent_child_id);
-                        }
-                    }
+            //                associated_graphs.retain(|item| {
+            //                    item != &subsequent_subgraph_hash.to_string().unwrap()
+            //                });
+            //                processed_child_ids.insert(subsequent_child_id);
+            //            }
+            //        }
 
-                    process_network(
-                        meta_context.clone(),
-                        child.clone(),
-                        &mut inner_result,
-                        &mut inner_schema,
-                        &schema_node.lineage,
-                    )?;
+            //        process_network(
+            //            meta_context.clone(),
+            //            child.clone(),
+            //            &mut inner_result,
+            //            &mut inner_schema,
+            //            &schema_node.lineage,
+            //        )?;
 
-                    let inner_result_value = serde_json::to_value(inner_result)
-                        .expect("Failed to serialize inner result");
+            //        let inner_result_value = serde_json::to_value(inner_result)
+            //            .expect("Failed to serialize inner result");
 
-                    if let Some(existing_object) = result.get_mut(&schema_node.name) {
-                        if let Value::Array(ref mut arr) = existing_object {
-                            arr.push(inner_result_value.clone());
-                        } else {
-                            *existing_object =
-                                json!(vec![existing_object.clone(), inner_result_value.clone()]);
-                        }
+            //        if let Some(existing_object) = result.get_mut(&schema_node.name) {
+            //            if let Value::Array(ref mut arr) = existing_object {
+            //                arr.push(inner_result_value.clone());
+            //            } else {
+            //                *existing_object =
+            //                    json!(vec![existing_object.clone(), inner_result_value.clone()]);
+            //            }
 
-                        let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
-                        if existing_schema_node.data_type != "array" {
-                            arrayify_schema_node(existing_schema_node);
-                        }
-                    } else {
-                        schema_node.properties = inner_schema;
-                        schema.insert(schema_node.name.clone(), schema_node.clone());
-                        result.insert(schema_node.name.clone(), inner_result_value.clone());
-                    }
+            //            let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
+            //            if existing_schema_node.data_type != "array" {
+            //                arrayify_schema_node(existing_schema_node);
+            //            }
+            //        } else {
+            //            schema_node.properties = inner_schema;
+            //            schema.insert(schema_node.name.clone(), schema_node.clone());
+            //            result.insert(schema_node.name.clone(), inner_result_value.clone());
+            //        }
 
-                    processed_child_ids.insert(child_id);
-                } else {
-                    queue.push_back(child.clone());
-                }
-            } else {
+            //        processed_child_ids.insert(child_id);
+            //    } else {
+            //        queue.push_back(child.clone());
+            //    }
+            //} else {
                 queue.push_back(child.clone());
-            }
+            //}
         }
     }
 
