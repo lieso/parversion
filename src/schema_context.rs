@@ -66,8 +66,6 @@ impl SchemaContext {
     }
 
     pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {
-        log::trace!("In generate_snippet");
-
         let mut neighbour_ids = HashSet::new();
         let graph_node = self.graph_node.clone();
 

@@ -664,7 +664,7 @@ fn process_network(
     let mut queue = VecDeque::new();
     queue.push_back(graph.clone());
 
-    let mut processed_child_ids = HashSet::new();
+    let mut processed_child_ids: HashSet<ID> = HashSet::new();
 
     while let Some(current) = queue.pop_front() {
         let (context_id, children) = {

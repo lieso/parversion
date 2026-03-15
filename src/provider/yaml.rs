@@ -248,7 +248,7 @@ impl Provider for YamlFileProvider {
                 if let Ok(existing_network) =
                     serde_yaml::from_value::<BasisNetwork>(network.clone())
                 {
-                    existing_network.subgraph_hash != subgraph_hash
+                    existing_network.subgraph_hash != *subgraph_hash
                 } else {
                     true
                 }

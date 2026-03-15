@@ -86,8 +86,6 @@ impl MetaContext {
         &self,
         subgraph_hash: &Hash,
     ) -> Result<Option<Arc<BasisNetwork>>, Errors> {
-        log::trace!("In get_basis_network_by_subgraph_hash");
-
         let basis_networks = self.basis_networks.as_ref().unwrap();
 
         for basis_network in basis_networks.values() {
@@ -103,8 +101,6 @@ impl MetaContext {
         &self,
         lineage: &Lineage,
     ) -> Result<Option<Arc<BasisNode>>, Errors> {
-        log::trace!("In get_basis_node_by_lineage");
-
         let basis_nodes = self.basis_nodes.as_ref().unwrap();
 
         for basis_node in basis_nodes.values() {
@@ -153,8 +149,6 @@ impl MetaContext {
     }
 
     pub fn get_original_document(&self) -> String {
-        log::trace!("In get_original_document");
-
         let mut document = String::new();
         let mut visited_lineages: HashSet<Lineage> = HashSet::new();
         let root_node = self.graph_root.clone().unwrap();

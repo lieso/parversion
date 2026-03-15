@@ -124,6 +124,11 @@ async fn get_basis_network<P: Provider>(
 
     stage_context.record_events("Network analysis", 0);
 
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts.clone().ok_or(Errors::ContextsNotProvided)?
+    };
+
     let lineage = read_lock!(graph).lineage.clone();
     let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
     let description = read_lock!(graph).description.clone();
@@ -138,9 +143,43 @@ async fn get_basis_network<P: Provider>(
     //}
 
 
-    let (_, (tokens)) = LLM::get_network_transformations(
 
+
+
+
+    let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
+
+
+    let json = context.generate_json(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context)
     ).await?;
+
+    log::debug!("json: {:?}", json);
+
+
+    
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+    //let (_, (tokens)) = LLM::get_network_transformations(
+
+    //).await?;
+
+    unimplemented!();
 
     let basis_network = BasisNetwork {
         id: ID::new(),
@@ -150,11 +189,11 @@ async fn get_basis_network<P: Provider>(
         // transformations:
     };
 
-    provider
-        .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
-        .await?;
+    //provider
+    //    .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
+    //    .await?;
 
-    stage_context.record_events("Network analyis", tokens);
+    stage_context.record_events("Network analyis", 0);
 
     Ok(basis_network)
 }

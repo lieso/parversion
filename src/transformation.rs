@@ -81,8 +81,6 @@ impl HashTransformation {
     }
 
     pub fn transform(&self, fields: HashMap<String, String>) -> Hash {
-        log::trace!("In transform");
-
         let prefix = self.prefix(fields.clone());
         let suffix = self.suffix();
         let script = format!("{}\n{}\n{}", prefix, self.infix, suffix);
@@ -147,8 +145,6 @@ impl XMLElementTransformation {
         element: String,
         attributes: HashMap<String, String>,
     ) -> (Option<String>, HashMap<String, String>) {
-        log::trace!("In transform");
-
         let prefix = self.prefix(element, attributes);
         let suffix = self.suffix();
 
@@ -200,8 +196,6 @@ pub struct FieldTransformation {
 
 impl FieldTransformation {
     pub fn transform(&self, data_node: Arc<DataNode>) -> Result<JsonNode, Errors> {
-        log::trace!("In transform");
-
         if let Some(value) = data_node.fields.get(&self.field) {
             let json = Json {
                 key: self.image.clone(),
