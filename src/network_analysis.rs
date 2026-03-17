@@ -150,13 +150,6 @@ async fn get_basis_network<P: Provider>(
     let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
 
 
-    let json = context.generate_json(
-        Arc::clone(&provider),
-        Arc::clone(&meta_context)
-    ).await?;
-
-    log::debug!("json: {:?}", json);
-
 
     
 
