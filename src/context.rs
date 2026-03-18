@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{json, Value, Map};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 
@@ -22,6 +22,88 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn generate_json_snippet(
+        &self,
+        meta_context: Arc<RwLock<MetaContext>>
+    ) -> Result<String, Errors> {
+
+
+
+        let mut result: Map<String, Value> = Map::new();
+
+
+        fn recurse(
+            meta_context: Arc<RwLock<MetaContext>>,
+            graph_node: Arc<RwLock<GraphNode>>,
+            result: &mut Map<String, Value>
+        ) {
+
+
+
+            let contexts = {
+                let lock = read_lock!(meta_context);
+                lock.contexts.clone().unwrap()
+            };
+
+
+
+
+
+            let mut subgraph_counter: HashMap<String, u32> = HashMap::new();
+            for child in &read_lock!(graph_node).children {
+                let subgraph_hash: String = read_lock!(child).subgraph_hash.clone().to_string().unwrap();
+
+                let count = *subgraph_counter.entry(subgraph_hash.clone())
+                    .and_modify(|c| *c += 1)
+                    .or_insert(1);
+
+                if count <= 3 {
+                    let mut inner_result: Map<String, Value> = Map::new();
+
+                    recurse(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&child),
+                        &mut inner_result,
+                    );
+
+                    let inner_result_value = serde_json::Value::Object(inner_result);
+
+                    if let Some(existing_object) = result.get_mut(&subgraph_hash) {
+
+                        if let Value::Array(ref mut arr) = existing_object {
+                            arr.push(inner_result_value.clone());
+                        } else {
+                            *existing_object = json!(vec![
+                                existing_object.clone(),
+                                inner_result_value.clone()
+                            ]);
+                        }
+                    } else {
+                        result.insert(subgraph_hash.to_string(), inner_result_value);
+                    }
+                }
+            }
+
+
+
+
+            let context = contexts.get(&read_lock!(graph_node).id).unwrap();
+
+
+        }
+
+        recurse(
+            Arc::clone(&meta_context),
+            Arc::clone(&self.graph_node),
+            &mut result,
+        );
+
+
+
+        unimplemented!()
+
+    }
+    
     pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {
         let mut neighbour_ids = HashSet::new();
         let graph_node = self.graph_node.clone();
