@@ -73,6 +73,23 @@ pub async fn get_basis_networks<P: Provider>(
 
     let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
 
+    let document_summary = {
+        let lock = read_lock!(meta_context);
+        let basis_graph = lock.get_basis_graph().unwrap();
+
+        format!(r##"
+            [name]
+            {}
+
+            [description]
+            {}
+
+            [structure]
+            {}
+        "##, basis_graph.name, basis_graph.description, basis_graph.structure)
+    };
+    let document_summary_string = Arc::new(document_summary);
+
     let max_concurrency = {
         let config_lock = read_lock!(CONFIG);
         config_lock.llm.max_concurrency
@@ -88,6 +105,7 @@ pub async fn get_basis_networks<P: Provider>(
         let cloned_subgraph = Arc::clone(&subgraph);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
+        let cloned_document_summary = Arc::clone(&document_summary_string);
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -97,6 +115,7 @@ pub async fn get_basis_networks<P: Provider>(
                 cloned_subgraph,
                 &cloned_options,
                 &cloned_stage_context,
+                &cloned_document_summary,
             )
             .await?;
 
@@ -118,7 +137,8 @@ async fn get_basis_network<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
     graph: Graph,
     options: &Options,
-    stage_context: &StageContext
+    stage_context: &StageContext,
+    document_summary: &str
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
 
@@ -179,11 +199,16 @@ async fn get_basis_network<P: Provider>(
 
     if json_nodes.len() > 0 {
 
+
         let json = context.generate_json_snippet(
             Arc::clone(&meta_context)
         )?;
 
         log::debug!("{}", json);
+
+
+
+
 
     } else {
 
