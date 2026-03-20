@@ -149,12 +149,47 @@ async fn get_basis_network<P: Provider>(
 
     let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
 
+    let mut graph_nodes = vec![context.graph_node.clone()];
+    graph_nodes.extend(read_lock!(graph).children.clone());
 
-    let json = context.generate_json_snippet(
-        Arc::clone(&meta_context)
-    )?;
+    let json_nodes: Vec<crate::json_node::JsonNode> = graph_nodes
+        .into_iter()
+        .flat_map(|graph_node| {
+            let context = contexts.get(&read_lock!(graph_node).id).unwrap();
+            let data_node = &context.data_node;
+            let basis_node = {
+                let lock = read_lock!(meta_context);
+                lock.get_basis_node_by_lineage(&context.lineage)
+                    .expect("Could not get basis node by lineage")
+                    .unwrap()
+            };
+            basis_node
+                .transformations
+                .clone()
+                .into_iter()
+                .map(move |transformation| {
+                    transformation
+                        .transform(Arc::clone(&data_node))
+                        .expect("Could not transform data node field")
+                })
+        })
+        .collect();
 
-    log::debug!("{}", json);
+    log::debug!("json_nodes count: {}", json_nodes.len());
+
+    if json_nodes.len() > 0 {
+
+        let json = context.generate_json_snippet(
+            Arc::clone(&meta_context)
+        )?;
+
+        log::debug!("{}", json);
+
+    } else {
+
+        log::info!("IGNORING A SUBGRAPH");
+
+    }
 
 
     
@@ -216,6 +251,7 @@ fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash,
         }
 
         if !unique_subgraphs.contains_key(&lock.subgraph_hash) {
+            log::debug!("unique subgraph: {}", &lock.subgraph_hash);
             unique_subgraphs.insert(lock.subgraph_hash.clone(), current.clone());
         }
 
