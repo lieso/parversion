@@ -201,7 +201,6 @@ impl Provider for YamlFileProvider {
         lineage: &Lineage,
         subgraph_hash: &Hash,
     ) -> Result<Option<BasisNetwork>, Errors> {
-        unimplemented!();
         let yaml = self.load_data().await?;
 
         let basis_networks: Vec<BasisNetwork> = yaml
@@ -216,7 +215,7 @@ impl Provider for YamlFileProvider {
             .unwrap_or_else(Vec::new);
 
         for basis_network in basis_networks {
-            if basis_network.subgraph_hash == *subgraph_hash {
+            if &basis_network.lineage == lineage && &basis_network.subgraph_hash == subgraph_hash {
                 return Ok(Some(basis_network));
             }
         }
@@ -230,7 +229,6 @@ impl Provider for YamlFileProvider {
         subgraph_hash: &Hash,
         basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
-        unimplemented!();
         let mut yaml = self.load_data().await?;
 
         let serialized_basis_network =
@@ -243,12 +241,12 @@ impl Provider for YamlFileProvider {
                 )
             })?;
 
-            // Remove existing entry with matching subgraph_hash
+            // Remove existing entry with matching lineage and subgraph_hash
             sequence.retain(|network| {
                 if let Ok(existing_network) =
                     serde_yaml::from_value::<BasisNetwork>(network.clone())
                 {
-                    existing_network.subgraph_hash != *subgraph_hash
+                    !(existing_network.lineage == *lineage && existing_network.subgraph_hash == *subgraph_hash)
                 } else {
                     true
                 }
