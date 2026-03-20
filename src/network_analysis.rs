@@ -73,6 +73,22 @@ pub async fn get_network_relationships<P: Provider>(
 ) -> Result<HashMap<ID, Arc<NetworkRelationship>>, Errors> {
     log::trace!("In get_network_relationships");
 
+    let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
+
+    let networks_with_transformations: Vec<Arc<BasisNetwork>> = unique_subgraphs
+        .into_iter()
+        .filter_map(|(_, graph)| {
+            let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
+            let meta_context_lock = read_lock!(meta_context);
+            match meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash) {
+                Ok(Some(basis_network)) if basis_network.network_transformation.is_some() => Some(basis_network),
+                _ => None,
+            }
+        })
+        .collect();
+
+    log::debug!("Networks with transformations: {}", networks_with_transformations.len());
+
     unimplemented!()
 }
 
