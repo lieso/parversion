@@ -208,10 +208,12 @@ async fn get_basis_network<P: Provider>(
 
 
         let (network_transformation, (tokens)) = LLM::get_network_transformation(
-            Arc::clone(&context),
+            &json,
             document_summary
         ).await?;
 
+
+        log::debug!("network_transformation: {:?}", network_transformation);
 
 
 

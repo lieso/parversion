@@ -11,8 +11,10 @@ mod openai;
 mod translation;
 mod categorization;
 mod node_analysis;
+mod network_analysis;
 
 use node_analysis::NodeAnalysis;
+use network_analysis::NetworkAnalysis;
 
 pub struct LLM {}
 
@@ -162,7 +164,7 @@ impl LLM {
     }
 
     pub async fn get_network_transformation(
-        context: Arc<Context>,
+        json: &str,
         document_summary: &str
     ) -> Result<(
         NetworkTransformation,
@@ -171,6 +173,18 @@ impl LLM {
         )
     ), Errors> {
         log::trace!("In get_network_transformation");
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  NETWORK TRANSFORMATION START                 ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+
+        let result = NetworkAnalysis::get_network_transformation(
+            json,
+            document_summary
+        ).await?;
 
         unimplemented!()
     }
