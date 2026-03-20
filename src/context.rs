@@ -66,10 +66,9 @@ impl Context {
                         &mut inner_result,
                     );
 
-                    let inner_result_value = serde_json::Value::Object(inner_result);
+                    let inner_result_value = Value::Object(inner_result.clone());
 
                     if let Some(existing_object) = result.get_mut(&subgraph_hash) {
-
                         if let Value::Array(ref mut arr) = existing_object {
                             arr.push(inner_result_value.clone());
                         } else {
@@ -79,15 +78,43 @@ impl Context {
                             ]);
                         }
                     } else {
-                        result.insert(subgraph_hash.to_string(), inner_result_value);
+                        if inner_result.len() > 0 {
+                            result.insert(subgraph_hash.to_string(), inner_result_value);
+                        }
                     }
                 }
             }
 
 
-
-
             let context = contexts.get(&read_lock!(graph_node).id).unwrap();
+            let data_node = &context.data_node;
+            let basis_node = {
+                let lock = read_lock!(meta_context);
+                lock.get_basis_node_by_lineage(&context.lineage).expect("Could not get basis node by lineage").unwrap()
+            };
+            let json_nodes: Vec<JsonNode> = basis_node
+                .transformations
+                .clone()
+                .into_iter()
+                .map(|transformation| {
+                    transformation
+                        .transform(Arc::clone(&data_node))
+                        .expect("Could not transform data node field")
+                })
+                .collect();
+
+            let mut json_data: Map<String, Value> = Map::new();
+
+            for json_node in json_nodes.into_iter() {
+                let json = json_node.json;
+                let value = json!(json.value.trim().to_string());
+                json_data.insert(json.key, value);
+            }
+
+            if json_data.len() > 0 {
+                result.insert("json".to_string(), Value::Object(json_data));
+            }
+
 
 
         }
@@ -98,10 +125,7 @@ impl Context {
             &mut result,
         );
 
-
-
-        unimplemented!()
-
+        Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
     }
     
     pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {

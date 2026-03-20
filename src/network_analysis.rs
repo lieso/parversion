@@ -154,7 +154,7 @@ async fn get_basis_network<P: Provider>(
         Arc::clone(&meta_context)
     )?;
 
-    log::debug!("json: {:?}", json);
+    log::debug!("{}", json);
 
 
     
