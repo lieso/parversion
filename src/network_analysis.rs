@@ -13,6 +13,7 @@ use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::transformation::NetworkTransformation;
+use crate::network_relationship::NetworkRelationship;
 
 pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
@@ -62,6 +63,17 @@ pub async fn get_basis_graph<P: Provider>(
     stage_context.record_events("Document classification", tokens);
 
     Ok(Arc::new(basis_graph))
+}
+
+pub async fn get_network_relationships<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
+    stage_context: &StageContext
+) -> Result<HashMap<ID, Arc<NetworkRelationship>>, Errors> {
+    log::trace!("In get_network_relationships");
+
+    unimplemented!()
 }
 
 pub async fn get_basis_networks<P: Provider>(

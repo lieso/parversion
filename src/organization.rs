@@ -6,7 +6,7 @@ use crate::document_format::DocumentFormat;
 use crate::function_analysis::functions_to_operations;
 use crate::meta_context::MetaContext;
 use crate::mutation::Mutation;
-use crate::network_analysis::{get_basis_graph, get_basis_networks};
+use crate::network_analysis::{get_basis_graph, get_basis_networks, get_network_relationships};
 use crate::node_analysis::get_basis_nodes;
 use crate::package::Package;
 use crate::prelude::*;
@@ -67,6 +67,34 @@ pub async fn organize<P: Provider>(
     }
 
     stage.finish();
+    let stage = execution_context.enter_stage("Network relationships");
+
+
+    log::info!("Generating network relationships");
+
+
+    let network_relationships =
+        get_network_relationships(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context),
+            &options,
+            &stage,
+        )
+        .await?;
+
+
+    //{
+    //    let mut lock = write_lock!(meta_context);
+    //    lock.update_network_relationships(network_relationships);
+    //}
+
+
+    stage.finish();
+
+    unimplemented!();
+
+
+
 
     {
         let organized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
