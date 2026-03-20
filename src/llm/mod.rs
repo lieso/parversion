@@ -186,6 +186,8 @@ impl LLM {
             document_summary
         ).await?;
 
+        log::debug!("result: {:?}", result);
+
         unimplemented!()
     }
 
