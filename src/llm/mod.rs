@@ -4,7 +4,8 @@ use crate::context_group::ContextGroup;
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_context::SchemaContext;
-use crate::transformation::{FieldTransformation, SchemaTransformation, FieldMetadata};
+use crate::transformation::{FieldTransformation, SchemaTransformation, FieldMetadata, NetworkTransformation};
+use crate::context::Context;
 
 mod openai;
 mod translation;
@@ -156,6 +157,20 @@ impl LLM {
         Errors,
     > {
         log::trace!("In get_normal_schema");
+
+        unimplemented!()
+    }
+
+    pub async fn get_network_transformation(
+        context: Arc<Context>,
+        document_summary: &str
+    ) -> Result<(
+        NetworkTransformation,
+        (
+            u64 // tokens
+        )
+    ), Errors> {
+        log::trace!("In get_network_transformation");
 
         unimplemented!()
     }

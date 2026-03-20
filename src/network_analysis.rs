@@ -207,6 +207,11 @@ async fn get_basis_network<P: Provider>(
         log::debug!("{}", json);
 
 
+        let (network_transformation, (tokens)) = LLM::get_network_transformation(
+            Arc::clone(&context),
+            document_summary
+        ).await?;
+
 
 
 
@@ -240,13 +245,13 @@ async fn get_basis_network<P: Provider>(
 
     unimplemented!();
 
-    let basis_network = BasisNetwork {
-        id: ID::new(),
-        description,
-        subgraph_hash,
-        lineage,
-        // transformations:
-    };
+    //let basis_network = BasisNetwork {
+    //    id: ID::new(),
+    //    description,
+    //    subgraph_hash,
+    //    lineage,
+    //    // transformations:
+    //};
 
     //provider
     //    .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
@@ -254,7 +259,7 @@ async fn get_basis_network<P: Provider>(
 
     stage_context.record_events("Network analyis", 0);
 
-    Ok(basis_network)
+    //Ok(basis_network)
 }
 
 fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Graph> {

@@ -220,3 +220,16 @@ impl FieldTransformation {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NetworkMetadata {
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NetworkTransformation {
+    pub id: ID,
+    pub description: String,
+    pub subgraph_hash: String,
+    pub image: String,
+    pub meta: NetworkMetadata,
+}

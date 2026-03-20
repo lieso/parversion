@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+use crate::transformation::NetworkTransformation;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetwork {
@@ -8,5 +9,5 @@ pub struct BasisNetwork {
     pub description: String,
     pub subgraph_hash: Hash,
     pub lineage: Lineage,
-    //pub transformations: Vec<NetworkTransformation>,
+    pub network_transformation: NetworkTransformation,
 }
