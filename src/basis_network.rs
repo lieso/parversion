@@ -9,5 +9,5 @@ pub struct BasisNetwork {
     pub description: String,
     pub subgraph_hash: Hash,
     pub lineage: Lineage,
-    pub network_transformation: NetworkTransformation,
+    pub network_transformation: Option<NetworkTransformation>, // if none -> internetwork
 }

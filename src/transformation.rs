@@ -223,6 +223,11 @@ impl FieldTransformation {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NetworkMetadata {
+    pub fields: Vec<String>,
+    pub cardinality: String,
+    pub field_types: Vec<String>,
+    pub context: String,
+    pub structure: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

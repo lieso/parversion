@@ -12,6 +12,7 @@ use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::transformation::NetworkTransformation;
 
 pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
@@ -153,14 +154,14 @@ async fn get_basis_network<P: Provider>(
     let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
     let description = read_lock!(graph).description.clone();
 
-    //if !options.regenerate {
-    //    if let Some(basis_network) = provider.get_basis_network_by_lineage_and_subgraph_hash(
-    //        &lineage,
-    //        &subgraph_hash
-    //    ).await? {
-    //        return Ok(basis_network);
-    //    }
-    //}
+    if !options.regenerate {
+        if let Some(basis_network) = provider.get_basis_network_by_lineage_and_subgraph_hash(
+            &lineage,
+            &subgraph_hash
+        ).await? {
+            return Ok(basis_network);
+        }
+    }
 
 
 
@@ -197,34 +198,6 @@ async fn get_basis_network<P: Provider>(
 
     log::debug!("json_nodes count: {}", json_nodes.len());
 
-    if json_nodes.len() > 0 {
-
-
-        let json = context.generate_json_snippet(
-            Arc::clone(&meta_context)
-        )?;
-
-        log::debug!("{}", json);
-
-
-        let (network_transformation, (tokens)) = LLM::get_network_transformation(
-            &json,
-            document_summary
-        ).await?;
-
-
-        log::debug!("network_transformation: {:?}", network_transformation);
-
-
-
-    } else {
-
-        log::info!("IGNORING A SUBGRAPH");
-
-    }
-
-
-    
 
 
 
@@ -234,34 +207,41 @@ async fn get_basis_network<P: Provider>(
 
 
 
+    let maybe_network_transformation: Option<NetworkTransformation> = {
+        if json_nodes.is_empty() {
+            None
+        } else {
+            let json = context.generate_json_snippet(
+                Arc::clone(&meta_context)
+            )?;
 
-    
+            log::debug!("{}", json);
 
+            let (network_transformation, (tokens)) = LLM::get_network_transformation(
+                &subgraph_hash.to_string().unwrap(),
+                &json,
+                document_summary
+            ).await?;
 
+            stage_context.record_events("Network analysis", tokens);
 
+            Some(network_transformation)
+        }
+    };
 
+    let basis_network = BasisNetwork {
+        id: ID::new(),
+        description,
+        subgraph_hash: subgraph_hash.clone(),
+        lineage: lineage.clone(),
+        network_transformation: maybe_network_transformation
+    };
 
-    //let (_, (tokens)) = LLM::get_network_transformations(
+    provider
+        .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
+        .await?;
 
-    //).await?;
-
-    unimplemented!();
-
-    //let basis_network = BasisNetwork {
-    //    id: ID::new(),
-    //    description,
-    //    subgraph_hash,
-    //    lineage,
-    //    // transformations:
-    //};
-
-    //provider
-    //    .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
-    //    .await?;
-
-    stage_context.record_events("Network analyis", 0);
-
-    //Ok(basis_network)
+    Ok(basis_network)
 }
 
 fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Graph> {

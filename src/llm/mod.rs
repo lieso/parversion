@@ -4,7 +4,7 @@ use crate::context_group::ContextGroup;
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_context::SchemaContext;
-use crate::transformation::{FieldTransformation, SchemaTransformation, FieldMetadata, NetworkTransformation};
+use crate::transformation::{FieldTransformation, SchemaTransformation, FieldMetadata, NetworkTransformation, NetworkMetadata};
 use crate::context::Context;
 
 mod openai;
@@ -21,7 +21,7 @@ pub struct LLM {}
 impl LLM {
     pub async fn translate_schema_node(
         meta_context: Arc<RwLock<MetaContext>>,
-        schema_context: SchemaContext,
+        schema_context:SchemaContext,
         target_schema: Arc<String>,
     ) -> Result<Option<(Path, Path)>, Errors> {
         log::trace!("In translate_schema_node");
@@ -164,6 +164,7 @@ impl LLM {
     }
 
     pub async fn get_network_transformation(
+        subgraph_hash: &str,
         json: &str,
         document_summary: &str
     ) -> Result<(
@@ -186,9 +187,24 @@ impl LLM {
             document_summary
         ).await?;
 
-        log::debug!("result: {:?}", result);
+        let inference = result.data.unwrap();
+        let meta = result.metadata;
 
-        unimplemented!()
+        let network_transformation = NetworkTransformation {
+            id: ID::new(),
+            description: inference.description.clone(),
+            subgraph_hash: subgraph_hash.to_string(),
+            image: inference.name.to_string(),
+            meta: NetworkMetadata {
+                fields: inference.fields.clone(),
+                cardinality: inference.cardinality.clone(),
+                field_types: inference.field_types.clone(),
+                context: inference.context.clone(),
+                structure: inference.structure.clone(),
+            }
+        };
+
+        Ok((network_transformation, (meta.tokens)))
     }
 
     pub async fn get_node_transformations(
