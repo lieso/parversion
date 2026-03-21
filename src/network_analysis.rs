@@ -89,6 +89,12 @@ pub async fn get_network_relationships<P: Provider>(
 
     log::debug!("Networks with transformations: {}", networks_with_transformations.len());
 
+    NetworkRelationship::explore_relationships(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context),
+        networks_with_transformations
+    ).await?;
+
     unimplemented!()
 }
 
