@@ -5,6 +5,7 @@ use crate::transformation::NetworkTransformation;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NetworkType {
+    NullNetwork,
     Internetwork,
     UnitNetwork,
     ComplexNetwork(NetworkTransformation),

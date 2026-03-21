@@ -111,12 +111,12 @@ impl Context {
             for json_node in json_nodes.into_iter() {
                 let json = json_node.json;
                 let value = json!(json.value.trim().to_string());
-                json_data.insert(json.key, value);
+                result.insert(json.key, value);
             }
 
-            if json_data.len() > 0 {
-                result.insert("_json".to_string(), Value::Object(json_data));
-            }
+            //if json_data.len() > 0 {
+            //    result.insert("_json".to_string(), Value::Object(json_data));
+            //}
 
 
 

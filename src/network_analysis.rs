@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
+use serde_json::{json, Value, Map};
 
 use crate::basis_graph::BasisGraph;
 use crate::basis_network::{BasisNetwork};
@@ -14,6 +15,7 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::transformation::NetworkTransformation;
 use crate::network_relationship::NetworkRelationship;
+use crate::json_node::JsonNode;
 
 pub async fn get_basis_graph<P: Provider>(
     provider: Arc<P>,
@@ -75,25 +77,25 @@ pub async fn get_network_relationships<P: Provider>(
 
     let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
 
-    let networks_with_transformations: Vec<Arc<BasisNetwork>> = unique_subgraphs
-        .into_iter()
-        .filter_map(|(_, graph)| {
-            let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
-            let meta_context_lock = read_lock!(meta_context);
-            match meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash) {
-                Ok(Some(basis_network)) if basis_network.network_transformation.is_some() => Some(basis_network),
-                _ => None,
-            }
-        })
-        .collect();
+    //let networks_with_transformations: Vec<Arc<BasisNetwork>> = unique_subgraphs
+    //    .into_iter()
+    //    .filter_map(|(_, graph)| {
+    //        let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
+    //        let meta_context_lock = read_lock!(meta_context);
+    //        match meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash) {
+    //            Ok(Some(basis_network)) if basis_network.network_transformation.is_some() => Some(basis_network),
+    //            _ => None,
+    //        }
+    //    })
+    //    .collect();
 
-    log::debug!("Networks with transformations: {}", networks_with_transformations.len());
+    //log::debug!("Networks with transformations: {}", networks_with_transformations.len());
 
-    NetworkRelationship::explore_relationships(
-        Arc::clone(&provider),
-        Arc::clone(&meta_context),
-        networks_with_transformations
-    ).await?;
+    //NetworkRelationship::explore_relationships(
+    //    Arc::clone(&provider),
+    //    Arc::clone(&meta_context),
+    //    networks_with_transformations
+    //).await?;
 
     unimplemented!()
 }
@@ -107,6 +109,13 @@ pub async fn get_basis_networks<P: Provider>(
     log::trace!("In get_basis_networks");
 
     let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
+
+    let all_subgraph_hashes = Arc::new(
+        unique_subgraphs
+            .keys()
+            .map(|hash| hash.to_string().unwrap())
+            .collect::<Vec<String>>()
+    );
 
     let document_summary = {
         let lock = read_lock!(meta_context);
@@ -141,6 +150,7 @@ pub async fn get_basis_networks<P: Provider>(
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
         let cloned_document_summary = Arc::clone(&document_summary_string);
+        let cloned_subgraph_hashes = Arc::clone(&all_subgraph_hashes);
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -151,6 +161,7 @@ pub async fn get_basis_networks<P: Provider>(
                 &cloned_options,
                 &cloned_stage_context,
                 &cloned_document_summary,
+                cloned_subgraph_hashes,
             )
             .await?;
 
@@ -173,7 +184,8 @@ async fn get_basis_network<P: Provider>(
     graph: Graph,
     options: &Options,
     stage_context: &StageContext,
-    document_summary: &str
+    document_summary: &str,
+    all_subgraph_hashes: Arc<Vec<String>>,
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
 
@@ -199,6 +211,30 @@ async fn get_basis_network<P: Provider>(
 
 
     let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
+    let data_node = &context.data_node;
+    let basis_node = {
+        let lock = read_lock!(meta_context);
+        lock.get_basis_node_by_lineage(&context.lineage).expect("Could not get basis node by lineage").unwrap()
+    };
+    let json_nodes: Vec<JsonNode> = basis_node
+        .transformations
+        .clone()
+        .into_iter()
+        .map(|transformation| {
+            transformation
+                .transform(Arc::clone(&data_node))
+                .expect("Could not transform data node field")
+        })
+        .collect();
+
+    let mut json_data: Map<String, Value> = Map::new();
+
+    for json_node in json_nodes.into_iter() {
+        let json = json_node.json;
+        let value = json!(json.value.trim().to_string());
+        json_data.insert(json.key, value);
+    }
+    log::debug!("json_data: {:?}", json_data);
 
 
 
@@ -211,17 +247,20 @@ async fn get_basis_network<P: Provider>(
     let subgraph_hash_string = subgraph_hash.to_string().unwrap();
     log::debug!("subgraph_hash_string: {}", subgraph_hash_string);
     
-    if json.len() == 1 {
+    if json.len() == 0 {
+
+        log::info!("NULL NETWORK");
+
+    } else if json.len() == 1 {
         let key = json.keys().next().unwrap();
 
-        if key.starts_with("_json") {
-
-            let json_string = serde_json::to_string_pretty(&json).expect("Could not make a JSON string");
-            log::debug!("{}", json_string);
-
-        } else {
+        if all_subgraph_hashes.contains(key) {
 
             log::info!("INTERNETWORK");
+
+        } else {
+            
+            log::info!("UNIT NETWORK");
         }
 
     } else {
@@ -320,9 +359,9 @@ fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash,
     while let Some(current) = queue.pop_front() {
         let lock = read_lock!(current);
 
-        if lock.children.is_empty() {
-            continue;
-        }
+        //if lock.children.is_empty() {
+        //    continue;
+        //}
 
         if !unique_subgraphs.contains_key(&lock.subgraph_hash) {
             log::debug!("unique subgraph: {}", &lock.subgraph_hash);

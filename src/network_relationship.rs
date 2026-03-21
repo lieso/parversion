@@ -152,11 +152,11 @@ impl NetworkRelationship {
                             };
 
                             if let Some(basis_network) = basis_network {
-                                if let Some(basis_network_transformation) = &basis_network.network_transformation {
-                                    result.insert(basis_network_transformation.image.clone(), inner_result_value);
-                                } else {
-                                    root_result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
-                                }
+                           //     if let Some(basis_network_transformation) = &basis_network.network_transformation {
+                           //         result.insert(basis_network_transformation.image.clone(), inner_result_value);
+                           //     } else {
+                           //         root_result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
+                           //     }
                             } else {
                                 result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
                             }
