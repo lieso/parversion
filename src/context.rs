@@ -25,7 +25,7 @@ impl Context {
     pub fn generate_json_snippet(
         &self,
         meta_context: Arc<RwLock<MetaContext>>
-    ) -> Result<String, Errors> {
+    ) -> Result<Map<String, Value>, Errors> {
 
 
 
@@ -111,12 +111,12 @@ impl Context {
             for json_node in json_nodes.into_iter() {
                 let json = json_node.json;
                 let value = json!(json.value.trim().to_string());
-                result.insert(json.key, value);
+                json_data.insert(json.key, value);
             }
 
-            //if json_data.len() > 0 {
-            //    result.insert("json".to_string(), Value::Object(json_data));
-            //}
+            if json_data.len() > 0 {
+                result.insert("_json".to_string(), Value::Object(json_data));
+            }
 
 
 
@@ -128,7 +128,9 @@ impl Context {
             &mut result,
         );
 
-        Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
+        Ok(result)
+
+        //Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
     }
     
     pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {

@@ -188,94 +188,122 @@ async fn get_basis_network<P: Provider>(
     let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
     let description = read_lock!(graph).description.clone();
 
-    if !options.regenerate {
-        if let Some(basis_network) = provider.get_basis_network_by_lineage_and_subgraph_hash(
-            &lineage,
-            &subgraph_hash
-        ).await? {
-            return Ok(basis_network);
+    //if !options.regenerate {
+    //    if let Some(basis_network) = provider.get_basis_network_by_lineage_and_subgraph_hash(
+    //        &lineage,
+    //        &subgraph_hash
+    //    ).await? {
+    //        return Ok(basis_network);
+    //    }
+    //}
+
+
+    let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
+
+
+
+
+    let json = context.generate_json_snippet(
+        Arc::clone(&meta_context)
+    )?;
+
+
+    let subgraph_hash_string = subgraph_hash.to_string().unwrap();
+    log::debug!("subgraph_hash_string: {}", subgraph_hash_string);
+    
+    if json.len() == 1 {
+        let key = json.keys().next().unwrap();
+
+        if key.starts_with("_json") {
+
+            let json_string = serde_json::to_string_pretty(&json).expect("Could not make a JSON string");
+            log::debug!("{}", json_string);
+
+        } else {
+
+            log::info!("INTERNETWORK");
         }
+
+    } else {
+
+        let json_string = serde_json::to_string_pretty(&json).expect("Could not make a JSON string");
+        log::debug!("{}", json_string);
+
     }
 
 
 
 
 
+    unimplemented!();
 
-    let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
+    //let mut graph_nodes = vec![context.graph_node.clone()];
+    //graph_nodes.extend(read_lock!(graph).children.clone());
 
-    let mut graph_nodes = vec![context.graph_node.clone()];
-    graph_nodes.extend(read_lock!(graph).children.clone());
+    //let json_nodes: Vec<crate::json_node::JsonNode> = graph_nodes
+    //    .into_iter()
+    //    .flat_map(|graph_node| {
+    //        let context = contexts.get(&read_lock!(graph_node).id).unwrap();
+    //        let data_node = &context.data_node;
+    //        let basis_node = {
+    //            let lock = read_lock!(meta_context);
+    //            lock.get_basis_node_by_lineage(&context.lineage)
+    //                .expect("Could not get basis node by lineage")
+    //                .unwrap()
+    //        };
+    //        basis_node
+    //            .transformations
+    //            .clone()
+    //            .into_iter()
+    //            .map(move |transformation| {
+    //                transformation
+    //                    .transform(Arc::clone(&data_node))
+    //                    .expect("Could not transform data node field")
+    //            })
+    //    })
+    //    .collect();
 
-    let json_nodes: Vec<crate::json_node::JsonNode> = graph_nodes
-        .into_iter()
-        .flat_map(|graph_node| {
-            let context = contexts.get(&read_lock!(graph_node).id).unwrap();
-            let data_node = &context.data_node;
-            let basis_node = {
-                let lock = read_lock!(meta_context);
-                lock.get_basis_node_by_lineage(&context.lineage)
-                    .expect("Could not get basis node by lineage")
-                    .unwrap()
-            };
-            basis_node
-                .transformations
-                .clone()
-                .into_iter()
-                .map(move |transformation| {
-                    transformation
-                        .transform(Arc::clone(&data_node))
-                        .expect("Could not transform data node field")
-                })
-        })
-        .collect();
-
-    log::debug!("json_nodes count: {}", json_nodes.len());
-
+    //log::debug!("json_nodes count: {}", json_nodes.len());
 
 
 
 
 
+    //let maybe_network_transformation: Option<NetworkTransformation> = {
+    //    if json_nodes.is_empty() {
+    //        None
+    //    } else {
+    //        let json = context.generate_json_snippet(
+    //            Arc::clone(&meta_context)
+    //        )?;
 
+    //        log::debug!("{}", json);
 
+    //        let (network_transformation, (tokens)) = LLM::get_network_transformation(
+    //            &subgraph_hash.to_string().unwrap(),
+    //            &json,
+    //            document_summary
+    //        ).await?;
 
+    //        stage_context.record_events("Network analysis", tokens);
 
-    let maybe_network_transformation: Option<NetworkTransformation> = {
-        if json_nodes.is_empty() {
-            None
-        } else {
-            let json = context.generate_json_snippet(
-                Arc::clone(&meta_context)
-            )?;
+    //        Some(network_transformation)
+    //    }
+    //};
 
-            log::debug!("{}", json);
+    //let basis_network = BasisNetwork {
+    //    id: ID::new(),
+    //    description,
+    //    subgraph_hash: subgraph_hash.clone(),
+    //    lineage: lineage.clone(),
+    //    network_transformation: maybe_network_transformation
+    //};
 
-            let (network_transformation, (tokens)) = LLM::get_network_transformation(
-                &subgraph_hash.to_string().unwrap(),
-                &json,
-                document_summary
-            ).await?;
+    //provider
+    //    .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
+    //    .await?;
 
-            stage_context.record_events("Network analysis", tokens);
-
-            Some(network_transformation)
-        }
-    };
-
-    let basis_network = BasisNetwork {
-        id: ID::new(),
-        description,
-        subgraph_hash: subgraph_hash.clone(),
-        lineage: lineage.clone(),
-        network_transformation: maybe_network_transformation
-    };
-
-    provider
-        .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
-        .await?;
-
-    Ok(basis_network)
+    //Ok(basis_network)
 }
 
 fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Graph> {

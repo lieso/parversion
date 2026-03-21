@@ -94,11 +94,13 @@ impl NetworkRelationship {
     ) -> Result<String, Errors> {
 
         let mut result: Map<String, Value> = Map::new();
+        let mut inner_result: Map<String, Value> = Map::new();
 
         fn recurse(
             meta_context: Arc<RwLock<MetaContext>>,
             graph_node: Arc<RwLock<GraphNode>>,
-            result: &mut Map<String, Value>
+            root_result: &mut Map<String, Value>,
+            result: &mut Map<String, Value>,
         ) {
             let contexts = {
                 let lock = read_lock!(meta_context);
@@ -123,6 +125,7 @@ impl NetworkRelationship {
                     recurse(
                         Arc::clone(&meta_context),
                         Arc::clone(&child),
+                        root_result,
                         &mut inner_result,
                     );
 
@@ -152,7 +155,7 @@ impl NetworkRelationship {
                                 if let Some(basis_network_transformation) = &basis_network.network_transformation {
                                     result.insert(basis_network_transformation.image.clone(), inner_result_value);
                                 } else {
-                                    result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
+                                    root_result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
                                 }
                             } else {
                                 result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
@@ -202,7 +205,10 @@ impl NetworkRelationship {
             Arc::clone(&meta_context),
             Arc::clone(&graph_node),
             &mut result,
+            &mut inner_result,
         );
+
+        result.insert("data".to_string(), Value::Object(inner_result));
 
         Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
     }
