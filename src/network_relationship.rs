@@ -19,12 +19,12 @@ impl NetworkRelationship {
 
         for network in networks.iter() {
 
-            let json = Self::get_network_json(
-                Arc::clone(&meta_context),
-                network.clone()
-            ).await?;
+            //let json = Self::get_network_json(
+            //    Arc::clone(&meta_context),
+            //    network.clone()
+            //).await?;
 
-            log::debug!("{}", json);
+            //log::debug!("{}", json);
 
             unimplemented!();
 

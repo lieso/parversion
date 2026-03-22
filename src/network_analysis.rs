@@ -75,27 +75,31 @@ pub async fn get_network_relationships<P: Provider>(
 ) -> Result<HashMap<ID, Arc<NetworkRelationship>>, Errors> {
     log::trace!("In get_network_relationships");
 
-    //let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
+    let unique_subgraphs: HashMap<Hash, Vec<Graph>> = get_unique_subgraphs(Arc::clone(&meta_context));
 
-    //let networks_with_transformations: Vec<Arc<BasisNetwork>> = unique_subgraphs
-    //    .into_iter()
-    //    .filter_map(|(_, graph)| {
-    //        let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
-    //        let meta_context_lock = read_lock!(meta_context);
-    //        match meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash) {
-    //            Ok(Some(basis_network)) if basis_network.network_transformation.is_some() => Some(basis_network),
-    //            _ => None,
-    //        }
-    //    })
-    //    .collect();
+    let complex_networks: Vec<Arc<BasisNetwork>> = unique_subgraphs
+        .into_iter()
+        .filter_map(|(subgraph_hash, _)| {
+            let meta_context_lock = read_lock!(meta_context);
+            match meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash) {
+                Ok(Some(basis_network)) => {
+                    match &basis_network.transformation {
+                        crate::basis_network::NetworkType::Complex(_) => Some(basis_network),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            }
+        })
+        .collect();
 
-    //log::debug!("Networks with transformations: {}", networks_with_transformations.len());
+    log::debug!("Complex networks found: {}", complex_networks.len());
 
-    //NetworkRelationship::explore_relationships(
-    //    Arc::clone(&provider),
-    //    Arc::clone(&meta_context),
-    //    networks_with_transformations
-    //).await?;
+    NetworkRelationship::explore_relationships(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context),
+        complex_networks
+    ).await?;
 
     unimplemented!()
 }
