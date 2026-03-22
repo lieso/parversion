@@ -40,7 +40,7 @@ pub struct NetworkAnalysis;
 
 impl NetworkAnalysis {
     pub async fn get_network_transformation(
-        json_snippet: &str,
+        json_examples: &[String],
         document_summary: &str,
     ) -> Result<NetworkTransformationResponse, Errors> {
         log::trace!("In get_network_transformation");
@@ -52,12 +52,12 @@ You are an expert data engineer reverse-engineering a backend data model from re
 Website Summary: {}
 
 ### Goal:
-Analyze the provided JSON structure (which may contain hash keys) and infer the semantic entity it represents, along with comprehensive metadata about its structure and contents.
+Analyze the provided JSON structures (which may contain hash keys) and infer the semantic entity they represent, along with comprehensive metadata about its structure and contents. The examples show variants of the same type of object.
 
 ### Instructions:
 1. **Name**: Create a semantically accurate `snake_case` name for this entity/network that reflects what it represents in the data model.
 2. **Description**: Write a concise description of what this entity represents, as if writing documentation for an API schema.
-3. **Fields**: Extract and list all field names present in the JSON (convert hash keys to descriptive names if needed).
+3. **Fields**: Extract and list all field names present in the JSON examples (convert hash keys to descriptive names if needed).
 4. **Cardinality**: Determine if this represents a single entity instance or a collection/array of entities ("single" or "collection").
 5. **Field Types**: Infer the primitive types of the fields (string, number, boolean, url, datetime, object, array).
 6. **Context**: Identify the semantic context or category (e.g., "user_profile", "product_listing", "comment_thread", "transaction_record").
@@ -76,10 +76,25 @@ Respond with valid JSON:
 }}
 "##, document_summary);
 
-        let user_prompt = format!(r##"
-[JSON Structure]
+        let examples = json_examples
+            .iter()
+            .enumerate()
+            .fold(String::new(), |mut acc, (index, json)| {
+                acc.push_str(&format!(
+                    r##"
+Example {}:
 {}
-"##, json_snippet);
+"##,
+                    index + 1,
+                    json
+                ));
+                acc
+            });
+
+        let user_prompt = format!(r##"
+[JSON Structure Examples]
+{}
+"##, examples);
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");

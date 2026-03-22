@@ -6,7 +6,7 @@ use tokio::task;
 use serde_json::{json, Value, Map};
 
 use crate::basis_graph::BasisGraph;
-use crate::basis_network::{BasisNetwork};
+use crate::basis_network::{BasisNetwork, NetworkType};
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::llm::LLM;
@@ -75,7 +75,7 @@ pub async fn get_network_relationships<P: Provider>(
 ) -> Result<HashMap<ID, Arc<NetworkRelationship>>, Errors> {
     log::trace!("In get_network_relationships");
 
-    let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
+    //let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
 
     //let networks_with_transformations: Vec<Arc<BasisNetwork>> = unique_subgraphs
     //    .into_iter()
@@ -108,7 +108,7 @@ pub async fn get_basis_networks<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In get_basis_networks");
 
-    let unique_subgraphs: HashMap<Hash, Graph> = get_unique_subgraphs(Arc::clone(&meta_context));
+    let unique_subgraphs: HashMap<Hash, Vec<Graph>> = get_unique_subgraphs(Arc::clone(&meta_context));
 
     let all_subgraph_hashes = Arc::new(
         unique_subgraphs
@@ -142,26 +142,29 @@ pub async fn get_basis_networks<P: Provider>(
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
 
-    for subgraph in unique_subgraphs.values().cloned() {
+    for (subgraph_hash, graphs) in unique_subgraphs {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
         let cloned_meta_context = Arc::clone(&meta_context);
-        let cloned_subgraph = Arc::clone(&subgraph);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
         let cloned_document_summary = Arc::clone(&document_summary_string);
         let cloned_subgraph_hashes = Arc::clone(&all_subgraph_hashes);
+
+        let lineage = read_lock!(&graphs[0]).lineage.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
             let basis_network = get_basis_network(
                 cloned_provider,
                 cloned_meta_context,
-                cloned_subgraph,
+                subgraph_hash,
+                graphs,
                 &cloned_options,
                 &cloned_stage_context,
                 &cloned_document_summary,
                 cloned_subgraph_hashes,
+                lineage,
             )
             .await?;
 
@@ -181,11 +184,13 @@ pub async fn get_basis_networks<P: Provider>(
 async fn get_basis_network<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    graph: Graph,
+    subgraph_hash: Hash,
+    graphs: Vec<Graph>,
     options: &Options,
     stage_context: &StageContext,
     document_summary: &str,
     all_subgraph_hashes: Arc<Vec<String>>,
+    lineage: Lineage,
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
 
@@ -196,177 +201,96 @@ async fn get_basis_network<P: Provider>(
         lock.contexts.clone().ok_or(Errors::ContextsNotProvided)?
     };
 
-    let lineage = read_lock!(graph).lineage.clone();
-    let subgraph_hash = read_lock!(graph).subgraph_hash.clone();
-    let description = read_lock!(graph).description.clone();
-
-    //if !options.regenerate {
-    //    if let Some(basis_network) = provider.get_basis_network_by_lineage_and_subgraph_hash(
-    //        &lineage,
-    //        &subgraph_hash
-    //    ).await? {
-    //        return Ok(basis_network);
-    //    }
-    //}
-
-
-    let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
-    let data_node = &context.data_node;
-    let basis_node = {
-        let lock = read_lock!(meta_context);
-        lock.get_basis_node_by_lineage(&context.lineage).expect("Could not get basis node by lineage").unwrap()
-    };
-    let json_nodes: Vec<JsonNode> = basis_node
-        .transformations
-        .clone()
-        .into_iter()
-        .map(|transformation| {
-            transformation
-                .transform(Arc::clone(&data_node))
-                .expect("Could not transform data node field")
-        })
-        .collect();
-
-    let mut json_data: Map<String, Value> = Map::new();
-
-    for json_node in json_nodes.into_iter() {
-        let json = json_node.json;
-        let value = json!(json.value.trim().to_string());
-        json_data.insert(json.key, value);
-    }
-    log::debug!("json_data: {:?}", json_data);
-
-
-
-
-    let json = context.generate_json_snippet(
-        Arc::clone(&meta_context)
-    )?;
-
-
-    let subgraph_hash_string = subgraph_hash.to_string().unwrap();
-    log::debug!("subgraph_hash_string: {}", subgraph_hash_string);
-    
-    if json.len() == 0 {
-
-        log::info!("NULL NETWORK");
-
-    } else if json.len() == 1 {
-        let key = json.keys().next().unwrap();
-
-        if all_subgraph_hashes.contains(key) {
-
-            log::info!("INTERNETWORK");
-
-        } else {
-            
-            log::info!("UNIT NETWORK");
+    if !options.regenerate {
+        if let Some(basis_network) = provider.get_basis_network_by_lineage_and_subgraph_hash(
+            &lineage,
+            &subgraph_hash
+        ).await? {
+            return Ok(basis_network);
         }
-
-    } else {
-
-        let json_string = serde_json::to_string_pretty(&json).expect("Could not make a JSON string");
-        log::debug!("{}", json_string);
-
     }
 
+    let mut complex_json: Vec<String> = Vec::new();
 
+    for graph in graphs.iter().take(5) {
+        let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
+        let json = context.generate_json_snippet(
+            Arc::clone(&meta_context)
+        )?;
 
+        let subgraph_hash_string = subgraph_hash.to_string().unwrap();
+        log::debug!("subgraph_hash_string: {}", subgraph_hash_string);
 
+        if json.len() > 1 {
+            let json_string = serde_json::to_string_pretty(&json).expect("Could not make a JSON string");
+            log::debug!("{}", json_string);
 
-    unimplemented!();
+            complex_json.push(json_string);
+        } else {
+            log::info!("DEGENERATE NETWORK");
+        }
+    }
 
-    //let mut graph_nodes = vec![context.graph_node.clone()];
-    //graph_nodes.extend(read_lock!(graph).children.clone());
+    let network: NetworkType = {
+        if complex_json.is_empty() {
+            NetworkType::Degenerate
+        } else {
+            let (network_transformation, (tokens)) = LLM::get_network_transformation(
+                &subgraph_hash.to_string().unwrap(),
+                &complex_json,
+                document_summary
+            ).await?;
 
-    //let json_nodes: Vec<crate::json_node::JsonNode> = graph_nodes
-    //    .into_iter()
-    //    .flat_map(|graph_node| {
-    //        let context = contexts.get(&read_lock!(graph_node).id).unwrap();
-    //        let data_node = &context.data_node;
-    //        let basis_node = {
-    //            let lock = read_lock!(meta_context);
-    //            lock.get_basis_node_by_lineage(&context.lineage)
-    //                .expect("Could not get basis node by lineage")
-    //                .unwrap()
-    //        };
-    //        basis_node
-    //            .transformations
-    //            .clone()
-    //            .into_iter()
-    //            .map(move |transformation| {
-    //                transformation
-    //                    .transform(Arc::clone(&data_node))
-    //                    .expect("Could not transform data node field")
-    //            })
-    //    })
-    //    .collect();
+            stage_context.record_events("Network analysis", tokens);
 
-    //log::debug!("json_nodes count: {}", json_nodes.len());
+            NetworkType::Complex(network_transformation)
+        }
+    };
 
+    let description = {
+        match network {
+            NetworkType::Degenerate => String::from("Degenerate network"),
+            NetworkType::Complex(ref network_transformation) => network_transformation.description.clone(),
+        }
+    };
 
+    let basis_network = BasisNetwork {
+        id: ID::new(),
+        description,
+        subgraph_hash: subgraph_hash.clone(),
+        lineage: lineage.clone(),
+        transformation: network,
+    };
 
+    provider
+        .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
+        .await?;
 
-
-    //let maybe_network_transformation: Option<NetworkTransformation> = {
-    //    if json_nodes.is_empty() {
-    //        None
-    //    } else {
-    //        let json = context.generate_json_snippet(
-    //            Arc::clone(&meta_context)
-    //        )?;
-
-    //        log::debug!("{}", json);
-
-    //        let (network_transformation, (tokens)) = LLM::get_network_transformation(
-    //            &subgraph_hash.to_string().unwrap(),
-    //            &json,
-    //            document_summary
-    //        ).await?;
-
-    //        stage_context.record_events("Network analysis", tokens);
-
-    //        Some(network_transformation)
-    //    }
-    //};
-
-    //let basis_network = BasisNetwork {
-    //    id: ID::new(),
-    //    description,
-    //    subgraph_hash: subgraph_hash.clone(),
-    //    lineage: lineage.clone(),
-    //    network_transformation: maybe_network_transformation
-    //};
-
-    //provider
-    //    .save_basis_network(&lineage, &subgraph_hash, basis_network.clone())
-    //    .await?;
-
-    //Ok(basis_network)
+    Ok(basis_network)
 }
 
-fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Graph> {
+fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Vec<Graph>> {
     let graph_root = {
         let lock = read_lock!(meta_context);
         lock.graph_root.as_ref().unwrap().clone()
     };
 
     let mut queue = VecDeque::new();
-    let mut unique_subgraphs = HashMap::new();
+    let mut unique_subgraphs: HashMap<Hash, Vec<Graph>> = HashMap::new();
 
     queue.push_back(graph_root);
 
     while let Some(current) = queue.pop_front() {
         let lock = read_lock!(current);
 
-        //if lock.children.is_empty() {
-        //    continue;
-        //}
+        let subgraph_hash = lock.subgraph_hash.clone();
 
-        if !unique_subgraphs.contains_key(&lock.subgraph_hash) {
-            log::debug!("unique subgraph: {}", &lock.subgraph_hash);
-            unique_subgraphs.insert(lock.subgraph_hash.clone(), current.clone());
-        }
+        log::debug!("unique subgraph: {}", &subgraph_hash);
+
+        unique_subgraphs
+            .entry(subgraph_hash)
+            .or_insert_with(Vec::new)
+            .push(current.clone());
 
         for child in &lock.children {
             queue.push_back(child.clone());

@@ -5,10 +5,8 @@ use crate::transformation::NetworkTransformation;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NetworkType {
-    NullNetwork,
-    Internetwork,
-    UnitNetwork,
-    ComplexNetwork(NetworkTransformation),
+    Degenerate,
+    Complex(NetworkTransformation),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -17,5 +15,5 @@ pub struct BasisNetwork {
     pub description: String,
     pub subgraph_hash: Hash,
     pub lineage: Lineage,
-    pub network_transformation: NetworkType,
+    pub transformation: NetworkType,
 }

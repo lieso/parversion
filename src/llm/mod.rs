@@ -165,7 +165,7 @@ impl LLM {
 
     pub async fn get_network_transformation(
         subgraph_hash: &str,
-        json: &str,
+        json_examples: &[String],
         document_summary: &str
     ) -> Result<(
         NetworkTransformation,
@@ -183,7 +183,7 @@ impl LLM {
         log::debug!("");
 
         let result = NetworkAnalysis::get_network_transformation(
-            json,
+            json_examples,
             document_summary
         ).await?;
 
