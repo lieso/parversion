@@ -3,7 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use serde_json::{json, Value, Map};
 
 use crate::prelude::*;
-use crate::basis_network::{BasisNetwork};
+use crate::basis_network::{BasisNetwork, NetworkType};
 use crate::provider::Provider;
 use crate::graph_node::GraphNode;
 use crate::json_node::JsonNode;
@@ -19,15 +19,12 @@ impl NetworkRelationship {
 
         for network in networks.iter() {
 
-            //let json = Self::get_network_json(
-            //    Arc::clone(&meta_context),
-            //    network.clone()
-            //).await?;
+            let json = Self::get_network_json(
+                Arc::clone(&meta_context),
+                network.clone()
+            ).await?;
 
-            //log::debug!("{}", json);
-
-            unimplemented!();
-
+            log::debug!("{}", json);
         }
 
         unimplemented!()
@@ -94,12 +91,10 @@ impl NetworkRelationship {
     ) -> Result<String, Errors> {
 
         let mut result: Map<String, Value> = Map::new();
-        let mut inner_result: Map<String, Value> = Map::new();
 
         fn recurse(
             meta_context: Arc<RwLock<MetaContext>>,
             graph_node: Arc<RwLock<GraphNode>>,
-            root_result: &mut Map<String, Value>,
             result: &mut Map<String, Value>,
         ) {
             let contexts = {
@@ -120,49 +115,49 @@ impl NetworkRelationship {
                     .or_insert(1);
 
                 if count <= 3 {
-                    let mut inner_result: Map<String, Value> = Map::new();
 
-                    recurse(
-                        Arc::clone(&meta_context),
-                        Arc::clone(&child),
-                        root_result,
-                        &mut inner_result,
-                    );
+                    let basis_network: Arc<BasisNetwork> = {
+                        let lock = read_lock!(meta_context);
+                        lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash).unwrap().expect("could not find basis network")
+                    };
 
-                    let inner_result_value = Value::Object(inner_result.clone());
+                    match &basis_network.transformation {
+                        NetworkType::Degenerate => {
+                            recurse(
+                                Arc::clone(&meta_context),
+                                Arc::clone(&child),
+                                result,
+                            );
+                        },
+                        NetworkType::Complex(transformation) => {
 
-                    if let Some(existing_object) = result.get_mut(&subgraph_hash.to_string().unwrap()) {
-                        if let Value::Array(ref mut arr) = existing_object {
-                            arr.push(inner_result_value.clone());
-                        } else {
-                            *existing_object = json!(vec![
-                                existing_object.clone(),
-                                inner_result_value.clone()
-                            ]);
-                        }
-                    } else {
-                        if inner_result.len() > 0 {
+                            let mut inner_result: Map<String, Value> = Map::new();
 
-                            let basis_network: Option<Arc<BasisNetwork>> = {
-                                let lock = read_lock!(meta_context);
-                                match lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash) {
-                                    Ok(maybe_basis_network) => maybe_basis_network,
-                                    _ => None
+                            recurse(
+                                Arc::clone(&meta_context),
+                                Arc::clone(&child),
+                                &mut inner_result,
+                            );
+
+                            let inner_result_value = Value::Object(inner_result.clone());
+
+                            if let Some(existing_object) = result.get_mut(&transformation.image) {
+                                if let Value::Array(ref mut arr) = existing_object {
+                                    arr.push(inner_result_value.clone());
+                                } else {
+                                    *existing_object = json!(vec![
+                                        existing_object.clone(),
+                                        inner_result_value.clone()
+                                    ]);
                                 }
-                            };
-
-                            if let Some(basis_network) = basis_network {
-                           //     if let Some(basis_network_transformation) = &basis_network.network_transformation {
-                           //         result.insert(basis_network_transformation.image.clone(), inner_result_value);
-                           //     } else {
-                           //         root_result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
-                           //     }
                             } else {
-                                result.insert(subgraph_hash.to_string().unwrap(), inner_result_value);
+                                result.insert(transformation.image.clone(), inner_result_value);
                             }
 
-                        }
+
+                        },
                     }
+
                 }
             }
 
@@ -205,10 +200,7 @@ impl NetworkRelationship {
             Arc::clone(&meta_context),
             Arc::clone(&graph_node),
             &mut result,
-            &mut inner_result,
         );
-
-        result.insert("data".to_string(), Value::Object(inner_result));
 
         Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
     }
