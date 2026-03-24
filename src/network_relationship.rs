@@ -75,7 +75,22 @@ impl NetworkRelationship {
             result.insert("lineage".to_string(), Value::String(read_lock!(graph_node).lineage.to_string()));
             result.insert("subgraph_hash".to_string(), Value::String(read_lock!(graph_node).subgraph_hash.to_string().unwrap()));
 
+            let mut subgraph_counter: HashMap<String, u32> = HashMap::new();
             let children = read_lock!(graph_node).children.iter().map(|child| {
+                let subgraph_hash: String = read_lock!(child)
+                    .subgraph_hash
+                    .clone()
+                    .to_string()
+                    .unwrap();
+
+                let count = *subgraph_counter.entry(subgraph_hash.clone())
+                    .and_modify(|c| *c += 1)
+                    .or_insert(1);
+
+                if count >= 7 {
+                    return None;
+                }
+
                 let mut inner_result: Map<String, Value> = Map::new();
 
                 recurse(
@@ -84,8 +99,8 @@ impl NetworkRelationship {
                     &mut inner_result
                 );
 
-                Value::Object(inner_result)
-            }).collect();
+                Some(Value::Object(inner_result))
+            }).flatten().collect();
 
             result.insert("children".to_string(), Value::Array(children));
 
