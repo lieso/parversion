@@ -5,8 +5,9 @@ use serde_json::{json, Value, Map};
 use crate::prelude::*;
 use crate::basis_network::{BasisNetwork, NetworkType};
 use crate::provider::Provider;
-use crate::graph_node::GraphNode;
+use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
+use crate::document::Document;
 
 pub struct NetworkRelationship {}
 
@@ -16,6 +17,29 @@ impl NetworkRelationship {
         meta_context: Arc<RwLock<MetaContext>>,
         networks: Vec<Arc<BasisNetwork>>
     ) -> Result<(), Errors> {
+
+        let graph_root = {
+            let lock = read_lock!(meta_context);
+            lock.graph_root
+                .clone()
+                .ok_or(Errors::GraphRootNotProvided)?
+        };
+
+
+
+        let something = Self::process_graph(
+            Arc::clone(&meta_context),
+            Arc::clone(&graph_root),
+        );
+
+        log::debug!("{}", something);
+
+
+
+        unimplemented!();
+
+
+        log::debug!("=====================================================================================================");
 
         for network in networks.iter() {
 
@@ -28,6 +52,53 @@ impl NetworkRelationship {
         }
 
         unimplemented!()
+    }
+
+    fn process_graph(
+        meta_context: Arc<RwLock<MetaContext>>,
+        graph: Graph,
+    ) -> String {
+
+        let mut result: Map<String, Value> = Map::new();
+
+        fn recurse(
+            meta_context: Arc<RwLock<MetaContext>>,
+            graph_node: Arc<RwLock<GraphNode>>,
+            result: &mut Map<String, Value>,
+        ) {
+            let contexts = {
+                let lock = read_lock!(meta_context);
+                lock.contexts.clone().unwrap()
+            };
+
+
+            result.insert("lineage".to_string(), Value::String(read_lock!(graph_node).lineage.to_string()));
+            result.insert("subgraph_hash".to_string(), Value::String(read_lock!(graph_node).subgraph_hash.to_string().unwrap()));
+
+            let children = read_lock!(graph_node).children.iter().map(|child| {
+                let mut inner_result: Map<String, Value> = Map::new();
+
+                recurse(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&child),
+                    &mut inner_result
+                );
+
+                Value::Object(inner_result)
+            }).collect();
+
+            result.insert("children".to_string(), Value::Array(children));
+
+
+        }
+
+        recurse(
+            Arc::clone(&meta_context),
+            Arc::clone(&graph),
+            &mut result,
+        );
+
+        serde_json::to_string_pretty(&result).expect("Could not make a JSON string")
     }
 
     async fn get_network_json(
@@ -81,7 +152,7 @@ impl NetworkRelationship {
 
 
 
-        unimplemented!()
+        Ok(String::from("foo"))
     }
 
     async fn process_network(
@@ -172,7 +243,7 @@ impl NetworkRelationship {
                 lock.get_basis_node_by_lineage(&context.lineage).expect("Could not get basis node by lineage").unwrap()
             };
             let json_nodes: Vec<JsonNode> = basis_node
-                .transformations
+.transformations
                 .clone()
                 .into_iter()
                 .map(|transformation| {
