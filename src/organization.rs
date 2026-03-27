@@ -11,6 +11,7 @@ use crate::node_analysis::get_basis_nodes;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::graph_node::prune_graph;
 
 #[allow(dead_code)]
 pub async fn organize<P: Provider>(
@@ -176,6 +177,32 @@ pub async fn organize_to_basis_graph<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.update_data_structures(contexts, graph_root);
     }
+
+
+
+
+
+
+
+
+    log::info!("Pruning graph");
+    let graph_root = {
+        let lock = read_lock!(meta_context);
+        lock.graph_root.as_ref().unwrap().clone()
+    };
+    let pruned_graph = prune_graph(Arc::clone(&graph_root));
+
+
+    unimplemented!();
+
+
+
+
+
+
+
+
+
 
     log::info!("Getting basis graph");
     let basis_graph =
