@@ -19,10 +19,6 @@ pub struct GraphNode {
     pub children: Vec<Graph>,
 }
 
-pub fn prune_graph(graph: Graph) -> Graph {
-    unimplemented!()
-}
-
 impl GraphNode {
     pub fn from_schema_node(schema_node: Arc<SchemaNode>, parents: Vec<Graph>) -> Self {
         GraphNode {
