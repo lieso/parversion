@@ -7,7 +7,6 @@ use std::sync::{Arc, RwLock};
 use xmltree::Element;
 
 use crate::basis_graph::BasisGraph;
-use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::context::Context;
 use crate::data_node::DataNode;
@@ -24,6 +23,7 @@ use crate::profile::Profile;
 use crate::provider::Provider;
 use crate::schema::Schema;
 use crate::schema_node::{arrayify_schema_node, SchemaNode};
+use crate::basis_network::{BasisNetwork, NetworkType};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -66,13 +66,11 @@ impl Document {
             lock.basis_graph.clone().ok_or(Errors::BasisGraphNotFound)?
         };
 
-        let mut result: HashMap<String, Value> = HashMap::new();
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
 
-        process_network(
+        let result = process_graph(
             Arc::clone(&meta_context),
             graph_root,
-            &mut result,
             &mut inner_schema,
             &basis_graph.lineage,
         )?;
@@ -211,7 +209,7 @@ impl Document {
                             vec![Arc::clone(&graph_node)],
                             profile,
                         )
-                    })
+})
                     .collect();
 
                 let mut write_lock = graph_node.write().unwrap();
@@ -647,157 +645,98 @@ fn apply_schema_transformations_json(
     Ok(document)
 }
 
-fn process_network(
+fn process_graph(
     meta_context: Arc<RwLock<MetaContext>>,
     graph: Graph,
-    result: &mut HashMap<String, Value>,
     schema: &mut HashMap<String, SchemaNode>,
     schema_lineage: &Lineage,
-) -> Result<(), Errors> {
-    log::trace!("In process_network");
+) -> Result<Map<String, Value>, Errors> {
 
-    let contexts = {
-        let lock = read_lock!(meta_context);
-        lock.contexts.clone().unwrap()
-    };
-
-    let mut queue = VecDeque::new();
-    queue.push_back(graph.clone());
-
-    let mut processed_child_ids: HashSet<ID> = HashSet::new();
-
-    while let Some(current) = queue.pop_front() {
-        let (context_id, children) = {
-            let read_lock = read_lock!(current);
-            (read_lock.id.clone(), read_lock.children.clone())
+    let mut result: Map<String, Value> = Map::new();
+    
+    fn recurse(
+        meta_context: Arc<RwLock<MetaContext>>,
+        graph_node: Graph,
+        result: &mut Map<String, Value>
+    ) {
+        let contexts = {
+            let lock = read_lock!(meta_context);
+            lock.contexts.clone().unwrap()
         };
 
-        let context = contexts.get(&context_id).unwrap().clone();
-
-        process_node(
-            Arc::clone(&meta_context),
-            context.clone(),
-            result,
-            schema,
-            schema_lineage,
-        )?;
-
-        for (index, child) in children.iter().enumerate() {
-            let child_id = {
-                let child_lock = read_lock!(child);
-                child_lock.id.clone()
+        for child in &read_lock!(graph_node).children {
+            let subgraph_hash: Hash = read_lock!(child).subgraph_hash.clone();
+            let basis_network: Arc<BasisNetwork> = {
+                let lock = read_lock!(meta_context);
+                lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash).unwrap().expect("Could not find basis network")
             };
 
-            if processed_child_ids.contains(&child_id) {
-                continue;
+            match &basis_network.transformation {
+                NetworkType::Degenerate => {
+                    recurse(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&child),
+                        result,
+                    );
+                },
+                NetworkType::Complex(transformation) => {
+                    let mut inner_result: Map<String, Value> = Map::new();
+
+                    recurse(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&child),
+                        &mut inner_result,
+                    );
+
+                    let inner_result_value = Value::Object(inner_result.clone());
+
+                    if let Some(existing_object) = result.get_mut(&transformation.image) {
+                        if let Value::Array(ref mut arr) = existing_object {
+                            arr.push(inner_result_value.clone());
+                        } else {
+                            *existing_object = json!(vec![
+                                existing_object.clone(),
+                                inner_result_value.clone()
+                            ]);
+                        }
+                    } else {
+                        result.insert(transformation.image.clone(), inner_result_value);
+                    }
+                }
             }
+        }
 
-            let child_subgraph_hash = {
-                let child_lock = read_lock!(child);
-                child_lock.subgraph_hash.clone()
-            };
+        let context = contexts.get(&read_lock!(graph_node).id).unwrap();
+        let data_node = &context.data_node;
+        let basis_node = {
+            let lock = read_lock!(meta_context);
+            lock.get_basis_node_by_lineage(&context.lineage).expect("Could not get basis node by lineage").unwrap()
+        };
+        let json_nodes: Vec<JsonNode> = basis_node
+.transformations
+            .clone()
+            .into_iter()
+            .map(|transformation| {
+                transformation
+                    .transform(Arc::clone(&data_node))
+                    .expect("Could not transform data node field")
+            })
+            .collect();
 
-            //let maybe_basis_network = {
-            //    let lock = read_lock!(meta_context);
-            //    lock.get_basis_network_by_subgraph_hash(&child_subgraph_hash.to_string().unwrap())
-            //        .expect("Could not get basis network by subgraph hash")
-            //};
-
-            //if let Some(basis_network) = maybe_basis_network {
-            //    log::trace!("Found basis network");
-
-            //    if !basis_network.is_null_network() {
-            //        let object_name = basis_network.name.clone();
-            //        let object_description = basis_network.description.clone();
-
-            //        let mut schema_node = SchemaNode::new(
-            //            &object_name,
-            //            &object_description,
-            //            schema_lineage,
-            //            "object",
-            //        );
-
-            //        let mut inner_result: HashMap<String, Value> = HashMap::new();
-            //        let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-
-            //        let mut associated_graphs = match &basis_network.relationship {
-            //            NetworkRelationship::Association(assoc) => assoc.clone(),
-            //            _ => Vec::new(),
-            //        };
-
-            //        for subsequent_child in children.iter().skip(index + 1) {
-            //            let subsequent_child_id = {
-            //                let subsequent_lock = read_lock!(subsequent_child);
-            //                subsequent_lock.id.clone()
-            //            };
-
-            //            if processed_child_ids.contains(&subsequent_child_id) {
-            //                continue;
-            //            }
-
-            //            let subsequent_subgraph_hash = {
-            //                let subsequent_lock = read_lock!(subsequent_child);
-            //                subsequent_lock.subgraph_hash.clone()
-            //            };
-
-            //            if associated_graphs
-            //                .contains(&subsequent_subgraph_hash.to_string().unwrap())
-            //            {
-            //                process_network(
-            //                    meta_context.clone(),
-            //                    subsequent_child.clone(),
-            //                    &mut inner_result,
-            //                    &mut inner_schema,
-            //                    &schema_node.lineage,
-            //                )?;
-
-            //                associated_graphs.retain(|item| {
-            //                    item != &subsequent_subgraph_hash.to_string().unwrap()
-            //                });
-            //                processed_child_ids.insert(subsequent_child_id);
-            //            }
-            //        }
-
-            //        process_network(
-            //            meta_context.clone(),
-            //            child.clone(),
-            //            &mut inner_result,
-            //            &mut inner_schema,
-            //            &schema_node.lineage,
-            //        )?;
-
-            //        let inner_result_value = serde_json::to_value(inner_result)
-            //            .expect("Failed to serialize inner result");
-
-            //        if let Some(existing_object) = result.get_mut(&schema_node.name) {
-            //            if let Value::Array(ref mut arr) = existing_object {
-            //                arr.push(inner_result_value.clone());
-            //            } else {
-            //                *existing_object =
-            //                    json!(vec![existing_object.clone(), inner_result_value.clone()]);
-            //            }
-
-            //            let mut existing_schema_node = schema.get_mut(&schema_node.name).unwrap();
-            //            if existing_schema_node.data_type != "array" {
-            //                arrayify_schema_node(existing_schema_node);
-            //            }
-            //        } else {
-            //            schema_node.properties = inner_schema;
-            //            schema.insert(schema_node.name.clone(), schema_node.clone());
-            //            result.insert(schema_node.name.clone(), inner_result_value.clone());
-            //        }
-
-            //        processed_child_ids.insert(child_id);
-            //    } else {
-            //        queue.push_back(child.clone());
-            //    }
-            //} else {
-                queue.push_back(child.clone());
-            //}
+        for json_node in json_nodes.into_iter() {
+            let json = json_node.json;
+            let value = json!(json.value.trim().to_string());
+            result.insert(json.key, value);
         }
     }
 
-    Ok(())
+    recurse(
+        Arc::clone(&meta_context),
+        Arc::clone(&graph),
+        &mut result
+    );
+
+    Ok(result)
 }
 
 fn process_node(
