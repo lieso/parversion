@@ -70,18 +70,19 @@ pub async fn organize<P: Provider>(
     let stage = execution_context.enter_stage("Network relationships");
 
 
-    //log::info!("Generating network relationships");
+    log::info!("Generating network relationships");
 
 
-    //let network_relationships =
-    //    get_network_relationships(
-    //        Arc::clone(&provider),
-    //        Arc::clone(&meta_context),
-    //        &options,
-    //        &stage,
-    //    )
-    //    .await?;
+    let network_relationships =
+        get_network_relationships(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context),
+            &options,
+            &stage,
+        )
+        .await?;
 
+    unimplemented!();
 
     //{
     //    let mut lock = write_lock!(meta_context);

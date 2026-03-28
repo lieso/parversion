@@ -25,104 +25,40 @@ impl NetworkRelationship {
                 .ok_or(Errors::GraphRootNotProvided)?
         };
 
-
-
-        //let something = Self::process_graph(
-        //    Arc::clone(&meta_context),
-        //    Arc::clone(&graph_root),
-        //);
-
-        //log::debug!("{}", something);
-
-
-
-        //unimplemented!();
-
-
-        log::debug!("=====================================================================================================");
+        let mut all_network_jsons = String::new();
 
         for network in networks.iter() {
-
-            let json = Self::get_network_json(
+            let json_examples = Self::get_network_json(
                 Arc::clone(&meta_context),
                 network.clone()
             ).await?;
 
-            log::debug!("{}", json);
+            let examples_string: String = json_examples.iter().enumerate()
+                .map(|(index, json)| format!("\nExample {}:\n{}\n", index + 1, json))
+                .collect();
+
+            let network_section = format!(
+                "\n[Network ID]\n{}\n\n[Network examples]\n{}\n",
+                network.id.to_string(),
+                examples_string
+            );
+
+            all_network_jsons.push_str(&network_section);
         }
+
+        log::debug!("{}", all_network_jsons);
 
         unimplemented!()
-    }
-
-    fn process_graph(
-        meta_context: Arc<RwLock<MetaContext>>,
-        graph: Graph,
-    ) -> String {
-
-        let mut result: Map<String, Value> = Map::new();
-
-        fn recurse(
-            meta_context: Arc<RwLock<MetaContext>>,
-            graph_node: Arc<RwLock<GraphNode>>,
-            result: &mut Map<String, Value>,
-        ) {
-            let contexts = {
-                let lock = read_lock!(meta_context);
-                lock.contexts.clone().unwrap()
-            };
-
-
-            result.insert("lineage".to_string(), Value::String(read_lock!(graph_node).lineage.to_string()));
-            result.insert("subgraph_hash".to_string(), Value::String(read_lock!(graph_node).subgraph_hash.to_string().unwrap()));
-
-            let mut subgraph_counter: HashMap<String, u32> = HashMap::new();
-            let children = read_lock!(graph_node).children.iter().map(|child| {
-                let subgraph_hash: String = read_lock!(child)
-                    .subgraph_hash
-                    .clone()
-                    .to_string()
-                    .unwrap();
-
-                let count = *subgraph_counter.entry(subgraph_hash.clone())
-                    .and_modify(|c| *c += 1)
-                    .or_insert(1);
-
-                if count >= 7 {
-                    return None;
-                }
-
-                let mut inner_result: Map<String, Value> = Map::new();
-
-                recurse(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&child),
-                    &mut inner_result
-                );
-
-                Some(Value::Object(inner_result))
-            }).flatten().collect();
-
-            result.insert("children".to_string(), Value::Array(children));
-
-
-        }
-
-        recurse(
-            Arc::clone(&meta_context),
-            Arc::clone(&graph),
-            &mut result,
-        );
-
-        serde_json::to_string_pretty(&result).expect("Could not make a JSON string")
     }
 
     async fn get_network_json(
         meta_context: Arc<RwLock<MetaContext>>,
         network: Arc<BasisNetwork>
-    ) -> Result<String, Errors> {
+    ) -> Result<Vec<String>, Errors> {
+
+        let mut network_jsons: Vec<String> = Vec::new();
 
         let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
-
 
         let mut queue = VecDeque::new();
         queue.push_back(graph_root);
@@ -134,16 +70,13 @@ impl NetworkRelationship {
             };
 
             if subgraph_hash == network.subgraph_hash {
-
                 let json = Self::process_network(
                     Arc::clone(&meta_context),
                     network.clone(),
                     Arc::clone(&current)
                 ).await?;
 
-
-                log::debug!("{}", json);
-
+                network_jsons.push(json);
             } else {
                 let mut subgraph_counter: HashMap<String, u32> = HashMap::new();
 
@@ -165,9 +98,7 @@ impl NetworkRelationship {
             }
         }
 
-
-
-        Ok(String::from("foo"))
+        Ok(network_jsons)
     }
 
     async fn process_network(
@@ -183,28 +114,21 @@ impl NetworkRelationship {
             graph_node: Arc<RwLock<GraphNode>>,
             result: &mut Map<String, Value>,
         ) {
-            let contexts = {
-                let lock = read_lock!(meta_context);
-                lock.contexts.clone().unwrap()
-            };
-
-
-
-
             let mut subgraph_counter: HashMap<String, u32> = HashMap::new();
+
             for child in &read_lock!(graph_node).children {
                 let subgraph_hash: Hash = read_lock!(child).subgraph_hash.clone();
-                let lineage = read_lock!(child).lineage.clone();
 
                 let count = *subgraph_counter.entry(subgraph_hash.to_string().unwrap().clone())
                     .and_modify(|c| *c += 1)
                     .or_insert(1);
 
                 if count <= 3 {
-
                     let basis_network: Arc<BasisNetwork> = {
                         let lock = read_lock!(meta_context);
-                        lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash).unwrap().expect("could not find basis network")
+                        lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)
+                            .unwrap()
+                            .expect("could not find basis network")
                     };
 
                     match &basis_network.transformation {
@@ -216,7 +140,6 @@ impl NetworkRelationship {
                             );
                         },
                         NetworkType::Complex(transformation) => {
-
                             let mut inner_result: Map<String, Value> = Map::new();
 
                             recurse(
@@ -239,26 +162,26 @@ impl NetworkRelationship {
                             } else {
                                 result.insert(transformation.image.clone(), inner_result_value);
                             }
-
-
                         },
                     }
-
                 }
             }
 
-
-
-
+            let contexts = {
+                let lock = read_lock!(meta_context);
+                lock.contexts.clone().unwrap()
+            };
 
             let context = contexts.get(&read_lock!(graph_node).id).unwrap();
             let data_node = &context.data_node;
             let basis_node = {
                 let lock = read_lock!(meta_context);
-                lock.get_basis_node_by_lineage(&context.lineage).expect("Could not get basis node by lineage").unwrap()
+                lock.get_basis_node_by_lineage(&context.lineage)
+                    .expect("Could not get basis node by lineage")
+                    .unwrap()
             };
-            let json_nodes: Vec<JsonNode> = basis_node
-.transformations
+
+            let json_nodes: Vec<JsonNode> = basis_node.transformations
                 .clone()
                 .into_iter()
                 .map(|transformation| {
@@ -268,18 +191,11 @@ impl NetworkRelationship {
                 })
                 .collect();
 
-            let mut json_data: Map<String, Value> = Map::new();
-
-            for json_node in json_nodes.into_iter() {
+            for json_node in json_nodes {
                 let json = json_node.json;
                 let value = json!(json.value.trim().to_string());
                 result.insert(json.key, value);
             }
-
-
-
-
-
         }
 
         recurse(
