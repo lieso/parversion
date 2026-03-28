@@ -51,7 +51,26 @@ impl NetworkRelationship {
             all_network_jsons.push_str(&network_section);
         }
 
-        log::debug!("{}", all_network_jsons);
+        //log::debug!("{}", all_network_jsons);
+
+        let original_document = {
+            let lock = read_lock!(meta_context);
+            lock.get_original_document()
+        };
+
+
+        let user_prompt = format!(r##"
+[ORIGINAL DOCUMENT]:
+{}
+
+[NETWORKS]:
+{}
+"##, original_document, all_network_jsons);
+
+
+
+
+        log::debug!("{}", user_prompt);
 
         unimplemented!()
     }
