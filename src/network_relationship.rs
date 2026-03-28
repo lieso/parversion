@@ -33,12 +33,17 @@ impl NetworkRelationship {
                 network.clone()
             ).await?;
 
+            if json_examples.is_empty() {
+                continue;
+            }
+
             let examples_string: String = json_examples.iter().enumerate()
                 .map(|(index, json)| format!("\nExample {}:\n{}\n", index + 1, json))
                 .collect();
 
             let network_section = format!(
-                "\n[Network ID]\n{}\n\n[Network examples]\n{}\n",
+                "\n{}\n\n[Network ID]\n{}\n\n[Network examples]\n{}\n",
+                "=".repeat(100),
                 network.id.to_string(),
                 examples_string
             );
@@ -64,6 +69,10 @@ impl NetworkRelationship {
         queue.push_back(graph_root);
 
         while let Some(current) = queue.pop_front() {
+            if network_jsons.len() >= 5 {
+                break;
+            }
+
             let subgraph_hash = {
                 let lock = read_lock!(current);
                 lock.subgraph_hash.clone()
@@ -78,22 +87,8 @@ impl NetworkRelationship {
 
                 network_jsons.push(json);
             } else {
-                let mut subgraph_counter: HashMap<String, u32> = HashMap::new();
-
                 for child in &read_lock!(current).children {
-                    let subgraph_hash: String = read_lock!(child)
-                        .subgraph_hash
-                        .clone()
-                        .to_string()
-                        .unwrap();
-
-                    let count = *subgraph_counter.entry(subgraph_hash.clone())
-                        .and_modify(|c| *c += 1)
-                        .or_insert(1);
-
-                    if count <= 5 {
-                        queue.push_back(child.clone());
-                    }
+                    queue.push_back(child.clone());
                 }
             }
         }
