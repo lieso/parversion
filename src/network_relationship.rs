@@ -14,8 +14,61 @@ pub struct NetworkRelationship {}
 impl NetworkRelationship {
     pub async fn get_relationship_typing(
         meta_context: Arc<RwLock<MetaContext>>,
-        networks: Vec<BasisNetwork>
+        networks: Vec<Arc<BasisNetwork>>
     ) -> Result<(), Errors> {
+        let graph_root = {
+            let lock = read_lock!(meta_context);
+            lock.graph_root
+                .clone()
+                .ok_or(Errors::GraphRootNotProvided)?
+        };
+
+        let mut all_network_jsons = String::new();
+
+        for network in networks.iter() {
+            let json_examples = Self::get_network_json(
+                Arc::clone(&meta_context),
+                network.clone()
+            ).await?;
+
+            if json_examples.is_empty() {
+                continue;
+            }
+
+            let examples_string: String = json_examples.iter().enumerate()
+                .map(|(index, json)| format!("\nExample {}:\n{}\n", index + 1, json))
+                .collect();
+
+            let network_section = format!(
+                "\n{}\n\n[Network ID]\n{}\n\n[Network examples]\n{}\n",
+                "=".repeat(100),
+                network.id.to_string(),
+                examples_string
+            );
+
+            all_network_jsons.push_str(&network_section);
+        }
+
+        let original_document = {
+            let lock = read_lock!(meta_context);
+            lock.get_original_document()
+        };
+
+        let user_prompt = format!(r##"
+[ORIGINAL DOCUMENT]:
+{}
+
+[NETWORKS]:
+{}
+"##, original_document, all_network_jsons);
+
+        log::debug!("{}", user_prompt);
+
+
+
+
+
+
         unimplemented!()
     }
 

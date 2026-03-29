@@ -101,6 +101,8 @@ pub async fn get_network_relationships<P: Provider>(
         Arc::clone(&meta_context),
         complex_networks
     ).await?;
+    let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
+
 
     stage_context.record_events("Finding canonical networks", tokens);
     stage_context.record_events("Relationship typing", 0);
