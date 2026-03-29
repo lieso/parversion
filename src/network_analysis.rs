@@ -95,7 +95,28 @@ pub async fn get_network_relationships<P: Provider>(
 
     log::debug!("Complex networks found: {}", complex_networks.len());
 
+
+
+
+
+
+
     stage_context.record_events("Finding canonical networks", 0);
+
+    let mut graph_hash = Hash::from_items(
+        complex_networks
+        .iter()
+        .map(|network| { network.subgraph_hash.to_string().unwrap() })
+        .collect()
+    );
+    graph_hash.sort();
+    graph_hash.finalize();
+
+
+    log::debug!("graph hash: {}", graph_hash);
+    unimplemented!();
+
+
 
     let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
         Arc::clone(&meta_context),
@@ -105,8 +126,14 @@ pub async fn get_network_relationships<P: Provider>(
 
 
     stage_context.record_events("Finding canonical networks", tokens);
-    stage_context.record_events("Relationship typing", 0);
 
+
+
+
+
+
+
+    stage_context.record_events("Relationship typing", 0);
 
     let result = NetworkRelationship::get_relationship_typing(
         Arc::clone(&meta_context),
