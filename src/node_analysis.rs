@@ -217,7 +217,7 @@ pub async fn get_basis_nodes<P: Provider>(
 
     let document_summary = {
         let lock = read_lock!(meta_context);
-        let basis_graph = lock.get_basis_graph().unwrap();
+        let classification = lock.get_classification().unwrap();
 
         format!(r##"
             [name]
@@ -228,7 +228,7 @@ pub async fn get_basis_nodes<P: Provider>(
 
             [structure]
             {}
-        "##, basis_graph.name, basis_graph.description, basis_graph.structure)
+        "##, classification.name, classification.description, classification.structure)
     };
     let document_summary_string = Arc::new(document_summary);
 

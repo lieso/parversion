@@ -5,7 +5,7 @@ use tokio::sync::Semaphore;
 use tokio::task;
 use serde_json::{json, Value, Map};
 
-use crate::basis_graph::BasisGraph;
+use crate::classification::Classification;
 use crate::basis_network::{BasisNetwork, NetworkType};
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
@@ -17,13 +17,13 @@ use crate::transformation::NetworkTransformation;
 use crate::network_relationship::NetworkRelationship;
 use crate::json_node::JsonNode;
 
-pub async fn get_basis_graph<P: Provider>(
+pub async fn get_classification<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<Arc<BasisGraph>, Errors> {
-    log::trace!("In get_basis_graph");
+) -> Result<Arc<Classification>, Errors> {
+    log::trace!("In get_classification");
 
     stage_context.record_events("Document classification", 0);
 
@@ -40,16 +40,16 @@ pub async fn get_basis_graph<P: Provider>(
     let lineage = read_lock!(graph_root).lineage.clone();
 
     if !options.regenerate {
-        if let Some(basis_graph) = provider.get_basis_graph_by_lineage(&lineage).await? {
-            log::info!("Provider has supplied basis graph");
+        if let Some(classification) = provider.get_classification_by_lineage(&lineage).await? {
+            log::info!("Provider has supplied classification");
 
-            return Ok(Arc::new(basis_graph));
+            return Ok(Arc::new(classification));
         };
     }
 
     let (name, description, structure, aliases, tokens) = LLM::categorize(original_document).await?;
 
-    let basis_graph = BasisGraph {
+    let classification = Classification {
         id: ID::new(),
         name,
         aliases,
@@ -59,12 +59,12 @@ pub async fn get_basis_graph<P: Provider>(
     };
 
     provider
-        .save_basis_graph(&lineage, basis_graph.clone())
+        .save_classification(&lineage, classification.clone())
         .await?;
 
     stage_context.record_events("Document classification", tokens);
 
-    Ok(Arc::new(basis_graph))
+    Ok(Arc::new(classification))
 }
 
 pub async fn get_network_relationships<P: Provider>(
@@ -146,7 +146,7 @@ pub async fn get_basis_networks<P: Provider>(
 
     let document_summary = {
         let lock = read_lock!(meta_context);
-        let basis_graph = lock.get_basis_graph().unwrap();
+        let classification = lock.get_classification().unwrap();
 
         format!(r##"
             [name]
@@ -157,7 +157,7 @@ pub async fn get_basis_networks<P: Provider>(
 
             [structure]
             {}
-        "##, basis_graph.name, basis_graph.description, basis_graph.structure)
+        "##, classification.name, classification.description, classification.structure)
     };
     let document_summary_string = Arc::new(document_summary);
 

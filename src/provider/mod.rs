@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use std::collections::HashSet;
 
-use crate::basis_graph::BasisGraph;
+use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::operation::Operation;
@@ -36,14 +36,14 @@ pub trait Provider: Send + Sync + Sized + 'static {
         subgraph_hash: &Hash,
         basis_network: BasisNetwork,
     ) -> Result<(), Errors>;
-    async fn get_basis_graph_by_lineage(
+    async fn get_classification_by_lineage(
         &self,
         lineage: &Lineage,
-    ) -> Result<Option<BasisGraph>, Errors>;
-    async fn save_basis_graph(
+    ) -> Result<Option<Classification>, Errors>;
+    async fn save_classification(
         &self,
         lineage: &Lineage,
-        basis_graph: BasisGraph,
+        classification: Classification,
     ) -> Result<(), Errors>;
     async fn get_schema_transformation(
         &self,
@@ -104,17 +104,17 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
-    async fn get_basis_graph_by_lineage(
+    async fn get_classification_by_lineage(
         &self,
         _lineage: &Lineage,
-    ) -> Result<Option<BasisGraph>, Errors> {
+    ) -> Result<Option<Classification>, Errors> {
         Ok(None)
     }
 
-    async fn save_basis_graph(
+    async fn save_classification(
         &self,
         _lineage: &Lineage,
-        _basis_graph: BasisGraph,
+        _classification: Classification,
     ) -> Result<(), Errors> {
         Ok(())
     }

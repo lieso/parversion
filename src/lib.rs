@@ -1,5 +1,5 @@
 pub mod ast;
-pub mod basis_graph;
+pub mod classification;
 pub mod basis_network;
 pub mod basis_node;
 pub mod bloom_filter;

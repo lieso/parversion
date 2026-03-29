@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::basis_graph::BasisGraph;
+use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::context::Context;
@@ -20,7 +20,7 @@ pub struct MetaContext {
     pub graph_root: Option<Graph>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
-    pub basis_graph: Option<Arc<BasisGraph>>,
+    pub classification: Option<Arc<Classification>>,
     pub profile: Option<Arc<Profile>>,
     pub schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
     pub schema_graph_root: Option<Graph>,
@@ -39,7 +39,7 @@ impl MetaContext {
             graph_root: None,
             basis_nodes: None,
             basis_networks: None,
-            basis_graph: None,
+            classification: None,
             profile: None,
             schema_contexts: None,
             schema_graph_root: None,
@@ -133,12 +133,12 @@ impl MetaContext {
         self.graph_root = Some(graph_root);
     }
 
-    pub fn update_basis_graph(&mut self, graph: Arc<BasisGraph>) {
-        self.basis_graph = Some(graph);
+    pub fn update_classification(&mut self, classification: Arc<Classification>) {
+        self.classification = Some(classification);
     }
 
-    pub fn get_basis_graph(&self) -> Option<Arc<BasisGraph>> {
-        self.basis_graph.as_ref().map(Arc::clone)
+    pub fn get_classification(&self) -> Option<Arc<Classification>> {
+        self.classification.as_ref().map(Arc::clone)
     }
 
     pub fn update_basis_nodes(&mut self, nodes: HashMap<ID, Arc<BasisNode>>) {

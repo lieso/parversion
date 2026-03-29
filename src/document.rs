@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use xmltree::Element;
 
-use crate::basis_graph::BasisGraph;
+use crate::classification::Classification;
 use crate::basis_node::BasisNode;
 use crate::context::Context;
 use crate::data_node::DataNode;
@@ -61,9 +61,9 @@ impl Document {
                 .clone()
                 .ok_or(Errors::GraphRootNotProvided)?
         };
-        let basis_graph: Arc<BasisGraph> = {
+        let classification: Arc<Classification> = {
             let lock = read_lock!(meta_context);
-            lock.basis_graph.clone().ok_or(Errors::BasisGraphNotFound)?
+            lock.classification.clone().ok_or(Errors::ClassificationNotFound)?
         };
 
         let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
@@ -72,7 +72,7 @@ impl Document {
             Arc::clone(&meta_context),
             graph_root,
             &mut inner_schema,
-            &basis_graph.lineage,
+            &classification.lineage,
         )?;
 
         let data = {
@@ -84,9 +84,9 @@ impl Document {
 
         let schema = Schema {
             id: ID::new(),
-            name: basis_graph.name.clone(),
-            description: basis_graph.description.clone(),
-            lineage: basis_graph.lineage.clone(),
+            name: classification.name.clone(),
+            description: classification.description.clone(),
+            lineage: classification.lineage.clone(),
             properties: inner_schema,
         };
 
@@ -545,11 +545,11 @@ fn apply_schema_transformations_json(
 ) -> Result<Document, Errors> {
     let mut result: Map<String, Value> = Map::new();
 
-    let basis_graph: Arc<BasisGraph> = {
+    let classification: Arc<Classification> = {
         let lock = read_lock!(meta_context);
-        lock.basis_graph.clone().ok_or(Errors::BasisGraphNotFound)?
+        lock.classification.clone().ok_or(Errors::ClassificationNotFound)?
     };
-    let start_path: Path = Path::from_key(&basis_graph.name);
+    let start_path: Path = Path::from_key(&classification.name);
 
     fn recurse(
         meta_context: Arc<RwLock<MetaContext>>,
@@ -626,7 +626,7 @@ fn apply_schema_transformations_json(
     recurse(
         Arc::clone(&meta_context),
         &json,
-        &basis_graph.lineage,
+        &classification.lineage,
         schema_nodes,
         &mut result,
         &start_path,

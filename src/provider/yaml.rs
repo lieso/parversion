@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::fs as async_fs;
 use tokio::sync::RwLock as AsyncRwLock;
 
-use crate::basis_graph::BasisGraph;
+use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::bloom_filter::BloomFilter;
@@ -260,61 +260,61 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_basis_graph_by_lineage(
+    async fn get_classification_by_lineage(
         &self,
         lineage: &Lineage,
-    ) -> Result<Option<BasisGraph>, Errors> {
+    ) -> Result<Option<Classification>, Errors> {
         let yaml = self.load_data().await?;
 
-        let basis_graphs: Vec<BasisGraph> = yaml
-            .get("basis_graphs")
+        let classifications: Vec<Classification> = yaml
+            .get("classifications")
             .and_then(|bn| {
-                let deserialized: Result<Vec<BasisGraph>, _> = serde_yaml::from_value(bn.clone());
+                let deserialized: Result<Vec<Classification>, _> = serde_yaml::from_value(bn.clone());
                 if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for basis_graphs: {:?}", err);
+                    log::error!("Deserialization error for classifications: {:?}", err);
                 }
                 deserialized.ok()
             })
             .unwrap_or_else(Vec::new);
 
-        for basis_graph in basis_graphs {
-            if basis_graph.lineage == *lineage {
-                return Ok(Some(basis_graph));
+        for classification in classifications {
+            if classification.lineage == *lineage {
+                return Ok(Some(classification));
             }
         }
 
         Ok(None)
     }
 
-    async fn save_basis_graph(
+    async fn save_classification(
         &self,
         lineage: &Lineage,
-        basis_graph: BasisGraph,
+        classification: Classification,
     ) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
 
-        let serialized_basis_graph =
-            serde_yaml::to_value(&basis_graph).map_err(|_| Errors::UnexpectedError)?;
+        let serialized_classification =
+            serde_yaml::to_value(&classification).map_err(|_| Errors::UnexpectedError)?;
 
-        if let Some(basis_graphs) = yaml.get_mut("basis_graphs") {
-            let sequence = basis_graphs.as_sequence_mut().ok_or_else(|| {
+        if let Some(classifications) = yaml.get_mut("classifications") {
+            let sequence = classifications.as_sequence_mut().ok_or_else(|| {
                 Errors::YamlParseError(
-                    "Failed to get mutable sequence for 'basis_graphs'.".to_string(),
+                    "Failed to get mutable sequence for 'classifications'.".to_string(),
                 )
             })?;
 
             // Remove existing entry with matching lineage
-            sequence.retain(|graph| {
-                if let Ok(existing_graph) = serde_yaml::from_value::<BasisGraph>(graph.clone()) {
-                    existing_graph.lineage != *lineage
+            sequence.retain(|entry| {
+                if let Ok(existing) = serde_yaml::from_value::<Classification>(entry.clone()) {
+                    existing.lineage != *lineage
                 } else {
                     true
                 }
             });
 
-            sequence.push(serialized_basis_graph);
+            sequence.push(serialized_classification);
         } else {
-            yaml["basis_graphs"] = serde_yaml::Value::Sequence(vec![serialized_basis_graph]);
+            yaml["classifications"] = serde_yaml::Value::Sequence(vec![serialized_classification]);
         }
 
         self.save_data(&yaml).await

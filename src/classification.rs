@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct BasisGraph {
+pub struct Classification {
     pub id: ID,
     pub lineage: Lineage,
     pub name: String,

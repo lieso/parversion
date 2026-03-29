@@ -1,5 +1,5 @@
 mod ast;
-mod basis_graph;
+mod classification;
 mod basis_network;
 mod basis_node;
 mod bloom_filter;

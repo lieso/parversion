@@ -6,7 +6,7 @@ use crate::document_format::DocumentFormat;
 use crate::function_analysis::functions_to_operations;
 use crate::meta_context::MetaContext;
 use crate::mutation::Mutation;
-use crate::network_analysis::{get_basis_graph, get_basis_networks, get_network_relationships};
+use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
 use crate::node_analysis::get_basis_nodes;
 use crate::package::Package;
 use crate::prelude::*;
@@ -22,7 +22,7 @@ pub async fn organize<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In organize");
 
-    let meta_context = organize_to_basis_graph(
+    let meta_context = organize_to_classification(
         Arc::clone(&provider),
         document,
         options,
@@ -114,14 +114,14 @@ pub async fn organize<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_to_basis_graph<P: Provider>(
+pub async fn organize_to_classification<P: Provider>(
     provider: Arc<P>,
     mut document: Document,
     options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_to_basis_graph");
+    log::trace!("In organize_to_classification");
     let _ = execution_context;
 
     let stage = execution_context.enter_stage("Document preprocessing and classification");
@@ -175,9 +175,9 @@ pub async fn organize_to_basis_graph<P: Provider>(
         lock.update_data_structures(contexts, graph_root);
     }
 
-    log::info!("Getting basis graph");
-    let basis_graph =
-        get_basis_graph(
+    log::info!("Getting classification");
+    let classification =
+        get_classification(
             Arc::clone(&provider),
             meta_context.clone(),
             &options,
@@ -187,7 +187,7 @@ pub async fn organize_to_basis_graph<P: Provider>(
 
     {
         let mut lock = write_lock!(meta_context);
-        lock.update_basis_graph(basis_graph);
+        lock.update_classification(classification);
     }
 
     stage.finish();
@@ -196,16 +196,16 @@ pub async fn organize_to_basis_graph<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_document_to_basis_graph<P: Provider>(
+pub async fn organize_document_to_classification<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_document_to_basis_graph");
+    log::trace!("In organize_document_to_classification");
 
-    organize_to_basis_graph(
+    organize_to_classification(
         Arc::clone(&provider),
         document,
         _options,
@@ -282,18 +282,18 @@ pub async fn organize_text<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_text_to_basis_graph<P: Provider>(
+pub async fn organize_text_to_classification<P: Provider>(
     provider: Arc<P>,
     text: String,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_text_to_basis_graph");
+    log::trace!("In organize_text_to_classification");
 
     let document = Document::from_string(text, _options, metadata)?;
 
-    organize_to_basis_graph(
+    organize_to_classification(
         Arc::clone(&provider),
         document,
         _options,
@@ -348,14 +348,14 @@ pub async fn organize_file<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_file_to_basis_graph<P: Provider>(
+pub async fn organize_file_to_classification<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_file_to_basis_graph");
+    log::trace!("In organize_file_to_classification");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path).map_err(|err| {
@@ -363,7 +363,7 @@ pub async fn organize_file_to_basis_graph<P: Provider>(
         Errors::FileInputError
     })?;
 
-    organize_text_to_basis_graph(
+    organize_text_to_classification(
         Arc::clone(&provider),
         text,
         _options,

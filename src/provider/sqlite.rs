@@ -3,7 +3,7 @@ use rusqlite::{Connection, Result};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
-use crate::basis_graph::BasisGraph;
+use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::prelude::*;
@@ -72,17 +72,17 @@ impl Provider for SqliteProvider {
         Ok(())
     }
 
-    async fn get_basis_graph_by_lineage(
+    async fn get_classification_by_lineage(
         &self,
         _lineage: &Lineage,
-    ) -> Result<Option<BasisGraph>, Errors> {
+    ) -> Result<Option<Classification>, Errors> {
         Ok(None)
     }
 
-    async fn save_basis_graph(
+    async fn save_classification(
         &self,
         _lineage: &Lineage,
-        _basis_graph: BasisGraph,
+        _classification: Classification,
     ) -> Result<(), Errors> {
         Ok(())
     }
