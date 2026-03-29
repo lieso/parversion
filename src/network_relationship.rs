@@ -63,7 +63,7 @@ impl NetworkRelationship {
             Arc::clone(&meta_context),
             original_document,
             all_network_jsons
-        );
+        ).await?;
 
         unimplemented!()
     }

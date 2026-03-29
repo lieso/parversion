@@ -12,9 +12,11 @@ mod translation;
 mod categorization;
 mod node_analysis;
 mod network_analysis;
+mod network_relationships;
 
 use node_analysis::NodeAnalysis;
 use network_analysis::NetworkAnalysis;
+use network_relationships::NetworkRelationships;
 
 pub struct LLM {}
 
@@ -31,19 +33,12 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
+        let (redundancy_response, _metadata) = NetworkRelationships::infer_redundant_networks(
+            &original_document,
+            &all_network_jsons,
+        ).await?;
 
-        let user_prompt = format!(r##"
-[ORIGINAL DOCUMENT]:
-{}
-
-[NETWORKS]:
-{}
-"##, original_document, all_network_jsons);
-
-
-
-        log::debug!("{}", user_prompt);
-
+        log::debug!("redundancy_response: {:?}", redundancy_response);
 
         Ok(())
     }
