@@ -13,12 +13,11 @@ use crate::llm::LLM;
 pub struct NetworkRelationship {}
 
 impl NetworkRelationship {
-    pub async fn explore_relationships<P: Provider>(
+    pub async fn get_canonical_networks<P: Provider>(
         provider: Arc<P>,
         meta_context: Arc<RwLock<MetaContext>>,
         networks: Vec<Arc<BasisNetwork>>
-    ) -> Result<(), Errors> {
-
+    ) -> Result<(Vec<BasisNetwork>, (u64,)), Errors> {
         let graph_root = {
             let lock = read_lock!(meta_context);
             lock.graph_root
@@ -52,20 +51,28 @@ impl NetworkRelationship {
             all_network_jsons.push_str(&network_section);
         }
 
-        //log::debug!("{}", all_network_jsons);
-
         let original_document = {
             let lock = read_lock!(meta_context);
             lock.get_original_document()
         };
 
-        let result = LLM::check_redundancy(
+        let (canonical_ids, (tokens,)) = LLM::check_redundancy(
             Arc::clone(&meta_context),
             original_document,
             all_network_jsons
         ).await?;
 
-        unimplemented!()
+        let canonical_networks: Vec<BasisNetwork> = networks
+            .iter()
+            .filter(|n| canonical_ids.contains(&n.id.to_string()))
+            .map(|n| (**n).clone())
+            .collect();
+
+        if canonical_networks.is_empty() {
+            panic!("No canonical networks found");
+        }
+
+        Ok((canonical_networks, (tokens,)))
     }
 
     async fn get_network_json(

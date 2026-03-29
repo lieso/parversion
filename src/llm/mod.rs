@@ -25,7 +25,7 @@ impl LLM {
         meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,
         all_network_jsons: String
-    ) -> Result<(), Errors> {
+    ) -> Result<(Vec<String>, (u64,)), Errors> {
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
@@ -33,14 +33,14 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
-        let (redundancy_response, _metadata) = NetworkRelationships::infer_redundant_networks(
+        let (redundancy_response, metadata) = NetworkRelationships::get_canonical_networks(
             &original_document,
             &all_network_jsons,
         ).await?;
 
-        log::debug!("redundancy_response: {:?}", redundancy_response);
+        log::debug!("eliminated networks: {:?}", redundancy_response.eliminated);
 
-        Ok(())
+        Ok((redundancy_response.canonical, (metadata.tokens,)))
     }
 
     pub async fn translate_schema_node(

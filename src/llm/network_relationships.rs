@@ -8,6 +8,7 @@ use serde_json::json;
 
 use crate::prelude::*;
 use crate::environment::get_env_variable;
+use crate::basis_network::BasisNetwork;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EliminatedNetwork {
@@ -30,11 +31,11 @@ pub struct RedundantNetworksResponseMetadata {
 pub struct NetworkRelationships;
 
 impl NetworkRelationships {
-    pub async fn infer_redundant_networks(
+    pub async fn get_canonical_networks(
         original_document: &str,
         all_network_jsons: &str,
     ) -> Result<(RedundantNetworksResponse, RedundantNetworksResponseMetadata), Errors> {
-        log::trace!("In infer_redundant_networks");
+        log::trace!("In get_canonical_networks");
 
         let system_prompt = r##"
 You are given a set of JSON networks extracted from an HTML document. Each network has a unique ID and one or more examples showing the JSON keys and values that were observed together

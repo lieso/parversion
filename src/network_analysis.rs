@@ -95,11 +95,15 @@ pub async fn get_network_relationships<P: Provider>(
 
     log::debug!("Complex networks found: {}", complex_networks.len());
 
-    NetworkRelationship::explore_relationships(
+    stage_context.record_events("Finding canonical networks", 0);
+
+    let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
         Arc::clone(&provider),
         Arc::clone(&meta_context),
         complex_networks
     ).await?;
+
+    stage_context.record_events("Finding canonical networks", tokens);
 
     unimplemented!()
 }
