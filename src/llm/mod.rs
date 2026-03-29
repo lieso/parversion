@@ -19,6 +19,35 @@ use network_analysis::NetworkAnalysis;
 pub struct LLM {}
 
 impl LLM {
+    pub async fn check_redundancy(
+        meta_context: Arc<RwLock<MetaContext>>,
+        original_document: String,
+        all_network_jsons: String
+    ) -> Result<(), Errors> {
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  CHECK REDUNDANCY START                       ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+
+        let user_prompt = format!(r##"
+[ORIGINAL DOCUMENT]:
+{}
+
+[NETWORKS]:
+{}
+"##, original_document, all_network_jsons);
+
+
+
+        log::debug!("{}", user_prompt);
+
+
+        Ok(())
+    }
+
     pub async fn translate_schema_node(
         meta_context: Arc<RwLock<MetaContext>>,
         schema_context:SchemaContext,

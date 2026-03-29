@@ -8,6 +8,7 @@ use crate::provider::Provider;
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::document::Document;
+use crate::llm::LLM;
 
 pub struct NetworkRelationship {}
 
@@ -58,19 +59,11 @@ impl NetworkRelationship {
             lock.get_original_document()
         };
 
-
-        let user_prompt = format!(r##"
-[ORIGINAL DOCUMENT]:
-{}
-
-[NETWORKS]:
-{}
-"##, original_document, all_network_jsons);
-
-
-
-
-        log::debug!("{}", user_prompt);
+        let result = LLM::check_redundancy(
+            Arc::clone(&meta_context),
+            original_document,
+            all_network_jsons
+        );
 
         unimplemented!()
     }
