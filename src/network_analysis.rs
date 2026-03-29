@@ -98,12 +98,29 @@ pub async fn get_network_relationships<P: Provider>(
     stage_context.record_events("Finding canonical networks", 0);
 
     let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
-        Arc::clone(&provider),
         Arc::clone(&meta_context),
         complex_networks
     ).await?;
 
     stage_context.record_events("Finding canonical networks", tokens);
+    stage_context.record_events("Relationship typing", 0);
+
+
+    let result = NetworkRelationship::get_relationship_typing(
+        Arc::clone(&meta_context),
+        canonical_networks.clone()
+    ).await?;
+
+
+
+
+
+
+
+
+
+
+
 
     unimplemented!()
 }

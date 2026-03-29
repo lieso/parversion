@@ -4,7 +4,6 @@ use serde_json::{json, Value, Map};
 
 use crate::prelude::*;
 use crate::basis_network::{BasisNetwork, NetworkType};
-use crate::provider::Provider;
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::document::Document;
@@ -13,8 +12,14 @@ use crate::llm::LLM;
 pub struct NetworkRelationship {}
 
 impl NetworkRelationship {
-    pub async fn get_canonical_networks<P: Provider>(
-        provider: Arc<P>,
+    pub async fn get_relationship_typing(
+        meta_context: Arc<RwLock<MetaContext>>,
+        networks: Vec<BasisNetwork>
+    ) -> Result<(), Errors> {
+        unimplemented!()
+    }
+
+    pub async fn get_canonical_networks(
         meta_context: Arc<RwLock<MetaContext>>,
         networks: Vec<Arc<BasisNetwork>>
     ) -> Result<(Vec<BasisNetwork>, (u64,)), Errors> {
