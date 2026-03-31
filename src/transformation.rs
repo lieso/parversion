@@ -10,6 +10,7 @@ use crate::json_node::{Json, JsonMetadata, JsonNode};
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
+use crate::basis_network::BasisNetwork;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -237,4 +238,25 @@ pub struct NetworkTransformation {
     pub subgraph_hash: String,
     pub image: String,
     pub meta: NetworkMetadata,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CanonicalizationTransformation {
+    pub canonical_networks: Vec<String>,
+}
+
+impl CanonicalizationTransformation {
+    pub fn transform(
+        &self,
+        networks: Vec<Arc<BasisNetwork>>
+    ) -> Result<Vec<Arc<BasisNetwork>>, Errors> {
+        Ok(
+            networks
+                .into_iter()
+                .filter(|network| {
+                    self.canonical_networks.contains(&network.subgraph_hash.to_string().unwrap())
+                })
+                .collect()
+        )
+    }
 }
