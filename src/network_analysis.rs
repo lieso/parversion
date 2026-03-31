@@ -7,13 +7,14 @@ use serde_json::{json, Value, Map};
 
 use crate::classification::Classification;
 use crate::basis_network::{BasisNetwork, NetworkType};
+use crate::basis_graph::BasisGraph;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::transformation::NetworkTransformation;
+use crate::transformation::{NetworkTransformation, CanonicalizationTransformation};
 use crate::network_relationship::NetworkRelationship;
 use crate::json_node::JsonNode;
 
@@ -95,14 +96,6 @@ pub async fn get_network_relationships<P: Provider>(
 
     log::debug!("Complex networks found: {}", complex_networks.len());
 
-
-
-
-
-
-
-    stage_context.record_events("Finding canonical networks", 0);
-
     let mut graph_hash = Hash::from_items(
         complex_networks
         .iter()
@@ -114,21 +107,25 @@ pub async fn get_network_relationships<P: Provider>(
 
 
     log::debug!("graph hash: {}", graph_hash);
-    unimplemented!();
 
 
 
-    let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
+
+
+    let basis_graph: BasisGraph = get_canonical_networks(
+        Arc::clone(&provider),
         Arc::clone(&meta_context),
-        complex_networks
+        options,
+        stage_context,
+        &graph_hash,
+        complex_networks.clone(),
     ).await?;
-    let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
+    let canonical_networks: Vec<Arc<BasisNetwork>> = basis_graph.transformation.transform(complex_networks)?;
 
 
-    stage_context.record_events("Finding canonical networks", tokens);
-
-
-
+    if canonical_networks.is_empty() {
+        panic!("Canonical networks not found?");
+    }
 
 
 
@@ -152,6 +149,44 @@ pub async fn get_network_relationships<P: Provider>(
 
 
     unimplemented!()
+}
+
+pub async fn get_canonical_networks<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+    graph_hash: &Hash,
+    complex_networks: Vec<Arc<BasisNetwork>>
+) -> Result<BasisGraph, Errors> {
+    log::trace!("In get_canonical_networks");
+
+    stage_context.record_events("Finding canonical networks", 0);
+    
+    let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
+        Arc::clone(&meta_context),
+        complex_networks
+    ).await?;
+    let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
+
+    stage_context.record_events("Finding canonical networks", tokens);
+
+    let basis_graph = BasisGraph {
+        id: ID::new(),
+        hash: graph_hash.clone(),
+        transformation: CanonicalizationTransformation {
+            canonical_networks: canonical_networks
+                .iter()
+                .map(|network| {
+                    network.subgraph_hash.to_string().unwrap()
+                })
+                .collect()
+        },
+    };
+
+    //provider.save_basis_graph(&graph_hash, basis_graph.clone()).await?;
+    
+    Ok(basis_graph)
 }
 
 pub async fn get_basis_networks<P: Provider>(
