@@ -162,6 +162,12 @@ pub async fn get_canonical_networks<P: Provider>(
     log::trace!("In get_canonical_networks");
 
     stage_context.record_events("Finding canonical networks", 0);
+
+    if !options.regenerate {
+        if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
+            return Ok(basis_graph);
+        }
+    }
     
     let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
         Arc::clone(&meta_context),
@@ -184,7 +190,7 @@ pub async fn get_canonical_networks<P: Provider>(
         },
     };
 
-    //provider.save_basis_graph(&graph_hash, basis_graph.clone()).await?;
+    provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
     
     Ok(basis_graph)
 }

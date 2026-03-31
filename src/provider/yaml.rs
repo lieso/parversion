@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::fs as async_fs;
 use tokio::sync::RwLock as AsyncRwLock;
 
+use crate::basis_graph::BasisGraph;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
@@ -437,6 +438,62 @@ impl Provider for YamlFileProvider {
         }
 
         Ok(None)
+    }
+
+    async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
+        let yaml = self.load_data().await?;
+
+        let basis_graphs: Vec<BasisGraph> = yaml
+            .get("basis_graphs")
+            .and_then(|data| {
+                let deserialized: Result<Vec<BasisGraph>, _> = serde_yaml::from_value(data.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error for basis_graphs: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(Vec::new);
+
+        for basis_graph in basis_graphs {
+            if &basis_graph.hash == hash {
+                return Ok(Some(basis_graph));
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn save_basis_graph(
+        &self,
+        hash: &Hash,
+        basis_graph: BasisGraph,
+    ) -> Result<(), Errors> {
+        let mut yaml = self.load_data().await?;
+
+        let serialized_basis_graph =
+            serde_yaml::to_value(&basis_graph).map_err(|_| Errors::UnexpectedError)?;
+
+        if let Some(basis_graphs) = yaml.get_mut("basis_graphs") {
+            let sequence = basis_graphs.as_sequence_mut().ok_or_else(|| {
+                Errors::YamlParseError(
+                    "Failed to get mutable sequence for 'basis_graphs'.".to_string(),
+                )
+            })?;
+
+            sequence.retain(|entry| {
+                if let Ok(existing) = serde_yaml::from_value::<BasisGraph>(entry.clone()) {
+                    &existing.hash != hash
+                } else {
+                    true
+                }
+            });
+
+            sequence.push(serialized_basis_graph);
+        } else {
+            yaml["basis_graphs"] = serde_yaml::Value::Sequence(vec![serialized_basis_graph]);
+        }
+
+        self.save_data(&yaml).await
     }
 
     async fn save_operation(&self, hash: &Hash, operation: Operation) -> Result<(), Errors> {
