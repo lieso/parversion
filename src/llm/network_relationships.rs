@@ -239,13 +239,16 @@ Do not include any explanation outside the JSON.
         log::trace!("In get_canonical_networks");
 
         let system_prompt = r##"
-You are given a set of JSON networks extracted from an HTML document. Each network has a unique ID and one or more examples showing the JSON keys and values that were observed together
-in the DOM.
+You are given a set of JSON networks extracted from an HTML document. Each network has a unique ID and one or more examples showing the JSON keys and values that were observed together in the DOM.
 
 Your task is to deduplicate this set of networks so that each remaining network represents a distinct resource. Perform the following two operations:
 
 1. Remove nested networks
-A nested network is one whose structure appears as a subtree within another network's examples. If network A's structure appears embedded inside network B, remove A and map it to B.
+A nested network is one whose structure appears as a non-repeating subtree within a single instance of another network. If network A's structure appears embedded inside network B as a
+fixed sub-object, remove A and map it to B.
+
+Exception: If network A appears as an element within an array inside network B, do not eliminate A. A repeated item within a collection is a distinct resource, not a nested subtree.
+Only eliminate a network if it appears as a non-repeating embedded object within a single instance of another network.
 
 2. Remove duplicate networks
 A duplicate network represents the same resource as another network but differs in completeness, key naming variation, or number of examples. When two networks represent the same
@@ -254,7 +257,7 @@ resource, keep one and eliminate the other.
 When deciding which network to keep, apply these criteria in order:
 - Prefer the network with the most consistent structure across its examples
 - Prefer the network that has more examples
-- Prefer the flatter structure when nesting adds no semantic meaning
+- Prefer the flatter structure when nesting adds no semantic value
 - Prefer the network whose keys most directly name the data they contain
 
 Output
