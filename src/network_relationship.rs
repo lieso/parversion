@@ -54,19 +54,13 @@ impl NetworkRelationship {
             lock.get_original_document()
         };
 
-        let user_prompt = format!(r##"
-[ORIGINAL DOCUMENT]:
-{}
-
-[NETWORKS]:
-{}
-"##, original_document, all_network_jsons);
-
-        log::debug!("{}", user_prompt);
 
 
-
-
+        let result = LLM::identify_relationships(
+            Arc::clone(&meta_context),
+            original_document,
+            all_network_jsons
+        ).await?;
 
 
         unimplemented!()

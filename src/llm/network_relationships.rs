@@ -28,9 +28,210 @@ pub struct RedundantNetworksResponseMetadata {
     pub tokens: u64,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NetworkRelationshipItem {
+    pub from: String,
+    pub to: String,
+    #[serde(rename = "type")]
+    pub relationship_type: String,
+    pub reason: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NetworkRelationshipsResponse {
+    pub relationships: Vec<NetworkRelationshipItem>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NetworkRelationshipsResponseMetadata {
+    pub tokens: u64,
+}
+
 pub struct NetworkRelationships;
 
 impl NetworkRelationships {
+    pub async fn identify_relationships(
+        original_document: &str,
+        all_network_jsons: &str,
+    ) -> Result<(NetworkRelationshipsResponse, NetworkRelationshipsResponseMetadata), Errors> {
+        log::trace!("In identify_relationships");
+
+        let system_prompt = r##"
+You are given a set of canonical JSON networks extracted from an HTML document. Each network has been deduplicated and represents a distinct resource. Your task is to identify the
+relationships between these networks.
+
+For each relationship you identify, assign one of the following types:
+
+composition — the two networks are fragments of the same resource and should be merged into a single object. from is the primary network, to is the supplementary one.
+
+one_to_many — one instance of from owns or contains multiple instances of to.
+
+parent_child — instances of from can be children of other instances of from. Set from and to to the same network ID.
+
+reference — from contains a URL or ID that points to an instance of to, but the two are independent resources that should not be merged.
+
+A network may have more than one relationship with another network, including with itself. Identify and list all relationships that are evidenced, not just the most prominent one.
+
+Only include relationships that are directly evidenced by the network examples or the original document. Do not infer relationships based on assumptions about the document type or
+domain.
+
+Output
+Respond with valid JSON in the following format:
+{
+  "relationships": [
+    {
+      "from": "network_id",
+      "to": "network_id",
+      "type": "composition|one_to_many|parent_child|reference",
+      "reason": "one sentence"
+    }
+  ]
+}
+
+Do not include any explanation outside the JSON.
+"##;
+        let user_prompt = format!(r##"
+[ORIGINAL DOCUMENT]:
+{}
+
+[NETWORKS]:
+{}
+"##, original_document, all_network_jsons);
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║       IDENTIFY RELATIONSHIPS - LLM REQUEST                    ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+        log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+        log::debug!("{}", system_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+        log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+        log::debug!("{}", user_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+
+        Self::send_relationships_request(system_prompt, &user_prompt).await
+    }
+
+    async fn send_relationships_request(
+        system_prompt: &str,
+        user_prompt: &str,
+    ) -> Result<(NetworkRelationshipsResponse, NetworkRelationshipsResponseMetadata), Errors> {
+        let client = Self::build_client();
+
+        let response_format = ResponseFormat::json_schema(
+            "network_relationships",
+            true,
+            json!({
+                "type": "object",
+                "properties": {
+                    "relationships": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "from": {
+                                    "type": "string",
+                                    "description": "ID of the source network"
+                                },
+                                "to": {
+                                    "type": "string",
+                                    "description": "ID of the target network"
+                                },
+                                "type": {
+                                    "type": "string",
+                                    "enum": ["composition", "one_to_many", "parent_child", "reference"],
+                                    "description": "The type of relationship between the two networks"
+                                },
+                                "reason": {
+                                    "type": "string",
+                                    "description": "One sentence explaining the relationship"
+                                }
+                            },
+                            "required": ["from", "to", "type", "reason"],
+                            "additionalProperties": false
+                        },
+                        "description": "Identified relationships between networks"
+                    }
+                },
+                "required": ["relationships"],
+                "additionalProperties": false
+            }),
+        );
+
+        let request = ChatCompletionRequest::builder()
+            .model("gpt-5")
+            .messages(vec![
+                Message::new(Role::System, system_prompt),
+                Message::new(Role::User, user_prompt),
+            ])
+            .response_format(response_format)
+            .build()
+            .expect("Could not create llm request");
+
+        match client.send_chat_completion(&request).await {
+            Ok(response) => {
+                log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
+                log::debug!("{:?}", response);
+                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                log::debug!("");
+
+                if let Some(content) = response.choices[0].content() {
+                    log::debug!(
+                        "┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐"
+                    );
+                    log::debug!("{}", content);
+                    log::debug!(
+                        "└───────────────────────────────────────────────────────────────┘"
+                    );
+                    log::debug!("");
+
+                    let relationships_response = {
+                        match serde_json::from_str::<NetworkRelationshipsResponse>(content) {
+                            Ok(parsed_response) => {
+                                log::debug!(
+                                    "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
+                                );
+                                log::debug!("{:?}", parsed_response);
+                                log::debug!(
+                                    "└───────────────────────────────────────────────────────────────┘"
+                                );
+                                log::debug!("");
+                                Ok(parsed_response)
+                            }
+                            Err(e) => {
+                                log::error!("Failed to parse LLM response: {}", e);
+                                Err(Errors::UnexpectedError)
+                            }
+                        }
+                    }?;
+
+                    let metadata = {
+                        if let Some(usage) = response.usage {
+                            NetworkRelationshipsResponseMetadata {
+                                tokens: usage.total_tokens.clone() as u64,
+                            }
+                        } else {
+                            NetworkRelationshipsResponseMetadata { tokens: 0 }
+                        }
+                    };
+
+                    Ok((relationships_response, metadata))
+                } else {
+                    log::error!("No content in LLM response");
+                    Err(Errors::UnexpectedError)
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenRouter: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
     pub async fn get_canonical_networks(
         original_document: &str,
         all_network_jsons: &str,

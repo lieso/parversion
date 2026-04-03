@@ -21,6 +21,28 @@ use network_relationships::NetworkRelationships;
 pub struct LLM {}
 
 impl LLM {
+    pub async fn identify_relationships(
+        meta_context: Arc<RwLock<MetaContext>>,
+        original_document: String,
+        all_network_jsons: String
+    ) -> Result<(), Errors> {
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  IDENTIFY RELATIONSHIPS START                 ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        let (relationships_response, _metadata) = NetworkRelationships::identify_relationships(
+            &original_document,
+            &all_network_jsons,
+        ).await?;
+
+        log::debug!("relationships: {:?}", relationships_response.relationships);
+
+        Ok(())
+    }
+
     pub async fn check_redundancy(
         meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,
