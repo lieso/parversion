@@ -24,7 +24,7 @@ impl LLM {
     pub async fn identify_relationships(
         meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,
-        all_network_jsons: String
+        network_jsons: Vec<(String, Vec<String>)>
     ) -> Result<(), Errors> {
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -32,6 +32,20 @@ impl LLM {
         log::debug!("║                  IDENTIFY RELATIONSHIPS START                 ║");
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        let all_network_jsons: String = network_jsons.iter()
+            .map(|(network_id, json_examples)| {
+                let examples_string: String = json_examples.iter().enumerate()
+                    .map(|(index, json)| format!("\nExample {}:\n{}\n", index + 1, json))
+                    .collect();
+                format!(
+                    "\n{}\n\n[Network ID]\n{}\n\n[Network examples]\n{}\n",
+                    "=".repeat(100),
+                    network_id,
+                    examples_string
+                )
+            })
+            .collect();
 
         let (relationships_response, _metadata) = NetworkRelationships::identify_relationships(
             &original_document,

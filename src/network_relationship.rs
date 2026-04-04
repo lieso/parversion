@@ -1,6 +1,7 @@
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, VecDeque};
 use serde_json::{json, Value, Map};
+use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 use crate::basis_network::{BasisNetwork, NetworkType};
@@ -8,6 +9,14 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::document::Document;
 use crate::llm::LLM;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum NetworkRelationshipType {
+   Composition,
+   OneToMany,
+   ParentChild,
+   Reference,
+}
 
 pub struct NetworkRelationship {}
 
@@ -23,7 +32,7 @@ impl NetworkRelationship {
                 .ok_or(Errors::GraphRootNotProvided)?
         };
 
-        let mut all_network_jsons = String::new();
+        let mut network_jsons: Vec<(String, Vec<String>)> = Vec::new();
 
         for network in networks.iter() {
             let json_examples = Self::get_network_json(
@@ -35,18 +44,7 @@ impl NetworkRelationship {
                 continue;
             }
 
-            let examples_string: String = json_examples.iter().enumerate()
-                .map(|(index, json)| format!("\nExample {}:\n{}\n", index + 1, json))
-                .collect();
-
-            let network_section = format!(
-                "\n{}\n\n[Network ID]\n{}\n\n[Network examples]\n{}\n",
-                "=".repeat(100),
-                network.id.to_string(),
-                examples_string
-            );
-
-            all_network_jsons.push_str(&network_section);
+            network_jsons.push((network.id.to_string(), json_examples));
         }
 
         let original_document = {
@@ -54,12 +52,10 @@ impl NetworkRelationship {
             lock.get_original_document()
         };
 
-
-
         let result = LLM::identify_relationships(
             Arc::clone(&meta_context),
             original_document,
-            all_network_jsons
+            network_jsons
         ).await?;
 
 
