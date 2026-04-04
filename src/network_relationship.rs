@@ -22,10 +22,22 @@ pub enum NetworkRelationshipType {
 pub struct NetworkRelationship {}
 
 impl NetworkRelationship {
+    pub async fn do_something(
+        meta_context: Arc<RwLock<MetaContext>>,
+        network_from: Arc<BasisNetwork>,
+        network_to: Arc<BasisNetwork>,
+    ) -> Result<(), Errors> {
+
+
+        unimplemented!();
+    }
+
     pub async fn get_relationship_typing(
         meta_context: Arc<RwLock<MetaContext>>,
         networks: Vec<Arc<BasisNetwork>>
-    ) -> Result<(), Errors> {
+    ) -> Result<Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, Errors> {
+        log::trace!("In get_relationship_typing");
+
         let graph_root = {
             let lock = read_lock!(meta_context);
             lock.graph_root
@@ -61,13 +73,7 @@ impl NetworkRelationship {
 
         let typed_relationships: Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)> = relationships;
 
-        log::debug!("==================================================================================================================================================================================================================================================================================================================================================================================================================");
-        log::debug!("typed_relationships: {:?}", typed_relationships);
-        log::debug!("==================================================================================================================================================================================================================================================================================================================================================================================================================");
-
-        unimplemented!();
-
-        Ok(())
+        Ok(typed_relationships)
     }
 
     pub async fn get_canonical_networks(

@@ -15,7 +15,7 @@ use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::transformation::{NetworkTransformation, CanonicalizationTransformation};
-use crate::network_relationship::NetworkRelationship;
+use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::json_node::JsonNode;
 
 pub async fn get_classification<P: Provider>(
@@ -132,11 +132,37 @@ pub async fn get_network_relationships<P: Provider>(
 
     stage_context.record_events("Relationship typing", 0);
 
-    let result = NetworkRelationship::get_relationship_typing(
+    let typed_relationships = NetworkRelationship::get_relationship_typing(
         Arc::clone(&meta_context),
         canonical_networks.clone()
     ).await?;
 
+
+
+
+
+
+
+
+
+
+    let first_composition = typed_relationships
+        .iter()
+        .find(|(_, _, rel_type)| matches!(rel_type, NetworkRelationshipType::Composition));
+
+    if let Some(first_composition) = first_composition {
+
+        let (network_from, network_to, relationship) = first_composition;
+
+        let result = NetworkRelationship::do_something(
+            Arc::clone(&meta_context),
+            Arc::clone(&network_from),
+            Arc::clone(&network_to),
+
+        ).await?;
+
+
+    }
 
 
 
