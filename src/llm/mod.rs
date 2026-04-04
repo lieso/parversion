@@ -1,5 +1,7 @@
 use std::sync::{Arc, RwLock};
 
+use crate::basis_network::BasisNetwork;
+use crate::network_relationship::NetworkRelationshipType;
 use crate::context_group::ContextGroup;
 use crate::path::Path;
 use crate::prelude::*;
@@ -24,8 +26,8 @@ impl LLM {
     pub async fn identify_relationships(
         meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,
-        network_jsons: Vec<(String, Vec<String>)>
-    ) -> Result<(), Errors> {
+        network_jsons: Vec<(Arc<BasisNetwork>, Vec<String>)>
+    ) -> Result<Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, Errors> {
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
@@ -34,14 +36,14 @@ impl LLM {
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
         let all_network_jsons: String = network_jsons.iter()
-            .map(|(network_id, json_examples)| {
+            .map(|(network, json_examples)| {
                 let examples_string: String = json_examples.iter().enumerate()
                     .map(|(index, json)| format!("\nExample {}:\n{}\n", index + 1, json))
                     .collect();
                 format!(
                     "\n{}\n\n[Network ID]\n{}\n\n[Network examples]\n{}\n",
                     "=".repeat(100),
-                    network_id,
+                    network.id.to_string(),
                     examples_string
                 )
             })
@@ -54,7 +56,24 @@ impl LLM {
 
         log::debug!("relationships: {:?}", relationships_response.relationships);
 
-        Ok(())
+        let relationships = relationships_response.relationships
+            .into_iter()
+            .map(|item| {
+                let from = network_jsons.iter()
+                    .find(|(n, _)| n.id.to_string() == item.from)
+                    .map(|(n, _)| Arc::clone(n))
+                    .unwrap_or_else(|| panic!("Relationship 'from' network not found: {}", item.from));
+                let to = network_jsons.iter()
+                    .find(|(n, _)| n.id.to_string() == item.to)
+                    .map(|(n, _)| Arc::clone(n))
+                    .unwrap_or_else(|| panic!("Relationship 'to' network not found: {}", item.to));
+                let rel_type = serde_json::from_value(serde_json::Value::String(item.relationship_type.clone()))
+                    .unwrap_or_else(|_| panic!("Unknown relationship type: {}", item.relationship_type));
+                (from, to, rel_type)
+            })
+            .collect();
+
+        Ok(relationships)
     }
 
     pub async fn check_redundancy(

@@ -11,6 +11,7 @@ use crate::document::Document;
 use crate::llm::LLM;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
 pub enum NetworkRelationshipType {
    Composition,
    OneToMany,
@@ -32,7 +33,7 @@ impl NetworkRelationship {
                 .ok_or(Errors::GraphRootNotProvided)?
         };
 
-        let mut network_jsons: Vec<(String, Vec<String>)> = Vec::new();
+        let mut network_jsons: Vec<(Arc<BasisNetwork>, Vec<String>)> = Vec::new();
 
         for network in networks.iter() {
             let json_examples = Self::get_network_json(
@@ -44,7 +45,7 @@ impl NetworkRelationship {
                 continue;
             }
 
-            network_jsons.push((network.id.to_string(), json_examples));
+            network_jsons.push((Arc::clone(network), json_examples));
         }
 
         let original_document = {
@@ -52,14 +53,21 @@ impl NetworkRelationship {
             lock.get_original_document()
         };
 
-        let result = LLM::identify_relationships(
+        let relationships = LLM::identify_relationships(
             Arc::clone(&meta_context),
             original_document,
             network_jsons
         ).await?;
 
+        let typed_relationships: Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)> = relationships;
 
-        unimplemented!()
+        log::debug!("==================================================================================================================================================================================================================================================================================================================================================================================================================");
+        log::debug!("typed_relationships: {:?}", typed_relationships);
+        log::debug!("==================================================================================================================================================================================================================================================================================================================================================================================================================");
+
+        unimplemented!();
+
+        Ok(())
     }
 
     pub async fn get_canonical_networks(
