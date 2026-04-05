@@ -231,7 +231,7 @@ async fn get_relationship_link<P: Provider>(
         }
     }
 
-    unimplemented!()
+    Ok(())
 }
 
 pub async fn get_relationship_typing<P: Provider>(

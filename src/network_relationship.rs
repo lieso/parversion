@@ -28,11 +28,13 @@ impl NetworkRelationship {
     ) -> Result<(), Errors> {
         log::trace!("In process_composition");
 
-        Self::create_network_snippet(
+        let snippet = Self::create_network_snippet(
             Arc::clone(&meta_context),
             Arc::clone(&network_from),
             Arc::clone(&network_to),
-        ).await?;
+        )?;
+
+        log::debug!("snippet: {}", snippet);
 
         unimplemented!()
     }
@@ -44,21 +46,22 @@ impl NetworkRelationship {
     ) -> Result<(), Errors> {
         log::trace!("In process_parent_child");
 
-        Self::create_network_snippet(
+        let snippet = Self::create_network_snippet(
             Arc::clone(&meta_context),
             Arc::clone(&network_from),
             Arc::clone(&network_to),
-        ).await?;
+        )?;
+
+        log::debug!("snippet: {}", snippet);
 
         unimplemented!()
     }
 
-    async fn create_network_snippet(
+    fn create_network_snippet(
         meta_context: Arc<RwLock<MetaContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
-    ) -> Result<(), Errors> {
-
+    ) -> Result<String, Errors> {
         let graph_root = {
             let lock = read_lock!(meta_context);
             lock.graph_root
@@ -72,10 +75,6 @@ impl NetworkRelationship {
             &network_to,
         );
 
-
-
-
-
         let mut snippet = String::new();
 
         Self::get_network_snippet(
@@ -87,22 +86,7 @@ impl NetworkRelationship {
             &mut snippet
         );
 
-        log::debug!("snippet: {}", snippet);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        unimplemented!();
+        Ok(snippet)
     }
 
     fn get_network_snippet(
@@ -128,14 +112,19 @@ impl NetworkRelationship {
         if should_render {
             let (mut a, _b) = read_lock!(document_node).to_string_components();
 
+            let same_network = network_from_subgraph_hash == network_to_subgraph_hash;
+
             if lock.subgraph_hash == *network_from_subgraph_hash {
-                let marker_prefix = "<!-- Target Network A: Start -->";
-                let marker_suffix = "<!-- Target Network A: End -->";
+                let (marker_prefix, marker_suffix) = if same_network {
+                    ("<!-- Target Network: Start -->", "<!-- Target Network: End -->")
+                } else {
+                    ("<!-- Target Network A: Start -->", "<!-- Target Network A: End -->")
+                };
 
                 a = format!("{}{}{}", marker_prefix, a, marker_suffix)
             }
 
-            if lock.subgraph_hash == *network_to_subgraph_hash {
+            if !same_network && lock.subgraph_hash == *network_to_subgraph_hash {
                 let marker_prefix = "<!-- Target Network B: Start -->";
                 let marker_suffix = "<!-- Target Network B: End -->";
 
@@ -179,12 +168,12 @@ impl NetworkRelationship {
             let lock = read_lock!(current);
 
             // We have enough samples of both networks
-            if network_from_counter > 3 && network_to_counter > 3 {
+            if network_from_counter > 5 && network_to_counter > 5 {
                 break;
             }
 
-            let from_match = lock.subgraph_hash == network_from.subgraph_hash && network_from_counter <= 3;
-            let to_match = lock.subgraph_hash == network_to.subgraph_hash && network_to_counter <= 3;
+            let from_match = lock.subgraph_hash == network_from.subgraph_hash && network_from_counter <= 5;
+            let to_match = lock.subgraph_hash == network_to.subgraph_hash && network_to_counter <= 5;
 
             if from_match || to_match {
 
