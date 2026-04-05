@@ -165,43 +165,71 @@ pub async fn get_network_relationships<P: Provider>(
         panic!("No relationships?");
     }
 
+    let max_concurrency = {
+        let config_lock = read_lock!(CONFIG);
+        config_lock.llm.max_concurrency
+    };
 
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let mut handles = Vec::new();
 
+    for (network_from, network_to, rel_type) in relationships {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
 
-
-
-
-
-
-
-
-    let first_composition = relationships
-        .iter()
-        .find(|(_, _, rel_type)| matches!(rel_type, NetworkRelationshipType::Composition));
-
-    if let Some(first_composition) = first_composition {
-
-        let (network_from, network_to, relationship) = first_composition;
-
-        let result = NetworkRelationship::do_something(
-            Arc::clone(&meta_context),
-            Arc::clone(&network_from),
-            Arc::clone(&network_to),
-
-        ).await?;
-
-
+        let handle = task::spawn(async move {
+            let _permit = permit;
+            get_relationship_link(
+                cloned_provider,
+                cloned_meta_context,
+                network_from,
+                network_to,
+                rel_type,
+                &cloned_options,
+                &cloned_stage_context,
+            ).await
+        });
+        handles.push(handle);
     }
 
+    let results: Vec<Result<(), Errors>> = try_join_all(handles).await?;
 
+    unimplemented!()
+}
 
+async fn get_relationship_link<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    network_from: Arc<BasisNetwork>,
+    network_to: Arc<BasisNetwork>,
+    relationship_type: NetworkRelationshipType,
+    options: &Options,
+    stage_context: &StageContext,
+) -> Result<(), Errors> {
+    log::trace!("In get_relationship_link");
 
-
-
-
-
-
-
+    match relationship_type {
+        NetworkRelationshipType::Composition => {
+            NetworkRelationship::process_composition(
+                Arc::clone(&meta_context),
+                Arc::clone(&network_from),
+                Arc::clone(&network_to),
+            ).await?;
+        }
+        NetworkRelationshipType::ParentChild => {
+            NetworkRelationship::process_parent_child(
+                Arc::clone(&meta_context),
+                Arc::clone(&network_from),
+                Arc::clone(&network_to),
+            ).await?;
+        }
+        _ => {
+            log::warn!("Ignoring relationship type: {:?}", relationship_type);
+        }
+    }
 
     unimplemented!()
 }
@@ -265,7 +293,7 @@ pub async fn get_canonical_networks<P: Provider>(
             return Ok(basis_graph);
         }
     }
-    
+
     let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
         Arc::clone(&meta_context),
         complex_networks

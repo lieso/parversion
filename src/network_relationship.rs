@@ -21,7 +21,39 @@ pub enum NetworkRelationshipType {
 pub struct NetworkRelationship {}
 
 impl NetworkRelationship {
-    pub async fn do_something(
+    pub async fn process_composition(
+        meta_context: Arc<RwLock<MetaContext>>,
+        network_from: Arc<BasisNetwork>,
+        network_to: Arc<BasisNetwork>,
+    ) -> Result<(), Errors> {
+        log::trace!("In process_composition");
+
+        Self::create_network_snippet(
+            Arc::clone(&meta_context),
+            Arc::clone(&network_from),
+            Arc::clone(&network_to),
+        ).await?;
+
+        unimplemented!()
+    }
+
+    pub async fn process_parent_child(
+        meta_context: Arc<RwLock<MetaContext>>,
+        network_from: Arc<BasisNetwork>,
+        network_to: Arc<BasisNetwork>,
+    ) -> Result<(), Errors> {
+        log::trace!("In process_parent_child");
+
+        Self::create_network_snippet(
+            Arc::clone(&meta_context),
+            Arc::clone(&network_from),
+            Arc::clone(&network_to),
+        ).await?;
+
+        unimplemented!()
+    }
+
+    async fn create_network_snippet(
         meta_context: Arc<RwLock<MetaContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
