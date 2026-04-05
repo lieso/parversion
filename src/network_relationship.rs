@@ -51,6 +51,8 @@ impl NetworkRelationship {
             Arc::clone(&meta_context),
             Arc::clone(&graph_root),
             &target_graph_nodes,
+            &network_from.subgraph_hash,
+            &network_to.subgraph_hash,
             &mut snippet
         );
 
@@ -76,6 +78,8 @@ impl NetworkRelationship {
         meta_context: Arc<RwLock<MetaContext>>,
         current: Graph,
         target_graph_nodes: &HashSet<ID>,
+        network_from_subgraph_hash: &Hash,
+        network_to_subgraph_hash: &Hash,
         snippet: &mut String
     )  {
         let lock = read_lock!(current);
@@ -91,7 +95,21 @@ impl NetworkRelationship {
         let should_render = target_graph_nodes.contains(&lock.id);
 
         if should_render {
-            let (a, _b) = read_lock!(document_node).to_string_components();
+            let (mut a, _b) = read_lock!(document_node).to_string_components();
+
+            if lock.subgraph_hash == *network_from_subgraph_hash {
+                let marker_prefix = "<!-- Target Network A: Start -->";
+                let marker_suffix = "<!-- Target Network A: End -->";
+
+                a = format!("{}{}{}", marker_prefix, a, marker_suffix)
+            }
+
+            if lock.subgraph_hash == *network_to_subgraph_hash {
+                let marker_prefix = "<!-- Target Network B: Start -->";
+                let marker_suffix = "<!-- Target Network B: End -->";
+
+                a = format!("{}{}{}", marker_prefix, a, marker_suffix)
+            }
 
             snippet.push_str(&a);
         }
@@ -101,6 +119,8 @@ impl NetworkRelationship {
                 Arc::clone(&meta_context),
                 Arc::clone(&child),
                 target_graph_nodes,
+                network_from_subgraph_hash,
+                network_to_subgraph_hash,
                 snippet,
             );
         }
