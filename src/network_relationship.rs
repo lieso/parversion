@@ -36,12 +36,80 @@ impl NetworkRelationship {
         };
 
         let target_graph_nodes = Self::get_target_graph_nodes(
-            graph_root,
+            Arc::clone(&graph_root),
             &network_from,
             &network_to,
         );
 
+
+
+
+
+        let mut snippet = String::new();
+
+        Self::get_network_snippet(
+            Arc::clone(&meta_context),
+            Arc::clone(&graph_root),
+            &target_graph_nodes,
+            &mut snippet
+        );
+
+        log::debug!("snippet: {}", snippet);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         unimplemented!();
+    }
+
+    fn get_network_snippet(
+        meta_context: Arc<RwLock<MetaContext>>,
+        current: Graph,
+        target_graph_nodes: &HashSet<ID>,
+        snippet: &mut String
+    )  {
+        let lock = read_lock!(current);
+        
+        let contexts = {
+            let lock = read_lock!(meta_context);
+            lock.contexts.clone().unwrap()
+        };
+
+        let current_context = contexts.get(&lock.id).unwrap();
+        let document_node = current_context.document_node.clone();
+
+        let should_render = target_graph_nodes.contains(&lock.id);
+
+        if should_render {
+            let (a, _b) = read_lock!(document_node).to_string_components();
+
+            snippet.push_str(&a);
+        }
+
+        for child in &lock.children {
+            Self::get_network_snippet(
+                Arc::clone(&meta_context),
+                Arc::clone(&child),
+                target_graph_nodes,
+                snippet,
+            );
+        }
+
+        if should_render {
+            let (_a, b) = read_lock!(document_node).to_string_components();
+
+            snippet.push_str(b.as_deref().unwrap_or(""));
+        }
     }
 
     fn get_target_graph_nodes(
