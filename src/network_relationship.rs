@@ -16,7 +16,6 @@ pub enum NetworkRelationshipType {
    Composition,
    OneToMany,
    ParentChild,
-   Reference,
 }
 
 pub struct NetworkRelationship {}

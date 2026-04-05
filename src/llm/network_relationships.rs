@@ -68,8 +68,6 @@ one_to_many — one instance of from owns or contains multiple instances of to.
 
 parent_child — instances of from can be children of other instances of from. Set from and to to the same network ID.
 
-reference — from contains a URL or ID that points to an instance of to, but the two are independent resources that should not be merged.
-
 A network may have more than one relationship with another network, including with itself. Identify and list all relationships that are evidenced, not just the most prominent one.
 
 Only include relationships that are directly evidenced by the network examples or the original document. Do not infer relationships based on assumptions about the document type or
@@ -82,7 +80,7 @@ Respond with valid JSON in the following format:
     {
       "from": "network_id",
       "to": "network_id",
-      "type": "composition|one_to_many|parent_child|reference",
+      "type": "composition|one_to_many|parent_child",
       "reason": "one sentence"
     }
   ]
@@ -143,7 +141,7 @@ Do not include any explanation outside the JSON.
                                 },
                                 "type": {
                                     "type": "string",
-                                    "enum": ["composition", "one_to_many", "parent_child", "reference"],
+                                    "enum": ["composition", "one_to_many", "parent_child"],
                                     "description": "The type of relationship between the two networks"
                                 },
                                 "reason": {
