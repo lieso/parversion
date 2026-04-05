@@ -112,6 +112,9 @@ pub async fn get_network_relationships<P: Provider>(
 
 
 
+
+
+
     let basis_graph: BasisGraph = get_canonical_networks(
         Arc::clone(&provider),
         Arc::clone(&meta_context),
@@ -120,8 +123,7 @@ pub async fn get_network_relationships<P: Provider>(
         &graph_hash,
         complex_networks.clone(),
     ).await?;
-    let canonical_networks: Vec<Arc<BasisNetwork>> = basis_graph.transformation.transform(complex_networks)?;
-
+    let canonical_networks: Vec<Arc<BasisNetwork>> = basis_graph.canonicalization.transform(complex_networks)?;
 
     if canonical_networks.is_empty() {
         panic!("Canonical networks not found?");
@@ -130,13 +132,38 @@ pub async fn get_network_relationships<P: Provider>(
 
 
 
-    stage_context.record_events("Relationship typing", 0);
 
-    let typed_relationships = NetworkRelationship::get_relationship_typing(
+
+
+
+
+    let basis_graph: BasisGraph = get_relationship_typing(
+        Arc::clone(&provider),
         Arc::clone(&meta_context),
-        canonical_networks.clone()
+        options,
+        stage_context,
+        &graph_hash,
+        canonical_networks.clone(),
     ).await?;
 
+    let relationships: Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)> = basis_graph
+        .relationships
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(from_id, to_id, rel_type)| {
+            let from = canonical_networks.iter()
+                .find(|n| n.id == from_id)
+                .unwrap_or_else(|| panic!("Relationship 'from' network not found: {:?}", from_id));
+            let to = canonical_networks.iter()
+                .find(|n| n.id == to_id)
+                .unwrap_or_else(|| panic!("Relationship 'to' network not found: {:?}", to_id));
+            (Arc::clone(from), Arc::clone(to), rel_type)
+        })
+        .collect();
+
+    if relationships.is_empty() {
+        panic!("No relationships?");
+    }
 
 
 
@@ -146,7 +173,9 @@ pub async fn get_network_relationships<P: Provider>(
 
 
 
-    let first_composition = typed_relationships
+
+
+    let first_composition = relationships
         .iter()
         .find(|(_, _, rel_type)| matches!(rel_type, NetworkRelationshipType::Composition));
 
@@ -175,6 +204,48 @@ pub async fn get_network_relationships<P: Provider>(
 
 
     unimplemented!()
+}
+
+pub async fn get_relationship_typing<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+    graph_hash: &Hash,
+    canonical_networks: Vec<Arc<BasisNetwork>>
+) -> Result<BasisGraph, Errors> {
+    log::trace!("In get_relationship_typing");
+
+    stage_context.record_events("Relationship typing", 0);
+
+    if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
+        if !options.regenerate {
+            if basis_graph.relationships.is_some() {
+                return Ok(basis_graph);
+            }
+        }
+
+        let (typed_relationships, (tokens,)) = NetworkRelationship::get_relationship_typing(
+            Arc::clone(&meta_context),
+            canonical_networks.clone()
+        ).await?;
+
+        let mut basis_graph = basis_graph;
+        basis_graph.relationships = Some(
+            typed_relationships.into_iter()
+                .map(|(from, to, rel_type)| (from.id.clone(), to.id.clone(), rel_type))
+                .collect()
+        );
+
+        stage_context.record_events("Relationship typing", tokens);
+
+        provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
+
+        Ok(basis_graph)
+    } else {
+        log::error!("Trying to obtain relationship typing among canonical networks, but canonical networks were not found.");
+        Err(Errors::UnexpectedError)
+    }
 }
 
 pub async fn get_canonical_networks<P: Provider>(
@@ -206,7 +277,7 @@ pub async fn get_canonical_networks<P: Provider>(
     let basis_graph = BasisGraph {
         id: ID::new(),
         hash: graph_hash.clone(),
-        transformation: CanonicalizationTransformation {
+        canonicalization: CanonicalizationTransformation {
             canonical_networks: canonical_networks
                 .iter()
                 .map(|network| {
@@ -214,6 +285,7 @@ pub async fn get_canonical_networks<P: Provider>(
                 })
                 .collect()
         },
+        relationships: None,
     };
 
     provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;

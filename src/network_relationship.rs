@@ -28,6 +28,9 @@ impl NetworkRelationship {
         network_to: Arc<BasisNetwork>,
     ) -> Result<(), Errors> {
 
+        
+        log::debug!("do something");
+
 
         unimplemented!();
     }
@@ -35,7 +38,7 @@ impl NetworkRelationship {
     pub async fn get_relationship_typing(
         meta_context: Arc<RwLock<MetaContext>>,
         networks: Vec<Arc<BasisNetwork>>
-    ) -> Result<Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, Errors> {
+    ) -> Result<(Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, (u64,)), Errors> {
         log::trace!("In get_relationship_typing");
 
         let graph_root = {
@@ -65,15 +68,13 @@ impl NetworkRelationship {
             lock.get_original_document()
         };
 
-        let relationships = LLM::identify_relationships(
+        let (typed_relationships, (tokens,)) = LLM::identify_relationships(
             Arc::clone(&meta_context),
             original_document,
             network_jsons
         ).await?;
 
-        let typed_relationships: Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)> = relationships;
-
-        Ok(typed_relationships)
+        Ok((typed_relationships, (tokens,)))
     }
 
     pub async fn get_canonical_networks(

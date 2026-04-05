@@ -27,7 +27,7 @@ impl LLM {
         meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,
         network_jsons: Vec<(Arc<BasisNetwork>, Vec<String>)>
-    ) -> Result<Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, Errors> {
+    ) -> Result<(Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, (u64,)), Errors> {
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
@@ -49,7 +49,7 @@ impl LLM {
             })
             .collect();
 
-        let (relationships_response, _metadata) = NetworkRelationships::identify_relationships(
+        let (relationships_response, metadata) = NetworkRelationships::identify_relationships(
             &original_document,
             &all_network_jsons,
         ).await?;
@@ -73,7 +73,7 @@ impl LLM {
             })
             .collect();
 
-        Ok(relationships)
+        Ok((relationships, (metadata.tokens,)))
     }
 
     pub async fn check_redundancy(
