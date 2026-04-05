@@ -64,7 +64,11 @@ For each relationship you identify, assign one of the following types:
 
 composition — the two networks are fragments of the same resource and should be merged into a single object. from is the primary network, to is the supplementary one.
 
+one_to_many — one instance of from owns or contains multiple instances of to.
+
 parent_child — instances of from can be children of other instances of from. Set from and to to the same network ID.
+
+reference — from contains a URL or ID that points to an instance of to, but the two are independent resources that should not be merged.
 
 A network may have more than one relationship with another network, including with itself. Identify and list all relationships that are evidenced, not just the most prominent one.
 
@@ -78,7 +82,7 @@ Respond with valid JSON in the following format:
     {
       "from": "network_id",
       "to": "network_id",
-      "type": "composition|parent_child",
+      "type": "composition|one_to_many|parent_child|reference",
       "reason": "one sentence"
     }
   ]
@@ -139,7 +143,7 @@ Do not include any explanation outside the JSON.
                                 },
                                 "type": {
                                     "type": "string",
-                                    "enum": ["composition", "parent_child"],
+                                    "enum": ["composition", "one_to_many", "parent_child", "reference"],
                                     "description": "The type of relationship between the two networks"
                                 },
                                 "reason": {
