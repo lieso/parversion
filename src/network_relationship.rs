@@ -1,5 +1,5 @@
 use std::sync::{Arc, RwLock};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use serde_json::{json, Value, Map};
 use serde::{Deserialize, Serialize};
 
@@ -28,11 +28,88 @@ impl NetworkRelationship {
         network_to: Arc<BasisNetwork>,
     ) -> Result<(), Errors> {
 
-        
-        log::debug!("do something");
+        let graph_root = {
+            let lock = read_lock!(meta_context);
+            lock.graph_root
+                .clone()
+                .ok_or(Errors::GraphRootNotProvided)?
+        };
 
+        let target_graph_nodes = Self::get_target_graph_nodes(
+            graph_root,
+            &network_from,
+            &network_to,
+        );
 
         unimplemented!();
+    }
+
+    fn get_target_graph_nodes(
+        graph_root: Graph,
+        network_from: &BasisNetwork,
+        network_to: &BasisNetwork,
+    ) -> HashSet<ID> {
+        let mut target_graph_nodes: HashSet<ID> = HashSet::new();
+
+        let mut network_from_counter: usize = 0;
+        let mut network_to_counter: usize = 0;
+
+        let mut stack: Vec<(Graph, Vec<Graph>)> = vec![(graph_root, vec![])];
+
+        while let Some((current, path)) = stack.pop() {
+            let lock = read_lock!(current);
+
+            // We have enough samples of both networks
+            if network_from_counter > 3 && network_to_counter > 3 {
+                break;
+            }
+
+            let from_match = lock.subgraph_hash == network_from.subgraph_hash && network_from_counter <= 3;
+            let to_match = lock.subgraph_hash == network_to.subgraph_hash && network_to_counter <= 3;
+
+            if from_match || to_match {
+
+                if from_match {
+                    network_from_counter += 1;
+                }
+
+                if to_match {
+                    network_to_counter += 1;
+                }
+
+                // Add all child nodes of target network
+                let mut queue = VecDeque::new();
+                queue.push_back(Arc::clone(&current));
+
+                while let Some(node) = queue.pop_front() {
+                    let id = read_lock!(node).id.clone();
+
+                    target_graph_nodes.insert(id);
+
+                    for child in &read_lock!(node).children {
+                        queue.push_back(child.clone());
+                    }
+                }
+
+                // Ensure path from root node to target network are included
+                for node in path.iter() {
+                    let id = read_lock!(node).id.clone();
+                    target_graph_nodes.insert(id);
+                }
+
+            } else {
+
+                let mut new_path = path.clone();
+                new_path.push(Arc::clone(&current));
+
+                for child in lock.children.iter().rev() {
+                    stack.push((Arc::clone(child), new_path.clone()));
+                }
+
+            }
+        }
+
+        target_graph_nodes
     }
 
     pub async fn get_relationship_typing(
