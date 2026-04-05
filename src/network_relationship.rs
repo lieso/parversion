@@ -14,9 +14,7 @@ use crate::llm::LLM;
 #[serde(rename_all = "snake_case")]
 pub enum NetworkRelationshipType {
    Composition,
-   OneToMany,
    ParentChild,
-   Reference,
 }
 
 pub struct NetworkRelationship {}
