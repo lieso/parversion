@@ -62,7 +62,7 @@ relationships between these networks.
 
 For each relationship you identify, assign one of the following types:
 
-composition — the two networks are fragments of the same resource and should be merged into a single object. from is the primary network, to is the supplementary one.
+composition — the two networks are separate, non-nested fragments of the same resource in the DOM and should be merged into a single flat object. from is the primary network, to is the supplementary one. Do not classify as composition if to's structure already appears embedded as a sub-object within from's examples — that is a nesting relationship, not composition.
 
 one_to_many — one instance of from owns or contains multiple instances of to.
 
@@ -244,6 +244,8 @@ Your task is to deduplicate this set of networks so that each remaining network 
 1. Remove nested networks
 A nested network is one whose structure appears as a non-repeating subtree within a single instance of another network. If network A's structure appears embedded inside network B as a
 fixed sub-object, remove A and map it to B.
+
+Pay particular attention to small networks consisting of only two or three keys that appear as a named sub-object within a larger network's examples. These are strong candidates for elimination regardless of how semantically self-contained they appear.
 
 Exception: If network A appears as an element within an array inside network B, do not eliminate A. A repeated item within a collection is a distinct resource, not a nested subtree.
 Only eliminate a network if it appears as a non-repeating embedded object within a single instance of another network.
