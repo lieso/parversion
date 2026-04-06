@@ -36,6 +36,7 @@ pub enum Errors {
     ClassificationNotFound,
     OriginNotProvidedError,
     InsufficientPrerequisites(String),
+    XPathParseError(String),
 }
 
 impl From<JoinError> for Errors {
