@@ -47,9 +47,174 @@ pub struct NetworkRelationshipsResponseMetadata {
     pub tokens: u64,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CompositionLinkResponse {
+    pub forward_xpath: String,
+    pub reverse_xpath: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct CompositionLinkResponseMetadata {
+    pub tokens: u64,
+}
+
 pub struct NetworkRelationships;
 
 impl NetworkRelationships {
+    pub async fn get_composition_link(
+        snippet: &str,
+    ) -> Result<(CompositionLinkResponse, CompositionLinkResponseMetadata), Errors> {
+        log::trace!("In get_composition_link");
+
+        let system_prompt = r##"
+You are given an HTML document containing instances of two networks that have a composition relationship. This means each instance of Network A and one corresponding instance of Network B together form a single complete resource. They are separate elements in the DOM — neither is nested inside the other.
+
+Each network instance has an anchor element marked with comments:
+
+<!-- Target Network A: Start -->
+<element ...>
+<!-- Target Network A: End -->
+
+The opening tag immediately following Start is the anchor element.
+
+Your task is to provide two XPath expressions, each relative to an anchor element as the context node:
+
+- forward_xpath — evaluated from a Network A anchor, must select exactly one Network B anchor
+- reverse_xpath — evaluated from a Network B anchor, must select exactly one Network A anchor
+
+Both XPaths must be relative (do not start with /). Each must reliably select exactly one element across all instances shown in the document. If a candidate XPath would select more than one element for any instance shown, it is incorrect.
+
+Base your XPaths strictly on the structure visible in the provided HTML. Do not infer paths that are not evidenced by the examples.
+
+Output
+Respond with valid JSON in the following format:
+{
+  "forward_xpath": "XPath from Network A anchor to Network B anchor",
+  "reverse_xpath": "XPath from Network B anchor to Network A anchor"
+}
+
+Do not include any explanation outside the JSON.
+"##;
+
+        let user_prompt = format!(r##"
+[DOCUMENT SNIPPET]:
+{}
+"##, snippet);
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║       COMPOSITION LINK - LLM REQUEST                          ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+        log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+        log::debug!("{}", system_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+        log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+        log::debug!("{}", user_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+
+        Self::send_composition_link_request(system_prompt, &user_prompt).await
+    }
+
+    async fn send_composition_link_request(
+        system_prompt: &str,
+        user_prompt: &str,
+    ) -> Result<(CompositionLinkResponse, CompositionLinkResponseMetadata), Errors> {
+        let client = Self::build_client();
+
+        let response_format = ResponseFormat::json_schema(
+            "composition_link",
+            true,
+            json!({
+                "type": "object",
+                "properties": {
+                    "forward_xpath": {
+                        "type": "string",
+                        "description": "XPath from Network A anchor to Network B anchor"
+                    },
+                    "reverse_xpath": {
+                        "type": "string",
+                        "description": "XPath from Network B anchor to Network A anchor"
+                    }
+                },
+                "required": ["forward_xpath", "reverse_xpath"],
+                "additionalProperties": false
+            }),
+        );
+
+        let request = ChatCompletionRequest::builder()
+            .model("gpt-5-mini")
+            .messages(vec![
+                Message::new(Role::System, system_prompt),
+                Message::new(Role::User, user_prompt),
+            ])
+            .response_format(response_format)
+            .build()
+            .expect("Could not create llm request");
+
+        match client.send_chat_completion(&request).await {
+            Ok(response) => {
+                log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
+                log::debug!("{:?}", response);
+                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                log::debug!("");
+
+                if let Some(content) = response.choices[0].content() {
+                    log::debug!(
+                        "┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐"
+                    );
+                    log::debug!("{}", content);
+                    log::debug!(
+                        "└───────────────────────────────────────────────────────────────┘"
+                    );
+                    log::debug!("");
+
+                    let composition_link_response = {
+                        match serde_json::from_str::<CompositionLinkResponse>(content) {
+                            Ok(parsed_response) => {
+                                log::debug!(
+                                    "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
+                                );
+                                log::debug!("{:?}", parsed_response);
+                                log::debug!(
+                                    "└───────────────────────────────────────────────────────────────┘"
+                                );
+                                log::debug!("");
+                                Ok(parsed_response)
+                            }
+                            Err(e) => {
+                                log::error!("Failed to parse LLM response: {}", e);
+                                Err(Errors::UnexpectedError)
+                            }
+                        }
+                    }?;
+
+                    let metadata = {
+                        if let Some(usage) = response.usage {
+                            CompositionLinkResponseMetadata {
+                                tokens: usage.total_tokens.clone() as u64,
+                            }
+                        } else {
+                            CompositionLinkResponseMetadata { tokens: 0 }
+                        }
+                    };
+
+                    Ok((composition_link_response, metadata))
+                } else {
+                    log::error!("No content in LLM response");
+                    Err(Errors::UnexpectedError)
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenRouter: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
     pub async fn identify_relationships(
         original_document: &str,
         all_network_jsons: &str,

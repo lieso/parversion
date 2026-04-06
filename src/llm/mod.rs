@@ -23,6 +23,25 @@ use network_relationships::NetworkRelationships;
 pub struct LLM {}
 
 impl LLM {
+    pub async fn get_composition_link(
+        snippet: String,
+    ) -> Result<((String, String), (u64,)), Errors> {
+        log::trace!("In get_composition_link");
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  COMPOSITION LINK START                       ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        let (response, metadata) = NetworkRelationships::get_composition_link(&snippet).await?;
+
+        log::debug!("forward_xpath: {}", response.forward_xpath);
+        log::debug!("reverse_xpath: {}", response.reverse_xpath);
+
+        Ok(((response.forward_xpath, response.reverse_xpath), (metadata.tokens,)))
+    }
+
     pub async fn identify_relationships(
         meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,

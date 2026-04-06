@@ -36,6 +36,13 @@ impl NetworkRelationship {
 
         log::debug!("snippet: {}", snippet);
 
+        let ((forward_xpath, reverse_xpath), (tokens,)) = LLM::get_composition_link(
+            snippet
+        ).await?;
+
+        log::debug!("forward_xpath: {}", forward_xpath);
+        log::debug!("reverse_xpath: {}", reverse_xpath);
+
         unimplemented!()
     }
 
