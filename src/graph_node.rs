@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::data_node::DataNode;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
+use crate::xpath::XPath;
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -45,7 +46,6 @@ impl GraphNode {
         }
     }
 
-    #[allow(dead_code)]
     pub fn subgraph_hash(&self) -> Hash {
         let mut combined_hash = Hash::new();
 
@@ -61,5 +61,9 @@ impl GraphNode {
         combined_hash.finalize();
 
         combined_hash
+    }
+
+    pub fn traverse_using_xpath(&self, xpath: &XPath) -> Option<Graph> {
+        unimplemented!()
     }
 }

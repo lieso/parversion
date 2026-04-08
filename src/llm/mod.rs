@@ -5,7 +5,6 @@ use crate::network_relationship::NetworkRelationshipType;
 use crate::context_group::ContextGroup;
 use crate::path::Path;
 use crate::prelude::*;
-use crate::xpath::XPath;
 use crate::schema_context::SchemaContext;
 use crate::transformation::{FieldTransformation, SchemaTransformation, FieldMetadata, NetworkTransformation, NetworkMetadata};
 use crate::context::Context;
@@ -36,23 +35,6 @@ impl LLM {
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
         let (response, metadata) = NetworkRelationships::get_composition_link(&snippet).await?;
-
-        log::debug!("forward_xpath: {}", response.forward_xpath);
-        log::debug!("reverse_xpath: {}", response.reverse_xpath);
-
-
-
-        let xpath = XPath::from_str(&response.forward_xpath);
-
-        log::debug!("xpath: {:?}", xpath);
-
-
-
-
-
-
-
-
 
         Ok(((response.forward_xpath, response.reverse_xpath), (metadata.tokens,)))
     }

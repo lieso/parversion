@@ -9,6 +9,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::document::Document;
 use crate::llm::LLM;
+use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -42,6 +43,66 @@ impl NetworkRelationship {
 
         log::debug!("forward_xpath: {}", forward_xpath);
         log::debug!("reverse_xpath: {}", reverse_xpath);
+
+
+
+        let xpath = XPath::from_str(&forward_xpath)?;
+        log::debug!("xpath: {:?}", xpath);
+
+
+
+
+
+
+
+
+
+
+        let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
+
+
+        let mut queue = VecDeque::new();
+        queue.push_back(graph_root);
+
+
+        while let Some(current) = queue.pop_front() {
+
+            let subgraph_hash = {
+                let lock = read_lock!(current);
+                lock.subgraph_hash.clone()
+            };
+
+            if subgraph_hash == network_from.subgraph_hash {
+
+                let start_node = read_lock!(current);
+
+                let target_node: Option<Graph> = start_node.traverse_using_xpath(
+                    &xpath
+                );
+
+                if let Some(target_node) = target_node {
+                    log::info!("Found target graph using xpath");
+                } else {
+                    log::warn!("Could not find target graph using xpath");
+                }
+            }
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         unimplemented!()
     }
