@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::data_node::DataNode;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
-use crate::xpath::XPath;
+use crate::xpath::{XPath, XPathAxis};
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -64,6 +64,64 @@ impl GraphNode {
     }
 
     pub fn traverse_using_xpath(&self, xpath: &XPath) -> Option<Graph> {
+
+        let segments = &xpath.segments;
+
+        if let Some((first, rest)) = segments.split_first() {
+
+            match first.axis {
+                XPathAxis::Child => unimplemented!(),
+                XPathAxis::Parent => unimplemented!(),
+                XPathAxis::Self_ => unimplemented!(),
+                XPathAxis::Descendant => unimplemented!(),
+                XPathAxis::Ancestor => unimplemented!(),
+                XPathAxis::FollowingSibling => {
+
+                    if self.parents.len() > 1 {
+                        panic!("Why are we traversing a graph using xpath if nodes have more than one parent?");
+                    }
+
+                    if let Some(parent) = self.parents.first() {
+
+
+                        if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
+                            read_lock!(child).id == self.id
+                        }) {
+
+                            let target_index = index_current + 1;
+
+                            if let Some(sibling) = read_lock!(parent).children.get(target_index) {
+
+
+                                log::info!("Found sibling");
+
+
+                                log::info!("node_test: {}", first.node_test);
+
+                                log::info!("predicate: {:?}", first.predicate);
+
+
+
+                            } else {
+                                panic!("Sibling does not exist");
+                            }
+
+                        } else {
+                            panic!("Could not find index of current node");
+                        }
+
+
+                    } else {
+                        panic!("Trying to visit following sibling on a root node");
+                    }
+
+
+                },
+                XPathAxis::PrecedingSibling => unimplemented!(),
+            }
+
+        }
+
         unimplemented!()
     }
 }

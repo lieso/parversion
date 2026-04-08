@@ -74,6 +74,9 @@ impl NetworkRelationship {
 
             if subgraph_hash == network_from.subgraph_hash {
 
+                log::debug!("=====================================================================================================");
+                log::debug!("=====================================================================================================");
+
                 let start_node = read_lock!(current);
 
                 let target_node: Option<Graph> = start_node.traverse_using_xpath(
@@ -84,6 +87,10 @@ impl NetworkRelationship {
                     log::info!("Found target graph using xpath");
                 } else {
                     log::warn!("Could not find target graph using xpath");
+                }
+            } else {
+                for child in &read_lock!(current).children {
+                    queue.push_back(child.clone());
                 }
             }
 
