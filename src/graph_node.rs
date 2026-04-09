@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::data_node::DataNode;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
-use crate::xpath::{XPath, XPathAxis};
+use crate::xpath::{XPath, XPathAxis, XPathSegment};
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -63,65 +63,68 @@ impl GraphNode {
         combined_hash
     }
 
-    pub fn traverse_using_xpath(&self, xpath: &XPath) -> Option<Graph> {
+    pub fn traverse_using_xpath_segment(graph: Graph, xpath_segment: &XPathSegment) -> Result<Option<Graph>, Errors> {
+        let lock = read_lock!(graph);
 
-        let segments = &xpath.segments;
+        if lock.parents.len() > 1 {
+            return Err(Errors::XPathTraverseError("Why are we traversing a graph using xpath if nodes have more than one parent?".to_string()));
+        }
+        
+        match xpath_segment.axis {
+            XPathAxis::Child => unimplemented!(),
+            XPathAxis::Parent => unimplemented!(),
+            XPathAxis::Self_ => unimplemented!(),
+            XPathAxis::Descendant => unimplemented!(),
+            XPathAxis::Ancestor => unimplemented!(),
+            XPathAxis::FollowingSibling => {
+                if let Some(parent) = lock.parents.first() {
+                    if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
+                        read_lock!(child).id == lock.id
+                    }) {
 
-        if let Some((first, rest)) = segments.split_first() {
+                        let target_index = index_current + 1;
 
-            match first.axis {
-                XPathAxis::Child => unimplemented!(),
-                XPathAxis::Parent => unimplemented!(),
-                XPathAxis::Self_ => unimplemented!(),
-                XPathAxis::Descendant => unimplemented!(),
-                XPathAxis::Ancestor => unimplemented!(),
-                XPathAxis::FollowingSibling => {
-
-                    if self.parents.len() > 1 {
-                        panic!("Why are we traversing a graph using xpath if nodes have more than one parent?");
-                    }
-
-                    if let Some(parent) = self.parents.first() {
-
-
-                        if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
-                            read_lock!(child).id == self.id
-                        }) {
-
-                            let target_index = index_current + 1;
-
-                            if let Some(sibling) = read_lock!(parent).children.get(target_index) {
+                        if let Some(sibling) = read_lock!(parent).children.get(target_index) {
 
 
-                                log::info!("Found sibling");
+                            log::info!("Found sibling");
 
 
-                                log::info!("node_test: {}", first.node_test);
+                            log::info!("node_test: {}", xpath_segment.node_test);
 
-                                log::info!("predicate: {:?}", first.predicate);
+                            log::info!("predicate: {:?}", xpath_segment.predicate);
 
-
-
-                            } else {
-                                panic!("Sibling does not exist");
-                            }
+                            unimplemented!();
 
                         } else {
-                            panic!("Could not find index of current node");
+                            log::info!("Could not traverse to following sibling");
+                            Ok(None)
                         }
-
-
                     } else {
-                        panic!("Trying to visit following sibling on a root node");
+                        Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
                     }
+                } else {
+                    Err(Errors::XPathTraverseError("Trying to visit following sibling on a root node".to_string()))
+                }
+            },
+            XPathAxis::PrecedingSibling => unimplemented!(),
+        }
+    }
 
+    pub fn traverse_using_xpath(start: Graph, xpath: &XPath) -> Result<Option<Graph>, Errors> {
+        let segments = &xpath.segments;
 
-                },
-                XPathAxis::PrecedingSibling => unimplemented!(),
+        let mut current: Graph = Arc::clone(&start);
+        let mut target: Option<Graph> = None;
+
+        for segment in segments.iter() {
+            if let Some(graph) = Self::traverse_using_xpath_segment(Arc::clone(&current), segment)? {
+                current = Arc::clone(&graph);
+            } else {
+                return Ok(None);
             }
-
         }
 
-        unimplemented!()
+        Ok(Some(current))
     }
 }

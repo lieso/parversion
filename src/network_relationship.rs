@@ -77,11 +77,10 @@ impl NetworkRelationship {
                 log::debug!("=====================================================================================================");
                 log::debug!("=====================================================================================================");
 
-                let start_node = read_lock!(current);
-
-                let target_node: Option<Graph> = start_node.traverse_using_xpath(
+                let target_node: Option<Graph> = GraphNode::traverse_using_xpath(
+                    Arc::clone(&current),
                     &xpath
-                );
+                )?;
 
                 if let Some(target_node) = target_node {
                     log::info!("Found target graph using xpath");
