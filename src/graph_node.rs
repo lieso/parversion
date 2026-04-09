@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::data_node::DataNode;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
-use crate::xpath::{XPath, XPathAxis, XPathSegment};
+use crate::xpath::{XPath, XPathAxis, XPathSegment, XPathPredicate};
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -63,14 +63,14 @@ impl GraphNode {
         combined_hash
     }
 
-    pub fn traverse_using_xpath_segment(graph: Graph, xpath_segment: &XPathSegment) -> Result<Option<Graph>, Errors> {
+    pub fn traverse_using_xpath_axis(graph: Graph, xpath_axis: &XPathAxis) -> Result<Option<Graph>, Errors> {
         let lock = read_lock!(graph);
 
         if lock.parents.len() > 1 {
             return Err(Errors::XPathTraverseError("Why are we traversing a graph using xpath if nodes have more than one parent?".to_string()));
         }
-        
-        match xpath_segment.axis {
+
+        match xpath_axis {
             XPathAxis::Child => unimplemented!(),
             XPathAxis::Parent => unimplemented!(),
             XPathAxis::Self_ => unimplemented!(),
@@ -85,17 +85,9 @@ impl GraphNode {
                         let target_index = index_current + 1;
 
                         if let Some(sibling) = read_lock!(parent).children.get(target_index) {
-
-
                             log::info!("Found sibling");
 
-
-                            log::info!("node_test: {}", xpath_segment.node_test);
-
-                            log::info!("predicate: {:?}", xpath_segment.predicate);
-
-                            unimplemented!();
-
+                            Ok(Some(sibling.clone()))
                         } else {
                             log::info!("Could not traverse to following sibling");
                             Ok(None)
@@ -109,6 +101,39 @@ impl GraphNode {
             },
             XPathAxis::PrecedingSibling => unimplemented!(),
         }
+    }
+
+    pub fn traverse_using_xpath_node_test(graph: Graph, node_test: &String) -> Result<Option<Graph>, Errors> {
+        unimplemented!();
+    }
+
+    pub fn traverse_using_xpath_predicate(graph: Graph, predicate: &XPathPredicate) -> Result<Option<Graph>, Errors> {
+        unimplemented!();
+    }
+
+    pub fn traverse_using_xpath_segment(graph: Graph, xpath_segment: &XPathSegment) -> Result<Option<Graph>, Errors> {
+        if let Some(next_graph) = Self::traverse_using_xpath_axis(
+            Arc::clone(&graph),
+            &xpath_segment.axis
+        )? {
+            if let Some(next_graph) = Self::traverse_using_xpath_node_test(
+                Arc::clone(&next_graph),
+                &xpath_segment.node_test
+            )? {
+                if let Some(predicate) = &xpath_segment.predicate {
+                    if let Some(next_graph) = Self::traverse_using_xpath_predicate(
+                        Arc::clone(&next_graph),
+                        &predicate
+                    )? {
+                        return Ok(Some(next_graph));
+                    }
+                } else {
+                    return Ok(Some(next_graph));
+                }
+            }
+        }
+
+        Ok(None)
     }
 
     pub fn traverse_using_xpath(start: Graph, xpath: &XPath) -> Result<Option<Graph>, Errors> {
