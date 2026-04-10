@@ -77,7 +77,9 @@ impl GraphNode {
         }
 
         match xpath_axis {
-            XPathAxis::Child => unimplemented!(),
+            XPathAxis::Child => {
+                Ok(lock.children.first().cloned().into_iter().collect())
+            },
             XPathAxis::Parent => unimplemented!(),
             XPathAxis::Self_ => unimplemented!(),
             XPathAxis::Descendant => unimplemented!(),
@@ -87,7 +89,6 @@ impl GraphNode {
                     if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
                         read_lock!(child).id == lock.id
                     }) {
-
                         let target_index = index_current + 1;
 
                         if let Some(sibling) = read_lock!(parent).children.get(target_index) {
@@ -171,7 +172,34 @@ impl GraphNode {
                 Ok(vec![selected_graph])
             }
             XPathPredicate::Attribute { name, value } => {
-                unimplemented!();
+                log::debug!("Checking Attribute predicate: {}='{}'", name, value);
+
+                let contexts = {
+                    let lock = read_lock!(meta_context);
+                    lock.contexts.clone().unwrap()
+                };
+
+                let filtered: Vec<Graph> = graphs
+                    .iter()
+                    .filter(|graph| {
+                        let graph_id = read_lock!(graph).id.clone();
+                        contexts
+                            .get(&graph_id)
+                            .and_then(|context| {
+                                let foo = read_lock!(&context.document_node)
+                                    .get_attribute_value(name);
+
+                                read_lock!(&context.document_node)
+                                    .get_attribute_value(name)
+                                    .map(|attr_value| attr_value.trim() == value.trim())
+                            })
+                            .unwrap_or(false)
+                    })
+                    .cloned()
+                    .collect();
+
+                log::debug!("Attribute predicate matched {} graphs", filtered.len());
+                Ok(filtered)
             }
         }
     }

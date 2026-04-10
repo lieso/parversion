@@ -97,6 +97,16 @@ impl DocumentNode {
         }
     }
 
+    pub fn get_attribute_value(&self, attribute: &str) -> Option<String> {
+        match &self.data {
+            XMLNode::Element(element_node) => {
+                log::debug!("element_node.attributes: {:?}", element_node.attributes);
+                element_node.attributes.get(attribute).cloned()
+            }
+            _ => panic!("Unexpected XML node type"),
+        }
+    }
+
     pub fn get_description(&self) -> String {
         match &self.data {
             XMLNode::Element(element_node) => element_node.name.clone(),
