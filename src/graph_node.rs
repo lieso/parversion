@@ -150,36 +150,25 @@ impl GraphNode {
 
     pub fn traverse_using_xpath_predicate(
         meta_context: Arc<RwLock<MetaContext>>,
-        graph: Graph,
+        graphs: Vec<Graph>,
         predicate: &XPathPredicate
     ) -> Result<Vec<Graph>, Errors> {
-        log::debug!("predicate: {:?}", predicate);
+        log::debug!("predicate: {:?}, filtering {} graphs", predicate, graphs.len());
 
         match predicate {
             XPathPredicate::Position(index) => {
-                let lock = read_lock!(graph);
+                log::debug!("Checking Position predicate, looking for index: {}", index);
 
-                if lock.parents.len() > 1 {
-                    return Err(Errors::XPathTraverseError("Why are we traversing a graph using xpath if nodes have more than one parent?".to_string()));
+                // XPath positions are 1-indexed
+
+                if *index < 1 || *index as usize > graphs.len() {
+                    log::debug!("Position {} out of range (have {} graphs)", index, graphs.len());
+                    return Ok(vec![]);
                 }
 
-                if let Some(parent) = lock.parents.first() {
-                    if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
-                        read_lock!(child).id == lock.id
-                    }) {
-                        // xpath positions are 1-indexed
-                        if index_current + 1 == *index {
-                            log::debug!("Graph matches predicate");
-                            Ok(vec![graph.clone()])
-                        } else {
-                            Ok(vec![])
-                        }
-                    } else {
-                        Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
-                    }
-                } else {
-                    Err(Errors::XPathTraverseError("Trying to get position of root node".to_string()))
-                }
+                let selected_graph = graphs.get(*index as usize - 1).cloned().unwrap();
+                log::debug!("Position predicate matched graph at position {}", index);
+                Ok(vec![selected_graph])
             }
             XPathPredicate::Attribute { name, value } => {
                 unimplemented!();
@@ -215,19 +204,11 @@ impl GraphNode {
             .collect();
 
         if let Some(predicate) = &xpath_segment.predicate {
-            let next_graphs: Vec<Graph> = next_graphs
-                .iter()
-                .map(|graph| {
-                    Self::traverse_using_xpath_predicate(
-                        Arc::clone(&meta_context),
-                        Arc::clone(&graph),
-                        &predicate
-                    )
-                })
-                .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
-                .into_iter()
-                .flatten()
-                .collect();
+            let next_graphs = Self::traverse_using_xpath_predicate(
+                Arc::clone(&meta_context),
+                next_graphs,
+                &predicate
+            )?;
 
             return Ok(next_graphs);
         }
