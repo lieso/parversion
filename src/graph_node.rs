@@ -107,54 +107,53 @@ impl GraphNode {
 
     pub fn traverse_using_xpath_node_test(graph: Graph, node_test: &String) -> Result<Vec<Graph>, Errors> {
         log::debug!("node_test: {}", node_test);
-
-        let mut matching_graphs: Vec<Graph> = Vec::new();
-
-        let mut queue: VecDeque<Graph> = VecDeque::new();
-        queue.push_back(graph);
-
-        while let Some(current) = queue.pop_front() {
-
-
-
-            for child in &read_lock!(current).children {
-                queue.push_back(child.clone());
-            }
-        }
-
-        Ok(matching_graphs)
+        unimplemented!()
     }
 
-    pub fn traverse_using_xpath_predicate(graphs: Vec<Graph>, predicate: &XPathPredicate) -> Result<Vec<Graph>, Errors> {
+    pub fn traverse_using_xpath_predicate(graphs: Graph, predicate: &XPathPredicate) -> Result<Vec<Graph>, Errors> {
         log::debug!("predicate: {:?}", predicate);
         unimplemented!();
     }
 
     pub fn traverse_using_xpath_segment(graph: Graph, xpath_segment: &XPathSegment) -> Result<Vec<Graph>, Errors> {
-        //if let Some(next_graph) = Self::traverse_using_xpath_axis(
-        //    Arc::clone(&graph),
-        //    &xpath_segment.axis
-        //)? {
-        //    if let Some(next_graphs) = Self::traverse_using_xpath_node_test(
-        //        Arc::clone(&next_graph),
-        //        &xpath_segment.node_test
-        //    )? {
-        //        if let Some(predicate) = &xpath_segment.predicate {
-        //            if let Some(next_graph) = Self::traverse_using_xpath_predicate(
-        //                next_graphs.clone(),
-        //                &predicate
-        //            )? {
-        //                return Ok(Some(next_graph));
-        //            }
-        //        } else {
-        //            return Ok(Some(next_graph));
-        //        }
-        //    }
-        //}
+        log::debug!("xpath_segment: {}", xpath_segment.to_string());
 
-        //Ok(None)
+        let next_graphs: Vec<Graph> = Self::traverse_using_xpath_axis(
+            Arc::clone(&graph),
+            &xpath_segment.axis
+        )?;
 
-        unimplemented!()
+        let next_graphs: Vec<Graph> = next_graphs
+            .iter()
+            .map(|graph| {
+                Self::traverse_using_xpath_node_test(
+                    Arc::clone(&graph),
+                    &xpath_segment.node_test
+                )
+            })
+            .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+
+        if let Some(predicate) = &xpath_segment.predicate {
+            let next_graphs: Vec<Graph> = next_graphs
+                .iter()
+                .map(|graph| {
+                    Self::traverse_using_xpath_predicate(
+                        Arc::clone(&graph),
+                        &predicate
+                    )
+                })
+                .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
+                .into_iter()
+                .flatten()
+                .collect();
+
+            return Ok(next_graphs);
+        }
+
+        Ok(next_graphs)
     }
 
     pub fn traverse_using_xpath(start: Graph, xpath: &XPath) -> Result<Option<Graph>, Errors> {
