@@ -139,6 +139,15 @@ impl DocumentNode {
         }
     }
 
+    pub fn get_element_name(&self) -> String {
+        match &self.data {
+            XMLNode::Element(element_node) => {
+                element_node.name.clone()
+            }
+            _ => panic!("Unexpected XML node type"),
+        }
+    }
+
     fn get_opening_tag(element: &Element) -> String {
         let mut tag = format!("<{}", element.name);
 

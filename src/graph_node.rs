@@ -115,16 +115,76 @@ impl GraphNode {
         node_test: &String
     ) -> Result<Vec<Graph>, Errors> {
         log::debug!("node_test: {}", node_test);
-        unimplemented!()
+
+        if node_test == "node()" {
+            panic!("Received node_test 'node()'");
+        }
+
+        if node_test == "text()" {
+            panic!("Received node_test 'text()'");
+        }
+
+        if node_test == "comment()" {
+            panic!("Received node_test 'comment()'");
+        }
+
+        if node_test == "*" {
+            panic!("Received node_test '*'");
+        }
+
+        let contexts = {
+            let lock = read_lock!(meta_context);
+            lock.contexts.clone().unwrap()
+        };
+        let current_context = contexts.get(&read_lock!(graph).id).unwrap();
+        let document_node = current_context.document_node.clone();
+        let name = read_lock!(document_node).get_element_name();
+
+        if node_test.trim() == name.trim() {
+            log::debug!("Graph passes node test");
+            Ok(vec![graph.clone()])
+        } else {
+            Ok(vec![])
+        }
     }
 
     pub fn traverse_using_xpath_predicate(
         meta_context: Arc<RwLock<MetaContext>>,
-        graphs: Graph,
+        graph: Graph,
         predicate: &XPathPredicate
     ) -> Result<Vec<Graph>, Errors> {
         log::debug!("predicate: {:?}", predicate);
-        unimplemented!();
+
+        match predicate {
+            XPathPredicate::Position(index) => {
+                let lock = read_lock!(graph);
+
+                if lock.parents.len() > 1 {
+                    return Err(Errors::XPathTraverseError("Why are we traversing a graph using xpath if nodes have more than one parent?".to_string()));
+                }
+
+                if let Some(parent) = lock.parents.first() {
+                    if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
+                        read_lock!(child).id == lock.id
+                    }) {
+                        // xpath positions are 1-indexed
+                        if index_current + 1 == *index {
+                            log::debug!("Graph matches predicate");
+                            Ok(vec![graph.clone()])
+                        } else {
+                            Ok(vec![])
+                        }
+                    } else {
+                        Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
+                    }
+                } else {
+                    Err(Errors::XPathTraverseError("Trying to get position of root node".to_string()))
+                }
+            }
+            XPathPredicate::Attribute { name, value } => {
+                unimplemented!();
+            }
+        }
     }
 
     pub fn traverse_using_xpath_segment(
@@ -187,7 +247,7 @@ impl GraphNode {
         let mut current: Vec<Graph> = vec![Arc::clone(&start)];
         let mut target: Option<Graph> = None;
 
-        for segment in segments.iter() {
+        for (index, segment) in segments.iter().enumerate() {
             current = current
                 .iter()
                 .map(|graph| {
@@ -198,7 +258,16 @@ impl GraphNode {
                 .flatten()
                 .collect();
 
+            log::debug!("segments: {}", segments.len());
+            log::debug!("index: {}", index);
+
             if current.is_empty() {
+                if index == segments.len() - 1 {
+                    log::info!("All segments processed, but a graph was not found");
+                } else {
+                    log::info!("Some segments processed, but a graph was not found");
+                }
+                
                 return Ok(None);
             }
         }
