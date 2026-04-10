@@ -63,7 +63,11 @@ impl GraphNode {
         combined_hash
     }
 
-    pub fn traverse_using_xpath_axis(graph: Graph, xpath_axis: &XPathAxis) -> Result<Vec<Graph>, Errors> {
+    pub fn traverse_using_xpath_axis(
+        meta_context: Arc<RwLock<MetaContext>>,
+        graph: Graph,
+        xpath_axis: &XPathAxis
+    ) -> Result<Vec<Graph>, Errors> {
         log::debug!("xpath_axis: {:?}", xpath_axis);
 
         let lock = read_lock!(graph);
@@ -105,20 +109,33 @@ impl GraphNode {
         }
     }
 
-    pub fn traverse_using_xpath_node_test(graph: Graph, node_test: &String) -> Result<Vec<Graph>, Errors> {
+    pub fn traverse_using_xpath_node_test(
+        meta_context: Arc<RwLock<MetaContext>>,
+        graph: Graph,
+        node_test: &String
+    ) -> Result<Vec<Graph>, Errors> {
         log::debug!("node_test: {}", node_test);
         unimplemented!()
     }
 
-    pub fn traverse_using_xpath_predicate(graphs: Graph, predicate: &XPathPredicate) -> Result<Vec<Graph>, Errors> {
+    pub fn traverse_using_xpath_predicate(
+        meta_context: Arc<RwLock<MetaContext>>,
+        graphs: Graph,
+        predicate: &XPathPredicate
+    ) -> Result<Vec<Graph>, Errors> {
         log::debug!("predicate: {:?}", predicate);
         unimplemented!();
     }
 
-    pub fn traverse_using_xpath_segment(graph: Graph, xpath_segment: &XPathSegment) -> Result<Vec<Graph>, Errors> {
+    pub fn traverse_using_xpath_segment(
+        meta_context: Arc<RwLock<MetaContext>>,
+        graph: Graph,
+        xpath_segment: &XPathSegment
+    ) -> Result<Vec<Graph>, Errors> {
         log::debug!("xpath_segment: {}", xpath_segment.to_string());
 
         let next_graphs: Vec<Graph> = Self::traverse_using_xpath_axis(
+            Arc::clone(&meta_context),
             Arc::clone(&graph),
             &xpath_segment.axis
         )?;
@@ -127,6 +144,7 @@ impl GraphNode {
             .iter()
             .map(|graph| {
                 Self::traverse_using_xpath_node_test(
+                    Arc::clone(&meta_context),
                     Arc::clone(&graph),
                     &xpath_segment.node_test
                 )
@@ -141,6 +159,7 @@ impl GraphNode {
                 .iter()
                 .map(|graph| {
                     Self::traverse_using_xpath_predicate(
+                        Arc::clone(&meta_context),
                         Arc::clone(&graph),
                         &predicate
                     )
@@ -156,7 +175,11 @@ impl GraphNode {
         Ok(next_graphs)
     }
 
-    pub fn traverse_using_xpath(start: Graph, xpath: &XPath) -> Result<Option<Graph>, Errors> {
+    pub fn traverse_using_xpath(
+        meta_context: Arc<RwLock<MetaContext>>,
+        start: Graph,
+        xpath: &XPath
+    ) -> Result<Option<Graph>, Errors> {
         log::debug!("xpath: {}", xpath.to_string());
 
         let segments = &xpath.segments;
@@ -168,7 +191,7 @@ impl GraphNode {
             current = current
                 .iter()
                 .map(|graph| {
-                    Self::traverse_using_xpath_segment(Arc::clone(graph), segment)
+                    Self::traverse_using_xpath_segment(Arc::clone(&meta_context), Arc::clone(graph), segment)
                 })
                 .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
                 .into_iter()

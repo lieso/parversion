@@ -78,6 +78,7 @@ impl NetworkRelationship {
                 log::debug!("=====================================================================================================");
 
                 let target_node: Option<Graph> = GraphNode::traverse_using_xpath(
+                    Arc::clone(&meta_context),
                     Arc::clone(&current),
                     &xpath
                 )?;
