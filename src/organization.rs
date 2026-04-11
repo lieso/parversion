@@ -69,11 +69,9 @@ pub async fn organize<P: Provider>(
     stage.finish();
     let stage = execution_context.enter_stage("Network relationships");
 
-
     log::info!("Generating network relationships");
 
-
-    let network_relationships =
+    let basis_graph =
         get_network_relationships(
             Arc::clone(&provider),
             Arc::clone(&meta_context),
@@ -82,15 +80,14 @@ pub async fn organize<P: Provider>(
         )
         .await?;
 
-    unimplemented!();
-
-    //{
-    //    let mut lock = write_lock!(meta_context);
-    //    lock.update_network_relationships(network_relationships);
-    //}
-
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_basis_graph(basis_graph);
+    }
 
     stage.finish();
+
+    unimplemented!();
 
     {
         let organized = Document::from_basis_transformations(Arc::clone(&meta_context))?;

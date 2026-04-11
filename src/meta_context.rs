@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
+use crate::basis_graph::BasisGraph;
 use crate::context::Context;
 use crate::document::Document;
 use crate::function::Function;
@@ -20,6 +21,7 @@ pub struct MetaContext {
     pub graph_root: Option<Graph>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
+    pub basis_graph: Option<BasisGraph>,
     pub classification: Option<Arc<Classification>>,
     pub profile: Option<Arc<Profile>>,
     pub schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
@@ -39,6 +41,7 @@ impl MetaContext {
             graph_root: None,
             basis_nodes: None,
             basis_networks: None,
+            basis_graph: None,
             classification: None,
             profile: None,
             schema_contexts: None,
@@ -147,6 +150,10 @@ impl MetaContext {
 
     pub fn update_basis_networks(&mut self, networks: HashMap<ID, Arc<BasisNetwork>>) {
         self.basis_networks = Some(networks);
+    }
+
+    pub fn update_basis_graph(&mut self, basis_graph: BasisGraph) {
+        self.basis_graph = Some(basis_graph);
     }
 
     pub fn get_original_document(&self) -> String {

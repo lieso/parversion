@@ -79,7 +79,7 @@ pub async fn get_network_relationships<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
     stage_context: &StageContext
-) -> Result<HashMap<ID, Arc<NetworkRelationship>>, Errors> {
+) -> Result<BasisGraph, Errors> {
     log::trace!("In get_network_relationships");
 
     let unique_subgraphs: HashMap<Hash, Vec<Graph>> = get_unique_subgraphs(Arc::clone(&meta_context));
@@ -111,15 +111,11 @@ pub async fn get_network_relationships<P: Provider>(
     graph_hash.sort();
     graph_hash.finalize();
 
+    log::info!("graph hash: {}", graph_hash);
 
-    log::debug!("graph hash: {}", graph_hash);
-
-
-
-
-
-
-
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // STAGE 1: CANONICALIZE NETWORKS
+    // ═════════════════════════════════════════════════════════════════════════════════
 
     let basis_graph: BasisGraph = get_canonical_networks(
         Arc::clone(&provider),
@@ -135,13 +131,9 @@ pub async fn get_network_relationships<P: Provider>(
         panic!("Canonical networks not found?");
     }
 
-
-
-
-
-
-
-
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // STAGE 2: IDENTIFY RELATIONSHIP TYPES
+    // ═════════════════════════════════════════════════════════════════════════════════
 
     let basis_graph: BasisGraph = get_relationship_typing(
         Arc::clone(&provider),
@@ -162,6 +154,10 @@ pub async fn get_network_relationships<P: Provider>(
     if relationships.is_empty() {
         panic!("No relationships?");
     }
+
+    // ═════════════════════════════════════════════════════════════════════════════════
+    // STAGE 3: PROCESS RELATIONSHIP TRAVERSALS
+    // ═════════════════════════════════════════════════════════════════════════════════
 
     let max_concurrency = {
         let config_lock = read_lock!(CONFIG);
@@ -195,7 +191,8 @@ pub async fn get_network_relationships<P: Provider>(
 
     let results: Vec<Result<(), Errors>> = try_join_all(handles).await?;
 
-    unimplemented!()
+    provider.get_basis_graph_by_hash(&graph_hash).await?
+        .ok_or(Errors::UnexpectedError)
 }
 
 async fn get_traversal<P: Provider>(
