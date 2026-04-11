@@ -309,6 +309,7 @@ impl RelationshipTransformation {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TraversalTransformation {
     pub id: ID,
+    pub relationship_id: ID,
     pub xpath: XPath,
     pub name: String,
     pub description: String,

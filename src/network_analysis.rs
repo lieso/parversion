@@ -14,7 +14,13 @@ use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::transformation::{NetworkTransformation, CanonicalizationTransformation, RelationshipTransformation, ResolvedRelationshipTransformation};
+use crate::transformation::{
+    NetworkTransformation,
+    CanonicalizationTransformation,
+    RelationshipTransformation,
+    ResolvedRelationshipTransformation,
+    TraversalTransformation
+};
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::json_node::JsonNode;
 
@@ -171,6 +177,7 @@ pub async fn get_network_relationships<P: Provider>(
         let cloned_meta_context = Arc::clone(&meta_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
+        let cloned_graph_hash = graph_hash.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -180,6 +187,7 @@ pub async fn get_network_relationships<P: Provider>(
                 resolved_relationship,
                 &cloned_options,
                 &cloned_stage_context,
+                &cloned_graph_hash,
             ).await
         });
         handles.push(handle);
@@ -196,6 +204,7 @@ async fn get_traversal<P: Provider>(
     resolved_relationship: ResolvedRelationshipTransformation,
     options: &Options,
     stage_context: &StageContext,
+    graph_hash: &Hash,
 ) -> Result<(), Errors> {
     log::trace!("In get_traversal");
 
@@ -204,13 +213,41 @@ async fn get_traversal<P: Provider>(
 
             stage_context.record_events("Composition linking", 0);
 
-            let (xpath, (tokens,)) = NetworkRelationship::process_composition(
-                Arc::clone(&meta_context),
-                Arc::clone(&resolved_relationship.from),
-                Arc::clone(&resolved_relationship.to),
-            ).await?;
+            if let Some(mut basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
+                if !options.regenerate {
+                    if let Some(traversals) = &basis_graph.traversals {
+                        if traversals.iter().any(|t| t.relationship_id == resolved_relationship.id) {
+                            log::info!("TraversalTransformation already exists for this relationship");
+                            return Ok(());
+                        }
+                    }
+                }
 
-            stage_context.record_events("Composition linking", tokens);
+                let (xpath, name, (tokens,)) = NetworkRelationship::process_composition(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&resolved_relationship.from),
+                    Arc::clone(&resolved_relationship.to),
+                ).await?;
+
+                let traversal = TraversalTransformation {
+                    id: ID::new(),
+                    relationship_id: resolved_relationship.id.clone(),
+                    xpath,
+                    name,
+                    description: String::new(),
+                };
+
+                if basis_graph.traversals.is_none() {
+                    basis_graph.traversals = Some(Vec::new());
+                }
+                if let Some(ref mut traversals) = basis_graph.traversals {
+                    traversals.push(traversal);
+                }
+
+                stage_context.record_events("Composition linking", tokens);
+
+                provider.save_basis_graph(graph_hash, basis_graph).await?;
+            }
 
         }
         NetworkRelationshipType::ParentChild => {

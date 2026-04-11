@@ -26,7 +26,7 @@ impl NetworkRelationship {
         meta_context: Arc<RwLock<MetaContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
-    ) -> Result<(XPath, (u64,)), Errors> {
+    ) -> Result<(XPath, String, (u64,)), Errors> {
         log::trace!("In process_composition");
 
         let snippet = Self::create_network_snippet(
@@ -44,7 +44,7 @@ impl NetworkRelationship {
 
         let xpath = XPath::from_str(&forward_xpath)?;
 
-        Ok((xpath, (tokens,)))
+        Ok((xpath, merge_variable_name, (tokens,)))
     }
 
     pub async fn process_parent_child(
