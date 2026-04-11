@@ -37,13 +37,15 @@ impl NetworkRelationship {
 
         log::debug!("snippet: {}", snippet);
 
-        let ((forward_xpath, reverse_xpath), (tokens,)) = LLM::get_composition_link(
-            snippet
-        ).await?;
+        //let ((forward_xpath, reverse_xpath), (tokens,)) = LLM::get_composition_link(
+        //    snippet
+        //).await?;
 
-        log::debug!("forward_xpath: {}", forward_xpath);
-        log::debug!("reverse_xpath: {}", reverse_xpath);
+        //log::debug!("forward_xpath: {}", forward_xpath);
+        //log::debug!("reverse_xpath: {}", reverse_xpath);
 
+        
+        let forward_xpath = "following-sibling::tr[1]/td[@class='subtext']/span[@class='subline']";
 
 
         let xpath = XPath::from_str(&forward_xpath)?;
@@ -239,20 +241,23 @@ impl NetworkRelationship {
         let mut network_from_counter: usize = 0;
         let mut network_to_counter: usize = 0;
 
+        let mut found_first_network: bool = false;
+
         let mut stack: Vec<(Graph, Vec<Graph>)> = vec![(graph_root, vec![])];
 
         while let Some((current, path)) = stack.pop() {
             let lock = read_lock!(current);
 
             // We have enough samples of both networks
-            if network_from_counter > 5 && network_to_counter > 5 {
+            if network_from_counter > 3 && network_to_counter > 3 {
                 break;
             }
 
-            let from_match = lock.subgraph_hash == network_from.subgraph_hash && network_from_counter <= 5;
-            let to_match = lock.subgraph_hash == network_to.subgraph_hash && network_to_counter <= 5;
+            let from_match = lock.subgraph_hash == network_from.subgraph_hash && network_from_counter <= 3;
+            let to_match = lock.subgraph_hash == network_to.subgraph_hash && network_to_counter <= 3;
 
             if from_match || to_match {
+                found_first_network = true;
 
                 if from_match {
                     network_from_counter += 1;
@@ -262,7 +267,6 @@ impl NetworkRelationship {
                     network_to_counter += 1;
                 }
 
-                // Add all child nodes of target network
                 let mut queue = VecDeque::new();
                 queue.push_back(Arc::clone(&current));
 
@@ -282,7 +286,9 @@ impl NetworkRelationship {
                     target_graph_nodes.insert(id);
                 }
 
-            } else {
+            } else if found_first_network {
+                let id = read_lock!(current).id.clone();
+                target_graph_nodes.insert(id);
 
                 let mut new_path = path.clone();
                 new_path.push(Arc::clone(&current));
@@ -291,6 +297,14 @@ impl NetworkRelationship {
                     stack.push((Arc::clone(child), new_path.clone()));
                 }
 
+            } else {
+                // Before finding the first network, only traverse without adding
+                let mut new_path = path.clone();
+                new_path.push(Arc::clone(&current));
+
+                for child in lock.children.iter().rev() {
+                    stack.push((Arc::clone(child), new_path.clone()));
+                }
             }
         }
 

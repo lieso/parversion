@@ -78,7 +78,7 @@ impl GraphNode {
 
         match xpath_axis {
             XPathAxis::Child => {
-                Ok(lock.children.first().cloned().into_iter().collect())
+                Ok(lock.children.clone())
             },
             XPathAxis::Parent => unimplemented!(),
             XPathAxis::Self_ => unimplemented!(),
@@ -267,14 +267,11 @@ impl GraphNode {
                 .flatten()
                 .collect();
 
-            log::debug!("segments: {}", segments.len());
-            log::debug!("index: {}", index);
-
             if current.is_empty() {
                 if index == segments.len() - 1 {
                     log::info!("All segments processed, but a graph was not found");
                 } else {
-                    log::info!("Some segments processed, but a graph was not found");
+                    log::info!("No matches after segment {}, stopping early", index);
                 }
                 
                 return Ok(None);
