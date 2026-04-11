@@ -199,11 +199,7 @@ async fn get_traversal<P: Provider>(
 ) -> Result<(), Errors> {
     log::trace!("In get_traversal");
 
-    let relationship_type: NetworkRelationshipType = serde_json::from_value(
-        serde_json::Value::String(resolved_relationship.relationship_type.clone())
-    ).map_err(|_| Errors::UnexpectedError)?;
-
-    match relationship_type {
+    match resolved_relationship.relationship_type {
         NetworkRelationshipType::Composition => {
 
             stage_context.record_events("Composition linking", 0);
@@ -225,7 +221,7 @@ async fn get_traversal<P: Provider>(
             ).await?;
         }
         _ => {
-            log::warn!("Ignoring relationship type: {:?}", relationship_type);
+            log::warn!("Ignoring relationship type: {:?}", resolved_relationship.relationship_type);
         }
     }
 
@@ -260,16 +256,11 @@ pub async fn get_relationship_typing<P: Provider>(
         basis_graph.relationships = Some(
             typed_relationships.into_iter()
                 .map(|(from, to, rel_type)| {
-                    let relationship_type = match rel_type {
-                        NetworkRelationshipType::Composition => "composition".to_string(),
-                        NetworkRelationshipType::OneToMany => "one_to_many".to_string(),
-                        NetworkRelationshipType::ParentChild => "parent_child".to_string(),
-                    };
                     RelationshipTransformation {
                         id: ID::new(),
                         from: from.id.clone(),
                         to: to.id.clone(),
-                        relationship_type,
+                        relationship_type: rel_type,
                         description: String::new(),
                     }
                 })

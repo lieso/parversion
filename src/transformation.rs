@@ -12,6 +12,7 @@ use crate::prelude::*;
 use crate::schema_node::SchemaNode;
 use crate::basis_network::BasisNetwork;
 use crate::xpath::XPath;
+use crate::network_relationship::NetworkRelationshipType;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -268,7 +269,7 @@ pub struct RelationshipTransformation {
     pub id: ID,
     pub from: ID,
     pub to: ID,
-    pub relationship_type: String,
+    pub relationship_type: NetworkRelationshipType,
     pub description: String,
 }
 
@@ -277,7 +278,7 @@ pub struct ResolvedRelationshipTransformation {
     pub id: ID,
     pub from: Arc<BasisNetwork>,
     pub to: Arc<BasisNetwork>,
-    pub relationship_type: String,
+    pub relationship_type: NetworkRelationshipType,
     pub description: String,
 }
 
