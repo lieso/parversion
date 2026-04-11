@@ -25,7 +25,7 @@ pub struct LLM {}
 impl LLM {
     pub async fn get_composition_link(
         snippet: String,
-    ) -> Result<((String, String), (u64,)), Errors> {
+    ) -> Result<((String, String, String), (u64,)), Errors> {
         log::trace!("In get_composition_link");
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -36,7 +36,7 @@ impl LLM {
 
         let (response, metadata) = NetworkRelationships::get_composition_link(&snippet).await?;
 
-        Ok(((response.forward_xpath, response.reverse_xpath), (metadata.tokens,)))
+        Ok(((response.forward_xpath, response.reverse_xpath, response.merged_variable_name), (metadata.tokens,)))
     }
 
     pub async fn identify_relationships(

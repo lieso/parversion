@@ -51,6 +51,7 @@ pub struct NetworkRelationshipsResponseMetadata {
 pub struct CompositionLinkResponse {
     pub forward_xpath: String,
     pub reverse_xpath: String,
+    pub merged_variable_name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -77,20 +78,24 @@ Each network instance has an anchor element marked with comments:
 
 The opening tag immediately following Start is the anchor element.
 
-Your task is to provide two XPath expressions, each relative to an anchor element as the context node:
+Your task is to:
 
-- forward_xpath — evaluated from a Network A anchor, must select exactly one Network B anchor
-- reverse_xpath — evaluated from a Network B anchor, must select exactly one Network A anchor
+1. Provide two XPath expressions, each relative to an anchor element as the context node:
+   - forward_xpath — evaluated from a Network A anchor, must select exactly one Network B anchor
+   - reverse_xpath — evaluated from a Network B anchor, must select exactly one Network A anchor
 
-Both XPaths must be relative (do not start with /). Each must reliably select exactly one element across all instances shown in the document. If a candidate XPath would select more than one element for any instance shown, it is incorrect.
+   Both XPaths must be relative (do not start with /). Each must reliably select exactly one element across all instances shown in the document. If a candidate XPath would select more than one element for any instance shown, it is incorrect.
 
-Base your XPaths strictly on the structure visible in the provided HTML. Do not infer paths that are not evidenced by the examples.
+   Base your XPaths strictly on the structure visible in the provided HTML. Do not infer paths that are not evidenced by the examples.
+
+2. Provide a semantically accurate `snake_case` variable name (merged_variable_name) that would be appropriate for naming the combined resource that results from merging Network A and Network B into a single flat JSON object.
 
 Output
 Respond with valid JSON in the following format:
 {
   "forward_xpath": "XPath from Network A anchor to Network B anchor",
-  "reverse_xpath": "XPath from Network B anchor to Network A anchor"
+  "reverse_xpath": "XPath from Network B anchor to Network A anchor",
+  "merged_variable_name": "snake_case name for the merged resource"
 }
 
 Do not include any explanation outside the JSON.
@@ -138,9 +143,13 @@ Do not include any explanation outside the JSON.
                     "reverse_xpath": {
                         "type": "string",
                         "description": "XPath from Network B anchor to Network A anchor"
+                    },
+                    "merged_variable_name": {
+                        "type": "string",
+                        "description": "A semantically accurate snake_case name for the merged resource"
                     }
                 },
-                "required": ["forward_xpath", "reverse_xpath"],
+                "required": ["forward_xpath", "reverse_xpath", "merged_variable_name"],
                 "additionalProperties": false
             }),
         );

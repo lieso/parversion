@@ -37,105 +37,15 @@ impl NetworkRelationship {
 
         log::debug!("snippet: {}", snippet);
 
-        //let ((forward_xpath, reverse_xpath), (tokens,)) = LLM::get_composition_link(
-        //    snippet
-        //).await?;
+        let ((forward_xpath, reverse_xpath, merge_variable_name), (tokens,)) = LLM::get_composition_link(
+            snippet
+        ).await?;
 
-        //log::debug!("forward_xpath: {}", forward_xpath);
-        //log::debug!("reverse_xpath: {}", reverse_xpath);
-
-        
-        let forward_xpath = "following-sibling::tr[1]/td[@class='subtext']/span[@class='subline']";
-
+        log::debug!("forward_xpath: {}", forward_xpath);
+        log::debug!("reverse_xpath: {}", reverse_xpath);
 
         let xpath = XPath::from_str(&forward_xpath)?;
         log::debug!("xpath: {:?}", xpath);
-
-
-
-
-
-
-
-
-
-
-        let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
-
-
-        let mut queue = VecDeque::new();
-        queue.push_back(graph_root);
-
-
-        while let Some(current) = queue.pop_front() {
-
-            let subgraph_hash = {
-                let lock = read_lock!(current);
-                lock.subgraph_hash.clone()
-            };
-
-            if subgraph_hash == network_from.subgraph_hash {
-
-                log::debug!("=====================================================================================================");
-                log::debug!("=====================================================================================================");
-
-                let target_node: Option<Graph> = GraphNode::traverse_using_xpath(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&current),
-                    &xpath
-                )?;
-
-                if let Some(target_node) = target_node {
-                    log::info!("Found target graph using xpath");
-
-
-
-                    let target_node_subgraph_hash = &read_lock!(target_node).subgraph_hash;
-
-                    if *target_node_subgraph_hash != network_to.subgraph_hash {
-                        panic!("We found the target graph using an xpath expression, but its subgraph hash does not match network_to");
-                    }
-
-
-
-                    let json_a = Self::process_network(
-                        Arc::clone(&meta_context),
-                        Arc::clone(&network_from),
-                        Arc::clone(&current)
-                    )?;
-
-                    log::debug!("json from: {}", json_a);
-
-                    let json_b = Self::process_network(
-                        Arc::clone(&meta_context),
-                        Arc::clone(&network_to),
-                        Arc::clone(&target_node)
-                    )?;
-
-                    log::debug!("json to: {}", json_b);
-
-
-
-
-
-
-                } else {
-                    log::warn!("Could not find target graph using xpath");
-                }
-            } else {
-                for child in &read_lock!(current).children {
-                    queue.push_back(child.clone());
-                }
-            }
-
-        }
-
-
-
-
-
-
-
 
 
 
