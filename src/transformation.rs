@@ -11,6 +11,7 @@ use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
 use crate::basis_network::BasisNetwork;
+use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -242,6 +243,7 @@ pub struct NetworkTransformation {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CanonicalizationTransformation {
+    pub id: ID,
     pub canonical_networks: Vec<String>,
 }
 
@@ -259,4 +261,54 @@ impl CanonicalizationTransformation {
                 .collect()
         )
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RelationshipTransformation {
+    pub id: ID,
+    pub from: ID,
+    pub to: ID,
+    pub relationship_type: String,
+    pub description: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ResolvedRelationshipTransformation {
+    pub id: ID,
+    pub from: Arc<BasisNetwork>,
+    pub to: Arc<BasisNetwork>,
+    pub relationship_type: String,
+    pub description: String,
+}
+
+impl RelationshipTransformation {
+    pub fn transform(
+        &self,
+        networks: &[Arc<BasisNetwork>]
+    ) -> Result<ResolvedRelationshipTransformation, Errors> {
+        let from = networks.iter()
+            .find(|n| n.id == self.from)
+            .ok_or(Errors::UnexpectedError)?
+            .clone();
+        let to = networks.iter()
+            .find(|n| n.id == self.to)
+            .ok_or(Errors::UnexpectedError)?
+            .clone();
+
+        Ok(ResolvedRelationshipTransformation {
+            id: self.id.clone(),
+            from,
+            to,
+            relationship_type: self.relationship_type.clone(),
+            description: self.description.clone(),
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TraversalTransformation {
+    pub id: ID,
+    pub xpath: XPath,
+    pub name: String,
+    pub description: String,
 }

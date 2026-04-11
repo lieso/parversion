@@ -14,7 +14,7 @@ use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::transformation::{NetworkTransformation, CanonicalizationTransformation};
+use crate::transformation::{NetworkTransformation, CanonicalizationTransformation, RelationshipTransformation, ResolvedRelationshipTransformation};
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::json_node::JsonNode;
 
@@ -146,20 +146,12 @@ pub async fn get_network_relationships<P: Provider>(
         canonical_networks.clone(),
     ).await?;
 
-    let relationships: Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)> = basis_graph
+    let relationships: Vec<ResolvedRelationshipTransformation> = basis_graph
         .relationships
         .unwrap_or_default()
-        .into_iter()
-        .map(|(from_id, to_id, rel_type)| {
-            let from = canonical_networks.iter()
-                .find(|n| n.id == from_id)
-                .unwrap_or_else(|| panic!("Relationship 'from' network not found: {:?}", from_id));
-            let to = canonical_networks.iter()
-                .find(|n| n.id == to_id)
-                .unwrap_or_else(|| panic!("Relationship 'to' network not found: {:?}", to_id));
-            (Arc::clone(from), Arc::clone(to), rel_type)
-        })
-        .collect();
+        .iter()
+        .map(|rel_transform| rel_transform.transform(&canonical_networks))
+        .collect::<Result<Vec<_>, _>>()?;
 
     if relationships.is_empty() {
         panic!("No relationships?");
@@ -173,7 +165,7 @@ pub async fn get_network_relationships<P: Provider>(
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
 
-    for (network_from, network_to, rel_type) in relationships {
+    for resolved_relationship in relationships {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
         let cloned_meta_context = Arc::clone(&meta_context);
@@ -182,12 +174,10 @@ pub async fn get_network_relationships<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
-            get_relationship_link(
+            get_traversal(
                 cloned_provider,
                 cloned_meta_context,
-                network_from,
-                network_to,
-                rel_type,
+                resolved_relationship,
                 &cloned_options,
                 &cloned_stage_context,
             ).await
@@ -200,30 +190,38 @@ pub async fn get_network_relationships<P: Provider>(
     unimplemented!()
 }
 
-async fn get_relationship_link<P: Provider>(
+async fn get_traversal<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-    network_from: Arc<BasisNetwork>,
-    network_to: Arc<BasisNetwork>,
-    relationship_type: NetworkRelationshipType,
+    resolved_relationship: ResolvedRelationshipTransformation,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<(), Errors> {
-    log::trace!("In get_relationship_link");
+    log::trace!("In get_traversal");
+
+    let relationship_type: NetworkRelationshipType = serde_json::from_value(
+        serde_json::Value::String(resolved_relationship.relationship_type.clone())
+    ).map_err(|_| Errors::UnexpectedError)?;
 
     match relationship_type {
         NetworkRelationshipType::Composition => {
-            NetworkRelationship::process_composition(
+
+            stage_context.record_events("Composition linking", 0);
+
+            let (xpath, (tokens,)) = NetworkRelationship::process_composition(
                 Arc::clone(&meta_context),
-                Arc::clone(&network_from),
-                Arc::clone(&network_to),
+                Arc::clone(&resolved_relationship.from),
+                Arc::clone(&resolved_relationship.to),
             ).await?;
+
+            stage_context.record_events("Composition linking", tokens);
+
         }
         NetworkRelationshipType::ParentChild => {
             NetworkRelationship::process_parent_child(
                 Arc::clone(&meta_context),
-                Arc::clone(&network_from),
-                Arc::clone(&network_to),
+                Arc::clone(&resolved_relationship.from),
+                Arc::clone(&resolved_relationship.to),
             ).await?;
         }
         _ => {
@@ -261,7 +259,20 @@ pub async fn get_relationship_typing<P: Provider>(
         let mut basis_graph = basis_graph;
         basis_graph.relationships = Some(
             typed_relationships.into_iter()
-                .map(|(from, to, rel_type)| (from.id.clone(), to.id.clone(), rel_type))
+                .map(|(from, to, rel_type)| {
+                    let relationship_type = match rel_type {
+                        NetworkRelationshipType::Composition => "composition".to_string(),
+                        NetworkRelationshipType::OneToMany => "one_to_many".to_string(),
+                        NetworkRelationshipType::ParentChild => "parent_child".to_string(),
+                    };
+                    RelationshipTransformation {
+                        id: ID::new(),
+                        from: from.id.clone(),
+                        to: to.id.clone(),
+                        relationship_type,
+                        description: String::new(),
+                    }
+                })
                 .collect()
         );
 
@@ -306,6 +317,7 @@ pub async fn get_canonical_networks<P: Provider>(
         id: ID::new(),
         hash: graph_hash.clone(),
         canonicalization: CanonicalizationTransformation {
+            id: ID::new(),
             canonical_networks: canonical_networks
                 .iter()
                 .map(|network| {
@@ -314,6 +326,7 @@ pub async fn get_canonical_networks<P: Provider>(
                 .collect()
         },
         relationships: None,
+        traversals: None,
     };
 
     provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
