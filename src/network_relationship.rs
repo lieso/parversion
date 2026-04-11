@@ -85,10 +85,40 @@ impl NetworkRelationship {
                     &xpath
                 )?;
 
-                unimplemented!();
-
                 if let Some(target_node) = target_node {
                     log::info!("Found target graph using xpath");
+
+
+
+                    let target_node_subgraph_hash = &read_lock!(target_node).subgraph_hash;
+
+                    if *target_node_subgraph_hash != network_to.subgraph_hash {
+                        panic!("We found the target graph using an xpath expression, but its subgraph hash does not match network_to");
+                    }
+
+
+
+                    let json_a = Self::process_network(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&network_from),
+                        Arc::clone(&current)
+                    )?;
+
+                    log::debug!("json from: {}", json_a);
+
+                    let json_b = Self::process_network(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&network_to),
+                        Arc::clone(&target_node)
+                    )?;
+
+                    log::debug!("json to: {}", json_b);
+
+
+
+
+
+
                 } else {
                     log::warn!("Could not find target graph using xpath");
                 }
@@ -441,7 +471,7 @@ impl NetworkRelationship {
                     Arc::clone(&meta_context),
                     network.clone(),
                     Arc::clone(&current)
-                ).await?;
+                )?;
 
                 network_jsons.push(json);
             } else {
@@ -454,7 +484,7 @@ impl NetworkRelationship {
         Ok(network_jsons)
     }
 
-    async fn process_network(
+    fn process_network(
         meta_context: Arc<RwLock<MetaContext>>,
         basis_network: Arc<BasisNetwork>,
         graph_node: Arc<RwLock<GraphNode>>
