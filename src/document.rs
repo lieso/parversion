@@ -816,6 +816,8 @@ fn do_something(
 
 
 
+    let mut result: Map<String, Value> = Map::new();
+
     let mut processed_networks: HashSet<ID> = HashSet::new();
 
 
@@ -835,18 +837,25 @@ fn do_something(
         };
 
         if let Some(basis_network) = read_lock!(meta_context).get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)? {
-
-             if let Some(basis_network) = canonicalization
-                 .transform(vec![basis_network])?
-                 .first() {
-
+             if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
                 log::debug!("Found a canonical network");
 
-                let mut json: Map<String, Value> = process_network(
+                let mut json: Map<String, Value> = Map::new();
+                let mut json_key: String = String::new();
+
+                let json_inner: Map<String, Value> = process_network(
                     Arc::clone(&meta_context),
                     Arc::clone(&current),
                 )?;
                 processed_networks.insert(read_lock!(current).id.clone());
+
+                if let NetworkType::Complex(transformation) = &basis_network.transformation {
+                    json.insert(
+                        transformation.image.clone(),
+                        serde_json::json!(json_inner),
+                    );
+                    json_key = transformation.image.clone();
+                }
 
                 let current_relationships: Vec<&RelationshipTransformation> = relationships
                     .iter()
@@ -865,34 +874,60 @@ fn do_something(
                                     Arc::clone(&meta_context),
                                     Arc::clone(&current),
                                 )? {
+                                    let target_json: Map<String, Value> = process_network(
+                                        Arc::clone(&meta_context),
+                                        Arc::clone(&target_network),
+                                    )?;
+                                    processed_networks.insert(read_lock!(target_network).id.clone());
 
-                                let mut target_json: Map<String, Value> = process_network(
-                                    Arc::clone(&meta_context),
-                                    Arc::clone(&target_network),
-                                )?;
-                                processed_networks.insert(read_lock!(target_network).id.clone());
+                                    let target_subgraph_hash = read_lock!(target_network).subgraph_hash.clone();
+                                    if let Some(target_basis_network) = read_lock!(meta_context).get_basis_network_by_lineage_and_subgraph_hash(&target_subgraph_hash)? {
+                                        if let NetworkType::Complex(transformation) = &target_basis_network.transformation {
+                                            let network_key = &transformation.image;
 
-
-
+                                            json.insert(
+                                                network_key.clone(),
+                                                serde_json::json!(target_json),
+                                            );
+                                            json_key.push_str(&format!("_{}", network_key));
+                                        }
+                                    }
                                 }
                             }
-
-
-
                         },
-                        _ => unimplemented!()
+                        _ => {
+                            log::warn!("Ignoring a relationship");
+                        }
                     }
-
-
                 }
 
-
-
+                if let Some(existing_object) = result.get_mut(&json_key) {
+                    if let Value::Array(ref mut arr) = existing_object {
+                        arr.push(serde_json::Value::Object(json));
+                    } else {
+                        *existing_object = json!(vec![
+                            existing_object.clone(),
+                            serde_json::Value::Object(json)
+                        ]);
+                    }
+                } else {
+                    result.insert(json_key.clone(), serde_json::Value::Object(json));
+                }
              }
-
         }
 
+        for child in read_lock!(current).children.iter() {
+            queue.push_back(Arc::clone(child));
+        }
     }
+
+
+    let foo = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
+
+    log::debug!("==================================================================================================================================================================================================================================================================================================================================================================================================================");
+    log::debug!("{}", foo);
+
+
 
     unimplemented!();
 
