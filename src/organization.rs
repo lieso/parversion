@@ -87,8 +87,6 @@ pub async fn organize<P: Provider>(
 
     stage.finish();
 
-    unimplemented!();
-
     {
         let organized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
         let result = format!("{}", organized.to_string(&None));
