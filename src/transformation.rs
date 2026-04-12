@@ -2,7 +2,7 @@ use quick_js::Context as QuickContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use crate::data_node::DataNode;
 use crate::id::ID;
@@ -13,6 +13,7 @@ use crate::schema_node::SchemaNode;
 use crate::basis_network::BasisNetwork;
 use crate::xpath::XPath;
 use crate::network_relationship::NetworkRelationshipType;
+use crate::graph_node::{Graph, GraphNode};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -313,4 +314,20 @@ pub struct TraversalTransformation {
     pub xpath: XPath,
     pub name: String,
     pub description: String,
+}
+
+impl TraversalTransformation {
+    pub fn transform(
+        &self,
+        meta_context: Arc<RwLock<MetaContext>>,
+        start: Graph,
+    ) -> Result<Option<Graph>, Errors> {
+        use crate::graph_node::GraphNode;
+
+        GraphNode::traverse_using_xpath(
+            meta_context,
+            start,
+            &self.xpath,
+        )
+    }
 }

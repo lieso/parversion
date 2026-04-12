@@ -30,6 +30,7 @@ use crate::transformation::{
     RelationshipTransformation,
     TraversalTransformation,
 };
+use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -813,10 +814,20 @@ fn do_something(
 
     let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
 
+
+
+    let mut processed_networks: HashSet<ID> = HashSet::new();
+
+
+    
+
     let mut queue = VecDeque::new();
     queue.push_back(graph_root);
 
     while let Some(current) = queue.pop_front() {
+        if processed_networks.contains(&read_lock!(current).id) {
+            continue;
+        }
 
         let subgraph_hash = {
             let lock = read_lock!(current);
@@ -835,14 +846,43 @@ fn do_something(
                     Arc::clone(&meta_context),
                     Arc::clone(&current),
                 )?;
+                processed_networks.insert(read_lock!(current).id.clone());
 
                 let current_relationships: Vec<&RelationshipTransformation> = relationships
                     .iter()
                     .filter(|item| item.from == basis_network.id)
                     .collect();
 
-
                 for relationship in current_relationships.iter() {
+                    match relationship.relationship_type {
+                        NetworkRelationshipType::Composition => {
+                            let traversal = traversals.iter().find(|item| {
+                                item.relationship_id == relationship.id
+                            });
+
+                            if let Some(traversal) = traversal {
+                                if let Some(target_network) = traversal.transform(
+                                    Arc::clone(&meta_context),
+                                    Arc::clone(&current),
+                                )? {
+
+                                let mut target_json: Map<String, Value> = process_network(
+                                    Arc::clone(&meta_context),
+                                    Arc::clone(&target_network),
+                                )?;
+                                processed_networks.insert(read_lock!(target_network).id.clone());
+
+
+
+                                }
+                            }
+
+
+
+                        },
+                        _ => unimplemented!()
+                    }
+
 
                 }
 
