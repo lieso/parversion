@@ -821,12 +821,27 @@ fn do_something(
     let mut processed_networks: HashSet<ID> = HashSet::new();
 
 
+    let ordered_nodes = {
+        let mut nodes: Vec<Graph> = Vec::new();
+
+        let mut queue = VecDeque::new();
+        queue.push_back(graph_root);
+
+        while let Some(current) = queue.pop_front() {
+            nodes.push(current.clone());
+
+            for child in read_lock!(current).children.iter() {
+                queue.push_back(Arc::clone(child));
+            }
+        }
+
+        nodes
+    };
+    let ordered_nodes = ordered_nodes.into_iter().rev();
+
     
 
-    let mut queue = VecDeque::new();
-    queue.push_back(graph_root);
-
-    while let Some(current) = queue.pop_front() {
+    'outer: for current in ordered_nodes {
         if processed_networks.contains(&read_lock!(current).id) {
             continue;
         }
@@ -846,6 +861,7 @@ fn do_something(
                 let json_inner: Map<String, Value> = process_network(
                     Arc::clone(&meta_context),
                     Arc::clone(&current),
+                    &processed_networks
                 )?;
                 processed_networks.insert(read_lock!(current).id.clone());
 
@@ -862,6 +878,35 @@ fn do_something(
                     .filter(|item| item.from == basis_network.id)
                     .collect();
 
+
+
+
+
+
+
+                let current_relationships_to: Vec<&RelationshipTransformation> = relationships
+                    .iter()
+                    .filter(|item| item.to == basis_network.id)
+                    .collect();
+
+
+                for relationship in current_relationships_to.iter() {
+                    match relationship.relationship_type {
+                        NetworkRelationshipType::Composition => {
+                            log::info!("Network is the 'to' network in a composition relationship");
+                            continue 'outer;
+                        },
+                        _ => {
+                            log::warn!("Ignoring a relationship");
+                        }
+                    }
+                }
+
+
+
+
+
+
                 for relationship in current_relationships.iter() {
                     match relationship.relationship_type {
                         NetworkRelationshipType::Composition => {
@@ -877,6 +922,7 @@ fn do_something(
                                     let target_json: Map<String, Value> = process_network(
                                         Arc::clone(&meta_context),
                                         Arc::clone(&target_network),
+                                        &processed_networks
                                     )?;
                                     processed_networks.insert(read_lock!(target_network).id.clone());
 
@@ -915,10 +961,6 @@ fn do_something(
                 }
              }
         }
-
-        for child in read_lock!(current).children.iter() {
-            queue.push_back(Arc::clone(child));
-        }
     }
 
 
@@ -936,6 +978,7 @@ fn do_something(
 fn process_network(
     meta_context: Arc<RwLock<MetaContext>>,
     network: Graph,
+    processed_networks: &HashSet<ID>,
 ) -> Result<Map<String, Value>, Errors> {
 
     let mut result: Map<String, Value> = Map::new();
@@ -943,7 +986,8 @@ fn process_network(
     fn recurse(
         meta_context: Arc<RwLock<MetaContext>>,
         current_node: Graph,
-        result: &mut Map<String, Value>
+        result: &mut Map<String, Value>,
+        processed_networks: &HashSet<ID>,
     ) {
         let contexts = {
             let lock = read_lock!(meta_context);
@@ -976,6 +1020,10 @@ fn process_network(
         }
 
         for child in &read_lock!(current_node).children {
+            if processed_networks.contains(&read_lock!(child).id) {
+                continue;
+            }
+
             let subgraph_hash: Hash = read_lock!(child).subgraph_hash.clone();
 
             let basis_network: Arc<BasisNetwork> = {
@@ -991,6 +1039,7 @@ fn process_network(
                         Arc::clone(&meta_context),
                         Arc::clone(&child),
                         result,
+                        processed_networks,
                     );
                 },
                 NetworkType::Complex(transformation) => {
@@ -1000,6 +1049,7 @@ fn process_network(
                         Arc::clone(&meta_context),
                         Arc::clone(&child),
                         &mut inner_result,
+                        processed_networks,
                     );
 
                     let inner_result_value = Value::Object(inner_result.clone());
@@ -1025,6 +1075,7 @@ fn process_network(
         Arc::clone(&meta_context),
         Arc::clone(&network),
         &mut result,
+        processed_networks,
     );
 
     Ok(result)
