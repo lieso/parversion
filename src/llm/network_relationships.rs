@@ -48,6 +48,25 @@ pub struct NetworkRelationshipsResponseMetadata {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ValueXPath {
+    pub name: String,
+    pub xpath: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ParentChildLinkResponse {
+    pub candidate_xpath: String,
+    pub parent_value_xpaths: Vec<ValueXPath>,
+    pub candidate_value_xpaths: Vec<ValueXPath>,
+    pub filter_function: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ParentChildLinkResponseMetadata {
+    pub tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CompositionLinkResponse {
     pub forward_xpath: String,
     pub reverse_xpath: String,
@@ -62,6 +81,195 @@ pub struct CompositionLinkResponseMetadata {
 pub struct NetworkRelationships;
 
 impl NetworkRelationships {
+    pub async fn get_parent_child_link(
+        snippet: &str,
+    ) -> Result<(ParentChildLinkResponse, ParentChildLinkResponseMetadata), Errors> {
+        log::trace!("In get_parent_child_link");
+
+        let system_prompt = r##"
+You are given an HTML document containing multiple instances of the same network. Each instance is marked with comments:
+
+<!-- Target Network: Start -->
+<element ...>
+<!-- Target Network: End -->
+
+The opening tag immediately following Start is the anchor element for that instance.
+
+The instances have a parent-child relationship: some instances are hierarchical children of other instances of the same network. Your task is to describe how to confirm, at runtime, whether one instance is a direct child of another.
+
+Provide the following:
+
+1. candidate_xpath — An XPath expression relative to one network anchor that navigates to one or more neighboring network anchors of the same type. These are candidates that may or may not be direct children.
+
+2. parent_value_xpaths — An array of { name, xpath } objects. Each xpath is relative to the parent anchor and extracts a specific text or attribute value that will be used to confirm the relationship. Use short snake_case names.
+
+3. candidate_value_xpaths — An array of { name, xpath } objects. Each xpath is relative to the candidate anchor and extracts a corresponding value.
+
+4. filter_function — The body of a JavaScript function that returns true if the candidate is a direct child of the parent, and false otherwise. The function has access to variables named parent_{name} and candidate_{name}, corresponding to the values extracted by parent_value_xpaths and candidate_value_xpaths respectively. All values are strings as extracted from the DOM. Do not include a function declaration — provide only the body.
+
+Base your XPaths and filter logic strictly on structure and values visible in the provided HTML. Do not infer relationships based on assumptions about the document type or domain.
+
+Output
+Respond with valid JSON in the following format:
+{
+  "candidate_xpath": "XPath from one network anchor to neighboring same-type anchors",
+  "parent_value_xpaths": [
+    { "name": "snake_case_name", "xpath": "XPath relative to parent anchor" }
+  ],
+  "candidate_value_xpaths": [
+    { "name": "snake_case_name", "xpath": "XPath relative to candidate anchor" }
+  ],
+  "filter_function": "return candidate_level === String(Number(parent_level) + 1);"
+}
+
+Do not include any explanation outside the JSON.
+"##;
+
+        let user_prompt = format!(r##"
+[DOCUMENT SNIPPET]:
+{}
+"##, snippet);
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║       PARENT CHILD LINK - LLM REQUEST                         ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+        log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+        log::debug!("{}", system_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+        log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+        log::debug!("{}", user_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+
+        Self::send_parent_child_link_request(system_prompt, &user_prompt).await
+    }
+
+    async fn send_parent_child_link_request(
+        system_prompt: &str,
+        user_prompt: &str,
+    ) -> Result<(ParentChildLinkResponse, ParentChildLinkResponseMetadata), Errors> {
+        let client = Self::build_client();
+
+        let value_xpath_schema = json!({
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "snake_case name used as a variable in the filter function"
+                },
+                "xpath": {
+                    "type": "string",
+                    "description": "XPath relative to the network anchor that extracts a value"
+                }
+            },
+            "required": ["name", "xpath"],
+            "additionalProperties": false
+        });
+
+        let response_format = ResponseFormat::json_schema(
+            "parent_child_link",
+            true,
+            json!({
+                "type": "object",
+                "properties": {
+                    "candidate_xpath": {
+                        "type": "string",
+                        "description": "XPath from one network anchor to neighboring same-type candidate anchors"
+                    },
+                    "parent_value_xpaths": {
+                        "type": "array",
+                        "items": value_xpath_schema.clone(),
+                        "description": "XPaths relative to the parent anchor that extract values for the filter"
+                    },
+                    "candidate_value_xpaths": {
+                        "type": "array",
+                        "items": value_xpath_schema,
+                        "description": "XPaths relative to the candidate anchor that extract values for the filter"
+                    },
+                    "filter_function": {
+                        "type": "string",
+                        "description": "JavaScript function body returning true if the candidate is a direct child of the parent"
+                    }
+                },
+                "required": ["candidate_xpath", "parent_value_xpaths", "candidate_value_xpaths", "filter_function"],
+                "additionalProperties": false
+            }),
+        );
+
+        let request = ChatCompletionRequest::builder()
+            .model("gpt-5")
+            .messages(vec![
+                Message::new(Role::System, system_prompt),
+                Message::new(Role::User, user_prompt),
+            ])
+            .response_format(response_format)
+            .build()
+            .expect("Could not create llm request");
+
+        match client.send_chat_completion(&request).await {
+            Ok(response) => {
+                log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
+                log::debug!("{:?}", response);
+                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                log::debug!("");
+
+                if let Some(content) = response.choices[0].content() {
+                    log::debug!(
+                        "┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐"
+                    );
+                    log::debug!("{}", content);
+                    log::debug!(
+                        "└───────────────────────────────────────────────────────────────┘"
+                    );
+                    log::debug!("");
+
+                    let parent_child_link_response = {
+                        match serde_json::from_str::<ParentChildLinkResponse>(content) {
+                            Ok(parsed_response) => {
+                                log::debug!(
+                                    "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
+                                );
+                                log::debug!("{:?}", parsed_response);
+                                log::debug!(
+                                    "└───────────────────────────────────────────────────────────────┘"
+                                );
+                                log::debug!("");
+                                Ok(parsed_response)
+                            }
+                            Err(e) => {
+                                log::error!("Failed to parse LLM response: {}", e);
+                                Err(Errors::UnexpectedError)
+                            }
+                        }
+                    }?;
+
+                    let metadata = {
+                        if let Some(usage) = response.usage {
+                            ParentChildLinkResponseMetadata {
+                                tokens: usage.total_tokens.clone() as u64,
+                            }
+                        } else {
+                            ParentChildLinkResponseMetadata { tokens: 0 }
+                        }
+                    };
+
+                    Ok((parent_child_link_response, metadata))
+                } else {
+                    log::error!("No content in LLM response");
+                    Err(Errors::UnexpectedError)
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenRouter: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
     pub async fn get_composition_link(
         snippet: &str,
     ) -> Result<(CompositionLinkResponse, CompositionLinkResponseMetadata), Errors> {

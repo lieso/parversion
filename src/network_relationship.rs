@@ -60,7 +60,11 @@ impl NetworkRelationship {
             Arc::clone(&network_to),
         )?;
 
-        log::debug!("snippet: {}", snippet);
+        let result = LLM::get_parent_child_link(
+            snippet
+        ).await?;
+
+        log::debug!("result: {:?}", result);
 
         unimplemented!()
     }

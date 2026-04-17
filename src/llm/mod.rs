@@ -23,6 +23,24 @@ use network_relationships::NetworkRelationships;
 pub struct LLM {}
 
 impl LLM {
+    pub async fn get_parent_child_link(
+        snippet: String,
+    ) -> Result<(), Errors> {
+        log::trace!("In get_parent_child_link");
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  PARENT CHILD LINK START                      ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        let (response, metadata) = NetworkRelationships::get_parent_child_link(&snippet).await?;
+
+        log::debug!("response: {:?}", response);
+
+        unimplemented!();
+    }
+
     pub async fn get_composition_link(
         snippet: String,
     ) -> Result<((String, String, String), (u64,)), Errors> {
