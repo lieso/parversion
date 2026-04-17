@@ -109,6 +109,8 @@ Provide the following:
 
 Base your XPaths and filter logic strictly on structure and values visible in the provided HTML. Do not infer relationships based on assumptions about the document type or domain.
 
+Prefer simple XPath syntax. Avoid verbose defensive patterns where a simpler equivalent is reliable given the document structure.
+
 Output
 Respond with valid JSON in the following format:
 {
