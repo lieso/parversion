@@ -73,9 +73,10 @@ impl Document {
             lock.classification.clone().ok_or(Errors::ClassificationNotFound)?
         };
 
-        let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
-
-        let result = process_graph(Arc::clone(&meta_context))?;
+        let (result, inner_schema) = process_graph(
+            Arc::clone(&meta_context),
+            &classification.lineage
+        )?;
 
         let data = {
             match serde_json::to_string(&result) {
@@ -648,8 +649,9 @@ fn apply_schema_transformations_json(
 }
 
 fn process_graph(
-    meta_context: Arc<RwLock<MetaContext>>
-) -> Result<Map<String, Value>, Errors> {
+    meta_context: Arc<RwLock<MetaContext>>,
+    schema_lineage: &Lineage,
+) -> Result<(Map<String, Value>, HashMap<String, SchemaNode>), Errors> {
 
     let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
@@ -661,6 +663,7 @@ fn process_graph(
 
 
     let mut result: Map<String, Value> = Map::new();
+    let mut schema: HashMap<String, SchemaNode> = HashMap::new();
 
     let mut processed_networks: HashSet<ID> = HashSet::new();
 
@@ -699,13 +702,17 @@ fn process_graph(
              if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
                 log::debug!("Found a canonical network");
 
+                let mut current_schema: HashMap<String, SchemaNode> = HashMap::new();
+
                 let mut json: Map<String, Value> = Map::new();
                 let mut json_key: String = String::new();
 
-                let json_inner: Map<String, Value> = process_network(
+
+                let (json_inner, schema_inner) = process_network(
                     Arc::clone(&meta_context),
                     Arc::clone(&current),
-                    &processed_networks
+                    &processed_networks,
+                    schema_lineage
                 )?;
                 processed_networks.insert(read_lock!(current).id.clone());
 
@@ -716,6 +723,20 @@ fn process_graph(
                     );
                     json_key = transformation.image.clone();
                 }
+                let mut schema_node: SchemaNode = SchemaNode::new(
+                    &json_key,
+                    &basis_network.description,
+                    schema_lineage,
+                    "object",
+                    
+                );
+                schema_node.properties = schema_inner;
+                current_schema.insert(schema_node.name.clone(), schema_node.clone());
+
+
+
+
+
 
                 let current_relationships: Vec<&RelationshipTransformation> = relationships
                     .iter()
@@ -763,10 +784,11 @@ fn process_graph(
                                     Arc::clone(&meta_context),
                                     Arc::clone(&current),
                                 )? {
-                                    let target_json: Map<String, Value> = process_network(
+                                    let (target_json, target_schema) = process_network(
                                         Arc::clone(&meta_context),
                                         Arc::clone(&target_network),
-                                        &processed_networks
+                                        &processed_networks,
+                                        schema_lineage
                                     )?;
                                     processed_networks.insert(read_lock!(target_network).id.clone());
 
@@ -775,6 +797,15 @@ fn process_graph(
                                         if let NetworkType::Complex(transformation) = &target_basis_network.transformation {
                                             let network_key = &transformation.image;
 
+                                            let mut target_schema_node = SchemaNode::new(
+                                                &network_key,
+                                                &target_basis_network.description,
+                                                schema_lineage,
+                                                "object",
+                                            );
+                                            target_schema_node.properties = target_schema;
+
+                                            current_schema.insert(target_schema_node.name.clone(), target_schema_node);
                                             json.insert(
                                                 network_key.clone(),
                                                 serde_json::json!(target_json),
@@ -791,6 +822,24 @@ fn process_graph(
                     }
                 }
 
+
+
+
+                let mut schema_node = SchemaNode::new(
+                    &json_key,
+                    "placeholder description",
+                    schema_lineage,
+                    "object",
+                );
+                schema_node.properties = current_schema;
+
+
+
+
+
+
+
+
                 if let Some(existing_object) = result.get_mut(&json_key) {
                     if let Value::Array(ref mut arr) = existing_object {
                         arr.push(serde_json::Value::Object(json));
@@ -799,29 +848,37 @@ fn process_graph(
                             existing_object.clone(),
                             serde_json::Value::Object(json)
                         ]);
+
+                        schema_node.data_type = "array".to_string();
+                        schema.insert(schema_node.name.clone(), schema_node);
                     }
                 } else {
                     result.insert(json_key.clone(), serde_json::Value::Object(json));
+                    schema.insert(schema_node.name.clone(), schema_node);
                 }
              }
         }
     }
 
-    Ok(result)
+    Ok((result, schema))
 }
 
 fn process_network(
     meta_context: Arc<RwLock<MetaContext>>,
     network: Graph,
     processed_networks: &HashSet<ID>,
-) -> Result<Map<String, Value>, Errors> {
+    schema_lineage: &Lineage
+) -> Result<(Map<String, Value>, HashMap<String, SchemaNode>), Errors> {
 
     let mut result: Map<String, Value> = Map::new();
+    let mut schema: HashMap<String, SchemaNode> = HashMap::new();
 
     fn recurse(
         meta_context: Arc<RwLock<MetaContext>>,
         current_node: Graph,
         result: &mut Map<String, Value>,
+        schema: &mut HashMap<String, SchemaNode>,
+        schema_lineage: &Lineage,
         processed_networks: &HashSet<ID>,
     ) {
         let contexts = {
@@ -851,7 +908,16 @@ fn process_network(
         for json_node in json_nodes {
             let json = json_node.json;
             let value = json!(json.value.trim().to_string());
+
+            let schema_node: SchemaNode = SchemaNode::new(
+                &json.key,
+                &json_node.description,
+                schema_lineage,
+                "string"
+            );
+
             result.insert(json.key, value);
+            schema.insert(schema_node.name.clone(), schema_node);
         }
 
         for child in &read_lock!(current_node).children {
@@ -874,18 +940,32 @@ fn process_network(
                         Arc::clone(&meta_context),
                         Arc::clone(&child),
                         result,
+                        schema,
+                        schema_lineage,
                         processed_networks,
                     );
                 },
                 NetworkType::Complex(transformation) => {
                     let mut inner_result: Map<String, Value> = Map::new();
+                    let mut inner_schema: HashMap<String, SchemaNode> = HashMap::new();
+
+                    let mut schema_node = SchemaNode::new(
+                        &transformation.image,
+                        &transformation.description,
+                        schema_lineage,
+                        "object",
+                    );
 
                     recurse(
                         Arc::clone(&meta_context),
                         Arc::clone(&child),
                         &mut inner_result,
+                        &mut inner_schema,
+                        &schema_node.lineage,
                         processed_networks,
                     );
+
+                    schema_node.properties = inner_schema;
 
                     let inner_result_value = Value::Object(inner_result.clone());
 
@@ -900,6 +980,7 @@ fn process_network(
                         }
                     } else {
                         result.insert(transformation.image.clone(), inner_result_value);
+                        schema.insert(schema_node.name.clone(), schema_node.clone());
                     }
                 }
             }
@@ -910,8 +991,10 @@ fn process_network(
         Arc::clone(&meta_context),
         Arc::clone(&network),
         &mut result,
+        &mut schema,
+        schema_lineage,
         processed_networks,
     );
 
-    Ok(result)
+    Ok((result, schema))
 }
