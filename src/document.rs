@@ -656,7 +656,7 @@ fn process_graph(
     let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
     let relationships: Vec<RelationshipTransformation> = basis_graph.relationships.unwrap();
-    let traversals: Vec<TraversalTransformation> = basis_graph.traversals.unwrap();
+    let traversals: Option<Vec<TraversalTransformation>> = basis_graph.traversals;
 
     let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
 
@@ -775,42 +775,44 @@ fn process_graph(
                 for relationship in current_relationships.iter() {
                     match relationship.relationship_type {
                         NetworkRelationshipType::Composition => {
-                            let traversal = traversals.iter().find(|item| {
-                                item.relationship_id == relationship.id
-                            });
+                            if let Some(ref traversals) = traversals {
+                                let traversal = traversals.iter().find(|item| {
+                                    item.relationship_id == relationship.id
+                                });
 
-                            if let Some(traversal) = traversal {
-                                if let Some(target_network) = traversal.transform(
-                                    Arc::clone(&meta_context),
-                                    Arc::clone(&current),
-                                )? {
-                                    let (target_json, target_schema) = process_network(
+                                if let Some(traversal) = traversal {
+                                    if let Some(target_network) = traversal.transform(
                                         Arc::clone(&meta_context),
-                                        Arc::clone(&target_network),
-                                        &processed_networks,
-                                        schema_lineage
-                                    )?;
-                                    processed_networks.insert(read_lock!(target_network).id.clone());
+                                        Arc::clone(&current),
+                                    )? {
+                                        let (target_json, target_schema) = process_network(
+                                            Arc::clone(&meta_context),
+                                            Arc::clone(&target_network),
+                                            &processed_networks,
+                                            schema_lineage
+                                        )?;
+                                        processed_networks.insert(read_lock!(target_network).id.clone());
 
-                                    let target_subgraph_hash = read_lock!(target_network).subgraph_hash.clone();
-                                    if let Some(target_basis_network) = read_lock!(meta_context).get_basis_network_by_lineage_and_subgraph_hash(&target_subgraph_hash)? {
-                                        if let NetworkType::Complex(transformation) = &target_basis_network.transformation {
-                                            let network_key = &transformation.image;
+                                        let target_subgraph_hash = read_lock!(target_network).subgraph_hash.clone();
+                                        if let Some(target_basis_network) = read_lock!(meta_context).get_basis_network_by_lineage_and_subgraph_hash(&target_subgraph_hash)? {
+                                            if let NetworkType::Complex(transformation) = &target_basis_network.transformation {
+                                                let network_key = &transformation.image;
 
-                                            let mut target_schema_node = SchemaNode::new(
-                                                &network_key,
-                                                &target_basis_network.description,
-                                                schema_lineage,
-                                                "object",
-                                            );
-                                            target_schema_node.properties = target_schema;
+                                                let mut target_schema_node = SchemaNode::new(
+                                                    &network_key,
+                                                    &target_basis_network.description,
+                                                    schema_lineage,
+                                                    "object",
+                                                );
+                                                target_schema_node.properties = target_schema;
 
-                                            current_schema.insert(target_schema_node.name.clone(), target_schema_node);
-                                            json.insert(
-                                                network_key.clone(),
-                                                serde_json::json!(target_json),
-                                            );
-                                            json_key.push_str(&format!("_{}", network_key));
+                                                current_schema.insert(target_schema_node.name.clone(), target_schema_node);
+                                                json.insert(
+                                                    network_key.clone(),
+                                                    serde_json::json!(target_json),
+                                                );
+                                                json_key.push_str(&format!("_{}", network_key));
+                                            }
                                         }
                                     }
                                 }
