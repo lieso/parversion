@@ -52,6 +52,7 @@ mod execution_context;
 mod network_relationship;
 mod basis_graph;
 mod xpath;
+mod traversal;
 
 use crate::entrypoint::run;
 
