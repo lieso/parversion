@@ -25,7 +25,7 @@ pub struct LLM {}
 impl LLM {
     pub async fn get_parent_child_link(
         snippet: String,
-    ) -> Result<(), Errors> {
+    ) -> Result<((String, Vec<(String, String)>, Vec<(String, String)>, String), (u64,)), Errors> {
         log::trace!("In get_parent_child_link");
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -38,7 +38,20 @@ impl LLM {
 
         log::debug!("response: {:?}", response);
 
-        unimplemented!();
+        let parent_value_xpaths = response.parent_value_xpaths
+            .into_iter()
+            .map(|v| (v.name, v.xpath))
+            .collect();
+
+        let candidate_value_xpaths = response.candidate_value_xpaths
+            .into_iter()
+            .map(|v| (v.name, v.xpath))
+            .collect();
+
+        Ok((
+            (response.candidate_xpath, parent_value_xpaths, candidate_value_xpaths, response.filter_function),
+            (metadata.tokens,),
+        ))
     }
 
     pub async fn get_composition_link(

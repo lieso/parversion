@@ -9,6 +9,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::document::Document;
 use crate::llm::LLM;
+use crate::traversal::{Traversal, TraversalValue};
 use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -26,7 +27,7 @@ impl NetworkRelationship {
         meta_context: Arc<RwLock<MetaContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
-    ) -> Result<(XPath, String, (u64,)), Errors> {
+    ) -> Result<(Traversal, String, (u64,)), Errors> {
         log::trace!("In process_composition");
 
         let snippet = Self::create_network_snippet(
@@ -35,23 +36,25 @@ impl NetworkRelationship {
             Arc::clone(&network_to),
         )?;
 
-        let ((forward_xpath, reverse_xpath, merge_variable_name), (tokens,)) = LLM::get_composition_link(
+        let ((forward_xpath, _reverse_xpath, merge_variable_name), (tokens,)) = LLM::get_composition_link(
             snippet
         ).await?;
 
-        log::debug!("forward_xpath: {}", forward_xpath);
-        log::debug!("reverse_xpath: {}", reverse_xpath);
+        let traversal = Traversal {
+            candidate: XPath::from_str(&forward_xpath)?,
+            parent_values: Vec::new(),
+            candidate_values: Vec::new(),
+            filter_function: String::new(),
+        };
 
-        let xpath = XPath::from_str(&forward_xpath)?;
-
-        Ok((xpath, merge_variable_name, (tokens,)))
+        Ok((traversal, merge_variable_name, (tokens,)))
     }
 
     pub async fn process_parent_child(
         meta_context: Arc<RwLock<MetaContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
-    ) -> Result<(), Errors> {
+    ) -> Result<(Traversal, (u64,)), Errors> {
         log::trace!("In process_parent_child");
 
         let snippet = Self::create_network_snippet(
@@ -60,13 +63,23 @@ impl NetworkRelationship {
             Arc::clone(&network_to),
         )?;
 
-        let result = LLM::get_parent_child_link(
-            snippet
-        ).await?;
+        let ((candidate_xpath, parent_value_xpaths, candidate_value_xpaths, filter_function), (tokens,)) =
+            LLM::get_parent_child_link(snippet).await?;
 
-        log::debug!("result: {:?}", result);
+        let traversal = Traversal {
+            candidate: XPath::from_str(&candidate_xpath)?,
+            parent_values: parent_value_xpaths
+                .into_iter()
+                .map(|(name, xpath)| Ok(TraversalValue { name, xpath: XPath::from_str(&xpath)? }))
+                .collect::<Result<Vec<_>, Errors>>()?,
+            candidate_values: candidate_value_xpaths
+                .into_iter()
+                .map(|(name, xpath)| Ok(TraversalValue { name, xpath: XPath::from_str(&xpath)? }))
+                .collect::<Result<Vec<_>, Errors>>()?,
+            filter_function,
+        };
 
-        unimplemented!()
+        Ok((traversal, (tokens,)))
     }
 
     fn create_network_snippet(

@@ -220,7 +220,7 @@ async fn get_traversal<P: Provider>(
                     }
                 }
 
-                let (xpath, name, (tokens,)) = NetworkRelationship::process_composition(
+                let (traversal, name, (tokens,)) = NetworkRelationship::process_composition(
                     Arc::clone(&meta_context),
                     Arc::clone(&resolved_relationship.from),
                     Arc::clone(&resolved_relationship.to),
@@ -229,7 +229,7 @@ async fn get_traversal<P: Provider>(
                 let traversal = TraversalTransformation {
                     id: ID::new(),
                     relationship_id: resolved_relationship.id.clone(),
-                    xpath,
+                    traversal,
                     name,
                     description: String::new(),
                 };
@@ -248,11 +248,45 @@ async fn get_traversal<P: Provider>(
 
         }
         NetworkRelationshipType::ParentChild => {
-            NetworkRelationship::process_parent_child(
-                Arc::clone(&meta_context),
-                Arc::clone(&resolved_relationship.from),
-                Arc::clone(&resolved_relationship.to),
-            ).await?;
+
+            stage_context.record_events("Parent-child linking", 0);
+
+            if let Some(mut basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
+                if !options.regenerate {
+                    if let Some(traversals) = &basis_graph.traversals {
+                        if traversals.iter().any(|t| t.relationship_id == resolved_relationship.id) {
+                            log::info!("TraversalTransformation already exists for this relationship");
+                            return Ok(());
+                        }
+                    }
+                }
+
+                let (traversal, (tokens,)) = NetworkRelationship::process_parent_child(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&resolved_relationship.from),
+                    Arc::clone(&resolved_relationship.to),
+                ).await?;
+
+                let traversal_transformation = TraversalTransformation {
+                    id: ID::new(),
+                    relationship_id: resolved_relationship.id.clone(),
+                    traversal,
+                    name: String::new(),
+                    description: String::new(),
+                };
+
+                if basis_graph.traversals.is_none() {
+                    basis_graph.traversals = Some(Vec::new());
+                }
+                if let Some(ref mut traversals) = basis_graph.traversals {
+                    traversals.push(traversal_transformation);
+                }
+
+                stage_context.record_events("Parent-child linking", tokens);
+
+                provider.save_basis_graph(graph_hash, basis_graph).await?;
+            }
+
         }
         _ => {
             log::warn!("Ignoring relationship type: {:?}", resolved_relationship.relationship_type);
