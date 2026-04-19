@@ -238,6 +238,10 @@ pub async fn get_basis_nodes<P: Provider>(
 
     log::info!("Number of context groups: {}", context_groups.len());
 
+    for context_group in context_groups {
+        context_group.debug();
+    }
+
     unimplemented!();
 
     for context_group in context_groups {

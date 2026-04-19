@@ -151,9 +151,8 @@ impl DocumentNode {
 
     pub fn get_element_name(&self) -> String {
         match &self.data {
-            XMLNode::Element(element_node) => {
-                element_node.name.clone()
-            }
+            XMLNode::Element(element_node) => element_node.name.clone(),
+            XMLNode::Text(_) => "#text".to_string(),
             _ => panic!("Unexpected XML node type"),
         }
     }

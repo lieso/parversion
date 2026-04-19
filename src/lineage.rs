@@ -37,6 +37,16 @@ impl Lineage {
         }
     }
 
+    pub fn acyclic(&self) -> Self {
+        let mut seen = std::collections::HashSet::new();
+        let source_hashes: Vec<Hash> = self.source_hashes
+            .iter()
+            .filter(|h| seen.insert(h.to_string()))
+            .cloned()
+            .collect();
+        Self::from_hashes(source_hashes)
+    }
+
     pub fn is_cyclic(&self) -> bool {
         if let Some((last, ancestors)) = self.source_hashes.split_last() {
             ancestors.contains(last)

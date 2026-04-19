@@ -15,7 +15,25 @@ pub struct ContextGroup {
     pub snippets: Vec<String>,
 }
 
+static DEBUG_CALL_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 impl ContextGroup {
+    pub fn debug(&self) {
+        let call = DEBUG_CALL_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+
+        eprintln!("\n{}", "=".repeat(80));
+        eprintln!("ContextGroup debug #{} — lineage: {}", call, self.lineage.to_string());
+        eprintln!("  contexts: {}", self.contexts.len());
+        eprintln!("{}", "-".repeat(80));
+
+        for (i, context) in self.contexts.iter().enumerate() {
+            let document_node = read_lock!(context.document_node);
+            eprintln!("  [{}] element: {}  content: {}", i, document_node.get_element_name(), document_node.to_string());
+        }
+
+        eprintln!("{}", "=".repeat(80));
+    }
+
     pub fn from_meta_context(meta_context: Arc<RwLock<MetaContext>>) -> Vec<Self> {
         log::trace!("In from_meta_context");
 
@@ -28,7 +46,7 @@ impl ContextGroup {
         for context in contexts.values() {
             if seen_context_ids.insert(context.id.clone()) {
                 context_groups
-                    .entry(context.lineage.clone())
+                    .entry(context.lineage.acyclic())
                     .or_insert_with(Vec::new)
                     .push(context.clone());
             }
