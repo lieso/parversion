@@ -63,6 +63,26 @@ impl GraphNode {
         combined_hash
     }
 
+    pub fn acyclic_subgraph_hash(&self) -> Hash {
+        let mut combined_hash = Hash::new();
+
+        combined_hash.push(self.hash.to_string().unwrap_or_default());
+
+        for child in &self.children {
+            let child_read = read_lock!(child);
+            if child_read.lineage.is_cyclic() {
+                continue;
+            }
+            let child_subgraph_hash = child_read.acyclic_subgraph_hash();
+            combined_hash.push(child_subgraph_hash.to_string().unwrap_or_default());
+        }
+
+        combined_hash.sort();
+        combined_hash.finalize();
+
+        combined_hash
+    }
+
     pub fn traverse_using_xpath_axis(
         meta_context: Arc<RwLock<MetaContext>>,
         graph: Graph,

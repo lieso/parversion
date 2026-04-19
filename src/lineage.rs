@@ -37,6 +37,14 @@ impl Lineage {
         }
     }
 
+    pub fn is_cyclic(&self) -> bool {
+        if let Some((last, ancestors)) = self.source_hashes.split_last() {
+            ancestors.contains(last)
+        } else {
+            false
+        }
+    }
+
     pub fn to_string(&self) -> String {
         self.identity_hash.to_string().clone().unwrap()
     }
