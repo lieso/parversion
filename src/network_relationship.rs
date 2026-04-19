@@ -9,7 +9,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::document::Document;
 use crate::llm::LLM;
-use crate::traversal::{Traversal, TraversalValue};
+use crate::traversal::{Traversal, TraversalValue, get_original_document_condensed};
 use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -285,10 +285,7 @@ impl NetworkRelationship {
             network_jsons.push((Arc::clone(network), json_examples));
         }
 
-        let original_document = {
-            let lock = read_lock!(meta_context);
-            lock.get_original_document()
-        };
+        let original_document = get_original_document_condensed(Arc::clone(&meta_context))?;
 
         let (typed_relationships, (tokens,)) = LLM::identify_relationships(
             Arc::clone(&meta_context),
@@ -336,10 +333,7 @@ impl NetworkRelationship {
             all_network_jsons.push_str(&network_section);
         }
 
-        let original_document = {
-            let lock = read_lock!(meta_context);
-            lock.get_original_document()
-        };
+        let original_document = get_original_document_condensed(Arc::clone(&meta_context))?;
 
         let (canonical_ids, (tokens,)) = LLM::check_redundancy(
             Arc::clone(&meta_context),

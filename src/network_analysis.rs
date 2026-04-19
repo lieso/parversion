@@ -23,6 +23,7 @@ use crate::transformation::{
 };
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::json_node::JsonNode;
+use crate::traversal::{get_original_document_condensed};
 
 pub async fn get_classification<P: Provider>(
     provider: Arc<P>,
@@ -34,10 +35,7 @@ pub async fn get_classification<P: Provider>(
 
     stage_context.record_events("Document classification", 0);
 
-    let original_document = {
-        let lock = read_lock!(meta_context);
-        lock.get_original_document()
-    };
+    let original_document = get_original_document_condensed(Arc::clone(&meta_context))?;
     let graph_root = {
         let lock = read_lock!(meta_context);
         lock.graph_root

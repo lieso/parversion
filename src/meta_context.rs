@@ -156,61 +156,7 @@ impl MetaContext {
         self.basis_graph = Some(basis_graph);
     }
 
-    pub fn get_original_document(&self) -> String {
-        let mut document = String::new();
-        let mut visited_lineages: HashSet<Lineage> = HashSet::new();
-        let root_node = self.graph_root.clone().unwrap();
-
-        traverse_for_condensed_document(
-            self,
-            Arc::clone(&root_node),
-            &mut visited_lineages,
-            &mut document,
-        );
-
-        document
-    }
-
     pub fn update_functions(&mut self, functions: Vec<Function>) {
         self.functions = Some(functions);
-    }
-}
-
-fn traverse_for_condensed_document(
-    meta_context: &MetaContext,
-    current_node: Graph,
-    visited_lineages: &mut HashSet<Lineage>,
-    document: &mut String,
-) {
-    let lock = read_lock!(current_node);
-    let current_id = lock.id.clone();
-    let current_context = meta_context.contexts.clone().unwrap();
-    let current_context = current_context.get(&current_id).unwrap();
-    let current_lineage = current_context.lineage.clone();
-    let document_node = current_context.document_node.clone();
-
-    let should_render = !visited_lineages.contains(&current_lineage);
-
-    visited_lineages.insert(current_lineage.clone());
-
-    if should_render {
-        let (a, _) = read_lock!(document_node).to_string_components();
-
-        document.push_str(&a);
-    }
-
-    for child in &lock.children {
-        traverse_for_condensed_document(
-            &meta_context,
-            Arc::clone(child),
-            visited_lineages,
-            document,
-        );
-    }
-
-    if should_render {
-        let (_, b) = read_lock!(document_node).to_string_components();
-
-        document.push_str(b.as_deref().unwrap_or(""));
     }
 }

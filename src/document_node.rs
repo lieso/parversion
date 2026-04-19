@@ -175,6 +175,8 @@ impl DocumentNode {
                 value
             };
 
+            let fixed_value: String = fixed_value.chars().take(100).collect();
+
             tag.push_str(&format!(
                 " {}=\"{}\"",
                 attr,
