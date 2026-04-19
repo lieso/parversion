@@ -4,16 +4,8 @@ use std::env;
 use std::path::Path;
 use std::sync::RwLock;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-enum LlmProvider {
-    OpenAI,
-    Anthropic,
-    Groq,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfig {
-    pub llm_provider: LlmProvider,
     pub max_concurrency: usize,
     pub example_snippet_count: usize,
     pub schema_neighbour_count: usize,
@@ -52,7 +44,6 @@ impl Config {
     fn default() -> Self {
         let config = Config {
             llm: LlmConfig {
-                llm_provider: LlmProvider::OpenAI,
                 max_concurrency: 1,
                 example_snippet_count: 3,
                 schema_neighbour_count: 20,

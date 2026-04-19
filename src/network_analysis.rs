@@ -576,8 +576,6 @@ fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash,
 
         let subgraph_hash = lock.subgraph_hash.clone();
 
-        log::debug!("unique subgraph: {}", &subgraph_hash);
-
         unique_subgraphs
             .entry(subgraph_hash)
             .or_insert_with(Vec::new)
