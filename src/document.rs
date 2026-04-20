@@ -168,6 +168,7 @@ impl Document {
             document_node: Arc<RwLock<DocumentNode>>,
             data_nodes: &mut HashMap<ID, Arc<DataNode>>,
             parent_lineage: &Lineage,
+            parent_indexed_lineage: &Lineage,
             contexts: &mut HashMap<ID, Arc<Context>>,
             parents: Vec<Arc<RwLock<GraphNode>>>,
             profile: &Profile,
@@ -185,9 +186,17 @@ impl Document {
                 parents.clone(),
             )));
 
+            let index = read_lock!(graph_node).index_in_parent().unwrap_or_default();
+
+            let indexed_lineage = parent_indexed_lineage.with_hash(
+                Hash::from_str(&index.to_string())
+            );
+
             let context = Arc::new(Context {
                 id: ID::new(),
+                acyclic_lineage: data_node.lineage.acyclic(),
                 lineage: data_node.lineage.clone(),
+                indexed_lineage: indexed_lineage.clone(),
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
@@ -208,6 +217,7 @@ impl Document {
                             Arc::new(RwLock::new(child)),
                             data_nodes,
                             &data_node.lineage,
+                            &indexed_lineage,
                             contexts,
                             vec![Arc::clone(&graph_node)],
                             profile,
@@ -241,6 +251,7 @@ impl Document {
         let graph_root = recurse(
             Arc::clone(&document_root),
             &mut data_nodes,
+            &initial_lineage,
             &initial_lineage,
             &mut contexts,
             Vec::new(),

@@ -16,6 +16,8 @@ pub type ContextID = ID;
 pub struct Context {
     pub id: ContextID,
     pub lineage: Lineage,
+    pub acyclic_lineage: Lineage,
+    pub indexed_lineage: Lineage,
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
