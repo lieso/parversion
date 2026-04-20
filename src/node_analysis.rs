@@ -237,10 +237,13 @@ pub async fn get_basis_nodes<P: Provider>(
     let mut handles = Vec::new();
 
     log::info!("Number of context groups: {}", context_groups.len());
+    let non_empty_fields_count = context_groups.iter().filter(|cg| !cg.fields.is_empty()).count();
+    log::info!("Context groups with non-empty fields: {}", non_empty_fields_count);
 
-    for context_group in context_groups {
+    for context_group in &context_groups {
         context_group.debug();
     }
+
 
     unimplemented!();
 

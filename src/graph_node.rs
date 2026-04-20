@@ -46,6 +46,15 @@ impl GraphNode {
         }
     }
 
+    pub fn index_in_parent(&self) -> Option<usize> {
+        self.parents.first().and_then(|parent| {
+            read_lock!(parent)
+                .children
+                .iter()
+                .position(|child| read_lock!(child).id == self.id)
+        })
+    }
+
     pub fn subgraph_hash(&self) -> Hash {
         let mut combined_hash = Hash::new();
 
