@@ -42,9 +42,7 @@ impl ContextGroup {
             eprintln!("  lineage: {}", lineage_str);
             for (i, context) in members {
                 let document_node = read_lock!(context.document_node);
-                let parent_index = read_lock!(context.graph_node).index_in_parent();
-                let index_str = parent_index.map_or("none".to_string(), |n| n.to_string());
-                eprintln!("    [{}] index: {}  element: {}  content: {}", i, index_str, document_node.get_element_name(), document_node.to_string());
+                eprintln!("    [{}] indexed lineage: {}  element: {}  content: {}", i, context.indexed_lineage.to_string(), document_node.get_element_name(), document_node.to_string());
             }
         }
 
@@ -70,7 +68,7 @@ impl ContextGroup {
         for context in contexts.values() {
             if seen_context_ids.insert(context.id.clone()) {
                 context_groups
-                    .entry(context.lineage.acyclic())
+                    .entry(context.acyclic_lineage.clone())
                     .or_insert_with(Vec::new)
                     .push(context.clone());
             }
