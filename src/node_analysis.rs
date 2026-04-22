@@ -15,6 +15,7 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::schema_context::SchemaContext;
 use crate::transformation::{FieldTransformation, SchemaTransformation};
+use crate::traversal::{get_original_document_condensed};
 
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -213,28 +214,10 @@ pub async fn get_basis_nodes<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
 
-    let context_groups = ContextGroup::from_meta_context(Arc::clone(&meta_context));
 
-    let document_summary = {
-        let lock = read_lock!(meta_context);
-        let classification = lock.get_classification().unwrap();
 
-        format!(r##"
-            [name]
-            {}
 
-            [description]
-            {}
-
-            [structure]
-            {}
-        "##, classification.name, classification.description, classification.structure)
-    };
-    let document_summary_string = Arc::new(document_summary);
-
-    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-    let semaphore = Arc::new(Semaphore::new(max_concurrency));
-    let mut handles = Vec::new();
+    let context_groups = get_context_groups(Arc::clone(&meta_context)).await?;
 
     log::info!("Number of context groups: {}", context_groups.len());
     let non_empty_fields_count = context_groups.iter().filter(|cg| !cg.fields.is_empty()).count();
@@ -244,8 +227,18 @@ pub async fn get_basis_nodes<P: Provider>(
         context_group.debug();
     }
 
-
     unimplemented!();
+
+
+
+
+
+
+    let document_summary = get_original_document_condensed(Arc::clone(&meta_context))?;
+
+    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let mut handles = Vec::new();
 
     for context_group in context_groups {
         stage_context.record_events("Node analysis", 0);
@@ -255,7 +248,6 @@ pub async fn get_basis_nodes<P: Provider>(
         let cloned_meta_context = Arc::clone(&meta_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
-        let cloned_document_summary = Arc::clone(&document_summary_string);
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -265,7 +257,7 @@ pub async fn get_basis_nodes<P: Provider>(
                 context_group.clone(),
                 &cloned_options,
                 &cloned_stage_context,
-                &cloned_document_summary,
+                &document_summary,
             )
             .await?;
 
@@ -434,4 +426,10 @@ async fn get_basis_node<P: Provider>(
     stage_context.record_events("Node analysis", tokens);
 
     Ok(basis_node)
+}
+
+async fn get_context_groups(
+    meta_context: Arc<RwLock<MetaContext>>,
+) -> Result<Vec<ContextGroup>, Errors> {
+    unimplemented!()
 }

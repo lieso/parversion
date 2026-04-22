@@ -56,6 +56,7 @@ impl ContextGroup {
         eprintln!("{}", "=".repeat(80));
     }
 
+    #[deprecated]
     pub fn from_meta_context(meta_context: Arc<RwLock<MetaContext>>) -> Vec<Self> {
         log::trace!("In from_meta_context");
 
