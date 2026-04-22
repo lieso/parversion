@@ -16,6 +16,7 @@ use crate::provider::Provider;
 use crate::schema_context::SchemaContext;
 use crate::transformation::{FieldTransformation, SchemaTransformation};
 use crate::traversal::{get_original_document_condensed};
+use crate::context::Context;
 
 pub async fn get_translation_schema_transformations<P: Provider>(
     provider: Arc<P>,
@@ -431,5 +432,44 @@ async fn get_basis_node<P: Provider>(
 async fn get_context_groups(
     meta_context: Arc<RwLock<MetaContext>>,
 ) -> Result<Vec<ContextGroup>, Errors> {
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+            })?
+    };
+
+    let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+
+    for context in contexts.values() {
+        acyclic_contexts
+            .entry(context.acyclic_lineage.clone())
+            .or_insert_with(Vec::new)
+            .push(context.clone());
+    }
+
+    for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
+        log::info!("{}", "=".repeat(80));
+        log::info!("acyclic_lineage: {}", acyclic_lineage.to_string());
+
+        let mut lineage_subgroups: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+        for context in &contexts_in_group {
+            lineage_subgroups
+                .entry(context.lineage.clone())
+                .or_insert_with(Vec::new)
+                .push(context.clone());
+        }
+
+        for (lineage, subgroup) in lineage_subgroups {
+            log::info!("{}", "-".repeat(80));
+            log::info!("lineage: {}", lineage.to_string());
+            for context in &subgroup {
+                log::info!("indexed_lineage: {}", context.indexed_lineage.to_string());
+            }
+        }
+    }
+
     unimplemented!()
 }
