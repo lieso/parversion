@@ -450,6 +450,8 @@ async fn get_context_groups(
             .push(context.clone());
     }
 
+    let mut context_groups = Vec::new();
+
     for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
         log::info!("{}", "=".repeat(80));
         log::info!("acyclic_lineage: {}", acyclic_lineage.to_string());
@@ -462,11 +464,23 @@ async fn get_context_groups(
                 .push(context.clone());
         }
 
-        for (lineage, subgroup) in lineage_subgroups {
-            log::info!("{}", "-".repeat(80));
-            log::info!("lineage: {}", lineage.to_string());
-            for context in &subgroup {
-                log::info!("indexed_lineage: {}", context.indexed_lineage.to_string());
+        if lineage_subgroups.len() == 1 {
+            let (lineage, subgroup) = lineage_subgroups.into_iter().next().unwrap();
+
+            let fields = subgroup.first().unwrap().data_node.fields.clone();
+            context_groups.push(ContextGroup {
+                lineage,
+                fields,
+                contexts: subgroup,
+                snippets: Vec::new(),
+            });
+        } else {
+            for (lineage, subgroup) in lineage_subgroups {
+                log::info!("{}", "-".repeat(80));
+                log::info!("lineage: {}", lineage.to_string());
+                for context in &subgroup {
+                    log::info!("indexed_lineage: {}", context.indexed_lineage.to_string());
+                }
             }
         }
     }
