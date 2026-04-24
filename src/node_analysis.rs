@@ -462,11 +462,22 @@ async fn get_context_groups(
         }
 
         log::info!("{}", "=".repeat(80));
+        log::info!("{}", "=".repeat(80));
         log::info!("acyclic_lineage: {}", acyclic_lineage.to_string());
 
         for (lineage, subgroup) in lineage_subgroups {
             log::info!("{}", "-".repeat(80));
+            log::info!("{}", "-".repeat(80));
             log::info!("lineage: {}", lineage.to_string());
+            for (i, context) in subgroup.iter().take(20).enumerate() {
+                let document_node = read_lock!(context.document_node);
+                log::info!("    [{}] element: {}  content: {}", i, document_node.get_element_name(), document_node.to_string());
+                let graph_node = context.graph_node.clone();
+                let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
+                for (idx, lineage) in indexed_lineages.iter().enumerate() {
+                    log::info!("      indexed_lineage[{}]: {}", idx, lineage.to_string());
+                }
+            }
         }
     }
 
