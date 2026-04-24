@@ -42,7 +42,7 @@ impl ContextGroup {
             eprintln!("  lineage: {}", lineage_str);
             for (i, context) in members {
                 let document_node = read_lock!(context.document_node);
-                eprintln!("    [{}] indexed lineage: {}  element: {}  content: {}", i, context.indexed_lineage.to_string(), document_node.get_element_name(), document_node.to_string());
+                eprintln!("    [{}] element: {}  content: {}", i, document_node.get_element_name(), document_node.to_string());
             }
         }
 
