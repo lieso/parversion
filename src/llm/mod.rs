@@ -405,7 +405,7 @@ impl LLM {
             user_prompt.push_str(&format!("{}\nLineage: {}\n{}\n\n", "#".repeat(100), lineage.to_string(), "#".repeat(100)));
 
             let mut all_indexed_lineages: Vec<crate::graph_node::BottomUpIndexedLineages> = Vec::new();
-            for context in subgroup {
+            for context in subgroup.iter().take(12) {
                 let graph_node = context.graph_node.clone();
                 let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
                 all_indexed_lineages.push(indexed_lineages);
@@ -421,7 +421,7 @@ impl LLM {
                 Vec::new()
             };
 
-            for (ctx_idx, context) in subgroup.iter().enumerate() {
+            for (ctx_idx, context) in subgroup.iter().take(12).enumerate() {
                 let document_node = read_lock!(context.document_node);
                 user_prompt.push_str(&format!("{}\nContext[{}]: {}\n{}\n\n", "-".repeat(96), ctx_idx, document_node.to_string(), "-".repeat(96)));
 

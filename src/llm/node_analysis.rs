@@ -36,13 +36,32 @@ pub struct NodeTransformationResponse {
 pub struct NodeAnalysis;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum LineageClassification {
+    Acyclic,
+    Uniform,
+    Diverging(Vec<String>),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeGroupsData {
-    pub groups: HashMap<String, Vec<String>>,
+    pub groups: HashMap<String, LineageClassification>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NodeGroupsResponseMetadata {
     pub tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct NodeGroupLLMEntry {
+    lineage: String,
+    classification: String,
+    indexed_lineages: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct NodeGroupsLLMResponse {
+    groups: Vec<NodeGroupLLMEntry>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -775,18 +794,177 @@ Example {}:
     ), Errors> {
         log::trace!("In get_node_groups");
 
-        // TODO: Make LLM call with user_prompt
-        // TODO: Parse response into NodeGroupsData
-        // For now, return empty map as placeholder
+        let system_prompt = r##"
+You are an expert data engineer analyzing the structural and semantic content of HTML document nodes to determine how they should be grouped for data extraction into a JSON schema.
 
-        Ok((
-            NodeGroupsData {
-                groups: HashMap::new(),
-            },
-            NodeGroupsResponseMetadata {
-                tokens: 0, // TODO: Track actual token usage
-            },
-        ))
+### Context:
+You will be given an acyclic lineage identifier followed by one or more lineages. Each lineage represents a distinct structural path through an HTML document. For each lineage you will see the HTML content of nodes that share that path. Some nodes may also have diverging indexed lineages — structural variants that distinguish subsets of nodes within the same lineage.
+
+An indexed lineage is a variant of a node's lineage computed by injecting the positional index of one of its ancestors (its position among siblings at that level) into the lineage hash. A full set of indexed lineages is computed for each node, one per ancestor level. The diverging indexed lineages shown are those that are not common across all nodes under the same lineage — meaning they reveal positional differences between nodes that share a structural path but sit at different positions in the document tree. These positional differences often correspond to semantic differences (e.g. a first child that is a heading vs. subsequent children that are body text).
+
+### Your Task:
+For each lineage, determine the appropriate classification:
+
+1. **Acyclic**: All lineages under this acyclic lineage represent semantically uniform content — the same kind of data that could be given a single field name, description, and data type in a JSON schema. Use this when every node across every lineage represents the same thing (e.g. they are all product prices, or all comment bodies).
+
+2. **Uniform**: This lineage is semantically distinct from the other lineages, but all nodes within this lineage represent the same kind of data. Use this when lineages represent different things from each other, but within this particular lineage the content is consistent.
+
+3. **Diverging**: The nodes within this lineage are not semantically uniform — different subsets represent different kinds of data, distinguishable by their diverging indexed lineages. Provide the specific diverging indexed lineage strings that define the subgroups.
+
+### Rules:
+- Every lineage present in the input must appear in your response exactly once.
+- If you choose Acyclic for one lineage, you should choose Acyclic for all lineages (they all share the same acyclic lineage).
+- Set `indexed_lineages` to null for Acyclic and Uniform classifications.
+- For Diverging, `indexed_lineages` must contain the indexed lineage strings from the input that discriminate the subgroups.
+
+### Response Format:
+Respond with valid JSON:
+{
+  "groups": [
+    {
+      "lineage": "<lineage string>",
+      "classification": "Acyclic" | "Uniform" | "Diverging",
+      "indexed_lineages": null | ["<indexed lineage string>", ...]
+    }
+  ]
+}
+"##;
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║               GET NODE GROUPS - LLM REQUEST                  ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+        log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+        log::debug!("{}", system_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+        log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+        log::debug!("{}", user_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+
+        let client = Self::build_client();
+
+        let response_format = ResponseFormat::json_schema(
+            "node_groups",
+            true,
+            json!({
+                "type": "object",
+                "properties": {
+                    "groups": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "lineage": {
+                                    "type": "string",
+                                    "description": "The lineage string being classified"
+                                },
+                                "classification": {
+                                    "type": "string",
+                                    "enum": ["Acyclic", "Uniform", "Diverging"],
+                                    "description": "The grouping classification for this lineage"
+                                },
+                                "indexed_lineages": {
+                                    "type": ["array", "null"],
+                                    "items": { "type": "string" },
+                                    "description": "Diverging indexed lineage strings that define subgroups, or null"
+                                }
+                            },
+                            "required": ["lineage", "classification", "indexed_lineages"],
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "required": ["groups"],
+                "additionalProperties": false
+            }),
+        );
+
+        let request = ChatCompletionRequest::builder()
+            .model("gpt-5-mini")
+            .messages(vec![
+                Message::new(Role::System, system_prompt),
+                Message::new(Role::User, user_prompt),
+            ])
+            .response_format(response_format)
+            .build()
+            .expect("Could not create llm request");
+
+        match client.send_chat_completion(&request).await {
+            Ok(response) => {
+                log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
+                log::debug!("{:?}", response);
+                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                log::debug!("");
+
+                if let Some(content) = response.choices[0].content() {
+                    log::debug!("┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐");
+                    log::debug!("{}", content);
+                    log::debug!("└───────────────────────────────────────────────────────────────┘");
+                    log::debug!("");
+
+                    let llm_response = match serde_json::from_str::<NodeGroupsLLMResponse>(content) {
+                        Ok(parsed) => {
+                            log::debug!("┌─── PARSED RESPONSE ───────────────────────────────────────────┐");
+                            log::debug!("{:?}", parsed);
+                            log::debug!("└───────────────────────────────────────────────────────────────┘");
+                            log::debug!("");
+                            parsed
+                        }
+                        Err(e) => {
+                            log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                            log::error!("║                    PARSE ERROR                                ║");
+                            log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                            log::error!("Failed to parse LLM response: {}", e);
+                            return Err(Errors::UnexpectedError);
+                        }
+                    };
+
+                    let groups = llm_response.groups.into_iter().filter_map(|entry| {
+                        let classification = match entry.classification.as_str() {
+                            "Acyclic" => Some(LineageClassification::Acyclic),
+                            "Uniform" => Some(LineageClassification::Uniform),
+                            "Diverging" => entry.indexed_lineages.map(LineageClassification::Diverging),
+                            other => {
+                                log::error!("Unrecognised classification from LLM: {}", other);
+                                None
+                            }
+                        };
+                        classification.map(|c| (entry.lineage, c))
+                    }).collect();
+
+                    let metadata = if let Some(usage) = response.usage {
+                        NodeGroupsResponseMetadata { tokens: usage.total_tokens as u64 }
+                    } else {
+                        NodeGroupsResponseMetadata { tokens: 0 }
+                    };
+
+                    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+                    log::debug!("║                                                               ║");
+                    log::debug!("║             GET NODE GROUPS - REQUEST COMPLETE                ║");
+                    log::debug!("║                                                               ║");
+                    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+                    Ok((NodeGroupsData { groups }, metadata))
+                } else {
+                    log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                    log::error!("║                    NO CONTENT ERROR                           ║");
+                    log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                    log::error!("No content in LLM response");
+                    Err(Errors::UnexpectedError)
+                }
+            }
+            Err(e) => {
+                log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                log::error!("║                    REQUEST ERROR                              ║");
+                log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                log::error!("Failed to get response from OpenRouter: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
     }
 
     fn build_client() -> OpenRouterClient {
