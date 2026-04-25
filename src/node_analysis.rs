@@ -7,7 +7,7 @@ use tokio::task;
 use crate::basis_node::BasisNode;
 use crate::config::CONFIG;
 use crate::context_group::ContextGroup;
-use crate::graph_node::Graph;
+use crate::graph_node::{Graph, BottomUpIndexedLineages};
 use crate::llm::LLM;
 use crate::meta_context::MetaContext;
 use crate::path::Path;
@@ -469,13 +469,38 @@ async fn get_context_groups(
             log::info!("{}", "-".repeat(80));
             log::info!("{}", "-".repeat(80));
             log::info!("lineage: {}", lineage.to_string());
-            for (i, context) in subgroup.iter().take(20).enumerate() {
-                let document_node = read_lock!(context.document_node);
-                log::info!("    [{}] element: {}  content: {}", i, document_node.get_element_name(), document_node.to_string());
+
+            let mut all_indexed_lineages: Vec<BottomUpIndexedLineages> = Vec::new();
+            for context in &subgroup {
                 let graph_node = context.graph_node.clone();
                 let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
-                for (idx, lineage) in indexed_lineages.iter().enumerate() {
-                    log::info!("      indexed_lineage[{}]: {}", idx, lineage.to_string());
+                all_indexed_lineages.push(indexed_lineages);
+            }
+
+            if !all_indexed_lineages.is_empty() {
+                let mut common_lineages = all_indexed_lineages[0].clone();
+                for indexed_lineages in &all_indexed_lineages[1..] {
+                    common_lineages.retain(|lineage| indexed_lineages.contains(lineage));
+                }
+
+                log::info!("{}", "~".repeat(80));
+                log::info!("diverging indexed_lineages per context:");
+                for (i, context) in subgroup.iter().take(20).enumerate() {
+                    let graph_node = context.graph_node.clone();
+                    let document_node = read_lock!(context.document_node);
+                    log::info!("    [{}] element: {}  content: {}", i, document_node.get_element_name(), document_node.to_string());
+                    let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
+                    let diverging: Vec<&Lineage> = indexed_lineages
+                        .iter()
+                        .filter(|lineage| !common_lineages.contains(lineage))
+                        .collect();
+
+                    if !diverging.is_empty() {
+                        log::info!("  context[{}]:", i);
+                        for lineage in diverging {
+                            log::info!("    {}", lineage.to_string());
+                        }
+                    }
                 }
             }
         }
