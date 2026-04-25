@@ -5,6 +5,7 @@ use openrouter_rs::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::environment::get_env_variable;
@@ -33,6 +34,16 @@ pub struct NodeTransformationResponse {
 }
 
 pub struct NodeAnalysis;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeGroupsData {
+    pub groups: HashMap<String, Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeGroupsResponseMetadata {
+    pub tokens: u64,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct EliminationResponseMetadata {
@@ -754,6 +765,28 @@ Example {}:
                 Err(Errors::UnexpectedError)
             }
         }
+    }
+
+    pub async fn get_node_groups(
+        user_prompt: String,
+    ) -> Result<(
+        NodeGroupsData,
+        NodeGroupsResponseMetadata,
+    ), Errors> {
+        log::trace!("In get_node_groups");
+
+        // TODO: Make LLM call with user_prompt
+        // TODO: Parse response into NodeGroupsData
+        // For now, return empty map as placeholder
+
+        Ok((
+            NodeGroupsData {
+                groups: HashMap::new(),
+            },
+            NodeGroupsResponseMetadata {
+                tokens: 0, // TODO: Track actual token usage
+            },
+        ))
     }
 
     fn build_client() -> OpenRouterClient {

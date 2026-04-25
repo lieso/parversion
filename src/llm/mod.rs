@@ -16,7 +16,7 @@ mod node_analysis;
 mod network_analysis;
 mod network_relationships;
 
-use node_analysis::NodeAnalysis;
+use node_analysis::{NodeAnalysis, NodeGroupsData};
 use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
 
@@ -380,6 +380,78 @@ impl LLM {
         }
 
         Ok((field_transformations, (tokens)))
+    }
+
+    pub async fn get_node_groups(
+        meta_context: Arc<RwLock<MetaContext>>,
+        acyclic_lineage: Lineage,
+        lineage_subgroups: &std::collections::HashMap<Lineage, Vec<Arc<Context>>>,
+    ) -> Result<(
+        std::collections::HashMap<Lineage, Vec<Lineage>>,
+        (u64,) // tokens
+    ), Errors> {
+        log::trace!("In get_node_groups");
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                    GET NODE GROUPS START                      ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        let mut user_prompt = String::new();
+        user_prompt.push_str(&format!("Acyclic Lineage: {}\n\n", acyclic_lineage.to_string()));
+
+        for (lineage, subgroup) in lineage_subgroups {
+            user_prompt.push_str(&format!("{}\nLineage: {}\n{}\n\n", "#".repeat(100), lineage.to_string(), "#".repeat(100)));
+
+            let mut all_indexed_lineages: Vec<crate::graph_node::BottomUpIndexedLineages> = Vec::new();
+            for context in subgroup {
+                let graph_node = context.graph_node.clone();
+                let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
+                all_indexed_lineages.push(indexed_lineages);
+            }
+
+            let common_lineages = if !all_indexed_lineages.is_empty() {
+                let mut common = all_indexed_lineages[0].clone();
+                for indexed_lineages in &all_indexed_lineages[1..] {
+                    common.retain(|lineage| indexed_lineages.contains(lineage));
+                }
+                common
+            } else {
+                Vec::new()
+            };
+
+            for (ctx_idx, context) in subgroup.iter().enumerate() {
+                let document_node = read_lock!(context.document_node);
+                user_prompt.push_str(&format!("{}\nContext[{}]: {}\n{}\n\n", "-".repeat(96), ctx_idx, document_node.to_string(), "-".repeat(96)));
+
+                let indexed_lineages = &all_indexed_lineages[ctx_idx];
+                let diverging: Vec<_> = indexed_lineages
+                    .iter()
+                    .filter(|lineage| !common_lineages.contains(lineage))
+                    .collect();
+
+                if !diverging.is_empty() {
+                    user_prompt.push_str(&format!("Diverging indexed_lineages: {} entries\n", diverging.len()));
+                    for (div_idx, div_lineage) in diverging.iter().enumerate() {
+                        user_prompt.push_str(&format!("  [{}]: {}\n", div_idx, div_lineage.to_string()));
+                    }
+                    user_prompt.push_str("\n");
+                }
+            }
+        }
+
+        let (node_groups_data, metadata) = NodeAnalysis::get_node_groups(
+            user_prompt,
+        ).await?;
+
+        // TODO: Convert String keys/values to Lineage once Lineage::from_str is available
+        let node_groups: std::collections::HashMap<Lineage, Vec<Lineage>> = node_groups_data.groups
+            .into_iter()
+            .map(|(_k, _v)| unimplemented!("String to Lineage conversion not yet implemented"))
+            .collect();
+
+        Ok((node_groups, (metadata.tokens,)))
     }
 
     pub async fn function_to_operation(code: &str) -> Result<Option<()>, Errors> {

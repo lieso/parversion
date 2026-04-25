@@ -459,9 +459,8 @@ async fn get_context_groups(
     log::warn!("ATTENTION: {} contexts with empty fields are being filtered out", empty_field_contexts.len());
     log::warn!("ATTENTION: These empty field contexts need proper handling!");
     log::warn!("ATTENTION: Do not ignore this - implement proper empty field context processing");
-    for (i, ctx) in empty_field_contexts.iter().enumerate() {
-        log::debug!("Empty field context #{}: {:?}", i, ctx.acyclic_lineage);
-    }
+
+
 
     let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
 
@@ -548,5 +547,11 @@ async fn get_acyclic_context_groups(
     acyclic_lineage: Lineage,
     lineage_subgroups: &HashMap<Lineage, Vec<Arc<Context>>>,
 ) -> Result<Vec<ContextGroup>, Errors> {
+    let (node_groups, _tokens) = LLM::get_node_groups(
+        Arc::clone(&meta_context),
+        acyclic_lineage.clone(),
+        lineage_subgroups,
+    ).await?;
+
     unimplemented!()
 }
