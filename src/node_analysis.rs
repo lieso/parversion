@@ -442,9 +442,30 @@ async fn get_context_groups(
             })?
     };
 
-    let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+    let mut filtered_contexts: Vec<Arc<Context>> = Vec::new();
+    let mut empty_field_contexts: Vec<Arc<Context>> = Vec::new();
 
     for context in contexts.values() {
+        if context.data_node.fields.is_empty() {
+            empty_field_contexts.push(context.clone());
+        } else {
+            filtered_contexts.push(context.clone());
+        }
+    }
+
+    // TODO: HANDLE THESE PROPERLY!!!
+    // There are contexts with empty fields that need to be processed
+    // These are not being added to context_groups at all right now
+    log::warn!("ATTENTION: {} contexts with empty fields are being filtered out", empty_field_contexts.len());
+    log::warn!("ATTENTION: These empty field contexts need proper handling!");
+    log::warn!("ATTENTION: Do not ignore this - implement proper empty field context processing");
+    for (i, ctx) in empty_field_contexts.iter().enumerate() {
+        log::debug!("Empty field context #{}: {:?}", i, ctx.acyclic_lineage);
+    }
+
+    let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+
+    for context in filtered_contexts {
         acyclic_contexts
             .entry(context.acyclic_lineage.clone())
             .or_insert_with(Vec::new)
