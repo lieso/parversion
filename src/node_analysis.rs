@@ -395,14 +395,15 @@ async fn get_basis_node<P: Provider>(
     document_summary: &str,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
+    unimplemented!();
 
-    let lineage = &context_group.lineage.clone();
+    let acyclic_lineage = &context_group.acyclic_lineage;
     let data_node = &context_group.contexts.first().unwrap().data_node.clone();
     let hash = data_node.hash.clone();
     let description = data_node.description.clone();
 
     if !options.regenerate {
-        if let Some(basis_node) = provider.get_basis_node_by_lineage(&lineage).await? {
+        if let Some(basis_node) = provider.get_basis_node_by_lineage(acyclic_lineage).await? {
             return Ok(basis_node);
         };
     }
@@ -416,12 +417,12 @@ async fn get_basis_node<P: Provider>(
         id: ID::new(),
         hash,
         description,
-        lineage: lineage.clone(),
+        lineage: acyclic_lineage.clone(),
         transformations: field_transformations,
     };
 
     provider
-        .save_basis_node(&lineage, basis_node.clone())
+        .save_basis_node(acyclic_lineage, basis_node.clone())
         .await?;
 
     stage_context.record_events("Node analysis", tokens);
@@ -450,7 +451,10 @@ async fn get_context_groups(
             .push(context.clone());
     }
 
+    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut context_groups: Vec<ContextGroup> = Vec::new();
+    let mut handles = Vec::new();
 
     for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
         let mut lineage_subgroups: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
@@ -461,14 +465,8 @@ async fn get_context_groups(
                 .push(context.clone());
         }
 
-        log::info!("{}", "=".repeat(80));
-        log::info!("{}", "=".repeat(80));
-        log::info!("acyclic_lineage: {}", acyclic_lineage.to_string());
-
-        for (lineage, subgroup) in lineage_subgroups {
-            log::info!("{}", "-".repeat(80));
-            log::info!("{}", "-".repeat(80));
-            log::info!("lineage: {}", lineage.to_string());
+        if lineage_subgroups.len() == 1 {
+            let (_, subgroup) = lineage_subgroups.into_iter().next().unwrap();
 
             let mut all_indexed_lineages: Vec<BottomUpIndexedLineages> = Vec::new();
             for context in &subgroup {
@@ -477,34 +475,57 @@ async fn get_context_groups(
                 all_indexed_lineages.push(indexed_lineages);
             }
 
-            if !all_indexed_lineages.is_empty() {
+            let has_diverging = if !all_indexed_lineages.is_empty() {
                 let mut common_lineages = all_indexed_lineages[0].clone();
                 for indexed_lineages in &all_indexed_lineages[1..] {
                     common_lineages.retain(|lineage| indexed_lineages.contains(lineage));
                 }
 
-                log::info!("{}", "~".repeat(80));
-                log::info!("diverging indexed_lineages per context:");
-                for (i, context) in subgroup.iter().take(20).enumerate() {
-                    let graph_node = context.graph_node.clone();
-                    let document_node = read_lock!(context.document_node);
-                    log::info!("    [{}] element: {}  content: {}", i, document_node.get_element_name(), document_node.to_string());
-                    let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
-                    let diverging: Vec<&Lineage> = indexed_lineages
-                        .iter()
-                        .filter(|lineage| !common_lineages.contains(lineage))
-                        .collect();
+                all_indexed_lineages.iter().any(|indexed_lineages| {
+                    indexed_lineages.iter().any(|lineage| !common_lineages.contains(lineage))
+                })
+            } else {
+                false
+            };
 
-                    if !diverging.is_empty() {
-                        log::info!("  context[{}]:", i);
-                        for lineage in diverging {
-                            log::info!("    {}", lineage.to_string());
-                        }
-                    }
-                }
+            if !has_diverging {
+                let fields = subgroup.first().unwrap().data_node.fields.clone();
+                context_groups.push(ContextGroup {
+                    acyclic_lineage: acyclic_lineage.clone(),
+                    lineage: None,
+                    indexed_lineage: None,
+                    fields,
+                    contexts: subgroup,
+                    snippets: Vec::new(),
+                });
             }
+        } else {
+            let permit = semaphore.clone().acquire_owned().await.unwrap();
+            let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_acyclic_lineage = acyclic_lineage.clone();
+            let cloned_lineage_subgroups = lineage_subgroups.clone();
+
+            let handle = task::spawn(async move {
+                let _permit = permit;
+                get_acyclic_context_groups(cloned_meta_context, cloned_acyclic_lineage, &cloned_lineage_subgroups).await
+            });
+
+            handles.push(handle);
         }
     }
 
+    let results: Vec<Result<Vec<ContextGroup>, Errors>> = try_join_all(handles).await?;
+    for result in results {
+        context_groups.extend(result?);
+    }
+
+    Ok(context_groups)
+}
+
+async fn get_acyclic_context_groups(
+    meta_context: Arc<RwLock<MetaContext>>,
+    acyclic_lineage: Lineage,
+    lineage_subgroups: &HashMap<Lineage, Vec<Arc<Context>>>,
+) -> Result<Vec<ContextGroup>, Errors> {
     unimplemented!()
 }
