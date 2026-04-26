@@ -7,7 +7,9 @@ use crate::transformation::FieldTransformation;
 pub struct BasisNode {
     pub id: ID,
     pub hash: Hash,
-    pub lineage: Lineage,
+    pub acyclic_lineage: Lineage,
+    pub lineage: Option<Lineage>,
+    pub indexed_lineage: Option<Lineage>,
     pub description: String,
     pub transformations: Vec<FieldTransformation>,
 }

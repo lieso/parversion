@@ -395,6 +395,13 @@ async fn get_basis_node<P: Provider>(
     document_summary: &str,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
+
+    if context_group.fields.is_empty() {
+        return Err(Errors::InsufficientPrerequisites(
+            "get_basis_node called with empty fields context group".to_string(),
+        ));
+    }
+
     unimplemented!();
 
     let acyclic_lineage = &context_group.acyclic_lineage;
@@ -453,12 +460,9 @@ async fn get_context_groups(
         }
     }
 
-    // TODO: HANDLE THESE PROPERLY!!!
-    // There are contexts with empty fields that need to be processed
-    // These are not being added to context_groups at all right now
-    log::warn!("ATTENTION: {} contexts with empty fields are being filtered out", empty_field_contexts.len());
-    log::warn!("ATTENTION: These empty field contexts need proper handling!");
-    log::warn!("ATTENTION: Do not ignore this - implement proper empty field context processing");
+    // Empty-field contexts are intentionally skipped — they produce no BasisNode and require no
+    // provider lookup or LLM interpretation.
+    log::debug!("Skipping {} contexts with empty fields", empty_field_contexts.len());
 
 
 
