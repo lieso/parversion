@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 use crate::basis_network::BasisNetwork;
 use crate::network_relationship::NetworkRelationshipType;
@@ -16,9 +17,18 @@ mod node_analysis;
 mod network_analysis;
 mod network_relationships;
 
-use node_analysis::{NodeAnalysis, NodeGroupsData};
+use node_analysis::{NodeAnalysis, NodeGroupsData, LineageClassification};
 use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
+
+#[derive(Clone, Debug)]
+pub enum NodeGroupClassification {
+    Acyclic,
+    Uniform,
+    Diverging(Vec<Lineage>),
+}
+
+pub type NodeGroups = HashMap<Lineage, NodeGroupClassification>;
 
 pub struct LLM {}
 
@@ -385,10 +395,10 @@ impl LLM {
     pub async fn get_node_groups(
         meta_context: Arc<RwLock<MetaContext>>,
         acyclic_lineage: Lineage,
-        lineage_subgroups: &std::collections::HashMap<Lineage, Vec<Arc<Context>>>,
+        lineage_subgroups: &HashMap<Lineage, Vec<Arc<Context>>>,
     ) -> Result<(
-        std::collections::HashMap<Lineage, Vec<Lineage>>,
-        (u64,) // tokens
+        NodeGroups,
+        (u64,)
     ), Errors> {
         log::trace!("In get_node_groups");
 
@@ -401,7 +411,12 @@ impl LLM {
         let mut user_prompt = String::new();
         user_prompt.push_str(&format!("Acyclic Lineage: {}\n\n", acyclic_lineage.to_string()));
 
+        let mut lineage_map: HashMap<String, Lineage> = HashMap::new();
+        let mut indexed_lineage_map: HashMap<String, Lineage> = HashMap::new();
+
         for (lineage, subgroup) in lineage_subgroups {
+            lineage_map.insert(lineage.to_string(), lineage.clone());
+
             user_prompt.push_str(&format!("{}\nLineage: {}\n{}\n\n", "#".repeat(100), lineage.to_string(), "#".repeat(100)));
 
             let mut all_indexed_lineages: Vec<crate::graph_node::BottomUpIndexedLineages> = Vec::new();
@@ -434,6 +449,7 @@ impl LLM {
                 if !diverging.is_empty() {
                     user_prompt.push_str(&format!("Diverging indexed_lineages: {} entries\n", diverging.len()));
                     for (div_idx, div_lineage) in diverging.iter().enumerate() {
+                        indexed_lineage_map.insert(div_lineage.to_string(), (*div_lineage).clone());
                         user_prompt.push_str(&format!("  [{}]: {}\n", div_idx, div_lineage.to_string()));
                     }
                     user_prompt.push_str("\n");
@@ -445,11 +461,29 @@ impl LLM {
             user_prompt,
         ).await?;
 
-        // TODO: Convert String keys/values to Lineage once Lineage::from_str is available
-        let node_groups: std::collections::HashMap<Lineage, Vec<Lineage>> = node_groups_data.groups
-            .into_iter()
-            .map(|(_k, _v)| unimplemented!("String to Lineage conversion not yet implemented"))
-            .collect();
+        let mut node_groups: NodeGroups = HashMap::new();
+
+        for (lineage_str, classification) in node_groups_data.groups {
+            let lineage = lineage_map.get(&lineage_str).cloned().ok_or_else(|| {
+                Errors::LineageConversionError(format!("Lineage string not found in input: {}", lineage_str))
+            })?;
+
+            let node_group_classification = match classification {
+                LineageClassification::Acyclic => NodeGroupClassification::Acyclic,
+                LineageClassification::Uniform => NodeGroupClassification::Uniform,
+                LineageClassification::Diverging(strings) => {
+                    let lineages = strings.into_iter().map(|s| {
+                        indexed_lineage_map.get(&s).cloned().ok_or_else(|| {
+                            Errors::LineageConversionError(format!("Indexed lineage string not found in input: {}", s))
+                        })
+                    }).collect::<Result<Vec<Lineage>, Errors>>()?;
+
+                    NodeGroupClassification::Diverging(lineages)
+                }
+            };
+
+            node_groups.insert(lineage, node_group_classification);
+        }
 
         Ok((node_groups, (metadata.tokens,)))
     }
