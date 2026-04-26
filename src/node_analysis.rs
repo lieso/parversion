@@ -8,7 +8,7 @@ use crate::basis_node::BasisNode;
 use crate::config::CONFIG;
 use crate::context_group::ContextGroup;
 use crate::graph_node::{Graph, BottomUpIndexedLineages};
-use crate::llm::LLM;
+use crate::llm::{LLM, NodeGroupClassification};
 use crate::meta_context::MetaContext;
 use crate::path::Path;
 use crate::prelude::*;
@@ -553,5 +553,68 @@ async fn get_acyclic_context_groups(
         lineage_subgroups,
     ).await?;
 
-    unimplemented!()
+    let all_contexts: Vec<Arc<Context>> = lineage_subgroups.values().flatten().cloned().collect();
+    let mut context_groups: Vec<ContextGroup> = Vec::new();
+
+    let is_acyclic = node_groups.values().any(|c| matches!(c, NodeGroupClassification::Acyclic));
+
+    if is_acyclic {
+        let fields = all_contexts.first().unwrap().data_node.fields.clone();
+        context_groups.push(ContextGroup {
+            acyclic_lineage: acyclic_lineage.clone(),
+            lineage: None,
+            indexed_lineage: None,
+            fields,
+            contexts: all_contexts,
+            snippets: Vec::new(),
+        });
+    } else {
+        for (lineage, classification) in &node_groups {
+            let subgroup = lineage_subgroups.get(lineage).map(|v| v.as_slice()).unwrap_or(&[]);
+
+            match classification {
+                NodeGroupClassification::Acyclic => unreachable!(),
+                NodeGroupClassification::Uniform => {
+                    let fields = subgroup.first().unwrap().data_node.fields.clone();
+                    context_groups.push(ContextGroup {
+                        acyclic_lineage: acyclic_lineage.clone(),
+                        lineage: Some(lineage.clone()),
+                        indexed_lineage: None,
+                        fields,
+                        contexts: subgroup.to_vec(),
+                        snippets: Vec::new(),
+                    });
+                }
+                NodeGroupClassification::Diverging(discriminators) => {
+                    for discriminator in discriminators {
+                        let matching_contexts: Vec<Arc<Context>> = subgroup
+                            .iter()
+                            .filter(|context| {
+                                let graph_node = context.graph_node.clone();
+                                let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
+                                indexed_lineages.contains(discriminator)
+                            })
+                            .cloned()
+                            .collect();
+
+                        if matching_contexts.is_empty() {
+                            continue;
+                        }
+
+                        let fields = matching_contexts.first().unwrap().data_node.fields.clone();
+                        context_groups.push(ContextGroup {
+                            acyclic_lineage: acyclic_lineage.clone(),
+                            lineage: Some(lineage.clone()),
+                            indexed_lineage: Some(discriminator.clone()),
+                            fields,
+                            contexts: matching_contexts,
+                            snippets: Vec::new(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(context_groups)
 }

@@ -800,22 +800,24 @@ You are an expert data engineer analyzing the structural and semantic content of
 ### Context:
 You will be given an acyclic lineage identifier followed by one or more lineages. Each lineage represents a distinct structural path through an HTML document. For each lineage you will see the HTML content of nodes that share that path. Some nodes may also have diverging indexed lineages — structural variants that distinguish subsets of nodes within the same lineage.
 
-An indexed lineage is a variant of a node's lineage computed by injecting the positional index of one of its ancestors (its position among siblings at that level) into the lineage hash. A full set of indexed lineages is computed for each node, one per ancestor level. The diverging indexed lineages shown are those that are not common across all nodes under the same lineage — meaning they reveal positional differences between nodes that share a structural path but sit at different positions in the document tree. These positional differences often correspond to semantic differences (e.g. a first child that is a heading vs. subsequent children that are body text).
+An indexed lineage is a variant of a node's lineage computed by injecting the positional index of one of its ancestors (its position among siblings at that level) into the lineage hash. A full set of indexed lineages is computed for each node, one per ancestor level. The diverging indexed lineages shown are those that are not common across all nodes under the same lineage — meaning they reveal positional differences between nodes that share a structural path but sit at different positions in the document tree.
+
+**Important**: The presence of diverging indexed lineages does NOT by itself mean the content is semantically non-uniform. Nodes in a list (e.g. article URLs, product prices, user comments) will each have a unique positional indexed lineage simply because they occupy different positions — but they are all the same kind of data. Only use diverging indexed lineages as discriminators when different subsets of the content are genuinely semantically different kinds of data (e.g. some nodes are action links while others are counts, or some are headings while others are body text — those are different things even though they share the same structural path).
 
 ### Your Task:
-For each lineage, determine the appropriate classification:
+For each lineage, determine the appropriate classification by looking at the actual content of the nodes, not just whether diverging indexed lineages are present:
 
-1. **Acyclic**: All lineages under this acyclic lineage represent semantically uniform content — the same kind of data that could be given a single field name, description, and data type in a JSON schema. Use this when every node across every lineage represents the same thing (e.g. they are all product prices, or all comment bodies).
+1. **Acyclic**: All lineages under this acyclic lineage represent semantically uniform content — the same kind of data that could be given a single field name, description, and data type in a JSON schema. Use this when every node across every lineage represents the same thing (e.g. they are all article URLs, or all comment bodies).
 
-2. **Uniform**: This lineage is semantically distinct from the other lineages, but all nodes within this lineage represent the same kind of data. Use this when lineages represent different things from each other, but within this particular lineage the content is consistent.
+2. **Uniform**: This lineage is semantically distinct from the other lineages, but all nodes within this lineage represent the same kind of data. Use this when lineages represent different things from each other, but within this particular lineage the content is consistent. This is the correct classification when all nodes under a lineage are the same type of content (all URLs, all titles, all prices) even if each has a unique diverging indexed lineage due to list position.
 
-3. **Diverging**: The nodes within this lineage are not semantically uniform — different subsets represent different kinds of data, distinguishable by their diverging indexed lineages. Provide the specific diverging indexed lineage strings that define the subgroups.
+3. **Diverging**: The nodes within this lineage contain genuinely different kinds of data — some nodes represent one thing and other nodes represent a completely different thing, and the diverging indexed lineages are what distinguish these two groups. Use this only when you can clearly identify two or more semantically distinct content types among the nodes (e.g. a mix of action links and numeric counts, or a mix of headings and body text). Do NOT use this just because each node has a unique positional indexed lineage.
 
 ### Rules:
 - Every lineage present in the input must appear in your response exactly once.
 - If you choose Acyclic for one lineage, you should choose Acyclic for all lineages (they all share the same acyclic lineage).
 - Set `indexed_lineages` to null for Acyclic and Uniform classifications.
-- For Diverging, `indexed_lineages` must contain the indexed lineage strings from the input that discriminate the subgroups.
+- For Diverging, `indexed_lineages` must contain only the small number of indexed lineage strings that discriminate the distinct content types — not one per context.
 
 ### Response Format:
 Respond with valid JSON:
