@@ -100,9 +100,12 @@ impl Context {
 
             let context = contexts.get(&read_lock!(graph_node).id).unwrap();
             let data_node = &context.data_node;
+            let basis_lineage = read_lock!(context.basis_lineage).clone().unwrap();
             let basis_node = {
                 let lock = read_lock!(meta_context);
-                lock.get_basis_node_by_lineage(&context.lineage).expect("Could not get basis node by lineage").unwrap()
+                lock.get_basis_node_by_lineage(&basis_lineage)
+                    .expect("Could not get basis node by lineage")
+                    .unwrap()
             };
             let json_nodes: Vec<JsonNode> = basis_node
                 .transformations

@@ -904,7 +904,7 @@ fn process_network(
         let data_node = &context.data_node;
         let basis_node = {
             let lock = read_lock!(meta_context);
-            lock.get_basis_node_by_lineage(&context.lineage)
+            lock.get_basis_node_by_lineage(&context.basis_lineage().unwrap())
                 .expect("Could not get basis node by lineage")
                 .unwrap()
         };
