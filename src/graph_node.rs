@@ -113,7 +113,19 @@ impl GraphNode {
             XPathAxis::Parent => unimplemented!(),
             XPathAxis::Self_ => unimplemented!(),
             XPathAxis::Descendant => unimplemented!(),
-            XPathAxis::Ancestor => unimplemented!(),
+            XPathAxis::Ancestor => {
+                let mut ancestors = Vec::new();
+                let mut current_parents = lock.parents.clone();
+
+                while !current_parents.is_empty() {
+                    let parent = current_parents[0].clone();
+                    ancestors.push(parent.clone());
+                    let parent_read = read_lock!(parent);
+                    current_parents = parent_read.parents.clone();
+                }
+
+                Ok(ancestors)
+            },
             XPathAxis::FollowingSibling => {
                 if let Some(parent) = lock.parents.first() {
                     if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
