@@ -664,6 +664,108 @@ fn process_graph(
     meta_context: Arc<RwLock<MetaContext>>,
     schema_lineage: &Lineage,
 ) -> Result<(Map<String, Value>, HashMap<String, SchemaNode>), Errors> {
+    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
+
+    let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
+
+    let mut result: Map<String, Value> = Map::new();
+
+    let mut queue = VecDeque::new();
+    queue.push_back(graph_root);
+
+    while let Some(current) = queue.pop_front() {
+        let subgraph_hash = read_lock!(current).subgraph_hash.clone();
+        let mut is_canonical = false;
+        if let Some(basis_network) = read_lock!(meta_context)
+            .get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?
+        {
+            if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
+                log::debug!("Found a canonical network");
+                let (json, key) = process_canonical_network(
+                    Arc::clone(&meta_context),
+                    Arc::clone(basis_network),
+                    Arc::clone(&current),
+                )?;
+                result.insert(key, Value::Object(json));
+                is_canonical = true;
+            }
+        }
+
+        if !is_canonical {
+            for child in read_lock!(current).children.iter() {
+                queue.push_back(Arc::clone(child));
+            }
+        }
+    }
+
+    todo!()
+}
+
+fn process_canonical_network(
+    meta_context: Arc<RwLock<MetaContext>>,
+    basis_network: Arc<BasisNetwork>,
+    current: Graph,
+) -> Result<(Map<String, Value>, String), Errors> {
+    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let relationships: Vec<RelationshipTransformation> = basis_graph.relationships.unwrap();
+
+    let current_relationships: Vec<&RelationshipTransformation> = relationships
+        .iter()
+        .filter(|item| item.from == basis_network.id)
+        .collect();
+
+    for relationship in current_relationships.iter() {
+        match relationship.relationship_type {
+            NetworkRelationshipType::Composition => {
+                process_composition_relationship(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&current),
+                )?;
+            }
+            NetworkRelationshipType::OneToMany => {
+                process_one_to_many_relationship(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&current),
+                )?;
+            }
+            NetworkRelationshipType::ParentChild => {
+                process_parent_child_relationship(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&current),
+                )?;
+            }
+        }
+    }
+
+    todo!()
+}
+
+fn process_composition_relationship(
+    meta_context: Arc<RwLock<MetaContext>>,
+    current: Graph,
+) -> Result<(), Errors> {
+    todo!()
+}
+
+fn process_one_to_many_relationship(
+    meta_context: Arc<RwLock<MetaContext>>,
+    current: Graph,
+) -> Result<(), Errors> {
+    todo!()
+}
+
+fn process_parent_child_relationship(
+    meta_context: Arc<RwLock<MetaContext>>,
+    current: Graph,
+) -> Result<(), Errors> {
+    todo!()
+}
+
+fn process_graph_old(
+    meta_context: Arc<RwLock<MetaContext>>,
+    schema_lineage: &Lineage,
+) -> Result<(Map<String, Value>, HashMap<String, SchemaNode>), Errors> {
 
     let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
