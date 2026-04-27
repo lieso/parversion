@@ -38,4 +38,8 @@ impl DataNode {
             description,
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.fields.is_empty()
+    }
 }

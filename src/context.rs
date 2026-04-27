@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
-use crate::graph_node::{GraphNode, GraphNodeID};
+use crate::graph_node::{GraphNode, GraphNodeID, BottomUpIndexedLineages};
 use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
@@ -17,9 +17,17 @@ pub struct Context {
     pub id: ContextID,
     pub lineage: Lineage,
     pub acyclic_lineage: Lineage,
+    pub indexed_lineages: Arc<RwLock<BottomUpIndexedLineages>>,
+    pub basis_lineage: Arc<RwLock<Option<Lineage>>>,
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
+}
+
+impl Context {
+    pub fn basis_lineage(&self) -> Option<Lineage> {
+        self.basis_lineage.read().unwrap().clone()
+    }
 }
 
 impl Context {

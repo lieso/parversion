@@ -189,6 +189,8 @@ impl Document {
                 id: ID::new(),
                 acyclic_lineage: data_node.lineage.acyclic(),
                 lineage: data_node.lineage.clone(),
+                indexed_lineages: Arc::new(RwLock::new(Vec::new())),
+                basis_lineage: Arc::new(RwLock::new(None)),
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
@@ -248,6 +250,14 @@ impl Document {
             Vec::new(),
             &profile,
         );
+
+        let mut seen: HashSet<ID> = HashSet::new();
+        for context in contexts.values() {
+            if seen.insert(context.id.clone()) {
+                let indexed_lineages = read_lock!(context.graph_node).get_indexed_lineages();
+                *context.indexed_lineages.write().unwrap() = indexed_lineages;
+            }
+        }
 
         Ok((contexts, graph_root))
     }

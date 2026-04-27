@@ -2,8 +2,8 @@ use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 
 use crate::basis_network::BasisNetwork;
+use crate::config::CONFIG;
 use crate::network_relationship::NetworkRelationshipType;
-use crate::context_group::ContextGroup;
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_context::SchemaContext;
@@ -344,13 +344,12 @@ impl LLM {
     }
 
     pub async fn get_node_transformations(
-        context_group: ContextGroup,
-        document_summary: &str
+        group: Vec<Arc<Context>>,
+        meta_context: Arc<RwLock<MetaContext>>,
+        document_summary: &str,
     ) -> Result<(
         Vec<FieldTransformation>,
-        (
-            u64 // tokens
-        )
+        (u64,)
     ), Errors> {
         log::trace!("In get_node_transformations");
 
@@ -361,15 +360,25 @@ impl LLM {
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
         log::debug!("");
 
+        let first = group.first().unwrap();
+        let fields = first.data_node.fields.clone();
+
+        let example_snippet_count = read_lock!(CONFIG).llm.example_snippet_count;
+        let snippets: Vec<String> = group
+            .iter()
+            .take(example_snippet_count)
+            .map(|c| c.generate_snippet(Arc::clone(&meta_context)))
+            .collect();
+
         let mut field_transformations = Vec::new();
         let mut tokens: u64 = 0;
 
-        for (field, value) in context_group.fields.into_iter() {
+        for (field, value) in fields.into_iter() {
             let result = NodeAnalysis::get_node_transformation(
                 &field,
                 &value,
-                context_group.snippets.clone(),
-                document_summary
+                snippets.clone(),
+                document_summary,
             ).await?;
 
             if let Some(field_inference_response) = result.data {
@@ -389,7 +398,7 @@ impl LLM {
             tokens += result.metadata.tokens;
         }
 
-        Ok((field_transformations, (tokens)))
+        Ok((field_transformations, (tokens,)))
     }
 
     pub async fn get_node_groups(
@@ -419,31 +428,27 @@ impl LLM {
 
             user_prompt.push_str(&format!("{}\nLineage: {}\n{}\n\n", "#".repeat(100), lineage.to_string(), "#".repeat(100)));
 
-            let mut all_indexed_lineages: Vec<crate::graph_node::BottomUpIndexedLineages> = Vec::new();
-            for context in subgroup.iter().take(12) {
-                let graph_node = context.graph_node.clone();
-                let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
-                all_indexed_lineages.push(indexed_lineages);
-            }
+            let sample: Vec<_> = subgroup.iter().take(12).collect();
 
-            let common_lineages = if !all_indexed_lineages.is_empty() {
-                let mut common = all_indexed_lineages[0].clone();
-                for indexed_lineages in &all_indexed_lineages[1..] {
-                    common.retain(|lineage| indexed_lineages.contains(lineage));
+            let common_lineages = if !sample.is_empty() {
+                let mut common = read_lock!(sample[0].indexed_lineages).clone();
+                for context in &sample[1..] {
+                    let il = read_lock!(context.indexed_lineages);
+                    common.retain(|l| il.contains(l));
                 }
                 common
             } else {
                 Vec::new()
             };
 
-            for (ctx_idx, context) in subgroup.iter().take(12).enumerate() {
+            for (ctx_idx, context) in sample.iter().enumerate() {
                 let document_node = read_lock!(context.document_node);
                 user_prompt.push_str(&format!("{}\nContext[{}]: {}\n{}\n\n", "-".repeat(96), ctx_idx, document_node.to_string(), "-".repeat(96)));
 
-                let indexed_lineages = &all_indexed_lineages[ctx_idx];
+                let indexed_lineages = read_lock!(context.indexed_lineages);
                 let diverging: Vec<_> = indexed_lineages
                     .iter()
-                    .filter(|lineage| !common_lineages.contains(lineage))
+                    .filter(|l| !common_lineages.contains(l))
                     .collect();
 
                 if !diverging.is_empty() {

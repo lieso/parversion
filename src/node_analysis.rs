@@ -6,8 +6,7 @@ use tokio::task;
 
 use crate::basis_node::BasisNode;
 use crate::config::CONFIG;
-use crate::context_group::ContextGroup;
-use crate::graph_node::{Graph, BottomUpIndexedLineages};
+use crate::graph_node::Graph;
 use crate::llm::{LLM, NodeGroupClassification};
 use crate::meta_context::MetaContext;
 use crate::path::Path;
@@ -221,16 +220,8 @@ pub async fn get_basis_nodes<P: Provider>(
     let context_groups = get_context_groups(Arc::clone(&meta_context)).await?;
 
     log::info!("Number of context groups: {}", context_groups.len());
-    let non_empty_fields_count = context_groups.iter().filter(|cg| !cg.fields.is_empty()).count();
-    log::info!("Context groups with non-empty fields: {}", non_empty_fields_count);
-
-    for context_group in &context_groups {
-        context_group.debug();
-    }
 
     unimplemented!();
-
-
 
 
 
@@ -241,7 +232,7 @@ pub async fn get_basis_nodes<P: Provider>(
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
 
-    for context_group in context_groups {
+    for group in context_groups {
         stage_context.record_events("Node analysis", 0);
 
         let permit = semaphore.clone().acquire_owned().await.unwrap();
@@ -255,7 +246,7 @@ pub async fn get_basis_nodes<P: Provider>(
             let basis_node = get_basis_node(
                 cloned_provider,
                 cloned_meta_context,
-                context_group.clone(),
+                group,
                 &cloned_options,
                 &cloned_stage_context,
                 &document_summary,
@@ -388,48 +379,54 @@ async fn get_translation_schema_transformation<P: Provider>(
 
 async fn get_basis_node<P: Provider>(
     provider: Arc<P>,
-    _meta_context: Arc<RwLock<MetaContext>>,
-    context_group: ContextGroup,
+    meta_context: Arc<RwLock<MetaContext>>,
+    group: Vec<Arc<Context>>,
     options: &Options,
     stage_context: &StageContext,
     document_summary: &str,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
 
-    if context_group.fields.is_empty() {
+    let first = group.first().unwrap();
+
+    if first.data_node.fields.is_empty() {
         return Err(Errors::InsufficientPrerequisites(
-            "get_basis_node called with empty fields context group".to_string(),
+            "get_basis_node called with empty fields group".to_string(),
         ));
     }
 
+    let basis_lineage = first.basis_lineage().ok_or_else(|| {
+        Errors::InsufficientPrerequisites("basis_lineage not set on context".to_string())
+    })?;
+
     unimplemented!();
 
-    let acyclic_lineage = &context_group.acyclic_lineage;
-    let data_node = &context_group.contexts.first().unwrap().data_node.clone();
+    let data_node = &first.data_node;
     let hash = data_node.hash.clone();
     let description = data_node.description.clone();
 
     if !options.regenerate {
-        if let Some(basis_node) = provider.get_basis_node_by_lineage(acyclic_lineage).await? {
+        if let Some(basis_node) = provider.get_basis_node_by_lineage(&basis_lineage).await? {
             return Ok(basis_node);
         };
     }
 
-    let (field_transformations, (tokens)) = LLM::get_node_transformations(
-        context_group.clone(),
-        document_summary
+    let (field_transformations, (tokens,)) = LLM::get_node_transformations(
+        group,
+        Arc::clone(&meta_context),
+        document_summary,
     ).await?;
 
     let basis_node = BasisNode {
         id: ID::new(),
         hash,
         description,
-        lineage: acyclic_lineage.clone(),
+        lineage: basis_lineage.clone(),
         transformations: field_transformations,
     };
 
     provider
-        .save_basis_node(acyclic_lineage, basis_node.clone())
+        .save_basis_node(&basis_lineage, basis_node.clone())
         .await?;
 
     stage_context.record_events("Node analysis", tokens);
@@ -439,7 +436,7 @@ async fn get_basis_node<P: Provider>(
 
 async fn get_context_groups(
     meta_context: Arc<RwLock<MetaContext>>,
-) -> Result<Vec<ContextGroup>, Errors> {
+) -> Result<Vec<Vec<Arc<Context>>>, Errors> {
     let contexts = {
         let lock = read_lock!(meta_context);
         lock.contexts
@@ -464,8 +461,6 @@ async fn get_context_groups(
     // provider lookup or LLM interpretation.
     log::debug!("Skipping {} contexts with empty fields", empty_field_contexts.len());
 
-
-
     let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
 
     for context in filtered_contexts {
@@ -477,7 +472,7 @@ async fn get_context_groups(
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
-    let mut context_groups: Vec<ContextGroup> = Vec::new();
+    let mut context_groups: Vec<Vec<Arc<Context>>> = Vec::new();
     let mut handles = Vec::new();
 
     for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
@@ -492,36 +487,25 @@ async fn get_context_groups(
         if lineage_subgroups.len() == 1 {
             let (_, subgroup) = lineage_subgroups.into_iter().next().unwrap();
 
-            let mut all_indexed_lineages: Vec<BottomUpIndexedLineages> = Vec::new();
-            for context in &subgroup {
-                let graph_node = context.graph_node.clone();
-                let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
-                all_indexed_lineages.push(indexed_lineages);
-            }
-
-            let has_diverging = if !all_indexed_lineages.is_empty() {
-                let mut common_lineages = all_indexed_lineages[0].clone();
-                for indexed_lineages in &all_indexed_lineages[1..] {
-                    common_lineages.retain(|lineage| indexed_lineages.contains(lineage));
+            let has_diverging = if !subgroup.is_empty() {
+                let mut common = read_lock!(subgroup[0].indexed_lineages).clone();
+                for context in &subgroup[1..] {
+                    let il = read_lock!(context.indexed_lineages);
+                    common.retain(|l| il.contains(l));
                 }
-
-                all_indexed_lineages.iter().any(|indexed_lineages| {
-                    indexed_lineages.iter().any(|lineage| !common_lineages.contains(lineage))
+                subgroup.iter().any(|context| {
+                    let il = read_lock!(context.indexed_lineages);
+                    il.iter().any(|l| !common.contains(l))
                 })
             } else {
                 false
             };
 
             if !has_diverging {
-                let fields = subgroup.first().unwrap().data_node.fields.clone();
-                context_groups.push(ContextGroup {
-                    acyclic_lineage: acyclic_lineage.clone(),
-                    lineage: None,
-                    indexed_lineage: None,
-                    fields,
-                    contexts: subgroup,
-                    snippets: Vec::new(),
-                });
+                for context in &subgroup {
+                    *context.basis_lineage.write().unwrap() = Some(acyclic_lineage.clone());
+                }
+                context_groups.push(subgroup);
             }
         } else {
             let permit = semaphore.clone().acquire_owned().await.unwrap();
@@ -538,7 +522,7 @@ async fn get_context_groups(
         }
     }
 
-    let results: Vec<Result<Vec<ContextGroup>, Errors>> = try_join_all(handles).await?;
+    let results: Vec<Result<Vec<Vec<Arc<Context>>>, Errors>> = try_join_all(handles).await?;
     for result in results {
         context_groups.extend(result?);
     }
@@ -546,32 +530,39 @@ async fn get_context_groups(
     Ok(context_groups)
 }
 
+fn compute_basis_lineage(acyclic_lineage: &Lineage, lineage: Option<&Lineage>, discriminator: Option<&Lineage>) -> Lineage {
+    let mut key = acyclic_lineage.clone();
+    if let Some(l) = lineage {
+        key = key.with_hash(Hash::from_str(&l.to_string()));
+    }
+    if let Some(d) = discriminator {
+        key = key.with_hash(Hash::from_str(&d.to_string()));
+    }
+    key
+}
+
 async fn get_acyclic_context_groups(
     meta_context: Arc<RwLock<MetaContext>>,
     acyclic_lineage: Lineage,
     lineage_subgroups: &HashMap<Lineage, Vec<Arc<Context>>>,
-) -> Result<Vec<ContextGroup>, Errors> {
+) -> Result<Vec<Vec<Arc<Context>>>, Errors> {
     let (node_groups, _tokens) = LLM::get_node_groups(
         Arc::clone(&meta_context),
         acyclic_lineage.clone(),
         lineage_subgroups,
     ).await?;
 
-    let all_contexts: Vec<Arc<Context>> = lineage_subgroups.values().flatten().cloned().collect();
-    let mut context_groups: Vec<ContextGroup> = Vec::new();
+    let mut context_groups: Vec<Vec<Arc<Context>>> = Vec::new();
 
     let is_acyclic = node_groups.values().any(|c| matches!(c, NodeGroupClassification::Acyclic));
 
     if is_acyclic {
-        let fields = all_contexts.first().unwrap().data_node.fields.clone();
-        context_groups.push(ContextGroup {
-            acyclic_lineage: acyclic_lineage.clone(),
-            lineage: None,
-            indexed_lineage: None,
-            fields,
-            contexts: all_contexts,
-            snippets: Vec::new(),
-        });
+        let all_contexts: Vec<Arc<Context>> = lineage_subgroups.values().flatten().cloned().collect();
+        let bl = compute_basis_lineage(&acyclic_lineage, None, None);
+        for context in &all_contexts {
+            *context.basis_lineage.write().unwrap() = Some(bl.clone());
+        }
+        context_groups.push(all_contexts);
     } else {
         for (lineage, classification) in &node_groups {
             let subgroup = lineage_subgroups.get(lineage).map(|v| v.as_slice()).unwrap_or(&[]);
@@ -579,25 +570,17 @@ async fn get_acyclic_context_groups(
             match classification {
                 NodeGroupClassification::Acyclic => unreachable!(),
                 NodeGroupClassification::Uniform => {
-                    let fields = subgroup.first().unwrap().data_node.fields.clone();
-                    context_groups.push(ContextGroup {
-                        acyclic_lineage: acyclic_lineage.clone(),
-                        lineage: Some(lineage.clone()),
-                        indexed_lineage: None,
-                        fields,
-                        contexts: subgroup.to_vec(),
-                        snippets: Vec::new(),
-                    });
+                    let bl = compute_basis_lineage(&acyclic_lineage, Some(lineage), None);
+                    for context in subgroup {
+                        *context.basis_lineage.write().unwrap() = Some(bl.clone());
+                    }
+                    context_groups.push(subgroup.to_vec());
                 }
                 NodeGroupClassification::Diverging(discriminators) => {
                     for discriminator in discriminators {
                         let matching_contexts: Vec<Arc<Context>> = subgroup
                             .iter()
-                            .filter(|context| {
-                                let graph_node = context.graph_node.clone();
-                                let indexed_lineages = read_lock!(graph_node).get_indexed_lineages();
-                                indexed_lineages.contains(discriminator)
-                            })
+                            .filter(|context| read_lock!(context.indexed_lineages).contains(discriminator))
                             .cloned()
                             .collect();
 
@@ -605,15 +588,11 @@ async fn get_acyclic_context_groups(
                             continue;
                         }
 
-                        let fields = matching_contexts.first().unwrap().data_node.fields.clone();
-                        context_groups.push(ContextGroup {
-                            acyclic_lineage: acyclic_lineage.clone(),
-                            lineage: Some(lineage.clone()),
-                            indexed_lineage: Some(discriminator.clone()),
-                            fields,
-                            contexts: matching_contexts,
-                            snippets: Vec::new(),
-                        });
+                        let bl = compute_basis_lineage(&acyclic_lineage, Some(lineage), Some(discriminator));
+                        for context in &matching_contexts {
+                            *context.basis_lineage.write().unwrap() = Some(bl.clone());
+                        }
+                        context_groups.push(matching_contexts);
                     }
                 }
             }

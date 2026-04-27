@@ -7,7 +7,6 @@ mod bloom_filter;
 mod cache;
 mod config;
 mod context;
-mod context_group;
 mod data_node;
 mod document;
 mod document_format;

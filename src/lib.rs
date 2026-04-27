@@ -7,7 +7,6 @@ pub mod bloom_filter;
 pub mod cache;
 pub mod config;
 pub mod context;
-pub mod context_group;
 pub mod data_node;
 pub mod document;
 pub mod document_format;
