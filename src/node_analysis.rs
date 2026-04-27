@@ -572,29 +572,22 @@ async fn get_acyclic_context_groups<P: Provider>(
             return Ok(vec![all_contexts]);
         }
 
-        // Probe Uniform: one BasisNode per lineage
-        let mut uniform_groups: Vec<Vec<Arc<Context>>> = Vec::new();
-        let mut all_uniform = true;
-        for (lineage, subgroup) in lineage_subgroups {
-            let bl = compute_basis_lineage(&acyclic_lineage, Some(lineage), None);
-            if provider.get_basis_node_by_lineage(&bl).await?.is_some() {
-                for context in subgroup {
-                    *context.basis_lineage.write().unwrap() = Some(bl.clone());
-                }
-                uniform_groups.push(subgroup.clone());
-            } else {
-                all_uniform = false;
-                break;
-            }
-        }
-        if all_uniform && !uniform_groups.is_empty() {
-            return Ok(uniform_groups);
-        }
-
-        // Probe Diverging: probe each context's indexed_lineages for a BasisNode hit
-        let mut diverging_groups: Vec<Vec<Arc<Context>>> = Vec::new();
-        let mut all_diverging = true;
+        // Probe per-lineage: each lineage is independently Uniform or Diverging.
+        // Writes are deferred until every lineage classifies, so a partial failure
+        // doesn't leak half-written basis_lineage state into the LLM fallback.
+        let mut per_lineage_groups: Vec<Vec<Arc<Context>>> = Vec::new();
+        let mut pending_writes: Vec<(Arc<Context>, Lineage)> = Vec::new();
+        let mut all_classified = true;
         'outer: for (lineage, subgroup) in lineage_subgroups {
+            let uniform_bl = compute_basis_lineage(&acyclic_lineage, Some(lineage), None);
+            if provider.get_basis_node_by_lineage(&uniform_bl).await?.is_some() {
+                for context in subgroup {
+                    pending_writes.push((context.clone(), uniform_bl.clone()));
+                }
+                per_lineage_groups.push(subgroup.clone());
+                continue;
+            }
+
             let mut subgroups_by_discriminator: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
             for context in subgroup {
                 let il = read_lock!(context.indexed_lineages).clone();
@@ -611,19 +604,22 @@ async fn get_acyclic_context_groups<P: Provider>(
                     }
                 }
                 if !matched {
-                    all_diverging = false;
+                    all_classified = false;
                     break 'outer;
                 }
             }
             for (bl, contexts) in subgroups_by_discriminator {
                 for context in &contexts {
-                    *context.basis_lineage.write().unwrap() = Some(bl.clone());
+                    pending_writes.push((context.clone(), bl.clone()));
                 }
-                diverging_groups.push(contexts);
+                per_lineage_groups.push(contexts);
             }
         }
-        if all_diverging && !diverging_groups.is_empty() {
-            return Ok(diverging_groups);
+        if all_classified && !per_lineage_groups.is_empty() {
+            for (context, bl) in pending_writes {
+                *context.basis_lineage.write().unwrap() = Some(bl);
+            }
+            return Ok(per_lineage_groups);
         }
     }
 
