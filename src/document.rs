@@ -902,37 +902,42 @@ fn process_network(
 
         let context = contexts.get(&read_lock!(current_node).id).unwrap();
         let data_node = &context.data_node;
-        let basis_node = {
-            let lock = read_lock!(meta_context);
-            lock.get_basis_node_by_lineage(&context.basis_lineage().unwrap())
-                .expect("Could not get basis node by lineage")
-                .unwrap()
-        };
+        let basis_lineage = context.basis_lineage().clone();
+        if let Some(basis_lineage) = basis_lineage {
+            let basis_node = {
+                let lock = read_lock!(meta_context);
+                lock.get_basis_node_by_lineage(&basis_lineage)
+                    .expect("Could not get basis node by lineage")
+                    .unwrap()
+            };
 
-        let json_nodes: Vec<JsonNode> = basis_node.transformations
-            .clone()
-            .into_iter()
-            .map(|transformation| {
-                transformation
-                    .transform(Arc::clone(&data_node))
-                    .expect("Could not transform data node field")
-            })
-            .collect();
+            let json_nodes: Vec<JsonNode> = basis_node.transformations
+                .clone()
+                .into_iter()
+                .map(|transformation| {
+                    transformation
+                        .transform(Arc::clone(&data_node))
+                        .expect("Could not transform data node field")
+                })
+                .collect();
 
-        for json_node in json_nodes {
-            let json = json_node.json;
-            let value = json!(json.value.trim().to_string());
+            for json_node in json_nodes {
+                let json = json_node.json;
+                let value = json!(json.value.trim().to_string());
 
-            let schema_node: SchemaNode = SchemaNode::new(
-                &json.key,
-                &json_node.description,
-                schema_lineage,
-                "string"
-            );
+                let schema_node: SchemaNode = SchemaNode::new(
+                    &json.key,
+                    &json_node.description,
+                    schema_lineage,
+                    "string"
+                );
 
-            result.insert(json.key, value);
-            schema.insert(schema_node.name.clone(), schema_node);
+                result.insert(json.key, value);
+                schema.insert(schema_node.name.clone(), schema_node);
+            }
         }
+
+
 
         for child in &read_lock!(current_node).children {
             if processed_networks.contains(&read_lock!(child).id) {

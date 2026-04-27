@@ -100,36 +100,39 @@ impl Context {
 
             let context = contexts.get(&read_lock!(graph_node).id).unwrap();
             let data_node = &context.data_node;
-            let basis_lineage = read_lock!(context.basis_lineage).clone().unwrap();
-            let basis_node = {
-                let lock = read_lock!(meta_context);
-                lock.get_basis_node_by_lineage(&basis_lineage)
-                    .expect("Could not get basis node by lineage")
-                    .unwrap()
-            };
-            let json_nodes: Vec<JsonNode> = basis_node
-                .transformations
-                .clone()
-                .into_iter()
-                .map(|transformation| {
-                    transformation
-                        .transform(Arc::clone(&data_node))
-                        .expect("Could not transform data node field")
-                })
-                .collect();
+            let basis_lineage = read_lock!(context.basis_lineage).clone();
 
-            let mut json_data: Map<String, Value> = Map::new();
+            if let Some(basis_lineage) = basis_lineage {
+                let basis_node = {
+                    let lock = read_lock!(meta_context);
+                    lock.get_basis_node_by_lineage(&basis_lineage)
+                        .expect("Could not get basis node by lineage")
+                        .unwrap()
+                };
+                let json_nodes: Vec<JsonNode> = basis_node
+                    .transformations
+                    .clone()
+                    .into_iter()
+                    .map(|transformation| {
+                        transformation
+                            .transform(Arc::clone(&data_node))
+                            .expect("Could not transform data node field")
+                    })
+                    .collect();
 
-            for json_node in json_nodes.into_iter() {
-                let json = json_node.json;
-                let value = json!(json.value.trim().to_string());
-                result.insert(json.key, value);
+                let mut json_data: Map<String, Value> = Map::new();
+
+                for json_node in json_nodes.into_iter() {
+                    let json = json_node.json;
+                    let value = json!(json.value.trim().to_string());
+                    result.insert(json.key, value);
+                }
+
+                //if json_data.len() > 0 {
+                //    result.insert("_json".to_string(), Value::Object(json_data));
+                //}
+
             }
-
-            //if json_data.len() > 0 {
-            //    result.insert("_json".to_string(), Value::Object(json_data));
-            //}
-
 
 
         }
