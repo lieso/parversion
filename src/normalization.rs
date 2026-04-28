@@ -13,16 +13,16 @@ use crate::prelude::*;
 use crate::provider::Provider;
 
 #[allow(dead_code)]
-pub async fn organize<P: Provider>(
+pub async fn normalize<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize");
+    log::trace!("In normalize");
 
-    let meta_context = organize_to_classification(
+    let meta_context = normalize_to_classification(
         Arc::clone(&provider),
         document,
         options,
@@ -88,16 +88,16 @@ pub async fn organize<P: Provider>(
     stage.finish();
 
     {
-        let organized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
-        let result = format!("{}", organized.to_string(&None));
+        let normalized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
+        let result = format!("{}", normalized.to_string(&None));
         log::debug!(
             "\n\n\
         =======================================================\n\
-        =============   ORGANIZED DOCUMENT START   =================\n\
+        =============   NORMALIZED DOCUMENT START   =================\n\
         =======================================================\n\
         {}
         =======================================================\n\
-        =============    ORGANIZED DOCUMENT END    =================\n\
+        =============    NORMALIZED DOCUMENT END    =================\n\
         =======================================================\n\n",
             result
         );
@@ -109,14 +109,14 @@ pub async fn organize<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_to_classification<P: Provider>(
+pub async fn normalize_to_classification<P: Provider>(
     provider: Arc<P>,
     mut document: Document,
     options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_to_classification");
+    log::trace!("In normalize_to_classification");
     let _ = execution_context;
 
     let stage = execution_context.enter_stage("Document preprocessing and classification");
@@ -191,16 +191,16 @@ pub async fn organize_to_classification<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_document_to_classification<P: Provider>(
+pub async fn normalize_document_to_classification<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_document_to_classification");
+    log::trace!("In normalize_document_to_classification");
 
-    organize_to_classification(
+    normalize_to_classification(
         Arc::clone(&provider),
         document,
         _options,
@@ -211,28 +211,28 @@ pub async fn organize_document_to_classification<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_document<P: Provider>(
+pub async fn normalize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
-    log::trace!("In organize_document");
+    log::trace!("In normalize_document");
 
     let meta_context =
-        organize(Arc::clone(&provider), document, _options, metadata, execution_context).await?;
+        normalize(Arc::clone(&provider), document, _options, metadata, execution_context).await?;
 
-    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
+    let normalized_document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
 
     Ok(Package {
-        document: organized_document,
+        document: normalized_document,
         mutations: Vec::new(),
     })
 }
 
 #[allow(dead_code)]
-pub async fn organize_document_to_string<P: Provider>(
+pub async fn normalize_document_to_string<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Options,
@@ -240,9 +240,9 @@ pub async fn organize_document_to_string<P: Provider>(
     document_format: &Option<DocumentFormat>,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
-    log::trace!("In organize_document_to_string");
+    log::trace!("In normalize_document_to_string");
 
-    let package = organize_document(
+    let package = normalize_document(
         Arc::clone(&provider),
         document,
         _options,
@@ -255,18 +255,18 @@ pub async fn organize_document_to_string<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_text<P: Provider>(
+pub async fn normalize_text<P: Provider>(
     provider: Arc<P>,
     text: String,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_text");
+    log::trace!("In normalize_text");
 
     let document = Document::from_string(text, _options, metadata)?;
 
-    organize(
+    normalize(
         Arc::clone(&provider),
         document,
         _options,
@@ -277,18 +277,18 @@ pub async fn organize_text<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_text_to_classification<P: Provider>(
+pub async fn normalize_text_to_classification<P: Provider>(
     provider: Arc<P>,
     text: String,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_text_to_classification");
+    log::trace!("In normalize_text_to_classification");
 
     let document = Document::from_string(text, _options, metadata)?;
 
-    organize_to_classification(
+    normalize_to_classification(
         Arc::clone(&provider),
         document,
         _options,
@@ -299,32 +299,32 @@ pub async fn organize_text_to_classification<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_text_to_document<P: Provider>(
+pub async fn normalize_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
-    log::trace!("In organize_text_to_document");
+    log::trace!("In normalize_text_to_document");
 
     let meta_context =
-        organize_text(Arc::clone(&provider), text, _options, metadata, execution_context).await?;
+        normalize_text(Arc::clone(&provider), text, _options, metadata, execution_context).await?;
 
-    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
+    let normalized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
 
-    organized_document
+    normalized_document
 }
 
 #[allow(dead_code)]
-pub async fn organize_file<P: Provider>(
+pub async fn normalize_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_file");
+    log::trace!("In normalize_file");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path).map_err(|err| {
@@ -332,7 +332,7 @@ pub async fn organize_file<P: Provider>(
         Errors::FileInputError
     })?;
 
-    organize_text(
+    normalize_text(
         Arc::clone(&provider),
         text,
         _options,
@@ -343,14 +343,14 @@ pub async fn organize_file<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_file_to_classification<P: Provider>(
+pub async fn normalize_file_to_classification<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In organize_file_to_classification");
+    log::trace!("In normalize_file_to_classification");
     log::debug!("file path: {}", path);
 
     let text = get_file_as_text(path).map_err(|err| {
@@ -358,7 +358,7 @@ pub async fn organize_file_to_classification<P: Provider>(
         Errors::FileInputError
     })?;
 
-    organize_text_to_classification(
+    normalize_text_to_classification(
         Arc::clone(&provider),
         text,
         _options,
@@ -369,26 +369,26 @@ pub async fn organize_file_to_classification<P: Provider>(
 }
 
 #[allow(dead_code)]
-pub async fn organize_file_to_document<P: Provider>(
+pub async fn normalize_file_to_document<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
-    log::trace!("In organize_file_to_document");
+    log::trace!("In normalize_file_to_document");
     log::debug!("file path: {}", path);
 
     let meta_context =
-        organize_file(Arc::clone(&provider), path, _options, metadata, execution_context).await?;
+        normalize_file(Arc::clone(&provider), path, _options, metadata, execution_context).await?;
 
-    let organized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
+    let normalized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
 
-    organized_document
+    normalized_document
 }
 
 #[allow(dead_code)]
-pub async fn organize_file_to_string<P: Provider>(
+pub async fn normalize_file_to_string<P: Provider>(
     provider: Arc<P>,
     path: &str,
     _options: &Options,
@@ -396,10 +396,10 @@ pub async fn organize_file_to_string<P: Provider>(
     document_format: &Option<DocumentFormat>,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
-    log::trace!("In organize_file_to_string");
+    log::trace!("In normalize_file_to_string");
     log::debug!("file path: {}", path);
 
-    let document = organize_file_to_document(
+    let document = normalize_file_to_document(
         Arc::clone(&provider),
         path,
         _options,

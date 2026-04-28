@@ -29,7 +29,7 @@ mod network_analysis;
 mod node_analysis;
 mod operation;
 mod options;
-mod organization;
+mod normalization;
 mod package;
 mod path;
 mod path_segment;

@@ -29,7 +29,7 @@ pub mod network_analysis;
 pub mod node_analysis;
 pub mod operation;
 pub mod options;
-pub mod organization;
+pub mod normalization;
 pub mod package;
 pub mod path;
 pub mod path_segment;
