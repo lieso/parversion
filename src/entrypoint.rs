@@ -8,6 +8,7 @@ use std::io::{self, Read};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
+use std::fs;
 
 use crate::config::CONFIG;
 use crate::document::DocumentType;

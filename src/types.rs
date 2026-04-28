@@ -37,6 +37,8 @@ pub enum Errors {
     // fires when converting those strings back to Lineage objects via reverse lookup fails,
     // meaning the LLM returned a lineage string that was not present in the input.
     LineageConversionError(String),
+    YamlProviderError,
+    ProviderError(String),
 }
 
 impl From<JoinError> for Errors {
