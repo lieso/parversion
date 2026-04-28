@@ -127,85 +127,6 @@ pub async fn get_translation_schema_transformations<P: Provider>(
     }
 }
 
-pub async fn get_normal_schema_transformations<P: Provider>(
-    provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
-    options: &Options,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<HashMap<Lineage, Arc<SchemaTransformation>>, Errors> {
-    log::trace!("In get_normal_schema_transformations");
-    let _ = execution_context;
-
-    let schema_contexts: Vec<Arc<SchemaContext>> = {
-        let lock = read_lock!(meta_context);
-
-        lock.schema_contexts
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientMetaContextError(
-                    "Normal schema contexts not provided in meta context".to_string(),
-                )
-            })?
-            .values()
-            .cloned()
-            .collect()
-    };
-
-    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-
-    if max_concurrency == 1 {
-        let mut results = HashMap::new();
-
-        for schema_context in schema_contexts {
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
-            let result = get_normal_schema_transformation(
-                cloned_provider,
-                cloned_meta_context,
-                schema_context.clone(),
-                options,
-            )
-            .await?;
-
-            results.insert(result.lineage.clone(), Arc::new(result));
-        }
-
-        Ok(results)
-    } else {
-        let semaphore = Arc::new(Semaphore::new(max_concurrency));
-        let mut handles = Vec::new();
-
-        for schema_context in schema_contexts {
-            let permit = semaphore.clone().acquire_owned().await.unwrap();
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
-            let cloned_options = options.clone();
-
-            let handle = task::spawn(async move {
-                let _permit = permit;
-                let transformation = get_normal_schema_transformation(
-                    cloned_provider,
-                    cloned_meta_context,
-                    schema_context.clone(),
-                    &cloned_options,
-                )
-                .await?;
-
-                Ok((transformation.lineage.clone(), Arc::new(transformation)))
-            });
-            handles.push(handle);
-        }
-
-        let results: Vec<Result<(Lineage, Arc<SchemaTransformation>), Errors>> =
-            try_join_all(handles).await?;
-
-        let hashmap_results: HashMap<Lineage, Arc<SchemaTransformation>> =
-            results.into_iter().collect::<Result<_, _>>()?;
-
-        Ok(hashmap_results)
-    }
-}
-
 pub async fn get_basis_nodes<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
@@ -264,31 +185,6 @@ pub async fn get_basis_nodes<P: Provider>(
         results.into_iter().collect::<Result<_, _>>()?;
 
     Ok(hashmap_results)
-}
-
-async fn get_normal_schema_transformation<P: Provider>(
-    provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
-    schema_context: Arc<SchemaContext>,
-    options: &Options,
-) -> Result<SchemaTransformation, Errors> {
-    log::trace!("In get_normal_schema_transformation");
-
-    let lineage = &schema_context.lineage;
-
-    if !options.regenerate {
-        if let Some(schema_transformation) =
-            provider.get_schema_transformation(&lineage, None).await?
-        {
-            log::info!("Provider has supplied normal schema transformation");
-
-            return Ok(schema_transformation);
-        };
-    }
-
-    let snippet = schema_context.generate_snippet(Arc::clone(&meta_context));
-
-    unimplemented!()
 }
 
 async fn get_translation_schema_transformation<P: Provider>(

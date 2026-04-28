@@ -27,7 +27,6 @@ pub mod metadata;
 pub mod mutation;
 pub mod network_analysis;
 pub mod node_analysis;
-pub mod normalization;
 pub mod operation;
 pub mod options;
 pub mod organization;

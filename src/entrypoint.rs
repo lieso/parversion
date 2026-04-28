@@ -16,7 +16,7 @@ use tokio::sync::mpsc;
 use crate::config::CONFIG;
 use crate::document::DocumentType;
 use crate::document_format;
-use crate::normalization;
+use crate::organization;
 use crate::package::Package;
 use crate::prelude::*;
 #[cfg(feature = "sqlite-provider")]
@@ -285,14 +285,19 @@ async fn determine_document<P: Provider + ?Sized>(
         )
         .await
     } else {
-        normalization::normalize_text_to_package(
+        let organized_document = organization::organize_text_to_document(
             provider.clone(),
             document,
             &options,
             &metadata,
             execution_context.clone(),
         )
-            .await
+            .await?;
+
+        Ok(Package {
+            document: organized_document,
+            mutations: Vec::new(),
+        })
     }
 }
 

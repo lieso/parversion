@@ -5,8 +5,7 @@ use crate::document_format::DocumentFormat;
 use crate::meta_context::MetaContext;
 use crate::mutation::Mutation;
 use crate::node_analysis::get_translation_schema_transformations;
-use crate::normalization::normalize_document_to_meta_context;
-use crate::organization::organize_text;
+use crate::organization::{organize, organize_text};
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -186,7 +185,7 @@ pub async fn translate_document_to_meta_context<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_document_to_meta_context");
 
-    let meta_context = normalize_document_to_meta_context(
+    let meta_context = organize(
         Arc::clone(&provider),
         document,
         _options,

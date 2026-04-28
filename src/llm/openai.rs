@@ -34,15 +34,6 @@ struct AssociationsResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct NormalResponse {
-    pub new_property_name: String,
-    pub alternative_property_names: Vec<String>,
-    pub description: String,
-    pub justification: String,
-    pub json_path: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 struct MatchSchemaNodeResponse {
     pub json_path: Option<String>,
     pub source_path: String,
@@ -286,102 +277,6 @@ Please also provide a justification for your response.
                 };
 
                 Ok((response.json_path, source_path, target_path))
-            }
-            Err(e) => {
-                log::error!("Failed to get response from OpenAI: {}", e);
-                Err(Errors::UnexpectedError)
-            }
-        }
-    }
-
-    pub async fn get_normal_schema(
-        marked_schema: &String,
-    ) -> Result<(String, String, Vec<String>, String), Errors> {
-        log::trace!("In get_normal_schema");
-
-        if marked_schema.len() > 10000 {
-            log::error!("Schema is over 10000 characters...");
-            return Err(Errors::ContextTooLarge);
-        }
-
-        let system_prompt = format!(
-            r##"
-Your task is to analyze a particular property in a JSON schema, with respect to the overall schema, and to offer an alternative, streamlined, more generalizable property name that may be used instead. The property name should be appropriate considering the overall context of the JSON schema and the resources it represents.
-
-Additionally, you must provide a JSON path (excluding the new property name), for an imagined alternative schema representing that same resource in the current schema, but more streamlined and generalizable.
-
-The property to analyze will be found inside delimiter strings:
-START TARGET SCHEMA KEY >>>
-<<< END TARGET SCHEMA KEY
-
-You may return the current property name and JSON path if you think it's already very appropriate.
-
-In addition to the new property name:
-1. (alternative_property_names): please also suggest a few alternatives to the new property name you suggest, if you think there are any.
-2. (description): suggest a more appropriate json schema description for the target schema key/property.
-3. (json_path): the JSON path, excluding the new property name, for an alternative, more generic schema this property may be found in.
-4. (justification): provide a justification for your response
-        "##
-        );
-        let user_prompt = format!(r##"Schema: {}"##, marked_schema);
-
-        let response_format = json!({
-            "type": "json_schema",
-            "name": "schema_normalize",
-            "strict": true,
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "new_property_name": {
-                        "type": "string"
-                    },
-                    "alternative_property_names": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "json_path": {
-                        "type": "string"
-                    },
-                    "justification": {
-                        "type": "string"
-                    }
-                },
-                "required": ["new_property_name", "alternative_property_names", "description", "json_path", "justification"],
-                "additionalProperties": false
-            }
-        });
-
-        match Self::send_openai_request::<NormalResponse>(
-            &system_prompt,
-            &user_prompt,
-            response_format,
-        )
-        .await
-        {
-            Ok(response) => {
-                log::debug!("╔══════════════════════════════╗");
-                log::debug!("║       NORMAL SCHEMA START    ║");
-                log::debug!("╚══════════════════════════════╝");
-
-                log::debug!("***system_prompt***\n{}", system_prompt);
-                log::debug!("***user_prompt***\n{}", user_prompt);
-                log::debug!("***response***\n{:?}", response);
-
-                log::debug!("╔═══════════════════════════╗");
-                log::debug!("║       NORMAL SCHEMA END   ║");
-                log::debug!("╚═══════════════════════════╝");
-
-                Ok((
-                    response.new_property_name,
-                    response.description,
-                    response.alternative_property_names,
-                    response.json_path,
-                ))
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenAI: {}", e);

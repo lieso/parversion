@@ -283,22 +283,6 @@ impl LLM {
         Ok(result)
     }
 
-    pub async fn get_normal_schema(
-        marked_schema: &String,
-    ) -> Result<
-        (
-            String,      // key
-            String,      // description
-            Vec<String>, // aliases
-            Path,
-        ),
-        Errors,
-    > {
-        log::trace!("In get_normal_schema");
-
-        unimplemented!()
-    }
-
     pub async fn get_network_transformation(
         subgraph_hash: &str,
         json_examples: &[String],

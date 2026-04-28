@@ -27,7 +27,6 @@ mod metadata;
 mod mutation;
 mod network_analysis;
 mod node_analysis;
-mod normalization;
 mod operation;
 mod options;
 mod organization;
