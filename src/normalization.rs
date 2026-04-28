@@ -12,7 +12,6 @@ use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
 
-#[allow(dead_code)]
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -108,7 +107,6 @@ pub async fn normalize<P: Provider>(
     Ok(meta_context)
 }
 
-#[allow(dead_code)]
 pub async fn normalize_to_classification<P: Provider>(
     provider: Arc<P>,
     mut document: Document,
@@ -190,7 +188,6 @@ pub async fn normalize_to_classification<P: Provider>(
     Ok(meta_context)
 }
 
-#[allow(dead_code)]
 pub async fn normalize_document_to_classification<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -210,7 +207,6 @@ pub async fn normalize_document_to_classification<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn normalize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -231,7 +227,6 @@ pub async fn normalize_document<P: Provider>(
     })
 }
 
-#[allow(dead_code)]
 pub async fn normalize_document_to_string<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -254,7 +249,6 @@ pub async fn normalize_document_to_string<P: Provider>(
     Ok(package.to_string(document_format))
 }
 
-#[allow(dead_code)]
 pub async fn normalize_text<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -276,7 +270,6 @@ pub async fn normalize_text<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn normalize_text_to_classification<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -298,7 +291,6 @@ pub async fn normalize_text_to_classification<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn normalize_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -316,7 +308,6 @@ pub async fn normalize_text_to_document<P: Provider>(
     normalized_document
 }
 
-#[allow(dead_code)]
 pub async fn normalize_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -342,7 +333,6 @@ pub async fn normalize_file<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn normalize_file_to_classification<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -368,7 +358,6 @@ pub async fn normalize_file_to_classification<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn normalize_file_to_document<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -387,7 +376,6 @@ pub async fn normalize_file_to_document<P: Provider>(
     normalized_document
 }
 
-#[allow(dead_code)]
 pub async fn normalize_file_to_string<P: Provider>(
     provider: Arc<P>,
     path: &str,

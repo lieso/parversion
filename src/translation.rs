@@ -11,7 +11,6 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::schema::Schema;
 
-#[allow(dead_code)]
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
@@ -69,7 +68,6 @@ pub async fn translate<P: Provider>(
     Ok(meta_context)
 }
 
-#[allow(dead_code)]
 pub async fn translate_meta_context<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
@@ -91,7 +89,6 @@ pub async fn translate_meta_context<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn translate_text_to_meta_context<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -117,7 +114,6 @@ pub async fn translate_text_to_meta_context<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn translate_text_to_package<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -149,7 +145,6 @@ pub async fn translate_text_to_package<P: Provider>(
     })
 }
 
-#[allow(dead_code)]
 pub async fn translate_text<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -174,7 +169,6 @@ pub async fn translate_text<P: Provider>(
     Ok(document.to_string(document_format))
 }
 
-#[allow(dead_code)]
 pub async fn translate_document_to_meta_context<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -205,7 +199,6 @@ pub async fn translate_document_to_meta_context<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn translate_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -234,7 +227,6 @@ pub async fn translate_document<P: Provider>(
     translated_document
 }
 
-#[allow(dead_code)]
 pub async fn translate_document_to_text<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -259,7 +251,6 @@ pub async fn translate_document_to_text<P: Provider>(
     Ok(document.to_string(document_format))
 }
 
-#[allow(dead_code)]
 pub async fn translate_file_to_meta_context<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -287,7 +278,6 @@ pub async fn translate_file_to_meta_context<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn translate_file_to_package<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -319,7 +309,6 @@ pub async fn translate_file_to_package<P: Provider>(
     })
 }
 
-#[allow(dead_code)]
 pub async fn translate_file_to_text<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -344,7 +333,6 @@ pub async fn translate_file_to_text<P: Provider>(
     Ok(package.to_string(document_format))
 }
 
-#[allow(dead_code)]
 pub async fn translate_file<P: Provider>(
     provider: Arc<P>,
     path: &str,
@@ -375,7 +363,6 @@ pub async fn translate_file<P: Provider>(
     })
 }
 
-#[allow(dead_code)]
 pub async fn translate_url_to_meta_context<P: Provider>(
     provider: Arc<P>,
     url: &str,
@@ -400,7 +387,6 @@ pub async fn translate_url_to_meta_context<P: Provider>(
     .await
 }
 
-#[allow(dead_code)]
 pub async fn translate_url_to_package<P: Provider>(
     provider: Arc<P>,
     url: &str,

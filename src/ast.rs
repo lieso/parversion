@@ -1,11 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
-use std::fs;
-use std::io;
-use std::path::Path;
 use swc_atoms::Atom;
 use swc_common::sync::Lrc;
-use swc_common::{BytePos, FileName, SourceMap, SyntaxContext};
+use swc_common::{FileName, SourceMap, SyntaxContext};
 use swc_ecma_ast::Program;
 use swc_ecma_ast::*;
 use swc_ecma_codegen::{text_writer::JsWriter, Emitter};

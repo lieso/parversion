@@ -296,7 +296,6 @@ impl GraphNode {
         let segments = &xpath.segments;
 
         let mut current: Vec<Graph> = vec![Arc::clone(&start)];
-        let mut target: Option<Graph> = None;
 
         for (index, segment) in segments.iter().enumerate() {
             current = current

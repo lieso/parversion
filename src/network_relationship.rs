@@ -379,7 +379,6 @@ impl NetworkRelationship {
             if subgraph_hash == network.subgraph_hash {
                 let json = Self::process_network(
                     Arc::clone(&meta_context),
-                    network.clone(),
                     Arc::clone(&current)
                 )?;
 
@@ -396,7 +395,6 @@ impl NetworkRelationship {
 
     fn process_network(
         meta_context: Arc<RwLock<MetaContext>>,
-        basis_network: Arc<BasisNetwork>,
         graph_node: Arc<RwLock<GraphNode>>
     ) -> Result<String, Errors> {
 

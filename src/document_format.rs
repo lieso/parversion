@@ -1,18 +1,10 @@
 use crate::document::DocumentType;
 
 #[derive(Debug, Clone)]
-enum FormatStrategy {
-    Simple,
-    Flattened,
-    Nested,
-}
-
-#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct DocumentFormat {
     format_type: DocumentType,
     encoding: Option<String>,
-    strategy: Option<FormatStrategy>,
     indent: Option<usize>,
     line_ending: Option<String>,
     headers: Option<bool>,
@@ -26,7 +18,6 @@ impl Default for DocumentFormat {
         DocumentFormat {
             format_type: DocumentType::Json,
             encoding: Some(String::from("UTF-8")),
-            strategy: None,
             indent: None,
             line_ending: None,
             headers: None,
