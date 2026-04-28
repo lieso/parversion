@@ -3,7 +3,6 @@ use std::sync::{Arc, RwLock};
 use crate::document::Document;
 use crate::document_format::DocumentFormat;
 use crate::meta_context::MetaContext;
-use crate::mutation::Mutation;
 use crate::node_analysis::get_translation_schema_transformations;
 use crate::normalization::{normalize, normalize_text};
 use crate::package::Package;
@@ -15,7 +14,7 @@ pub async fn translate<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
-    metadata: &Metadata,
+    _metadata: &Metadata,
     json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {

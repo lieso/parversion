@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::network_relationship::NetworkRelationshipType;
 use crate::prelude::*;
 use crate::transformation::{
     CanonicalizationTransformation,

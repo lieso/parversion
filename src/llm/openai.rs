@@ -2,13 +2,11 @@ use reqwest::header;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::sync::Arc;
 
 #[cfg(feature = "caching")]
 use crate::cache::Cache;
 use crate::environment::get_env_variable;
 use crate::prelude::*;
-use crate::transformation::{FieldMetadata, FieldTransformation};
 
 pub struct OpenAI;
 
@@ -315,7 +313,7 @@ Please include a justification for your response.
         Ok(parsed_response)
     }
 
-    async fn get_or_set_cache<F, Fut>(hash: Hash, fetch_data: F) -> Option<String>
+    async fn get_or_set_cache<F, Fut>(_hash: Hash, fetch_data: F) -> Option<String>
     where
         F: FnOnce() -> Fut,
         Fut: std::future::Future<Output = Option<String>>,

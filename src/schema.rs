@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use crate::graph_node::{Graph, GraphNode};
-use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_context::SchemaContext;
 use crate::schema_node::SchemaNode;
@@ -207,7 +206,7 @@ impl Schema {
 
             if !node.properties.is_empty() {
                 result.push_str(&format!("{}Properties:\n", indent_str));
-                for (key, child) in &node.properties {
+                for (_key, child) in &node.properties {
                     result.push_str(&format!("\n"));
                     result.push_str(&format_node(child, indent + 2));
                 }

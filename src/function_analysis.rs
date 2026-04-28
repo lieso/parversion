@@ -74,7 +74,7 @@ pub async fn functions_to_operations<P: Provider>(
 
 async fn function_to_operation<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    _meta_context: Arc<RwLock<MetaContext>>,
     function: Function,
 ) -> Result<Operation, Errors> {
     log::trace!("In function_to_operation");
@@ -87,7 +87,7 @@ async fn function_to_operation<P: Provider>(
         return Ok(operation);
     }
 
-    if let Some(something) = LLM::function_to_operation(&function.code).await? {
+    if let Some(_something) = LLM::function_to_operation(&function.code).await? {
         unimplemented!()
     } else {
         let operation = Operation::new(hash);

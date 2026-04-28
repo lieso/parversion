@@ -3,7 +3,6 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
-use serde_json::{json, Value, Map};
 
 use crate::classification::Classification;
 use crate::basis_network::{BasisNetwork, NetworkType};
@@ -15,14 +14,12 @@ use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::transformation::{
-    NetworkTransformation,
     CanonicalizationTransformation,
     RelationshipTransformation,
     ResolvedRelationshipTransformation,
     TraversalTransformation
 };
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
-use crate::json_node::JsonNode;
 use crate::traversal::{get_original_document_condensed};
 
 pub async fn get_classification<P: Provider>(
@@ -187,7 +184,7 @@ pub async fn get_network_relationships<P: Provider>(
         handles.push(handle);
     }
 
-    let results: Vec<Result<(), Errors>> = try_join_all(handles).await?;
+    let _results: Vec<Result<(), Errors>> = try_join_all(handles).await?;
 
     provider.get_basis_graph_by_hash(&graph_hash).await?
         .ok_or(Errors::UnexpectedError)
@@ -480,7 +477,7 @@ async fn get_basis_network<P: Provider>(
     options: &Options,
     stage_context: &StageContext,
     document_summary: &str,
-    all_subgraph_hashes: Arc<Vec<String>>,
+    _all_subgraph_hashes: Arc<Vec<String>>,
     lineage: Lineage,
 ) -> Result<BasisNetwork, Errors> {
     log::trace!("In get_basis_network");
@@ -526,7 +523,7 @@ async fn get_basis_network<P: Provider>(
         if complex_json.is_empty() {
             NetworkType::Degenerate
         } else {
-            let (network_transformation, (tokens)) = LLM::get_network_transformation(
+            let (network_transformation, tokens ) = LLM::get_network_transformation(
                 &subgraph_hash.to_string().unwrap(),
                 &complex_json,
                 document_summary

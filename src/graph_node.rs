@@ -94,7 +94,7 @@ impl GraphNode {
     }
 
     pub fn traverse_using_xpath_axis(
-        meta_context: Arc<RwLock<MetaContext>>,
+        _meta_context: Arc<RwLock<MetaContext>>,
         graph: Graph,
         xpath_axis: &XPathAxis
     ) -> Result<Vec<Graph>, Errors> {
@@ -228,7 +228,7 @@ impl GraphNode {
                         contexts
                             .get(&graph_id)
                             .and_then(|context| {
-                                let foo = read_lock!(&context.document_node)
+                                let _foo = read_lock!(&context.document_node)
                                     .get_attribute_value(name);
 
                                 read_lock!(&context.document_node)
@@ -328,7 +328,7 @@ impl GraphNode {
 
     pub fn get_indexed_lineages(&self) -> BottomUpIndexedLineages {
         let mut ancestors = Vec::new();
-        let mut current_id = self.id.clone();
+        let _current_id = self.id.clone();
 
         ancestors.push((self.id.clone(), self.hash.clone(), self.index_in_parent()));
 

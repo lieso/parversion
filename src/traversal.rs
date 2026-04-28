@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::prelude::*;
 use crate::xpath::XPath;
-use crate::graph_node::{Graph, GraphNode};
+use crate::graph_node::Graph;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TraversalValue {

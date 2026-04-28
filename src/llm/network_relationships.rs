@@ -8,7 +8,6 @@ use serde_json::json;
 
 use crate::prelude::*;
 use crate::environment::get_env_variable;
-use crate::basis_network::BasisNetwork;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EliminatedNetwork {

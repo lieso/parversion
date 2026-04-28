@@ -9,11 +9,10 @@ use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::llm::{LLM, NodeGroupClassification};
 use crate::meta_context::MetaContext;
-use crate::path::Path;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::schema_context::SchemaContext;
-use crate::transformation::{FieldTransformation, SchemaTransformation};
+use crate::transformation::SchemaTransformation;
 use crate::traversal::{get_original_document_condensed};
 use crate::context::Context;
 

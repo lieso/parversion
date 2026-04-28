@@ -7,7 +7,6 @@ use crate::prelude::*;
 use crate::basis_network::{BasisNetwork, NetworkType};
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
-use crate::document::Document;
 use crate::llm::LLM;
 use crate::traversal::{Traversal, TraversalValue, get_original_document_condensed};
 use crate::xpath::XPath;
@@ -263,7 +262,7 @@ impl NetworkRelationship {
     ) -> Result<(Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, (u64,)), Errors> {
         log::trace!("In get_relationship_typing");
 
-        let graph_root = {
+        let _graph_root = {
             let lock = read_lock!(meta_context);
             lock.graph_root
                 .clone()
@@ -300,7 +299,7 @@ impl NetworkRelationship {
         meta_context: Arc<RwLock<MetaContext>>,
         networks: Vec<Arc<BasisNetwork>>
     ) -> Result<(Vec<BasisNetwork>, (u64,)), Errors> {
-        let graph_root = {
+        let _graph_root = {
             let lock = read_lock!(meta_context);
             lock.graph_root
                 .clone()

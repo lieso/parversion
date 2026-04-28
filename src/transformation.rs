@@ -11,10 +11,9 @@ use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
 use crate::basis_network::BasisNetwork;
-use crate::xpath::XPath;
 use crate::traversal::Traversal;
 use crate::network_relationship::NetworkRelationshipType;
-use crate::graph_node::{Graph, GraphNode};
+use crate::graph_node::Graph;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {

@@ -1,5 +1,5 @@
 use ego_tree::NodeRef;
-use scraper::{ElementRef, Html, Node};
+use scraper::{Html, Node};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_string, Map, Value};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -7,7 +7,6 @@ use std::sync::{Arc, RwLock};
 use xmltree::Element;
 
 use crate::classification::Classification;
-use crate::basis_node::BasisNode;
 use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::document_format::DocumentFormat;
@@ -22,7 +21,7 @@ use crate::prelude::*;
 use crate::profile::Profile;
 use crate::provider::Provider;
 use crate::schema::Schema;
-use crate::schema_node::{arrayify_schema_node, SchemaNode};
+use crate::schema_node::SchemaNode;
 use crate::basis_network::{BasisNetwork, NetworkType};
 use crate::basis_graph::BasisGraph;
 use crate::transformation::{
@@ -30,7 +29,7 @@ use crate::transformation::{
     RelationshipTransformation,
     TraversalTransformation,
 };
-use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
+use crate::network_relationship::NetworkRelationshipType;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -62,7 +61,7 @@ impl Document {
     ) -> Result<Self, Errors> {
         log::trace!("In from_basis_transformations");
 
-        let graph_root = {
+        let _graph_root = {
             let lock = read_lock!(meta_context);
             lock.graph_root
                 .clone()
@@ -207,7 +206,7 @@ impl Document {
                     .get_children(profile.xml_element_transformation.clone())
                     .into_iter()
                     .enumerate()
-                    .map(|(child_index, child)| {
+                    .map(|(_child_index, child)| {
                         recurse(
                             Arc::new(RwLock::new(child)),
                             data_nodes,
@@ -282,7 +281,7 @@ impl Document {
         })
     }
 
-    pub fn to_string(&self, document_format: &Option<DocumentFormat>) -> String {
+    pub fn to_string(&self, _document_format: &Option<DocumentFormat>) -> String {
         let mut result = serde_json::to_string(self).expect("Could not convert document to string");
         result.push('\n');
         result.push_str(&self.data);
@@ -602,7 +601,7 @@ fn apply_schema_transformations_json(
                 }
             }
             _ => {
-                if let Some(current_schema_node) = schema_nodes.get(parent_lineage) {
+                if let Some(_current_schema_node) = schema_nodes.get(parent_lineage) {
                     let lock = read_lock!(meta_context);
 
                     if let Some(schema_transformations) = &lock.schema_transformations {
@@ -662,7 +661,7 @@ fn apply_schema_transformations_json(
 
 fn process_graph(
     meta_context: Arc<RwLock<MetaContext>>,
-    schema_lineage: &Lineage,
+    _schema_lineage: &Lineage,
 ) -> Result<(Map<String, Value>, HashMap<String, SchemaNode>), Errors> {
     let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
@@ -742,22 +741,22 @@ fn process_canonical_network(
 }
 
 fn process_composition_relationship(
-    meta_context: Arc<RwLock<MetaContext>>,
-    current: Graph,
+    _meta_context: Arc<RwLock<MetaContext>>,
+    _current: Graph,
 ) -> Result<(), Errors> {
     todo!()
 }
 
 fn process_one_to_many_relationship(
-    meta_context: Arc<RwLock<MetaContext>>,
-    current: Graph,
+    _meta_context: Arc<RwLock<MetaContext>>,
+    _current: Graph,
 ) -> Result<(), Errors> {
     todo!()
 }
 
 fn process_parent_child_relationship(
-    meta_context: Arc<RwLock<MetaContext>>,
-    current: Graph,
+    _meta_context: Arc<RwLock<MetaContext>>,
+    _current: Graph,
 ) -> Result<(), Errors> {
     todo!()
 }

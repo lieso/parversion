@@ -120,7 +120,7 @@ impl Context {
                     })
                     .collect();
 
-                let mut json_data: Map<String, Value> = Map::new();
+                let _json_data: Map<String, Value> = Map::new();
 
                 for json_node in json_nodes.into_iter() {
                     let json = json_node.json;

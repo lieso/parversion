@@ -1,6 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
 
 use crate::path_segment::{PathSegment, PathSegmentKind};
@@ -336,7 +336,7 @@ impl Path {
         }
     }
 
-    pub fn arrayify(&mut self, target_segment_id: &ID, variable: char) {
+    pub fn arrayify(&mut self, _target_segment_id: &ID, _variable: char) {
         unimplemented!()
     }
 }

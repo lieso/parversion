@@ -1,14 +1,10 @@
 use atty::Stream;
-use cfg_if::cfg_if;
 use clap::{App, Arg};
-use dirs;
 use fern::Dispatch;
 use log::LevelFilter;
 use std::env;
-use std::fs;
 use std::io::stdout;
 use std::io::{self, Read};
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;

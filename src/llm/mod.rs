@@ -7,7 +7,7 @@ use crate::network_relationship::NetworkRelationshipType;
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_context::SchemaContext;
-use crate::transformation::{FieldTransformation, SchemaTransformation, FieldMetadata, NetworkTransformation, NetworkMetadata};
+use crate::transformation::{FieldTransformation, FieldMetadata, NetworkTransformation, NetworkMetadata};
 use crate::context::Context;
 
 mod openai;
@@ -17,7 +17,7 @@ mod node_analysis;
 mod network_analysis;
 mod network_relationships;
 
-use node_analysis::{NodeAnalysis, NodeGroupsData, LineageClassification};
+use node_analysis::{NodeAnalysis, LineageClassification};
 use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
 
@@ -81,7 +81,7 @@ impl LLM {
     }
 
     pub async fn identify_relationships(
-        meta_context: Arc<RwLock<MetaContext>>,
+        _meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,
         network_jsons: Vec<(Arc<BasisNetwork>, Vec<String>)>
     ) -> Result<(Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, (u64,)), Errors> {
@@ -134,7 +134,7 @@ impl LLM {
     }
 
     pub async fn check_redundancy(
-        meta_context: Arc<RwLock<MetaContext>>,
+        _meta_context: Arc<RwLock<MetaContext>>,
         original_document: String,
         all_network_jsons: String
     ) -> Result<(Vec<String>, (u64,)), Errors> {
@@ -289,9 +289,7 @@ impl LLM {
         document_summary: &str
     ) -> Result<(
         NetworkTransformation,
-        (
-            u64 // tokens
-        )
+        u64 
     ), Errors> {
         log::trace!("In get_network_transformation");
 
@@ -386,7 +384,7 @@ impl LLM {
     }
 
     pub async fn get_node_groups(
-        meta_context: Arc<RwLock<MetaContext>>,
+        _meta_context: Arc<RwLock<MetaContext>>,
         acyclic_lineage: Lineage,
         lineage_subgroups: &HashMap<Lineage, Vec<Arc<Context>>>,
     ) -> Result<(

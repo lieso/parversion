@@ -5,7 +5,6 @@ use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::function_analysis::functions_to_operations;
 use crate::meta_context::MetaContext;
-use crate::mutation::Mutation;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
 use crate::node_analysis::get_basis_nodes;
 use crate::package::Package;
