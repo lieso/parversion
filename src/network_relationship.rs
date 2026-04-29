@@ -15,7 +15,6 @@ use crate::xpath::XPath;
 #[serde(rename_all = "snake_case")]
 pub enum NetworkRelationshipType {
    Composition,
-   OneToMany,
    ParentChild,
 }
 

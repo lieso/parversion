@@ -774,13 +774,6 @@ fn process_canonical_network(
                     json_key.push_str(&format!("_{}", network_key));
                 }
             }
-            NetworkRelationshipType::OneToMany => {
-                process_one_to_many_relationship(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&current),
-                    schema_lineage,
-                )?;
-            }
             NetworkRelationshipType::ParentChild => {
                 process_parent_child_relationship(
                     Arc::clone(&meta_context),
@@ -854,14 +847,6 @@ fn process_composition_relationship(
     target_schema_node.properties = target_schema;
 
     Ok(Some((target_json, target_schema_node, network_key)))
-}
-
-fn process_one_to_many_relationship(
-    _meta_context: Arc<RwLock<MetaContext>>,
-    _current: Graph,
-    _schema_lineage: &Lineage,
-) -> Result<(), Errors> {
-    Ok(())
 }
 
 fn process_parent_child_relationship(

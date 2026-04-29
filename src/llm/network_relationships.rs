@@ -447,8 +447,6 @@ For each relationship you identify, assign one of the following types:
 
 composition — the two networks are separate, non-nested fragments of the same resource in the DOM and should be merged into a single flat object. from is the primary network, to is the supplementary one. Do not classify as composition if to's structure already appears embedded as a sub-object within from's examples — that is a nesting relationship, not composition.
 
-one_to_many — one instance of from owns or contains multiple instances of to.
-
 parent_child — instances of from can be children of other instances of from. Set from and to to the same network ID.
 
 A network may have more than one relationship with another network, including with itself. Identify and list all relationships that are evidenced, not just the most prominent one.
@@ -463,7 +461,7 @@ Respond with valid JSON in the following format:
     {
       "from": "network_id",
       "to": "network_id",
-      "type": "composition|one_to_many|parent_child",
+      "type": "composition|parent_child",
       "reason": "one sentence"
     }
   ]
@@ -524,7 +522,7 @@ Do not include any explanation outside the JSON.
                                 },
                                 "type": {
                                     "type": "string",
-                                    "enum": ["composition", "one_to_many", "parent_child"],
+                                    "enum": ["composition", "parent_child"],
                                     "description": "The type of relationship between the two networks"
                                 },
                                 "reason": {
