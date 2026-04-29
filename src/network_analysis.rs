@@ -5,7 +5,7 @@ use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::classification::Classification;
-use crate::basis_network::{BasisNetwork, NetworkType};
+use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
@@ -77,21 +77,13 @@ pub async fn get_network_relationships<P: Provider>(
 ) -> Result<BasisGraph, Errors> {
     log::trace!("In get_network_relationships");
 
-    let unique_subgraphs: HashMap<Hash, Vec<Graph>> = get_unique_subgraphs(Arc::clone(&meta_context));
-
-    let complex_networks: Vec<Arc<BasisNetwork>> = unique_subgraphs
+    let complex_networks: Vec<Arc<BasisNetwork>> = collect_complex_unique_subgraphs(Arc::clone(&meta_context))
         .into_iter()
         .filter_map(|(subgraph_hash, _)| {
             let meta_context_lock = read_lock!(meta_context);
-            match meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash) {
-                Ok(Some(basis_network)) => {
-                    match &basis_network.transformation {
-                        crate::basis_network::NetworkType::Complex(_) => Some(basis_network),
-                        _ => None,
-                    }
-                }
-                _ => None,
-            }
+            meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)
+                .ok()
+                .flatten()
         })
         .collect();
 
@@ -396,7 +388,7 @@ pub async fn get_basis_networks<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In get_basis_networks");
 
-    let unique_subgraphs: HashMap<Hash, Vec<Graph>> = get_unique_subgraphs(Arc::clone(&meta_context));
+    let unique_subgraphs: HashMap<Hash, Vec<Graph>> = collect_complex_unique_subgraphs(Arc::clone(&meta_context));
 
     let all_subgraph_hashes = Arc::new(
         unique_subgraphs
@@ -519,35 +511,25 @@ async fn get_basis_network<P: Provider>(
         }
     }
 
-    let network: NetworkType = {
-        if complex_json.is_empty() {
-            NetworkType::Degenerate
-        } else {
-            let (network_transformation, tokens ) = LLM::get_network_transformation(
-                &subgraph_hash.to_string().unwrap(),
-                &complex_json,
-                document_summary
-            ).await?;
+    if complex_json.is_empty() {
+        log::warn!("Degenerate network reached get_basis_network — should have been filtered by collect_complex_unique_subgraphs");
+        return Err(Errors::UnexpectedError);
+    }
 
-            stage_context.record_events("Network analysis", tokens);
+    let (network_transformation, tokens) = LLM::get_network_transformation(
+        &subgraph_hash.to_string().unwrap(),
+        &complex_json,
+        document_summary
+    ).await?;
 
-            NetworkType::Complex(network_transformation)
-        }
-    };
-
-    let description = {
-        match network {
-            NetworkType::Degenerate => String::from("Degenerate network"),
-            NetworkType::Complex(ref network_transformation) => network_transformation.description.clone(),
-        }
-    };
+    stage_context.record_events("Network analysis", tokens);
 
     let basis_network = BasisNetwork {
         id: ID::new(),
-        description,
+        description: network_transformation.description.clone(),
         subgraph_hash: subgraph_hash.clone(),
         lineage: lineage.clone(),
-        transformation: network,
+        transformation: network_transformation,
     };
 
     provider
@@ -555,6 +537,28 @@ async fn get_basis_network<P: Provider>(
         .await?;
 
     Ok(basis_network)
+}
+
+fn collect_complex_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Vec<Graph>> {
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts.clone().unwrap_or_default()
+    };
+
+    get_unique_subgraphs(Arc::clone(&meta_context))
+        .into_iter()
+        .filter(|(_, graphs)| {
+            graphs.iter().take(5).any(|graph| {
+                let graph_id = read_lock!(graph).id.clone();
+                if let Some(context) = contexts.get(&graph_id) {
+                    if let Ok(json) = context.generate_json_snippet(Arc::clone(&meta_context)) {
+                        return json.len() > 1;
+                    }
+                }
+                false
+            })
+        })
+        .collect()
 }
 
 fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Vec<Graph>> {

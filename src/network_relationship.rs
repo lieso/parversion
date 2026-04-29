@@ -4,7 +4,7 @@ use serde_json::{json, Value, Map};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
-use crate::basis_network::{BasisNetwork, NetworkType};
+use crate::basis_network::BasisNetwork;
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::llm::LLM;
@@ -413,45 +413,38 @@ impl NetworkRelationship {
                     .or_insert(1);
 
                 if count <= 3 {
-                    let basis_network: Arc<BasisNetwork> = {
+                    let basis_network_opt: Option<Arc<BasisNetwork>> = {
                         let lock = read_lock!(meta_context);
-                        lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)
-                            .unwrap()
-                            .expect("could not find basis network")
+                        lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash).unwrap()
                     };
 
-                    match &basis_network.transformation {
-                        NetworkType::Degenerate => {
-                            recurse(
-                                Arc::clone(&meta_context),
-                                Arc::clone(&child),
-                                result,
-                            );
-                        },
-                        NetworkType::Complex(transformation) => {
-                            let mut inner_result: Map<String, Value> = Map::new();
+                    let Some(basis_network) = basis_network_opt else {
+                        recurse(Arc::clone(&meta_context), Arc::clone(&child), result);
+                        continue;
+                    };
 
-                            recurse(
-                                Arc::clone(&meta_context),
-                                Arc::clone(&child),
-                                &mut inner_result,
-                            );
+                    let transformation = &basis_network.transformation;
+                    let mut inner_result: Map<String, Value> = Map::new();
 
-                            let inner_result_value = Value::Object(inner_result.clone());
+                    recurse(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&child),
+                        &mut inner_result,
+                    );
 
-                            if let Some(existing_object) = result.get_mut(&transformation.image) {
-                                if let Value::Array(ref mut arr) = existing_object {
-                                    arr.push(inner_result_value.clone());
-                                } else {
-                                    *existing_object = json!(vec![
-                                        existing_object.clone(),
-                                        inner_result_value.clone()
-                                    ]);
-                                }
-                            } else {
-                                result.insert(transformation.image.clone(), inner_result_value);
-                            }
-                        },
+                    let inner_result_value = Value::Object(inner_result.clone());
+
+                    if let Some(existing_object) = result.get_mut(&transformation.image) {
+                        if let Value::Array(ref mut arr) = existing_object {
+                            arr.push(inner_result_value.clone());
+                        } else {
+                            *existing_object = json!(vec![
+                                existing_object.clone(),
+                                inner_result_value.clone()
+                            ]);
+                        }
+                    } else {
+                        result.insert(transformation.image.clone(), inner_result_value);
                     }
                 }
             }
