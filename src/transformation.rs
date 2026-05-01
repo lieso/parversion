@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::data_node::DataNode;
 use crate::id::ID;
-use crate::json_node::{Json, JsonMetadata, JsonNode};
+use crate::json_node::{Json, JsonNode};
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
@@ -204,9 +204,6 @@ impl FieldTransformation {
             let json = Json {
                 key: self.image.clone(),
                 value: value.to_string(),
-                meta: JsonMetadata {
-                    is_primary_content: false,
-                },
             };
 
             let json_node = JsonNode {

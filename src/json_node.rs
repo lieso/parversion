@@ -13,14 +13,7 @@ pub struct JsonNode {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct JsonMetadata {
-    pub is_primary_content: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Json {
     pub key: String,
     pub value: String,
-    pub meta: JsonMetadata,
-    //pub property: Property,
 }
