@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::ast::program_to_functions;
 use crate::document::{Document, DocumentType};
@@ -10,6 +11,16 @@ use crate::node_analysis::get_basis_nodes;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::transformation::{
+    CanonicalizationTransformation,
+    RelationshipTransformation,
+    TraversalTransformation,
+};
+use crate::graph_node::Graph;
+use crate::graph_node::GraphNode;
+use crate::basis_network::BasisNetwork;
+use crate::basis_graph::BasisGraph;
+use crate::context::Context;
 
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
@@ -85,26 +96,129 @@ pub async fn normalize<P: Provider>(
 
     stage.finish();
 
-    {
-        let normalized = Document::from_basis_transformations(Arc::clone(&meta_context))?;
-        let result = format!("{}", normalized.to_string(&None));
-        log::debug!(
-            "\n\n\
-        =======================================================\n\
-        =============   NORMALIZED DOCUMENT START   =================\n\
-        =======================================================\n\
-        {}
-        =======================================================\n\
-        =============    NORMALIZED DOCUMENT END    =================\n\
-        =======================================================\n\n",
-            result
-        );
-    }
+
+    let (contexts, normalized_graph_root) = build_normalized_graph(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context),
+        &options,
+    ).await?;
+
+
 
     unimplemented!();
 
     Ok(meta_context)
 }
+
+
+
+
+
+
+
+pub async fn build_normalized_graph<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options
+) -> Result<
+    (
+        HashMap<ID, Arc<Context>>,
+        Arc<RwLock<GraphNode>>,
+    ),
+    Errors,
+> {
+    log::trace!("In build_normalized_graph");
+
+    let normalized = Arc::new(RwLock::new(GraphNode {
+        id: ID::new(),
+        parents: Vec::new(),
+        description: String::from("placeholder description"),
+        hash: Hash::new(),
+        subgraph_hash: Hash::new(),
+        lineage: Lineage::new(),
+        children: Vec::new(),
+    }));
+
+    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
+    let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
+
+    let mut queue = VecDeque::new();
+    queue.push_back(graph_root);
+
+    while let Some(current) = queue.pop_front() {
+        let subgraph_hash = read_lock!(current).subgraph_hash.clone();
+
+        let is_canonical = {
+            if let Some(basis_network) = read_lock!(meta_context).get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)? {
+                if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
+                    log::info!("Found a canonical network");
+
+                    let canonical_graph: Graph = process_canonical_network(
+                        Arc::clone(&meta_context),
+                        Arc::clone(basis_network),
+                        Arc::clone(&current),
+                    )?;
+
+                    {
+                        let mut lock = write_lock!(normalized);
+                        lock.children.push(canonical_graph.clone());
+                    }
+
+                    {
+                        let mut lock = write_lock!(canonical_graph);
+                        lock.parents = vec![normalized.clone()];
+                    }
+
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
+        if !is_canonical {
+            for child in read_lock!(current).children.iter() {
+                queue.push_back(Arc::clone(child));
+            }
+        }
+    }
+
+    Ok((HashMap::new(), normalized))
+}
+
+pub fn process_canonical_network(
+    meta_context: Arc<RwLock<MetaContext>>,
+    basis_network: Arc<BasisNetwork>,
+    current: Graph,
+) -> Result<Graph, Errors> {
+    unimplemented!()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub async fn normalize_to_classification<P: Provider>(
     provider: Arc<P>,
