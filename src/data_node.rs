@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::transformation::HashTransformation;
+use crate::json_node::{Json, JsonNode};
 
 pub type DataNodeFields = HashMap<String, String>;
 
@@ -41,5 +42,24 @@ impl DataNode {
 
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty()
+    }
+
+    pub fn to_json_nodes(&self) -> Vec<JsonNode> {
+        self.fields
+            .iter()
+            .map(|(key, value)| {
+                let json = Json {
+                    key: key.clone(),
+                    value: value.clone(),
+                };
+                JsonNode {
+                    id: ID::new(),
+                    hash: self.hash.clone(),
+                    lineage: self.lineage.clone(),
+                    description: self.description.clone(),
+                    json,
+                }
+            })
+            .collect()
     }
 }

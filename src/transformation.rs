@@ -6,7 +6,6 @@ use std::sync::{Arc, RwLock};
 
 use crate::data_node::DataNode;
 use crate::id::ID;
-use crate::json_node::{Json, JsonNode};
 use crate::path::Path;
 use crate::prelude::*;
 use crate::schema_node::SchemaNode;
@@ -199,22 +198,20 @@ pub struct FieldTransformation {
 }
 
 impl FieldTransformation {
-    pub fn transform(&self, data_node: Arc<DataNode>) -> Result<JsonNode, Errors> {
+    pub fn transform(&self, data_node: Arc<DataNode>) -> Result<DataNode, Errors> {
         if let Some(value) = data_node.fields.get(&self.field) {
-            let json = Json {
-                key: self.image.clone(),
-                value: value.to_string(),
-            };
+            let mut fields = HashMap::new();
+            fields.insert(self.image.clone(), value.to_string());
 
-            let json_node = JsonNode {
+            let transformed = DataNode {
                 id: ID::new(),
                 hash: data_node.hash.clone(),
                 lineage: data_node.lineage.clone(),
                 description: self.description.clone(),
-                json,
+                fields,
             };
 
-            Ok(json_node)
+            Ok(transformed)
         } else {
             Err(Errors::FieldTransformationFieldNotFound)
         }

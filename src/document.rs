@@ -1107,10 +1107,11 @@ fn process_network(
             let json_nodes: Vec<JsonNode> = basis_node.transformations
                 .clone()
                 .into_iter()
-                .map(|transformation| {
+                .flat_map(|transformation| {
                     transformation
                         .transform(Arc::clone(&data_node))
                         .expect("Could not transform data node field")
+                        .to_json_nodes()
                 })
                 .collect();
 
@@ -1272,10 +1273,11 @@ fn process_network_old(
             let json_nodes: Vec<JsonNode> = basis_node.transformations
                 .clone()
                 .into_iter()
-                .map(|transformation| {
+                .flat_map(|transformation| {
                     transformation
                         .transform(Arc::clone(&data_node))
                         .expect("Could not transform data node field")
+                        .to_json_nodes()
                 })
                 .collect();
 

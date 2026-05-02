@@ -113,10 +113,11 @@ impl Context {
                     .transformations
                     .clone()
                     .into_iter()
-                    .map(|transformation| {
+                    .flat_map(|transformation| {
                         transformation
                             .transform(Arc::clone(&data_node))
                             .expect("Could not transform data node field")
+                            .to_json_nodes()
                     })
                     .collect();
 
