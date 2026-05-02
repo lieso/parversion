@@ -211,7 +211,6 @@ impl FieldTransformation {
                 hash: data_node.hash.clone(),
                 lineage: data_node.lineage.clone(),
                 description: self.description.clone(),
-                parent_id: None,
                 json,
             };
 

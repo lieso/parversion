@@ -8,7 +8,6 @@ pub struct JsonNode {
     pub hash: Hash,
     pub lineage: Lineage,
     pub description: String,
-    pub parent_id: Option<String>,
     pub json: Json,
 }
 

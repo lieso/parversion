@@ -51,3 +51,4 @@ pub mod network_relationship;
 pub mod basis_graph;
 pub mod xpath;
 pub mod traversal;
+pub mod normal_context;
