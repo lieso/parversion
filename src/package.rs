@@ -8,7 +8,7 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn to_string(&self, document_format: &Option<DocumentFormat>) -> String {
-        self.document.to_string(document_format)
+    pub fn to_string(&self) -> String {
+        self.document.to_string()
     }
 }

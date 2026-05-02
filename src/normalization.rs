@@ -221,12 +221,15 @@ pub async fn normalize_document<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
+    document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_document");
 
     let meta_context =
         normalize(Arc::clone(&provider), document, _options, metadata, execution_context).await?;
+
+    let normalized_document = Document::from_normalized_graph(Arc::clone(&meta_context), document_format)?;
 
     Ok(Package {
         document: normalized_document,
@@ -239,7 +242,7 @@ pub async fn normalize_document_to_string<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>,
+    document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
     log::trace!("In normalize_document_to_string");
@@ -249,11 +252,12 @@ pub async fn normalize_document_to_string<P: Provider>(
         document,
         _options,
         metadata,
+        document_format,
         execution_context,
     )
     .await?;
 
-    Ok(package.to_string(document_format))
+    Ok(package.to_string())
 }
 
 pub async fn normalize_text<P: Provider>(
@@ -303,6 +307,7 @@ pub async fn normalize_text_to_document<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
+    document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_text_to_document");
@@ -310,9 +315,7 @@ pub async fn normalize_text_to_document<P: Provider>(
     let meta_context =
         normalize_text(Arc::clone(&provider), text, _options, metadata, execution_context).await?;
 
-    let normalized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
-
-    normalized_document
+    Document::from_normalized_graph(Arc::clone(&meta_context), document_format)
 }
 
 pub async fn normalize_file<P: Provider>(
@@ -370,6 +373,7 @@ pub async fn normalize_file_to_document<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
+    document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_file_to_document");
@@ -378,9 +382,7 @@ pub async fn normalize_file_to_document<P: Provider>(
     let meta_context =
         normalize_file(Arc::clone(&provider), path, _options, metadata, execution_context).await?;
 
-    let normalized_document = Document::from_basis_transformations(Arc::clone(&meta_context));
-
-    normalized_document
+    Document::from_normalized_graph(Arc::clone(&meta_context), document_format)
 }
 
 pub async fn normalize_file_to_string<P: Provider>(
@@ -388,7 +390,7 @@ pub async fn normalize_file_to_string<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    document_format: &Option<DocumentFormat>,
+    document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
     log::trace!("In normalize_file_to_string");
@@ -399,11 +401,12 @@ pub async fn normalize_file_to_string<P: Provider>(
         path,
         _options,
         metadata,
+        document_format,
         execution_context,
     )
     .await?;
 
-    Ok(document.to_string(document_format))
+    Ok(document.to_string())
 }
 
 fn build_normalized_graph<P: Provider>(

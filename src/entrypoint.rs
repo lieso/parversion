@@ -46,6 +46,7 @@ pub async fn run() -> Result<(), Errors> {
     let metadata = get_metadata(&matches)?;
     let schema: Option<String> = get_schema(&matches).await?;
     let document: String = get_document(&matches).await?;
+    let document_format = document_format::DocumentFormat::default();
 
     let package = determine_document(
         provider,
@@ -53,14 +54,13 @@ pub async fn run() -> Result<(), Errors> {
         document,
         options,
         metadata,
+        &document_format,
         execution_context.clone(),
     ).await?;
 
-    let document_format = document_format::DocumentFormat::default();
-
     log::info!("Successfully processed document");
 
-    println!("{}", package.to_string(&Some(document_format)));
+    println!("{}", package.to_string());
 
     let elapsed = start.elapsed();
     log::info!("Elapsed: {:.2?}", elapsed);
@@ -266,6 +266,7 @@ async fn determine_document<P: Provider + ?Sized>(
     document: String,
     options: Options,
     metadata: Metadata,
+    document_format: &document_format::DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::debug!("options: {:?}", options);
@@ -287,6 +288,7 @@ async fn determine_document<P: Provider + ?Sized>(
             document,
             &options,
             &metadata,
+            document_format,
             execution_context.clone(),
         )
             .await?;

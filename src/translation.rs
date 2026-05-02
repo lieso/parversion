@@ -121,7 +121,7 @@ pub async fn translate_text<P: Provider>(
     )
     .await?;
 
-    Ok(document.to_string(document_format))
+    Ok(document.to_string())
 }
 
 pub async fn translate_document_to_meta_context<P: Provider>(
@@ -203,7 +203,7 @@ pub async fn translate_document_to_text<P: Provider>(
     )
     .await?;
 
-    Ok(document.to_string(document_format))
+    Ok(document.to_string())
 }
 
 pub async fn translate_file_to_meta_context<P: Provider>(
@@ -285,7 +285,7 @@ pub async fn translate_file_to_text<P: Provider>(
     )
     .await?;
 
-    Ok(package.to_string(document_format))
+    Ok(package.to_string())
 }
 
 pub async fn translate_file<P: Provider>(

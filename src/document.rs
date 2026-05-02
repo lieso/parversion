@@ -92,6 +92,14 @@ impl Document {
         }
     }
 
+    pub fn from_normalized_graph(
+        meta_context: Arc<RwLock<MetaContext>>,
+        _document_format: &DocumentFormat,
+    ) -> Result<Self, Errors> {
+        log::trace!("In from_normalized_graph");
+        unimplemented!()
+    }
+
     pub fn get_contexts(
         &self,
         meta_context: Arc<RwLock<MetaContext>>,
@@ -232,7 +240,7 @@ impl Document {
         })
     }
 
-    pub fn to_string(&self, _document_format: &Option<DocumentFormat>) -> String {
+    pub fn to_string(&self) -> String {
         let mut result = serde_json::to_string(self).expect("Could not convert document to string");
         result.push('\n');
         result.push_str(&self.data);
