@@ -23,6 +23,7 @@ use crate::basis_graph::BasisGraph;
 use crate::normal_context::NormalContext;
 use crate::data_node::DataNode;
 use crate::network_relationship::NetworkRelationshipType;
+use crate::classification::Classification;
 
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
@@ -422,6 +423,10 @@ fn build_normalized_graph<P: Provider>(
 > {
     log::trace!("In build_normalized_graph");
 
+    let classification: Arc<Classification> = {
+        let lock = read_lock!(meta_context);
+        lock.classification.clone().ok_or(Errors::ClassificationNotFound)?
+    };
     let normalized = Arc::new(RwLock::new(GraphNode {
         id: ID::new(),
         parents: Vec::new(),
@@ -431,7 +436,41 @@ fn build_normalized_graph<P: Provider>(
         lineage: Lineage::new(),
         children: Vec::new(),
     }));
+
     let mut contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
+
+
+
+
+    let data_node = Arc::new(DataNode {
+        id: ID::new(),
+        hash: Hash::new(),
+        lineage: Lineage::new(),
+        fields: HashMap::new(),
+        description: "placeholder".to_string()
+    });
+
+    let root_context = Arc::new(NormalContext {
+        id: ID::new(),
+        network_name: classification.name.clone(),
+        network_description: classification.description.clone(),
+        graph_node: Arc::clone(&normalized),
+        data_node: Arc::clone(&data_node),
+    });
+    contexts.insert(
+        data_node.id.clone(),
+        Arc::clone(&root_context)
+    );
+    contexts.insert(
+        read_lock!(normalized).id.clone(),
+        Arc::clone(&root_context)
+    );
+
+
+
+
+
+
 
     let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
