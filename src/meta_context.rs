@@ -14,6 +14,7 @@ use crate::profile::Profile;
 use crate::schema::Schema;
 use crate::schema_context::SchemaContext;
 use crate::transformation::SchemaTransformation;
+use crate::normal_context::NormalContext;
 
 pub struct MetaContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
@@ -31,6 +32,8 @@ pub struct MetaContext {
     pub translation_schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
     pub translation_schema_graph_root: Option<Graph>,
     pub functions: Option<Vec<Function>>,
+    pub normal_contexts: Option<HashMap<ID, Arc<NormalContext>>>,
+    pub normal_graph_root: Option<Graph>,
 }
 
 impl MetaContext {
@@ -51,6 +54,8 @@ impl MetaContext {
             translation_schema_contexts: None,
             translation_schema_graph_root: None,
             functions: None,
+            normal_contexts: None,
+            normal_graph_root: None,
         }
     }
 
@@ -134,6 +139,15 @@ impl MetaContext {
     ) {
         self.contexts = Some(contexts);
         self.graph_root = Some(graph_root);
+    }
+    
+    pub fn update_normalized_graph(
+        &mut self,
+        contexts: HashMap<ID, Arc<NormalContext>>,
+        graph_root: Graph,
+    ) {
+        self.normal_contexts = Some(contexts);
+        self.normal_graph_root = Some(graph_root);
     }
 
     pub fn update_classification(&mut self, classification: Arc<Classification>) {
