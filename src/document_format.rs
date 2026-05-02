@@ -3,7 +3,7 @@ use crate::document::DocumentType;
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct DocumentFormat {
-    format_type: DocumentType,
+    pub format_type: DocumentType,
     encoding: Option<String>,
     indent: Option<usize>,
     line_ending: Option<String>,

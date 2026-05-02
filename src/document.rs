@@ -94,9 +94,23 @@ impl Document {
 
     pub fn from_normalized_graph(
         meta_context: Arc<RwLock<MetaContext>>,
-        _document_format: &DocumentFormat,
+        document_format: &DocumentFormat,
     ) -> Result<Self, Errors> {
         log::trace!("In from_normalized_graph");
+
+        match document_format.format_type {
+            DocumentType::Json => Self::from_normalized_graph_json(Arc::clone(&meta_context)),
+            DocumentType::PlainText => unimplemented!(),
+            DocumentType::JavaScript => unimplemented!(),
+            DocumentType::Xml => unimplemented!(),
+            DocumentType::Html => unimplemented!(),
+        }
+    }
+
+    fn from_normalized_graph_json(
+        meta_context: Arc<RwLock<MetaContext>>,
+    ) -> Result<Self, Errors> {
+        log::trace!("In from_normalized_graph_json");
         unimplemented!()
     }
 
