@@ -443,8 +443,11 @@ fn build_normalized_graph<P: Provider>(
     while let Some(current) = queue.pop_front() {
         let subgraph_hash = read_lock!(current).subgraph_hash.clone();
 
+        log::debug!("build_normalized_graph: visiting node, subgraph_hash={:?}", subgraph_hash);
+
         let is_canonical = {
             if let Some(basis_network) = read_lock!(meta_context).get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)? {
+                log::debug!("build_normalized_graph: found basis_network for subgraph_hash");
                 if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
                     log::info!("Found a canonical network");
 
@@ -457,9 +460,11 @@ fn build_normalized_graph<P: Provider>(
 
                     true
                 } else {
+                    log::debug!("build_normalized_graph: basis_network not canonical");
                     false
                 }
             } else {
+                log::debug!("build_normalized_graph: no basis_network for subgraph_hash");
                 false
             }
         };
@@ -471,6 +476,7 @@ fn build_normalized_graph<P: Provider>(
         }
     }
 
+    log::debug!("build_normalized_graph: done, contexts count={}", contexts.len());
     Ok((contexts, normalized))
 }
 
@@ -568,6 +574,7 @@ fn process_network(
     current_node: Graph,
     contexts: &mut HashMap<ID, Arc<NormalContext>>
 ) -> Result<(), Errors> {
+    log::trace!("In process_network");
 
     fn recurse(
         meta_context: Arc<RwLock<MetaContext>>,
@@ -589,6 +596,8 @@ fn process_network(
                 Arc::clone(&meta_context),
                 Arc::clone(&current_node)
             )? {
+                log::info!("Obtained a normalized_data_node");
+
                 let normalized_data_node = Arc::new(normalized_data_node);
 
                 let normalized_graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
@@ -640,7 +649,7 @@ fn process_network(
                 {
                     log::info!("Found a canonical network");
 
-                    let canonical_graph = process_canonical_network(
+                    process_canonical_network(
                         Arc::clone(&meta_context),
                         Arc::clone(&parent_for_children),
                         Arc::clone(&child),
@@ -648,15 +657,14 @@ fn process_network(
                     )?;
                     continue;
                 }
-
-            } else {
-                recurse(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&child),
-                    parent_for_children.clone(),
-                    contexts
-                )?;
             }
+
+            recurse(
+                Arc::clone(&meta_context),
+                Arc::clone(&child),
+                parent_for_children.clone(),
+                contexts
+            )?;
         }
 
         Ok(())
@@ -676,14 +684,21 @@ fn process_node(
     meta_context: Arc<RwLock<MetaContext>>,
     node: Graph,
 ) -> Result<Option<DataNode>, Errors> {
+    log::trace!("In process_node");
+
+    log::debug!("node.id: {}", read_lock!(node).id.to_string());
+
     let context = {
         let lock = read_lock!(meta_context);
         let contexts = lock.contexts.clone().unwrap();
 
         contexts.get(&read_lock!(node).id).cloned().unwrap()
     };
+    log::debug!("context.lineage: {}", context.lineage.to_string());
     let data_node = &context.data_node;
-    let basis_lineage = context.basis_lineage().clone();
+    let basis_lineage = read_lock!(context.basis_lineage).clone();
+
+    log::debug!("process_node: basis_lineage={:?}", basis_lineage.is_some());
 
     if let Some(basis_lineage) = basis_lineage {
         let basis_node = {
@@ -703,6 +718,8 @@ fn process_node(
             })
             .filter(|data_node| !data_node.fields.is_empty())
             .collect();
+
+        log::debug!("process_node: transformations produced {} non-empty data nodes", data_nodes.len());
 
         if !data_nodes.is_empty() {
             let normalized_data_node = DataNode::from_data_nodes(data_nodes);
