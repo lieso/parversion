@@ -228,8 +228,6 @@ pub async fn normalize_document<P: Provider>(
     let meta_context =
         normalize(Arc::clone(&provider), document, _options, metadata, execution_context).await?;
 
-    let normalized_document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
-
     Ok(Package {
         document: normalized_document,
         mutations: Vec::new(),

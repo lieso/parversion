@@ -20,51 +20,7 @@ pub async fn translate<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
 
-    log::info!("Generating organized document");
-    let document = Document::from_basis_transformations(Arc::clone(&meta_context))?;
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.add_document_version(DocumentVersion::OrganizedDocument, document.clone());
-    }
-
-    {
-        log::info!("Getting schema context");
-        let (contexts, graph_root) = &document.schema.unwrap().get_contexts()?;
-        let mut lock = write_lock!(meta_context);
-        lock.update_schema_context(contexts.clone(), graph_root.clone());
-    }
-
-    log::info!("Parsing JSON schema");
-    let schema = Schema::from_string(json_schema)?;
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_translation_schema(schema.clone());
-    }
-
-    let (contexts, graph_root) = &schema.get_contexts()?;
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_translation_schema_context(contexts.clone(), graph_root.clone());
-    }
-
-    log::info!("Getting translation schema transformations");
-    let schema_transformations = get_translation_schema_transformations(
-        Arc::clone(&provider),
-        Arc::clone(&meta_context),
-        options,
-        execution_context,
-    )
-    .await?;
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_schema_transformations(schema_transformations);
-    }
-
-    Ok(meta_context)
+    unimplemented!()
 }
 
 pub async fn translate_meta_context<P: Provider>(
