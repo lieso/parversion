@@ -36,6 +36,7 @@ impl XPath {
         log::trace!("In XPath::from_str");
 
         let segments = s
+            .replace("//", "/descendant::")
             .split('/')
             .filter(|part| !part.is_empty())
             .map(XPathSegment::from_str)

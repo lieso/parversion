@@ -112,7 +112,18 @@ impl GraphNode {
             },
             XPathAxis::Parent => unimplemented!(),
             XPathAxis::Self_ => unimplemented!(),
-            XPathAxis::Descendant => unimplemented!(),
+            XPathAxis::Descendant => {
+                let mut descendants = Vec::new();
+                let mut queue = lock.children.clone();
+
+                while !queue.is_empty() {
+                    let node = queue.remove(0);
+                    descendants.push(node.clone());
+                    queue.extend(read_lock!(node).children.clone());
+                }
+
+                Ok(descendants)
+            },
             XPathAxis::Ancestor => {
                 let mut ancestors = Vec::new();
                 let mut current_parents = lock.parents.clone();
@@ -131,16 +142,9 @@ impl GraphNode {
                     if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
                         read_lock!(child).id == lock.id
                     }) {
-                        let target_index = index_current + 1;
-
-                        if let Some(sibling) = read_lock!(parent).children.get(target_index) {
-                            log::info!("Found sibling");
-
-                            Ok(vec![sibling.clone()])
-                        } else {
-                            log::info!("Could not traverse to following sibling");
-                            Ok(vec![])
-                        }
+                        let siblings: Vec<Graph> = read_lock!(parent).children[index_current + 1..].to_vec();
+                        log::info!("Found {} following siblings", siblings.len());
+                        Ok(siblings)
                     } else {
                         Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
                     }
@@ -182,6 +186,8 @@ impl GraphNode {
         let current_context = contexts.get(&read_lock!(graph).id).unwrap();
         let document_node = current_context.document_node.clone();
         let name = read_lock!(document_node).get_element_name();
+
+        log::debug!("document_node: {}", read_lock!(document_node).to_string());
 
         if node_test.trim() == name.trim() {
             log::debug!("Graph passes node test");
@@ -314,7 +320,7 @@ impl GraphNode {
                 } else {
                     log::info!("No matches after segment {}, stopping early", index);
                 }
-                
+
                 return Ok(None);
             }
         }
@@ -322,6 +328,7 @@ impl GraphNode {
         if current.len() > 1 {
             panic!("We found more than one graph matching provided xpath expression");
         }
+
 
         Ok(current.first().cloned())
     }
