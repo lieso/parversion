@@ -20,7 +20,9 @@ use crate::graph_node::Graph;
 use crate::graph_node::GraphNode;
 use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
-use crate::context::Context;
+use crate::normal_context::NormalContext;
+use crate::data_node::DataNode;
+use crate::network_relationship::NetworkRelationshipType;
 
 pub async fn normalize<P: Provider>(
     provider: Arc<P>,
@@ -122,7 +124,7 @@ pub async fn build_normalized_graph<P: Provider>(
     options: &Options
 ) -> Result<
     (
-        HashMap<ID, Arc<Context>>,
+        HashMap<ID, Arc<NormalContext>>,
         Arc<RwLock<GraphNode>>,
     ),
     Errors,
@@ -138,6 +140,7 @@ pub async fn build_normalized_graph<P: Provider>(
         lineage: Lineage::new(),
         children: Vec::new(),
     }));
+    let mut contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
 
     let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
@@ -154,21 +157,12 @@ pub async fn build_normalized_graph<P: Provider>(
                 if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
                     log::info!("Found a canonical network");
 
-                    let canonical_graph: Graph = process_canonical_network(
+                    process_canonical_network(
                         Arc::clone(&meta_context),
-                        Arc::clone(basis_network),
+                        Arc::clone(&normalized),
                         Arc::clone(&current),
+                        &mut contexts,
                     )?;
-
-                    {
-                        let mut lock = write_lock!(normalized);
-                        lock.children.push(canonical_graph.clone());
-                    }
-
-                    {
-                        let mut lock = write_lock!(canonical_graph);
-                        lock.parents = vec![normalized.clone()];
-                    }
 
                     true
                 } else {
@@ -186,15 +180,253 @@ pub async fn build_normalized_graph<P: Provider>(
         }
     }
 
-    Ok((HashMap::new(), normalized))
+    Ok((contexts, normalized))
 }
 
-pub fn process_canonical_network(
+fn process_canonical_network(
     meta_context: Arc<RwLock<MetaContext>>,
-    basis_network: Arc<BasisNetwork>,
-    current: Graph,
-) -> Result<Graph, Errors> {
-    unimplemented!()
+    normalized_parent_node: Graph,
+    current_node: Graph,
+    contexts: &mut HashMap<ID, Arc<NormalContext>>
+) -> Result<(), Errors> {
+
+    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let relationships: Vec<RelationshipTransformation> = basis_graph.relationships.unwrap();
+
+    let network = process_network(
+        Arc::clone(&meta_context),
+        Arc::clone(&normalized_parent_node),
+        Arc::clone(&current_node),
+        contexts,
+    )?;
+
+    let subgraph_hash: Hash = read_lock!(current_node).subgraph_hash.clone();
+
+    let basis_network: Arc<BasisNetwork> = {
+        let lock = read_lock!(meta_context);
+        lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?.unwrap()
+    };
+
+    let current_relationships: Vec<&RelationshipTransformation> = relationships
+        .iter()
+        .filter(|item| item.from == basis_network.id)
+        .collect();
+
+    for relationship in current_relationships.iter() {
+        match relationship.relationship_type {
+            NetworkRelationshipType::Composition => {
+                process_composition_relationship(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&normalized_parent_node),
+                    Arc::clone(&current_node),
+                    *relationship,
+                    contexts,
+                )?;
+            }
+            NetworkRelationshipType::ParentChild => {
+                todo!();
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn process_composition_relationship(
+    meta_context: Arc<RwLock<MetaContext>>,
+    normalized_parent_node: Graph,
+    current_node: Graph,
+    relationship: &RelationshipTransformation,
+    contexts: &mut HashMap<ID, Arc<NormalContext>>
+) -> Result<(), Errors> {
+    log::trace!("In process_composition_relationship");
+
+    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let traversals: Option<Vec<TraversalTransformation>> = basis_graph.traversals;
+
+    let Some(traversals) = traversals else {
+        panic!("Processing composition relationship, but no traversals available on basis graph");
+    };
+
+    let Some(traversal) = traversals.iter().find(|item| item.relationship_id == relationship.id) else {
+        panic!("Processing composition relationship, but no traversal is available for this relationship");
+    };
+
+    if let Some(target_network) = traversal.transform(
+        Arc::clone(&meta_context),
+        Arc::clone(&current_node),
+    )? {
+        log::info!("Traversal found target network");
+
+        process_network(
+            Arc::clone(&meta_context),
+            Arc::clone(&normalized_parent_node),
+            Arc::clone(&target_network),
+            contexts
+        )?;
+    } else {
+        log::warn!("Traversal could not be applied to find target network");
+    }
+
+    Ok(())
+}
+
+fn process_network(
+    meta_context: Arc<RwLock<MetaContext>>,
+    normalized_parent_node: Graph,
+    current_node: Graph,
+    contexts: &mut HashMap<ID, Arc<NormalContext>>
+) -> Result<(), Errors> {
+
+    fn recurse(
+        meta_context: Arc<RwLock<MetaContext>>,
+        current_node: Graph,
+        parent_normalized_node: Graph,
+        contexts: &mut HashMap<ID, Arc<NormalContext>>
+    ) -> Result<(), Errors> {
+        let mut current_normalized: Option<Graph> = None;
+
+        let subgraph_hash: Hash = read_lock!(current_node).subgraph_hash.clone();
+
+        let maybe_basis_network = {
+            let lock = read_lock!(meta_context);
+            lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?
+        };
+
+        if let Some(basis_network) = maybe_basis_network {
+            if let Some(normalized_data_node) = process_node(
+                Arc::clone(&meta_context),
+                Arc::clone(&current_node)
+            )? {
+                let normalized_data_node = Arc::new(normalized_data_node);
+
+                let normalized_graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
+                    Arc::clone(&normalized_data_node),
+                    vec![parent_normalized_node.clone()]
+                )));
+
+                current_normalized = Some(Arc::clone(&normalized_graph_node));
+
+                write_lock!(parent_normalized_node).children.push(Arc::clone(&normalized_graph_node));
+
+                let normal_context = Arc::new(NormalContext {
+                    id: ID::new(),
+                    network_name: basis_network.transformation.image.clone(),
+                    network_description: basis_network.description.clone(),
+                    graph_node: Arc::clone(&normalized_graph_node),
+                    data_node: Arc::clone(&normalized_data_node),
+                });
+
+                contexts.insert(
+                    normalized_data_node.id.clone(),
+                    Arc::clone(&normal_context)
+                );
+                contexts.insert(
+                    read_lock!(normalized_graph_node).id.clone(),
+                    Arc::clone(&normal_context)
+                );
+            }
+        }
+
+
+        let parent_for_children = current_normalized.clone()
+            .unwrap_or_else(|| parent_normalized_node.clone());
+
+
+
+
+        let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+        let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
+
+
+
+        for child in &read_lock!(current_node).children {
+            let subgraph_hash: Hash = read_lock!(child).subgraph_hash.clone();
+
+            let basis_network = {
+                let lock = read_lock!(meta_context);
+                lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?
+            };
+
+            if let Some(basis_network) = basis_network {
+                if let Some(canonical) = canonicalization
+                    .transform(vec![Arc::clone(&basis_network)])?
+                    .first()
+                {
+                    log::info!("Found a canonical network");
+
+                    let canonical_graph = process_canonical_network(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&parent_for_children),
+                        Arc::clone(&child),
+                        contexts,
+                    )?;
+                    continue;
+                }
+
+            } else {
+                recurse(
+                    Arc::clone(&meta_context),
+                    Arc::clone(&child),
+                    parent_for_children.clone(),
+                    contexts
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    recurse(
+        Arc::clone(&meta_context),
+        Arc::clone(&current_node),
+        Arc::clone(&normalized_parent_node),
+        contexts
+    )?;
+
+    Ok(())
+}
+
+fn process_node(
+    meta_context: Arc<RwLock<MetaContext>>,
+    node: Graph,
+) -> Result<Option<DataNode>, Errors> {
+    let context = {
+        let lock = read_lock!(meta_context);
+        let contexts = lock.contexts.clone().unwrap();
+
+        contexts.get(&read_lock!(node).id).cloned().unwrap()
+    };
+    let data_node = &context.data_node;
+    let basis_lineage = context.basis_lineage().clone();
+
+    if let Some(basis_lineage) = basis_lineage {
+        let basis_node = {
+            let lock = read_lock!(meta_context);
+            lock.get_basis_node_by_lineage(&basis_lineage)
+                .expect("Could not get basis node by lineage")
+                .unwrap()
+        };
+
+        let data_nodes: Vec<DataNode> = basis_node.transformations
+            .clone()
+            .into_iter()
+            .map(|transformation| {
+                transformation
+                    .transform(Arc::clone(&data_node))
+                    .expect("Could not transform data node")
+            })
+            .filter(|data_node| !data_node.fields.is_empty())
+            .collect();
+
+        if !data_nodes.is_empty() {
+            let normalized_data_node = DataNode::from_data_nodes(data_nodes);
+
+            return Ok(Some(normalized_data_node));
+        }
+    }
+
+    Ok(None)
 }
 
 

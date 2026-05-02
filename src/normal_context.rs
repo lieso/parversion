@@ -7,7 +7,8 @@ use crate::data_node::DataNode;
 #[derive(Clone, Debug)]
 pub struct NormalContext {
     pub id: ID,
-    pub lineage: Lineage,
+    pub network_name: String,
+    pub network_description: String,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
 }

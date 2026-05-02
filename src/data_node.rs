@@ -40,6 +40,22 @@ impl DataNode {
         }
     }
 
+    pub fn from_data_nodes(data_nodes: Vec<Self>) -> Self {
+        Self {
+            id: ID::new(),
+            hash: Hash::new(),
+            lineage: Lineage::new(),
+            fields: data_nodes.into_iter().fold(
+                HashMap::new(),
+                |mut acc, data_node| {
+                    acc.extend(data_node.fields);
+                    acc
+                }
+            ),
+            description: "Placeholder description".to_string()
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.fields.is_empty()
     }
