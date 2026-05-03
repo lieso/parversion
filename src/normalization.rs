@@ -515,6 +515,19 @@ fn build_normalized_graph<P: Provider>(
         }
     }
 
+
+    for (id, context) in &contexts {
+        log::debug!("--------------------------------------");
+
+        log::debug!("context.network_name: {}", context.network_name);
+        log::debug!("context.data_node.fields: {:?}", context.data_node.fields);
+    }
+
+
+
+
+
+
     log::debug!("build_normalized_graph: done, contexts count={}", contexts.len());
     Ok((contexts, normalized))
 }

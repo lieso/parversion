@@ -137,9 +137,17 @@ impl Document {
 
             let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
 
+            for json_node in json_nodes {
+                let json = json_node.json;
+                let value = json!(json.value.trim().to_string());
+                result.insert(json.key, value);
+            }
+
             for child in &read_lock!(graph_node).children {
                 let child_context = contexts.get(&read_lock!(child).id).unwrap();
-                let child_network_name = &context.network_name.clone();
+                let child_network_name = &child_context.network_name.clone();
+
+                log::debug!("child_network_name: {}", child_network_name);
 
                 let mut inner_result: Map<String, Value> = Map::new();
 
