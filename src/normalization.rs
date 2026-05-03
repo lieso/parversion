@@ -525,19 +525,9 @@ fn process_canonical_network(
     current_node: Graph,
     contexts: &mut HashMap<ID, Arc<NormalContext>>
 ) -> Result<(), Errors> {
-
     let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
     let relationships: Vec<RelationshipTransformation> = basis_graph.relationships.unwrap();
-
-    let network = process_network(
-        Arc::clone(&meta_context),
-        Arc::clone(&normalized_parent_node),
-        Arc::clone(&current_node),
-        contexts,
-    )?;
-
     let subgraph_hash: Hash = read_lock!(current_node).subgraph_hash.clone();
-
     let basis_network: Arc<BasisNetwork> = {
         let lock = read_lock!(meta_context);
         lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?.unwrap()
@@ -545,19 +535,40 @@ fn process_canonical_network(
 
     let current_relationships: Vec<&RelationshipTransformation> = relationships
         .iter()
-        .filter(|item| item.from == basis_network.id)
+        .filter(|item| item.from == basis_network.id || item.to == basis_network.id)
         .collect();
+
+    // No relationships, but still a canonical network so we include it
+    if current_relationships.is_empty() {
+        process_network(
+            Arc::clone(&meta_context),
+            Arc::clone(&normalized_parent_node),
+            Arc::clone(&current_node),
+            contexts,
+        )?;
+    }
 
     for relationship in current_relationships.iter() {
         match relationship.relationship_type {
             NetworkRelationshipType::Composition => {
-                process_composition_relationship(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&normalized_parent_node),
-                    Arc::clone(&current_node),
-                    *relationship,
-                    contexts,
-                )?;
+                if relationship.from == basis_network.id {
+                    process_network(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&normalized_parent_node),
+                        Arc::clone(&current_node),
+                        contexts,
+                    )?;
+
+                    process_composition_relationship(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&normalized_parent_node),
+                        Arc::clone(&current_node),
+                        *relationship,
+                        contexts,
+                    )?;
+                } else {
+                    log::info!("Network is the 'to' in a composition relationship. Presumably it has been, or will be processed when the 'from' network matches.");
+                }
             }
             NetworkRelationshipType::ParentChild => {
                 todo!();
@@ -674,6 +685,10 @@ fn process_network(
 
 
 
+
+
+
+
         contexts.insert(
             normalized_data_node.id.clone(),
             Arc::clone(&normal_context)
@@ -735,19 +750,14 @@ fn process_node(
 ) -> Result<DataNode, Errors> {
     log::trace!("In process_node");
 
-    log::debug!("node.id: {}", read_lock!(node).id.to_string());
-
     let context = {
         let lock = read_lock!(meta_context);
         let contexts = lock.contexts.clone().unwrap();
 
         contexts.get(&read_lock!(node).id).cloned().unwrap()
     };
-    log::debug!("context.lineage: {}", context.lineage.to_string());
     let data_node = &context.data_node;
     let basis_lineage = read_lock!(context.basis_lineage).clone();
-
-    log::debug!("process_node: basis_lineage={:?}", basis_lineage.is_some());
 
     if let Some(basis_lineage) = basis_lineage {
         let basis_node = {
