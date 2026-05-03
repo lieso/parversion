@@ -552,16 +552,56 @@ fn process_canonical_network(
         match relationship.relationship_type {
             NetworkRelationshipType::Composition => {
                 if relationship.from == basis_network.id {
+
+
+
+
+                    let normalized_data_node = Arc::new(DataNode {
+                        id: ID::new(),
+                        hash: Hash::new(),
+                        lineage: Lineage::new(),
+                        fields: HashMap::new(),
+                        description: "Merged network".to_string()
+                    });
+                    let normalized_graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
+                        Arc::clone(&normalized_data_node),
+                        vec![normalized_parent_node.clone()]
+                    )));
+
+                    write_lock!(normalized_parent_node).children.push(Arc::clone(&normalized_graph_node));
+
+                    let normal_context = Arc::new(NormalContext {
+                        id: ID::new(),
+                        network_name: Some(basis_network.transformation.image.clone()),
+                        network_description: Some(basis_network.description.clone()),
+                        graph_node: Arc::clone(&normalized_graph_node),
+                        data_node: Arc::clone(&normalized_data_node),
+                    });
+
+                    contexts.insert(
+                        normalized_data_node.id.clone(),
+                        Arc::clone(&normal_context)
+                    );
+                    contexts.insert(
+                        read_lock!(normalized_graph_node).id.clone(),
+                        Arc::clone(&normal_context)
+                    );
+
+
+
+
+
+
                     process_network(
                         Arc::clone(&meta_context),
-                        Arc::clone(&normalized_parent_node),
+                        Arc::clone(&normalized_graph_node),
                         Arc::clone(&current_node),
                         contexts,
                     )?;
 
                     process_composition_relationship(
                         Arc::clone(&meta_context),
-                        Arc::clone(&normalized_parent_node),
+                        Arc::clone(&normalized_graph_node),
                         Arc::clone(&current_node),
                         *relationship,
                         contexts,

@@ -130,11 +130,6 @@ impl Document {
             let network_name = &context.network_name;
             let network_description = &context.network_description;
             let data_node = &context.data_node;
-
-            log::debug!("network_name: {:?}", network_name);
-            log::debug!("network_description: {:?}", network_description);
-            log::debug!("data_node.fields: {:?}", data_node.fields);
-
             let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
 
             for json_node in json_nodes {
@@ -142,9 +137,6 @@ impl Document {
                 let value = json!(json.value.trim().to_string());
                 result.insert(json.key, value);
             }
-
-            log::debug!("-----------------------------------------------------------------------------------------------------");
-            log::debug!("number of children: {}", &read_lock!(graph_node).children.len());
 
             for child in &read_lock!(graph_node).children {
                 let child_context = contexts.get(&read_lock!(child).id).unwrap();
@@ -176,16 +168,12 @@ impl Document {
                     }
 
                 } else {
-
                     recurse(
                         Arc::clone(&meta_context),
                         Arc::clone(&child),
                         result
                     );
                 }
-
-
-
             }
         }
 
@@ -195,12 +183,17 @@ impl Document {
             &mut result,
         );
 
-        let pretty_string = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
+        let document = Document {
+            document_type: DocumentType::Json,
+            data: serde_json::to_string_pretty(&result).expect("Could not make a JSON string"),
+            metadata: DocumentMetadata {
+                origin: None,
+                date: None,
+            },
+            schema: None,
+        };
 
-        log::debug!("{}", pretty_string);
-
-
-        unimplemented!()
+        Ok(document)
     }
 
     pub fn get_contexts(
