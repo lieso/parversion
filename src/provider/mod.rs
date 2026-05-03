@@ -8,7 +8,6 @@ use crate::basis_graph::BasisGraph;
 use crate::operation::Operation;
 use crate::prelude::*;
 use crate::profile::Profile;
-use crate::transformation::SchemaTransformation;
 
 #[cfg(feature = "yaml-provider")]
 pub mod yaml;
@@ -45,17 +44,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineage: &Lineage,
         classification: Classification,
-    ) -> Result<(), Errors>;
-    async fn get_schema_transformation(
-        &self,
-        lineage: &Lineage,
-        target_schema: Option<&Hash>,
-    ) -> Result<Option<SchemaTransformation>, Errors>;
-    async fn save_schema_transformation(
-        &self,
-        lineage: &Lineage,
-        target_schema: Option<&Hash>,
-        schema_transformation: SchemaTransformation,
     ) -> Result<(), Errors>;
     async fn get_operation_by_hash(
         &self,
@@ -132,23 +120,6 @@ impl Provider for VoidProvider {
         &self,
         _lineage: &Lineage,
         _classification: Classification,
-    ) -> Result<(), Errors> {
-        Ok(())
-    }
-
-    async fn get_schema_transformation(
-        &self,
-        _lineage: &Lineage,
-        _target: Option<&Hash>,
-    ) -> Result<Option<SchemaTransformation>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_schema_transformation(
-        &self,
-        _lineage: &Lineage,
-        _target_schema: Option<&Hash>,
-        _schema_transformation: SchemaTransformation,
     ) -> Result<(), Errors> {
         Ok(())
     }

@@ -8,7 +8,6 @@ use crate::data_node::DataNode;
 use crate::id::ID;
 use crate::path::Path;
 use crate::prelude::*;
-use crate::schema_node::SchemaNode;
 use crate::basis_network::BasisNetwork;
 use crate::traversal::Traversal;
 use crate::network_relationship::NetworkRelationshipType;
@@ -20,28 +19,6 @@ pub enum Runtime {
     NodeJS,
     Python,
     QuickJS,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SchemaTransformation {
-    pub id: ID,
-    pub timestamp: Timestamp,
-    pub lineage: Lineage,
-    pub subgraph_hash: Option<Hash>,
-    pub key: String,
-    pub description: String,
-    pub source: Option<Path>,
-    pub target: Option<Path>,
-}
-
-impl SchemaTransformation {
-    pub fn transform(&self, schema_node: &SchemaNode) -> SchemaNode {
-        let mut transformed = schema_node.clone();
-        transformed.name = self.key.clone();
-        transformed.description = self.description.clone();
-
-        transformed
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

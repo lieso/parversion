@@ -44,13 +44,11 @@ pub async fn run() -> Result<(), Errors> {
     let provider = init_provider().await?;
     let options = get_options(&matches)?;
     let metadata = get_metadata(&matches)?;
-    let schema: Option<String> = get_schema(&matches).await?;
     let document: String = get_document(&matches).await?;
     let document_format = document_format::DocumentFormat::default();
 
     let package = determine_document(
         provider,
-        schema,
         document,
         options,
         metadata,
@@ -128,7 +126,6 @@ fn handle_error(err: Errors) {
     match err {
         Errors::YamlParseError(msg)
         | Errors::FetchUrlError(msg)
-        | Errors::JsonSchemaParseError(msg)
         | Errors::DeficientMetaContextError(msg) => {
             eprintln!("Error: {}", msg);
         }
@@ -147,12 +144,6 @@ fn parse_arguments() -> clap::ArgMatches {
                 .long("document")
                 .value_name("DOCUMENT")
                 .help("Provide document for processing"),
-        )
-        .arg(
-            Arg::with_name("schema")
-                .long("schema")
-                .value_name("SCHEMA")
-                .help("Provide schema for translation"),
         )
         .arg(
             Arg::with_name("version")
@@ -207,24 +198,6 @@ fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
     })
 }
 
-async fn get_schema(matches: &clap::ArgMatches) -> Result<Option<String>, Errors> {
-    if let Some(schema) = matches.value_of("schema") {
-        return if is_valid_url(schema) {
-            let text = fetch_url_as_text(schema).await?;
-            Ok(Some(text))
-        } else if is_valid_unix_path(schema) {
-            let text = get_file_as_text(schema)?;
-            Ok(Some(text))
-        } else if is_valid_json(schema) {
-            Ok(Some(schema.to_string()))
-        } else {
-            Err(Errors::SchemaNotValid)
-        };
-    }
-
-    Ok(None)
-}
-
 async fn get_document(matches: &clap::ArgMatches) -> Result<String, Errors> {
     if let Ok(stdin) = load_stdin() {
         log::info!("Received data from stdin");
@@ -262,7 +235,6 @@ fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors>
 
 async fn determine_document<P: Provider + ?Sized>(
     provider: Arc<P>,
-    schema: Option<String>,
     document: String,
     options: Options,
     metadata: Metadata,
@@ -272,32 +244,20 @@ async fn determine_document<P: Provider + ?Sized>(
     log::debug!("options: {:?}", options);
     log::debug!("metadata: {:?}", metadata);
 
-    if let Some(schema) = schema {
-        translation::translate_text_to_package(
-            provider.clone(),
-            document,
-            &options,
-            &metadata,
-            &schema,
-            execution_context.clone()
-        )
-        .await
-    } else {
-        let normalized_document = normalization::normalize_text_to_document(
-            provider.clone(),
-            document,
-            &options,
-            &metadata,
-            document_format,
-            execution_context.clone(),
-        )
-            .await?;
+    let normalized_document = normalization::normalize_text_to_document(
+        provider.clone(),
+        document,
+        &options,
+        &metadata,
+        document_format,
+        execution_context.clone(),
+    )
+        .await?;
 
-        Ok(Package {
-            document: normalized_document,
-            mutations: Vec::new(),
-        })
-    }
+    Ok(Package {
+        document: normalized_document,
+        mutations: Vec::new(),
+    })
 }
 
 fn init_execution_context() -> Arc<ExecutionContext> {

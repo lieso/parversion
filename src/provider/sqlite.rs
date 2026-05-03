@@ -11,7 +11,6 @@ use crate::operation::Operation;
 use crate::prelude::*;
 use crate::profile::Profile;
 use crate::provider::Provider;
-use crate::transformation::SchemaTransformation;
 
 #[cfg(feature = "sqlite-provider")]
 pub struct SqliteProvider {
@@ -85,23 +84,6 @@ impl Provider for SqliteProvider {
         &self,
         _lineage: &Lineage,
         _classification: Classification,
-    ) -> Result<(), Errors> {
-        Ok(())
-    }
-
-    async fn get_schema_transformation(
-        &self,
-        _lineage: &Lineage,
-        _target: Option<&Hash>,
-    ) -> Result<Option<SchemaTransformation>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_schema_transformation(
-        &self,
-        _lineage: &Lineage,
-        _target_schema: Option<&Hash>,
-        _schema_transformation: SchemaTransformation,
     ) -> Result<(), Errors> {
         Ok(())
     }

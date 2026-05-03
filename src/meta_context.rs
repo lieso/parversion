@@ -11,9 +11,6 @@ use crate::function::Function;
 use crate::graph_node::Graph;
 use crate::prelude::*;
 use crate::profile::Profile;
-use crate::schema::Schema;
-use crate::schema_context::SchemaContext;
-use crate::transformation::SchemaTransformation;
 use crate::normal_context::NormalContext;
 
 pub struct MetaContext {
@@ -25,12 +22,6 @@ pub struct MetaContext {
     pub basis_graph: Option<BasisGraph>,
     pub classification: Option<Arc<Classification>>,
     pub profile: Option<Arc<Profile>>,
-    pub schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
-    pub schema_graph_root: Option<Graph>,
-    pub schema_transformations: Option<HashMap<Lineage, Arc<SchemaTransformation>>>,
-    pub translation_schema: Option<Arc<Schema>>,
-    pub translation_schema_contexts: Option<HashMap<ID, Arc<SchemaContext>>>,
-    pub translation_schema_graph_root: Option<Graph>,
     pub functions: Option<Vec<Function>>,
     pub normal_contexts: Option<HashMap<ID, Arc<NormalContext>>>,
     pub normal_graph_root: Option<Graph>,
@@ -47,12 +38,6 @@ impl MetaContext {
             basis_graph: None,
             classification: None,
             profile: None,
-            schema_contexts: None,
-            schema_graph_root: None,
-            schema_transformations: None,
-            translation_schema: None,
-            translation_schema_contexts: None,
-            translation_schema_graph_root: None,
             functions: None,
             normal_contexts: None,
             normal_graph_root: None,
@@ -66,28 +51,6 @@ impl MetaContext {
 
     pub fn get_document(&self, version: DocumentVersion) -> Option<Arc<Document>> {
         self.document_versions.get(&version).cloned()
-    }
-
-    pub fn update_translation_schema(&mut self, schema: Schema) {
-        self.translation_schema = Some(Arc::new(schema));
-    }
-
-    pub fn update_schema_context(
-        &mut self,
-        contexts: HashMap<ID, Arc<SchemaContext>>,
-        graph_root: Graph,
-    ) {
-        self.schema_contexts = Some(contexts);
-        self.schema_graph_root = Some(graph_root);
-    }
-
-    pub fn update_translation_schema_context(
-        &mut self,
-        contexts: HashMap<ID, Arc<SchemaContext>>,
-        graph_root: Graph,
-    ) {
-        self.translation_schema_contexts = Some(contexts);
-        self.translation_schema_graph_root = Some(graph_root);
     }
 
     // TODO: LINEAGE!
@@ -119,13 +82,6 @@ impl MetaContext {
         }
 
         Ok(None)
-    }
-
-    pub fn update_schema_transformations(
-        &mut self,
-        schema_transformations: HashMap<Lineage, Arc<SchemaTransformation>>,
-    ) {
-        self.schema_transformations = Some(schema_transformations);
     }
 
     pub fn update_profile(&mut self, profile: Arc<Profile>) {

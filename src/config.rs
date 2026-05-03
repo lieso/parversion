@@ -8,7 +8,6 @@ use std::sync::RwLock;
 pub struct LlmConfig {
     pub max_concurrency: usize,
     pub example_snippet_count: usize,
-    pub schema_neighbour_count: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,7 +45,6 @@ impl Config {
             llm: LlmConfig {
                 max_concurrency: 1,
                 example_snippet_count: 3,
-                schema_neighbour_count: 20,
             },
             dev: DevConfig::default(),
         };

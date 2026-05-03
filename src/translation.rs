@@ -1,21 +1,18 @@
 use std::sync::{Arc, RwLock};
 
-use crate::document::Document;
+use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::meta_context::MetaContext;
-use crate::node_analysis::get_translation_schema_transformations;
 use crate::normalization::{normalize, normalize_text};
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::schema::Schema;
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
     options: &Options,
     _metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
@@ -28,7 +25,6 @@ pub async fn translate_meta_context<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_meta_context");
@@ -38,7 +34,6 @@ pub async fn translate_meta_context<P: Provider>(
         meta_context,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await
@@ -49,7 +44,6 @@ pub async fn translate_text_to_meta_context<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_text_to_meta_context");
@@ -63,7 +57,6 @@ pub async fn translate_text_to_meta_context<P: Provider>(
         meta_context,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await
@@ -74,7 +67,6 @@ pub async fn translate_text_to_package<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In translate_text_to_package");
@@ -84,14 +76,14 @@ pub async fn translate_text_to_package<P: Provider>(
         text,
         _options,
         metadata,
-        json_schema,
         execution_context.clone(),
     )
     .await?;
 
-    let translated_document = Document::from_schema_transformations(
+    let document_format = DocumentFormat::default();
+    let translated_document = Document::from_normalized_graph(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument,
+        &document_format,
     )?;
 
     Ok(Package {
@@ -105,7 +97,6 @@ pub async fn translate_text<P: Provider>(
     text: String,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     document_format: &Option<DocumentFormat>,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
@@ -116,7 +107,6 @@ pub async fn translate_text<P: Provider>(
         text,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await?;
@@ -129,7 +119,6 @@ pub async fn translate_document_to_meta_context<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_document_to_meta_context");
@@ -148,7 +137,6 @@ pub async fn translate_document_to_meta_context<P: Provider>(
         meta_context,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await
@@ -159,7 +147,6 @@ pub async fn translate_document<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
     log::trace!("In translate_document");
@@ -169,17 +156,17 @@ pub async fn translate_document<P: Provider>(
         document,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await?;
 
-    let translated_document = Document::from_schema_transformations(
+    let document_format = DocumentFormat::default();
+    let translated_document = Document::from_normalized_graph(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument,
-    );
+        &document_format,
+    )?;
 
-    translated_document
+    Ok(translated_document)
 }
 
 pub async fn translate_document_to_text<P: Provider>(
@@ -187,7 +174,6 @@ pub async fn translate_document_to_text<P: Provider>(
     document: Document,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     document_format: &Option<DocumentFormat>,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
@@ -198,7 +184,6 @@ pub async fn translate_document_to_text<P: Provider>(
         document,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await?;
@@ -211,7 +196,6 @@ pub async fn translate_file_to_meta_context<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_file_to_meta_context");
@@ -227,7 +211,6 @@ pub async fn translate_file_to_meta_context<P: Provider>(
         text,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await
@@ -238,7 +221,6 @@ pub async fn translate_file_to_package<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In translate_file_to_package");
@@ -248,14 +230,14 @@ pub async fn translate_file_to_package<P: Provider>(
         path,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await?;
 
-    let translated_document = Document::from_schema_transformations(
+    let document_format = DocumentFormat::default();
+    let translated_document = Document::from_normalized_graph(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument,
+        &document_format,
     )?;
 
     Ok(Package {
@@ -269,7 +251,6 @@ pub async fn translate_file_to_text<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     document_format: &Option<DocumentFormat>,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
@@ -280,7 +261,6 @@ pub async fn translate_file_to_text<P: Provider>(
         path,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await?;
@@ -293,7 +273,6 @@ pub async fn translate_file<P: Provider>(
     path: &str,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     document_format: &Option<DocumentFormat>,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<(), Errors> {
@@ -305,7 +284,6 @@ pub async fn translate_file<P: Provider>(
         path,
         _options,
         metadata,
-        json_schema,
         document_format,
         execution_context,
     )
@@ -323,7 +301,6 @@ pub async fn translate_url_to_meta_context<P: Provider>(
     url: &str,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_url_to_meta_context");
@@ -336,7 +313,6 @@ pub async fn translate_url_to_meta_context<P: Provider>(
         text,
         _options,
         metadata,
-        json_schema,
         execution_context,
     )
     .await
@@ -347,7 +323,6 @@ pub async fn translate_url_to_package<P: Provider>(
     url: &str,
     _options: &Options,
     metadata: &Metadata,
-    json_schema: &str,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In translate_url_to_package");
@@ -359,14 +334,14 @@ pub async fn translate_url_to_package<P: Provider>(
             url,
             _options,
             metadata,
-            json_schema,
             execution_context,
         )
         .await?;
 
-    let translated_document = Document::from_schema_transformations(
+    let document_format = DocumentFormat::default();
+    let translated_document = Document::from_normalized_graph(
         Arc::clone(&meta_context),
-        DocumentVersion::OrganizedDocument,
+        &document_format,
     )?;
 
     Ok(Package {

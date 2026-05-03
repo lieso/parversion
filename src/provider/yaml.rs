@@ -14,7 +14,6 @@ use crate::operation::Operation;
 use crate::prelude::*;
 use crate::profile::Profile;
 use crate::provider::Provider;
-use crate::transformation::SchemaTransformation;
 
 #[cfg(feature = "yaml-provider")]
 pub struct YamlFileProvider {
@@ -316,79 +315,6 @@ impl Provider for YamlFileProvider {
             sequence.push(serialized_classification);
         } else {
             yaml["classifications"] = serde_yaml::Value::Sequence(vec![serialized_classification]);
-        }
-
-        self.save_data(&yaml).await
-    }
-
-    async fn get_schema_transformation(
-        &self,
-        lineage: &Lineage,
-        subgraph_hash: Option<&Hash>,
-    ) -> Result<Option<SchemaTransformation>, Errors> {
-        let yaml = self.load_data().await?;
-
-        let schema_transformations: Vec<SchemaTransformation> = yaml
-            .get("schema_transformations")
-            .and_then(|bn| {
-                let deserialized: Result<Vec<SchemaTransformation>, _> =
-                    serde_yaml::from_value(bn.clone());
-                if let Err(ref err) = deserialized {
-                    log::error!(
-                        "Deserialization error for schema_transformations: {:?}",
-                        err
-                    );
-                }
-                deserialized.ok()
-            })
-            .unwrap_or_else(Vec::new);
-
-        for schema_transformation in schema_transformations {
-            if schema_transformation.lineage == *lineage
-                && schema_transformation.subgraph_hash == subgraph_hash.cloned()
-            {
-                return Ok(Some(schema_transformation));
-            }
-        }
-
-        Ok(None)
-    }
-
-    async fn save_schema_transformation(
-        &self,
-        lineage: &Lineage,
-        target_schema: Option<&Hash>,
-        schema_transformation: SchemaTransformation,
-    ) -> Result<(), Errors> {
-        let mut yaml = self.load_data().await?;
-
-        let serialized_schema_transformation =
-            serde_yaml::to_value(&schema_transformation).map_err(|_| Errors::UnexpectedError)?;
-
-        if let Some(schema_transformations) = yaml.get_mut("schema_transformations") {
-            let sequence = schema_transformations.as_sequence_mut().ok_or_else(|| {
-                Errors::YamlParseError(
-                    "Failed to get mutable sequence for 'schema_transformations'.".to_string(),
-                )
-            })?;
-
-            // Remove existing entry with matching lineage and subgraph_hash
-            let target_schema_cloned = target_schema.cloned();
-            sequence.retain(|transformation| {
-                if let Ok(existing_transformation) =
-                    serde_yaml::from_value::<SchemaTransformation>(transformation.clone())
-                {
-                    !(existing_transformation.lineage == *lineage
-                        && existing_transformation.subgraph_hash == target_schema_cloned)
-                } else {
-                    true
-                }
-            });
-
-            sequence.push(serialized_schema_transformation);
-        } else {
-            yaml["schema_transformations"] =
-                serde_yaml::Value::Sequence(vec![serialized_schema_transformation]);
         }
 
         self.save_data(&yaml).await
