@@ -131,8 +131,8 @@ impl Document {
             let network_description = &context.network_description;
             let data_node = &context.data_node;
 
-            log::debug!("network_name: {}", network_name);
-            log::debug!("network_description: {}", network_description);
+            log::debug!("network_name: {:?}", network_name);
+            log::debug!("network_description: {:?}", network_description);
             log::debug!("data_node.fields: {:?}", data_node.fields);
 
             let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
@@ -143,34 +143,49 @@ impl Document {
                 result.insert(json.key, value);
             }
 
+            log::debug!("-----------------------------------------------------------------------------------------------------");
+            log::debug!("number of children: {}", &read_lock!(graph_node).children.len());
+
             for child in &read_lock!(graph_node).children {
                 let child_context = contexts.get(&read_lock!(child).id).unwrap();
-                let child_network_name = &child_context.network_name.clone();
 
-                log::debug!("child_network_name: {}", child_network_name);
+                if let Some(child_network_name) = &child_context.network_name {
+                    log::debug!("child_network_name: {}", child_network_name);
 
-                let mut inner_result: Map<String, Value> = Map::new();
+                    let mut inner_result: Map<String, Value> = Map::new();
 
-                recurse(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&child),
-                    &mut inner_result
-                );
+                    recurse(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&child),
+                        &mut inner_result
+                    );
 
-                let inner_result_value = Value::Object(inner_result.clone());
+                    let inner_result_value = Value::Object(inner_result.clone());
 
-                if let Some(existing_object) = result.get_mut(child_network_name) {
-                    if let Value::Array(ref mut arr) = existing_object {
-                        arr.push(inner_result_value.clone());
+                    if let Some(existing_object) = result.get_mut(child_network_name) {
+                        if let Value::Array(ref mut arr) = existing_object {
+                            arr.push(inner_result_value.clone());
+                        } else {
+                            *existing_object = json!(vec![
+                                existing_object.clone(),
+                                inner_result_value.clone()
+                            ]);
+                        }
                     } else {
-                        *existing_object = json!(vec![
-                            existing_object.clone(),
-                            inner_result_value.clone()
-                        ]);
+                        result.insert(child_network_name.clone(), inner_result_value);
                     }
+
                 } else {
-                    result.insert(child_network_name.clone(), inner_result_value);
+
+                    recurse(
+                        Arc::clone(&meta_context),
+                        Arc::clone(&child),
+                        result
+                    );
                 }
+
+
+
             }
         }
 
