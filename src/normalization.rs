@@ -119,13 +119,12 @@ pub async fn normalize<P: Provider>(
 
 pub async fn normalize_to_classification<P: Provider>(
     provider: Arc<P>,
-    mut document: Document,
+    document: Document,
     options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_to_classification");
-    let _ = execution_context;
 
     let stage = execution_context.enter_stage("Document preprocessing and classification");
 
@@ -136,30 +135,57 @@ pub async fn normalize_to_classification<P: Provider>(
         lock.add_document_version(DocumentVersion::InputDocument, document.clone());
     }
 
-    // ******************************************************************************************************
-
-    if metadata.document_type == Some(DocumentType::JavaScript) {
-        let functions = program_to_functions(document.data.clone());
-
-        for function in functions.iter() {
-            log::debug!("hash: {}", function.hash);
-            log::debug!("{}\n", function.code);
+    match metadata.document_type {
+        Some(DocumentType::Html) => {
+            normalize_html(
+                Arc::clone(&provider),
+                document,
+                options,
+                metadata,
+                meta_context.clone(),
+                &stage,
+            )
+            .await?;
         }
-
-        log::debug!("function count: {}", functions.len());
-
-        {
-            let mut lock = write_lock!(meta_context);
-            lock.update_functions(functions);
+        Some(DocumentType::Json) => {
+            normalize_json(
+                Arc::clone(&provider),
+                document,
+                options,
+                metadata,
+                meta_context.clone(),
+                &stage,
+            )
+            .await?;
         }
-
-        let _something =
-            functions_to_operations(Arc::clone(&provider), meta_context.clone()).await?;
-
-        unimplemented!();
+        Some(DocumentType::PlainText) => {
+            unimplemented!();
+        }
+        Some(DocumentType::JavaScript) => {
+            unimplemented!();
+        }
+        Some(DocumentType::Xml) => {
+            unimplemented!();
+        }
+        None => {
+            unimplemented!();
+        }
     }
 
-    // ******************************************************************************************************
+    stage.finish();
+
+    Ok(meta_context)
+}
+
+async fn normalize_html<P: Provider>(
+    provider: Arc<P>,
+    document: Document,
+    options: &Options,
+    _metadata: &Metadata,
+    meta_context: Arc<RwLock<MetaContext>>,
+    stage: &StageContext,
+) -> Result<(), Errors> {
+    let mut document = document;
 
     log::info!("Performing document analysis");
     let profile = document.perform_analysis(Arc::clone(&provider)).await?;
@@ -171,7 +197,7 @@ pub async fn normalize_to_classification<P: Provider>(
     }
 
     log::info!("Traversing document");
-    let (contexts, graph_root) = document.get_contexts(meta_context.clone(), metadata)?;
+    let (contexts, graph_root) = document.get_contexts(meta_context.clone(), _metadata)?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -184,7 +210,7 @@ pub async fn normalize_to_classification<P: Provider>(
             Arc::clone(&provider),
             meta_context.clone(),
             &options,
-            &stage,
+            stage,
         )
         .await?;
 
@@ -193,9 +219,18 @@ pub async fn normalize_to_classification<P: Provider>(
         lock.update_classification(classification);
     }
 
-    stage.finish();
+    Ok(())
+}
 
-    Ok(meta_context)
+async fn normalize_json<P: Provider>(
+    _provider: Arc<P>,
+    _document: Document,
+    _options: &Options,
+    _metadata: &Metadata,
+    _meta_context: Arc<RwLock<MetaContext>>,
+    _stage: &StageContext,
+) -> Result<(), Errors> {
+    unimplemented!();
 }
 
 pub async fn normalize_document_to_classification<P: Provider>(
