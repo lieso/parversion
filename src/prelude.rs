@@ -5,7 +5,6 @@ pub use crate::macros::*;
 pub use crate::meta_context::MetaContext;
 pub use crate::metadata::Metadata;
 pub use crate::options::Options;
-pub use crate::timestamp::Timestamp;
 pub use crate::types::*;
 pub use crate::utility::*;
 pub use crate::execution_context::*;

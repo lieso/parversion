@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use crate::basis_network::BasisNetwork;
 use crate::config::CONFIG;
 use crate::network_relationship::NetworkRelationshipType;
-use crate::path::Path;
 use crate::prelude::*;
 use crate::transformation::{FieldTransformation, FieldMetadata, NetworkTransformation, NetworkMetadata};
 use crate::context::Context;

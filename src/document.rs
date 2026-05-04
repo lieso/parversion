@@ -15,8 +15,6 @@ use crate::graph_node::Graph;
 use crate::graph_node::GraphNode;
 use crate::hash::Hash;
 use crate::json_node::JsonNode;
-use crate::path::Path;
-use crate::path_segment::PathSegmentKind;
 use crate::prelude::*;
 use crate::profile::Profile;
 use crate::provider::Provider;

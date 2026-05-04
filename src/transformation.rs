@@ -6,7 +6,6 @@ use std::sync::{Arc, RwLock};
 
 use crate::data_node::DataNode;
 use crate::id::ID;
-use crate::path::Path;
 use crate::prelude::*;
 use crate::basis_network::BasisNetwork;
 use crate::traversal::Traversal;
