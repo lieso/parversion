@@ -1,8 +1,16 @@
+use std::sync::{Arc, RwLock};
+use serde_json::{json, Value, Map};
+
+use crate::prelude::*;
+use crate::graph_node::GraphNode;
+use crate::profile::Profile;
+use crate::provider::Provider;
+use crate::json_node::JsonNode;
 
 pub struct Json {}
 
 impl Json {
-    fn from_normalized_graph(
+    pub fn from_normalized_graph(
         meta_context: Arc<RwLock<MetaContext>>,
     ) -> Result<String, Errors> {
         log::trace!("In from_normalized_graph_json");
@@ -81,5 +89,14 @@ impl Json {
         let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
 
         Ok(data)
+    }
+
+    pub fn get_profile<P: Provider>(
+        provider: Arc<P>,
+        data: String
+    ) -> Result<Profile, Errors> {
+        log::trace!("In get_profile");
+        
+        unimplemented!();
     }
 }

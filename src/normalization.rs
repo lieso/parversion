@@ -187,8 +187,8 @@ async fn normalize_html<P: Provider>(
 ) -> Result<(), Errors> {
     let mut document = document;
 
-    log::info!("Performing document analysis");
-    let profile = document.perform_analysis(Arc::clone(&provider)).await?;
+    log::info!("Getting document profile");
+    let profile = document.get_profile(Arc::clone(&provider)).await?;
     let profile = Arc::new(profile);
 
     {

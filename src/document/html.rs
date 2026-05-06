@@ -1,60 +1,35 @@
 use ego_tree::NodeRef;
-use scraper::{Html, Node};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, to_string, Map, Value};
-use std::collections::{HashMap, HashSet, VecDeque};
+use scraper::{Html as ScraperHtml, Node as ScraperNode};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 use xmltree::Element;
 
-use crate::classification::Classification;
+use crate::prelude::*;
 use crate::context::Context;
 use crate::data_node::DataNode;
-use crate::document_format::DocumentFormat;
 use crate::document_node::DocumentNode;
-use crate::graph_node::Graph;
 use crate::graph_node::GraphNode;
 use crate::hash::Hash;
-use crate::json_node::JsonNode;
-use crate::prelude::*;
 use crate::profile::Profile;
 use crate::provider::Provider;
-use crate::basis_network::BasisNetwork;
-use crate::basis_graph::BasisGraph;
-use crate::transformation::{
-    CanonicalizationTransformation,
-    RelationshipTransformation,
-    TraversalTransformation,
-};
-use crate::network_relationship::NetworkRelationshipType;
+use crate::document::{Document, DocumentType, DocumentMetadata};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum DocumentType {
-    Json,
-    PlainText,
-    JavaScript,
-    Xml,
-    Html,
-}
+pub struct Html;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DocumentMetadata {
-    pub origin: Option<String>,
-    pub date: Option<String>,
-}
+impl Html {
+    pub fn get_profile<P: Provider>(
+        provider: Arc<P>,
+        data: String
+    ) -> Result<Profile, Errors> {
+        log::trace!("In get_profile");
+        
+        unimplemented!();
+    }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Document {
-    pub document_type: DocumentType,
-    #[serde(skip_serializing)]
-    pub data: String,
-    pub metadata: DocumentMetadata,
-}
-
-impl Document {
     pub fn get_contexts(
-        &self,
         meta_context: Arc<RwLock<MetaContext>>,
         metadata: &Metadata,
+        data: String
     ) -> Result<
         (
             HashMap<ID, Arc<Context>>, // context
@@ -67,15 +42,13 @@ impl Document {
         let lock = read_lock!(meta_context);
         let profile = lock.profile.as_ref().ok_or(Errors::ProfileNotProvided)?;
 
-        let document_root = self.get_document_node()?;
+        let document_root = Self::get_document_node(data)?;
         let document_root = Arc::new(RwLock::new(document_root.clone()));
 
-        let mut data_nodes: HashMap<ID, Arc<DataNode>> = HashMap::new();
         let mut contexts: HashMap<ID, Arc<Context>> = HashMap::new();
 
         fn recurse(
             document_node: Arc<RwLock<DocumentNode>>,
-            data_nodes: &mut HashMap<ID, Arc<DataNode>>,
             parent_lineage: &Lineage,
             contexts: &mut HashMap<ID, Arc<Context>>,
             parents: Vec<Arc<RwLock<GraphNode>>>,
@@ -105,8 +78,6 @@ impl Document {
                 data_node: Arc::clone(&data_node),
             });
 
-            data_nodes.insert(data_node.id.clone(), Arc::clone(&data_node));
-
             contexts.insert(data_node.id.clone(), Arc::clone(&context));
             contexts.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
             contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
@@ -119,7 +90,6 @@ impl Document {
                     .map(|(_child_index, child)| {
                         recurse(
                             Arc::new(RwLock::new(child)),
-                            data_nodes,
                             &data_node.lineage,
                             contexts,
                             vec![Arc::clone(&graph_node)],
@@ -153,7 +123,6 @@ impl Document {
 
         let graph_root = recurse(
             Arc::clone(&document_root),
-            &mut data_nodes,
             &initial_lineage,
             &mut contexts,
             Vec::new(),
@@ -171,37 +140,10 @@ impl Document {
         Ok((contexts, graph_root))
     }
 
-    pub fn from_string(
-        value: String,
-        options: &Options,
-        metadata: &Metadata,
-    ) -> Result<Self, Errors> {
-        if value.trim().is_empty() {
-            return Err(Errors::DocumentNotProvided);
-        }
+    fn get_document_node(data: String) -> Result<DocumentNode, Errors> {
+        log::trace!("In get_document_node");
 
-        Ok(Document {
-            document_type: metadata.document_type.clone().unwrap(),
-            metadata: DocumentMetadata {
-                origin: options.origin.clone(),
-                date: options.date.clone(),
-            },
-            data: value,
-        })
-    }
-
-    pub fn to_string(&self) -> String {
-        let mut result = serde_json::to_string(self).expect("Could not convert document to string");
-        result.push('\n');
-        result.push_str(&self.data);
-
-        result
-    }
-
-    pub fn get_document_node(&self) -> Result<DocumentNode, Errors> {
-        log::trace!("In document/get_document_node");
-
-        if let Some(dom) = self.to_dom() {
+        if let Some(dom) = to_dom(data) {
             let mut xml = String::from("");
 
             // TODO: do we want to do anything with this?
@@ -223,111 +165,28 @@ impl Document {
             unimplemented!()
         }
     }
-
-    pub async fn perform_analysis<P: Provider>(
-        &mut self,
-        provider: Arc<P>,
-    ) -> Result<Profile, Errors> {
-        log::trace!("In perform_analysis");
-
-        let features: Option<HashSet<Hash>> = {
-            if let Some(dom) = self.to_dom() {
-                log::info!("It seems to be possible to parse this document as XML");
-
-                self.document_type = DocumentType::Xml;
-
-                let mut raw_features: HashSet<String> = HashSet::new();
-
-                get_xml_features(dom.tree.root(), &mut String::from(""), &mut raw_features);
-
-                Some(
-                    raw_features
-                        .iter()
-                        .map(|feature| {
-                            let mut hash = Hash::new();
-                            hash.push(feature).finalize().clear_items();
-                            hash.clone()
-                        })
-                        .collect(),
-                )
-            } else {
-                None
-            }
-        };
-
-        let features = features.ok_or(Errors::UnexpectedDocumentType)?;
-
-        if let Some(profile) = provider.get_profile(&features).await? {
-            log::info!("Found a profile");
-
-            if profile.xml_element_transformation.is_none() {
-                log::info!("Profile provided but xml transformation missing");
-                unimplemented!();
-            }
-
-            if profile.hash_transformation.is_none() {
-                log::info!("Profile provided but hash transformation is missing");
-                unimplemented!();
-            }
-
-            Ok(profile)
-        } else {
-            log::info!("Profile not provided, we will create a new one");
-
-            let profile = Profile::create_profile(&features).await?;
-
-            provider.save_profile(&profile).await?;
-
-            Ok(profile)
-        }
-    }
-
-    fn to_dom(&self) -> Option<Html> {
-        let sanitized = self.data.replace("\n", "");
-        Some(Html::parse_document(&sanitized))
-    }
 }
 
-fn get_xml_features(node: NodeRef<Node>, path: &mut String, features: &mut HashSet<String>) {
-    match node.value() {
-        Node::Document => {
-            for child in node.children() {
-                get_xml_features(child, path, features);
-            }
-        }
-        Node::Text(_) => {
-            features.insert(format!("{}/text", path));
-        }
-        Node::Element(element) => {
-            let mut new_path = format!("{}/{}", path, element.name());
-
-            for (attr_name, _) in element.attrs() {
-                features.insert(format!("{}.{}", new_path, attr_name.trim()));
-            }
-
-            for child in node.children() {
-                get_xml_features(child, &mut new_path, features);
-            }
-        }
-        _ => {}
-    }
+fn to_dom(data: String) -> Option<ScraperHtml> {
+    let sanitized = data.replace("\n", "");
+    Some(ScraperHtml::parse_document(&sanitized))
 }
 
 fn walk(
     xhtml: &mut String,
-    node: NodeRef<Node>,
+    node: NodeRef<ScraperNode>,
     indent: usize,
     extracted_docs: &mut Vec<Document>,
 ) {
     let real_indent = " ".repeat(indent * 2);
 
     match node.value() {
-        Node::Document => {
+        ScraperNode::Document => {
             for child in node.children() {
                 walk(xhtml, child, indent, extracted_docs);
             }
         }
-        Node::Text(text) => {
+        ScraperNode::Text(text) => {
             let text_content = text.trim();
             let text = format!("{}{}\n", real_indent, escape_xml(text_content));
 
@@ -335,10 +194,11 @@ fn walk(
                 xhtml.push_str(&text);
             }
         }
-        Node::Comment(_) => {
+        ScraperNode::Comment(_) => {
             // Ignoring HTML comments
+
         }
-        Node::Element(element) => {
+        ScraperNode::Element(element) => {
             let tag_name = element.name();
 
             xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
@@ -416,7 +276,7 @@ fn is_likely_html(value: &str) -> bool {
         },
     };
 
-    if let Some(dom) = test_doc.to_dom() {
+    if let Some(dom) = to_dom(test_doc.data.clone()) {
         let element_count = count_element_nodes(dom.tree.root());
         // If we have more than just the auto-generated wrapper elements (html, head, body)
         // then this is likely real HTML content
@@ -426,17 +286,17 @@ fn is_likely_html(value: &str) -> bool {
     }
 }
 
-fn count_element_nodes(node: NodeRef<Node>) -> usize {
+fn count_element_nodes(node: NodeRef<ScraperNode>) -> usize {
     let mut count = 0;
 
     match node.value() {
-        Node::Element(_) => {
+        ScraperNode::Element(_) => {
             count += 1;
             for child in node.children() {
                 count += count_element_nodes(child);
             }
         }
-        Node::Document => {
+        ScraperNode::Document => {
             for child in node.children() {
                 count += count_element_nodes(child);
             }
