@@ -54,6 +54,9 @@ impl Html {
             parents: Vec<Arc<RwLock<GraphNode>>>,
             profile: &Profile,
         ) -> Arc<RwLock<GraphNode>> {
+
+            // *************************************************
+
             let data_node = Arc::new(DataNode::new(
                 profile.meaningful_fields.clone().unwrap(),
                 &profile.hash_transformation.clone().unwrap(),
@@ -61,6 +64,8 @@ impl Html {
                 read_lock!(document_node).get_description(),
                 parent_lineage,
             ));
+
+            // *************************************************
 
             let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
                 Arc::clone(&data_node),
