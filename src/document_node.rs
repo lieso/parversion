@@ -100,7 +100,18 @@ impl DocumentNode {
     }
 
     pub fn get_hash(&self) -> Hash {
-        unimplemented!()
+        match &self.data {
+            XMLNode::Element(element_node) => {
+                let mut attr_names: Vec<&String> = element_node.attributes.keys().collect();
+                attr_names.sort();
+
+                let attr_str = attr_names.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(",");
+                let combined = format!("{}:{}", element_node.name, attr_str);
+                Hash::from_str(&combined)
+            }
+            XMLNode::Text(_) => Hash::from_str("text"),
+            _ => panic!("Unexpected XML node type"),
+        }
     }
 
     fn get_opening_tag(element: &Element) -> String {
