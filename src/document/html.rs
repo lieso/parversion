@@ -187,50 +187,82 @@ fn walk(
             // Ignoring HTML comments
 
         }
-        ScraperNode::Element(element) => {
-            let tag_name = element.name();
-
-            xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
-
-            for (attr_name, attr_value) in element.attrs() {
-                let attr_name = attr_name.trim();
-                let attr_value = attr_value.trim();
-
-                let is_html = is_likely_html(attr_value);
-                let _is_javascript = false; // TODO: Check if attr_value is valid JavaScript
-
-                if is_html {
-                    let html_doc = Document {
-                        document_type: DocumentType::Html,
-                        data: attr_value.to_string(),
-                        metadata: DocumentMetadata {
-                            origin: None,
-                            date: None,
-                        },
-                    };
-                    extracted_docs.push(html_doc);
-                }
-
-                if _is_javascript {
-                    // TODO: Parse as JavaScript and create Document
-                }
-
-                if !is_html && !_is_javascript {
-                    let escaped_attr_value = escape_xml(attr_value);
-                    xhtml.push_str(&format!(" {}=\"{}\"", attr_name, escaped_attr_value));
-                }
-            }
-
-            xhtml.push_str(">\n");
-
-            for child in node.children() {
-                walk(xhtml, child, indent + 1, extracted_docs);
-            }
-
-            xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
+        ScraperNode::Element(_) => {
+            let _ = process_element(node, xhtml, indent, extracted_docs);
         }
         _ => {}
     }
+}
+
+fn preprocess_element(tag_name: &str) -> Option<String> {
+    match tag_name {
+        _ => Some(tag_name.to_string()),
+    }
+}
+
+fn preprocess_attribute(attr_name: &str, attr_value: &str) -> Option<(String, String)> {
+    match (attr_name, attr_value) {
+        _ => Some((attr_name.to_string(), attr_value.to_string())),
+    }
+}
+
+fn process_element(
+    node: NodeRef<ScraperNode>,
+    xhtml: &mut String,
+    indent: usize,
+    extracted_docs: &mut Vec<Document>,
+) -> Option<()> {
+    let real_indent = " ".repeat(indent * 2);
+
+    if let ScraperNode::Element(element) = node.value() {
+        let tag_name = preprocess_element(element.name())?;
+
+        xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
+
+        for (attr_name, attr_value) in element.attrs() {
+            let attr_name = attr_name.trim();
+            let attr_value = attr_value.trim();
+
+            let (attr_name, attr_value) = match preprocess_attribute(attr_name, attr_value) {
+                Some(pair) => pair,
+                None => continue,
+            };
+
+            let is_html = is_likely_html(&attr_value);
+            let _is_javascript = false; // TODO: Check if attr_value is valid JavaScript
+
+            if is_html {
+                let html_doc = Document {
+                    document_type: DocumentType::Html,
+                    data: attr_value.to_string(),
+                    metadata: DocumentMetadata {
+                        origin: None,
+                        date: None,
+                    },
+                };
+                extracted_docs.push(html_doc);
+            }
+
+            if _is_javascript {
+                // TODO: Parse as JavaScript and create Document
+            }
+
+            if !is_html && !_is_javascript {
+                let escaped_attr_value = escape_xml(&attr_value);
+                xhtml.push_str(&format!(" {}=\"{}\"", attr_name, escaped_attr_value));
+            }
+        }
+
+        xhtml.push_str(">\n");
+
+        for child in node.children() {
+            walk(xhtml, child, indent + 1, extracted_docs);
+        }
+
+        xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
+    }
+
+    Some(())
 }
 
 fn is_likely_html(value: &str) -> bool {
