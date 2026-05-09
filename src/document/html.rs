@@ -75,22 +75,18 @@ impl Html {
             contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
 
             {
-                //let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
-                //    .get_children(None)
-                //    .into_iter()
-                //    .enumerate()
-                //    .map(|(_child_index, child)| {
-                //        recurse(
-                //            Arc::new(RwLock::new(child)),
-                //            &data_node.lineage,
-                //            contexts,
-                //            vec![Arc::clone(&graph_node)],
-                //        )
-                //    })
-                //    .collect();
-                let children: Vec<Arc<RwLock<GraphNode>>> = Vec::new();
-
-
+                let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
+                    .get_children()
+                    .into_iter()
+                    .map(|child| {
+                        recurse(
+                            Arc::new(RwLock::new(child)),
+                            &data_node.lineage,
+                            contexts,
+                            vec![Arc::clone(&graph_node)],
+                        )
+                    })
+                    .collect();
 
                 let mut write_lock = graph_node.write().unwrap();
 
