@@ -196,7 +196,7 @@ fn walk(
 
 fn preprocess_element(tag_name: &str) -> Option<String> {
     match tag_name {
-        "svg" | "script" | "iframe" | "input" | "button" | "link" | "meta" => None,
+        "svg" | "script" | "iframe" | "input" | "button" | "link" | "meta" | "style" | "noscript" => None,
         _ => Some(tag_name.to_string()),
     }
 }
@@ -213,6 +213,7 @@ fn preprocess_attribute(attr_name: &str, attr_value: &str) -> Option<(String, St
         "tabindex" | "maxlength" => None,
         "fill" => None,
         "cellpadding" | "border" | "bgColor" => None,
+        "align" | "valign" | "colspan" => None,
         "target" if attr_value == "_blank" => None,
         _ if attr_value.is_empty() => None,
         _ => Some((attr_name.to_string(), attr_value.trim().to_string())),

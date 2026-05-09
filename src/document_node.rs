@@ -41,7 +41,6 @@ impl DocumentNode {
         match &self.data {
             XMLNode::Element(element_node) => {
                 let mut fields = element_node.attributes.clone();
-                fields.insert("tag".to_string(), element_node.name.clone());
                 fields
             }
             XMLNode::Text(text_node) => {
