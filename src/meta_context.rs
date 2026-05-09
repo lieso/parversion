@@ -10,7 +10,6 @@ use crate::document::Document;
 use crate::function::Function;
 use crate::graph_node::Graph;
 use crate::prelude::*;
-use crate::profile::Profile;
 use crate::normal_context::NormalContext;
 
 pub struct MetaContext {
@@ -21,7 +20,6 @@ pub struct MetaContext {
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<BasisGraph>,
     pub classification: Option<Arc<Classification>>,
-    pub profile: Option<Arc<Profile>>,
     pub functions: Option<Vec<Function>>,
     pub normal_contexts: Option<HashMap<ID, Arc<NormalContext>>>,
     pub normal_graph_root: Option<Graph>,
@@ -37,7 +35,6 @@ impl MetaContext {
             basis_networks: None,
             basis_graph: None,
             classification: None,
-            profile: None,
             functions: None,
             normal_contexts: None,
             normal_graph_root: None,
@@ -82,10 +79,6 @@ impl MetaContext {
         }
 
         Ok(None)
-    }
-
-    pub fn update_profile(&mut self, profile: Arc<Profile>) {
-        self.profile = Some(profile);
     }
 
     pub fn update_data_structures(

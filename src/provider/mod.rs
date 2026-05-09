@@ -7,7 +7,6 @@ use crate::basis_node::BasisNode;
 use crate::basis_graph::BasisGraph;
 use crate::operation::Operation;
 use crate::prelude::*;
-use crate::profile::Profile;
 
 #[cfg(feature = "yaml-provider")]
 pub mod yaml;
@@ -17,8 +16,6 @@ pub mod sqlite;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
-    async fn get_profile(&self, features: &HashSet<Hash>) -> Result<Option<Profile>, Errors>;
-    async fn save_profile(&self, profile: &Profile) -> Result<(), Errors>;
     async fn get_basis_node_by_lineage(
         &self,
         lineage: &Lineage,
@@ -69,14 +66,6 @@ pub struct VoidProvider;
 
 #[async_trait]
 impl Provider for VoidProvider {
-    async fn get_profile(&self, _features: &HashSet<Hash>) -> Result<Option<Profile>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_profile(&self, _profile: &Profile) -> Result<(), Errors> {
-        Ok(())
-    }
-
     async fn get_basis_node_by_lineage(
         &self,
         _lineage: &Lineage,

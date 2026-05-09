@@ -187,15 +187,6 @@ async fn normalize_html<P: Provider>(
 ) -> Result<(), Errors> {
     let mut document = document;
 
-    log::info!("Getting document profile");
-    let profile = document.get_profile(Arc::clone(&provider)).await?;
-    let profile = Arc::new(profile);
-
-    {
-        let mut lock = write_lock!(meta_context);
-        lock.update_profile(profile);
-    }
-
     log::info!("Traversing document");
     let (contexts, graph_root) = document.get_contexts(meta_context.clone(), _metadata)?;
 

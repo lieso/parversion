@@ -3,8 +3,6 @@ use serde_json::{json, Value, Map};
 
 use crate::prelude::*;
 use crate::graph_node::GraphNode;
-use crate::profile::Profile;
-use crate::provider::Provider;
 use crate::json_node::JsonNode;
 
 pub struct Json {}
@@ -91,12 +89,4 @@ impl Json {
         Ok(data)
     }
 
-    pub fn get_profile<P: Provider>(
-        provider: Arc<P>,
-        data: String
-    ) -> Result<Profile, Errors> {
-        log::trace!("In get_profile");
-        
-        unimplemented!();
-    }
 }

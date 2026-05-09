@@ -9,7 +9,6 @@ use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::operation::Operation;
 use crate::prelude::*;
-use crate::profile::Profile;
 use crate::provider::Provider;
 
 #[cfg(feature = "sqlite-provider")]
@@ -33,14 +32,6 @@ impl SqliteProvider {
 #[cfg(feature = "sqlite-provider")]
 #[async_trait]
 impl Provider for SqliteProvider {
-    async fn get_profile(&self, _features: &HashSet<Hash>) -> Result<Option<Profile>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_profile(&self, _profile: &Profile) -> Result<(), Errors> {
-        Ok(())
-    }
-
     async fn get_basis_node_by_lineage(
         &self,
         _lineage: &Lineage,

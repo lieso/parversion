@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use xmltree::{Element, XMLNode};
 
 use crate::prelude::*;
-use crate::transformation::XMLElementTransformation;
 
 #[derive(Clone, Debug)]
 pub struct DocumentNode {
@@ -155,6 +154,10 @@ impl DocumentNode {
             XMLNode::Text(_) => "#text".to_string(),
             _ => panic!("Unexpected XML node type"),
         }
+    }
+
+    pub fn get_hash(&self) -> Hash {
+        unimplemented!()
     }
 
     fn get_opening_tag(element: &Element) -> String {

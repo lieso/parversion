@@ -7,8 +7,6 @@ mod xml;
 mod html;
 
 use crate::prelude::*;
-use crate::provider::Provider;
-use crate::profile::Profile;
 use crate::context::Context;
 use crate::graph_node::GraphNode;
 use crate::document_format::DocumentFormat;
@@ -62,21 +60,6 @@ impl Document {
 
     pub fn to_string(&self) -> String {
         self.data.clone()
-    }
-
-    pub async fn get_profile<P: Provider>(
-        &self,
-        provider: Arc<P>
-    ) -> Result<Profile, Errors> {
-        log::trace!("In get_profile");
-
-        match self.document_type {
-            DocumentType::Json => Json::get_profile(Arc::clone(&provider), self.data.clone()),
-            DocumentType::PlainText => unimplemented!(),
-            DocumentType::JavaScript => unimplemented!(),
-            DocumentType::Xml => unimplemented!(),
-            DocumentType::Html => Html::get_profile(Arc::clone(&provider), self.data.clone()),
-        }
     }
 
     pub fn get_contexts(

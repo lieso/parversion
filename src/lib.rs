@@ -32,7 +32,6 @@ pub mod options;
 pub mod normalization;
 pub mod package;
 pub mod prelude;
-pub mod profile;
 pub mod provider;
 pub mod query;
 pub mod transformation;

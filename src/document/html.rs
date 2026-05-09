@@ -10,21 +10,11 @@ use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
 use crate::graph_node::GraphNode;
 use crate::hash::Hash;
-use crate::profile::Profile;
-use crate::provider::Provider;
 use crate::document::{Document, DocumentType, DocumentMetadata};
 
 pub struct Html;
 
 impl Html {
-    pub fn get_profile<P: Provider>(
-        provider: Arc<P>,
-        data: String
-    ) -> Result<Profile, Errors> {
-        log::trace!("In get_profile");
-        
-        unimplemented!();
-    }
 
     pub fn get_contexts(
         meta_context: Arc<RwLock<MetaContext>>,
@@ -39,9 +29,6 @@ impl Html {
     > {
         log::trace!("In get_contexts");
 
-        let lock = read_lock!(meta_context);
-        let profile = lock.profile.as_ref().ok_or(Errors::ProfileNotProvided)?;
-
         let document_root = Self::get_document_node(data)?;
         let document_root = Arc::new(RwLock::new(document_root.clone()));
 
@@ -52,20 +39,20 @@ impl Html {
             parent_lineage: &Lineage,
             contexts: &mut HashMap<ID, Arc<Context>>,
             parents: Vec<Arc<RwLock<GraphNode>>>,
-            profile: &Profile,
         ) -> Arc<RwLock<GraphNode>> {
-
-            // *************************************************
+            let (hash, lineage, fields, description) = {
+                let lock = read_lock!(document_node);
+                let hash = lock.get_hash();
+                let lineage = parent_lineage.with_hash(hash.clone());
+                (hash, lineage, lock.get_fields(), lock.get_description())
+            };
 
             let data_node = Arc::new(DataNode::new(
-                profile.meaningful_fields.clone().unwrap(),
-                &profile.hash_transformation.clone().unwrap(),
-                read_lock!(document_node).get_fields(),
-                read_lock!(document_node).get_description(),
-                parent_lineage,
+                hash,
+                lineage.clone(),
+                fields,
+                description,
             ));
-
-            // *************************************************
 
             let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
                 Arc::clone(&data_node),
@@ -88,20 +75,22 @@ impl Html {
             contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
 
             {
-                let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
-                    .get_children(profile.xml_element_transformation.clone())
-                    .into_iter()
-                    .enumerate()
-                    .map(|(_child_index, child)| {
-                        recurse(
-                            Arc::new(RwLock::new(child)),
-                            &data_node.lineage,
-                            contexts,
-                            vec![Arc::clone(&graph_node)],
-                            profile,
-                        )
-})
-                    .collect();
+                //let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
+                //    .get_children(None)
+                //    .into_iter()
+                //    .enumerate()
+                //    .map(|(_child_index, child)| {
+                //        recurse(
+                //            Arc::new(RwLock::new(child)),
+                //            &data_node.lineage,
+                //            contexts,
+                //            vec![Arc::clone(&graph_node)],
+                //        )
+                //    })
+                //    .collect();
+                let children: Vec<Arc<RwLock<GraphNode>>> = Vec::new();
+
+
 
                 let mut write_lock = graph_node.write().unwrap();
 
@@ -131,7 +120,6 @@ impl Html {
             &initial_lineage,
             &mut contexts,
             Vec::new(),
-            &profile,
         );
 
         let mut seen: HashSet<ID> = HashSet::new();

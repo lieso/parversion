@@ -12,7 +12,6 @@ use crate::basis_node::BasisNode;
 use crate::bloom_filter::BloomFilter;
 use crate::operation::Operation;
 use crate::prelude::*;
-use crate::profile::Profile;
 use crate::provider::Provider;
 
 #[cfg(feature = "yaml-provider")]
@@ -91,51 +90,6 @@ impl YamlFileProvider {
 #[cfg(feature = "yaml-provider")]
 #[async_trait]
 impl Provider for YamlFileProvider {
-    async fn get_profile(&self, features: &HashSet<Hash>) -> Result<Option<Profile>, Errors> {
-        let yaml = self.load_data().await?;
-
-        let profiles: Vec<Profile> = yaml
-            .get("profiles")
-            .and_then(|dp| {
-                let deserialized: Result<Vec<Profile>, _> = serde_yaml::from_value(dp.clone());
-                if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for profiles: {:?}", err);
-                }
-                deserialized.ok()
-            })
-            .unwrap_or_else(Vec::new);
-
-        if let Some(target_profile) = Profile::get_similar_profile(&profiles, features) {
-            Ok(Some(target_profile))
-        } else {
-            Ok(None)
-        }
-    }
-
-    async fn save_profile(&self, profile: &Profile) -> Result<(), Errors> {
-        let mut yaml = self.load_data().await?;
-
-        let mapping = yaml.as_mapping_mut().ok_or_else(|| {
-            Errors::YamlParseError("Expected root YAML value to be a mapping.".to_string())
-        })?;
-
-        let profiles = mapping
-            .entry(serde_yaml::Value::String("profiles".to_string()))
-            .or_insert_with(|| serde_yaml::Value::Sequence(Vec::new()))
-            .as_sequence_mut()
-            .ok_or_else(|| {
-                Errors::YamlParseError(
-                    "Failed to get or create mutable sequence for 'profiles'.".to_string(),
-                )
-            })?;
-
-        let new_profile_yaml =
-            serde_yaml::to_value(&profile).map_err(|_| Errors::UnexpectedError)?;
-        profiles.push(new_profile_yaml);
-
-        self.save_data(&yaml).await
-    }
-
     async fn get_basis_node_by_lineage(
         &self,
         lineage: &Lineage,

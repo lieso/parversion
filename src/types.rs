@@ -20,7 +20,6 @@ pub enum Errors {
     FetchUrlError(String),
     FieldTransformationFieldNotFound,
     GraphRootNotProvided,
-    ProfileNotProvided,
     ContextsNotProvided,
     ContextTooLarge,
     DeficientMetaContextError(String),

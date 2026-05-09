@@ -32,7 +32,6 @@ mod options;
 mod normalization;
 mod package;
 mod prelude;
-mod profile;
 mod provider;
 mod query;
 mod transformation;
