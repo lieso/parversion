@@ -147,12 +147,18 @@ async fn get_context_groups<P: Provider>(
     let mut empty_field_contexts: Vec<Arc<Context>> = Vec::new();
 
     for context in contexts.values() {
+
+        log::debug!("*****************************************************************************************************");
+        log::debug!("{:?}", context.data_node.fields);
+
         if context.data_node.fields.is_empty() {
             empty_field_contexts.push(context.clone());
         } else {
             filtered_contexts.push(context.clone());
         }
     }
+
+    panic!("test");
 
     // Empty-field contexts are intentionally skipped — they produce no BasisNode and require no
     // provider lookup or LLM interpretation.

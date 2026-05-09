@@ -45,7 +45,7 @@ impl DocumentNode {
                 fields
             }
             XMLNode::Text(text_node) => {
-                HashMap::from([("text".to_string(), text_node.to_string())])
+                HashMap::from([("text".to_string(), text_node.trim().to_string())])
             }
             _ => panic!("Unexpected XML node type"),
         }

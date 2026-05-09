@@ -196,7 +196,7 @@ fn walk(
 
 fn preprocess_element(tag_name: &str) -> Option<String> {
     match tag_name {
-        "svg" | "script" | "iframe" | "input" | "button" => None,
+        "svg" | "script" | "iframe" | "input" | "button" | "link" | "meta" => None,
         _ => Some(tag_name.to_string()),
     }
 }
@@ -212,9 +212,10 @@ fn preprocess_attribute(attr_name: &str, attr_value: &str) -> Option<(String, St
         "crossorigin" | "xmlns" => None,
         "tabindex" | "maxlength" => None,
         "fill" => None,
+        "cellpadding" | "border" | "bgColor" => None,
         "target" if attr_value == "_blank" => None,
         _ if attr_value.is_empty() => None,
-        _ => Some((attr_name.to_string(), attr_value.to_string())),
+        _ => Some((attr_name.to_string(), attr_value.trim().to_string())),
     }
 }
 
@@ -236,7 +237,7 @@ fn process_element(
             let attr_value = attr_value.trim();
 
             let (attr_name, attr_value) = match preprocess_attribute(attr_name, attr_value) {
-                Some(pair) => pair,
+                Some((name, value)) => (name, value.trim().to_string()),
                 None => continue,
             };
 
