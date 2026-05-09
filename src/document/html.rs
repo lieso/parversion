@@ -231,7 +231,8 @@ fn process_element(
     if let ScraperNode::Element(element) = node.value() {
         let tag_name = preprocess_element(element.name())?;
 
-        xhtml.push_str(&format!("{}<{}", real_indent, tag_name));
+        let mut has_attributes = false;
+        let mut attributes_str = String::new();
 
         for (attr_name, attr_value) in element.attrs() {
             let attr_name = attr_name.trim();
@@ -241,6 +242,8 @@ fn process_element(
                 Some((name, value)) => (name, value.trim().to_string()),
                 None => continue,
             };
+
+            has_attributes = true;
 
             let is_html = is_likely_html(&attr_value);
             let _is_javascript = false; // TODO: Check if attr_value is valid JavaScript
@@ -263,17 +266,24 @@ fn process_element(
 
             if !is_html && !_is_javascript {
                 let escaped_attr_value = escape_xml(&attr_value);
-                xhtml.push_str(&format!(" {}=\"{}\"", attr_name, escaped_attr_value));
+                attributes_str.push_str(&format!(" {}=\"{}\"", attr_name, escaped_attr_value));
             }
         }
 
-        xhtml.push_str(">\n");
+        let skip_tags = !has_attributes && matches!(tag_name.as_str(), "div" | "span");
 
-        for child in node.children() {
-            walk(xhtml, child, indent + 1, extracted_docs);
+        if !skip_tags {
+            xhtml.push_str(&format!("{}<{}{}", real_indent, tag_name, attributes_str));
+            xhtml.push_str(">\n");
         }
 
-        xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
+        for child in node.children() {
+            walk(xhtml, child, if skip_tags { indent } else { indent + 1 }, extracted_docs);
+        }
+
+        if !skip_tags {
+            xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
+        }
     }
 
     Some(())
