@@ -196,12 +196,24 @@ fn walk(
 
 fn preprocess_element(tag_name: &str) -> Option<String> {
     match tag_name {
+        "svg" | "script" | "iframe" | "input" | "button" => None,
         _ => Some(tag_name.to_string()),
     }
 }
 
 fn preprocess_attribute(attr_name: &str, attr_value: &str) -> Option<(String, String)> {
-    match (attr_name, attr_value) {
+    let attr_name_lower = attr_name.to_lowercase();
+
+    match attr_name_lower.as_str() {
+        "aria-describedby" | "aria-controls" | "aria-expanded" | "aria-labelledby"
+        | "aria-live" | "aria-level" | "aria-hidden" | "aria-atomic" => None,
+        "class" | "style" | "width" | "height" => None,
+        "type" | "lang" | "rel" | "role" => None,
+        "crossorigin" | "xmlns" => None,
+        "tabindex" | "maxlength" => None,
+        "fill" => None,
+        "target" if attr_value == "_blank" => None,
+        _ if attr_value.is_empty() => None,
         _ => Some((attr_name.to_string(), attr_value.to_string())),
     }
 }
