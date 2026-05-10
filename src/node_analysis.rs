@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
 
+use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
@@ -33,7 +34,7 @@ pub async fn get_basis_groups<P: Provider>(
     
     log::info!("Total number of contexts: {}", contexts.len());
 
-    let non_empty_contexts = contexts
+    let non_empty_contexts: Vec<&Arc<Context>> = contexts
         .values()
         .filter(|context| !context.data_node.fields.is_empty())
         .collect();
@@ -53,10 +54,68 @@ pub async fn get_basis_groups<P: Provider>(
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let mut handles = Vec::new();
 
+    for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_meta_context = Arc::clone(&meta_context);
 
+        let handle = task::spawn(async move {
+            let _permit = permit;
+            get_acyclic_basis_groups(
+                cloned_provider,
+                cloned_meta_context,
+                acyclic_lineage,
+                contexts_in_group,
+            )
+            .await
+        });
+        handles.push(handle);
+    }
 
-    unimplemented!();
+    let results: Vec<Result<Vec<BasisGroup>, Errors>> = try_join_all(handles).await?;
+
+    let flattened: Vec<BasisGroup> = results
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+    let basis_groups: HashMap<ID, Arc<BasisGroup>> = flattened
+        .into_iter()
+        .map(|basis_group| (basis_group.id.clone(), Arc::new(basis_group)))
+        .collect();
+
+    Ok(basis_groups)
+}
+
+async fn get_acyclic_basis_groups<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    acyclic_lineage: Lineage,
+    contexts_in_group: Vec<Arc<Context>>,
+) -> Result<Vec<BasisGroup>, Errors> {
+    log::trace!("In get_acyclic_basis_groups");
+
+    let (is_match, (tokens,)) = LLM::infer_group_match(
+        Arc::clone(&meta_context),
+        contexts_in_group.clone()
+    ).await?; 
+
+    if is_match {
+        let basis_group = BasisGroup {
+            id: ID::new(),
+            acyclic_lineage: acyclic_lineage.clone(),
+            lineage: None,
+            indexed_lineage: None,
+        };
+
+        return Ok(vec![basis_group]);
+    }
+
+    unimplemented!()
 }
 
 pub async fn get_basis_nodes<P: Provider>(
@@ -66,45 +125,47 @@ pub async fn get_basis_nodes<P: Provider>(
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
+    
+    unimplemented!();
 
-    let document_summary = Arc::new(get_original_document_condensed(Arc::clone(&meta_context))?);
-    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-    let semaphore = Arc::new(Semaphore::new(max_concurrency));
-    let mut handles = Vec::new();
+    //let document_summary = Arc::new(get_original_document_condensed(Arc::clone(&meta_context))?);
+    //let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    //let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    //let mut handles = Vec::new();
 
-    for group in context_groups {
-        stage_context.record_events("Node analysis", 0);
+    //for group in context_groups {
+    //    stage_context.record_events("Node analysis", 0);
 
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
-        let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
-        let cloned_options = options.clone();
-        let cloned_stage_context = stage_context.clone();
-        let cloned_document_summary = Arc::clone(&document_summary);
+    //    let permit = semaphore.clone().acquire_owned().await.unwrap();
+    //    let cloned_provider = Arc::clone(&provider);
+    //    let cloned_meta_context = Arc::clone(&meta_context);
+    //    let cloned_options = options.clone();
+    //    let cloned_stage_context = stage_context.clone();
+    //    let cloned_document_summary = Arc::clone(&document_summary);
 
-        let handle = task::spawn(async move {
-            let _permit = permit;
-            let basis_node = get_basis_node(
-                cloned_provider,
-                cloned_meta_context,
-                group,
-                &cloned_options,
-                &cloned_stage_context,
-                &cloned_document_summary,
-            )
-            .await?;
+    //    let handle = task::spawn(async move {
+    //        let _permit = permit;
+    //        let basis_node = get_basis_node(
+    //            cloned_provider,
+    //            cloned_meta_context,
+    //            group,
+    //            &cloned_options,
+    //            &cloned_stage_context,
+    //            &cloned_document_summary,
+    //        )
+    //        .await?;
 
-            Ok((basis_node.id.clone(), Arc::new(basis_node)))
-        });
-        handles.push(handle);
-    }
+    //        Ok((basis_node.id.clone(), Arc::new(basis_node)))
+    //    });
+    //    handles.push(handle);
+    //}
 
-    let results: Vec<Result<(ID, Arc<BasisNode>), Errors>> = try_join_all(handles).await?;
+    //let results: Vec<Result<(ID, Arc<BasisNode>), Errors>> = try_join_all(handles).await?;
 
-    let hashmap_results: HashMap<ID, Arc<BasisNode>> =
-        results.into_iter().collect::<Result<_, _>>()?;
+    //let hashmap_results: HashMap<ID, Arc<BasisNode>> =
+    //    results.into_iter().collect::<Result<_, _>>()?;
 
-    Ok(hashmap_results)
+    //Ok(hashmap_results)
 }
 
 async fn get_basis_node<P: Provider>(

@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
+use rand::prelude::*;
 
 use crate::basis_network::BasisNetwork;
 use crate::config::CONFIG;
@@ -291,99 +292,47 @@ impl LLM {
         Ok((field_transformations, (tokens,)))
     }
 
-    pub async fn get_node_groups(
-        _meta_context: Arc<RwLock<MetaContext>>,
-        acyclic_lineage: Lineage,
-        lineage_subgroups: &HashMap<Lineage, Vec<Arc<Context>>>,
-    ) -> Result<(
-        NodeGroups,
-        (u64,)
-    ), Errors> {
-        log::trace!("In get_node_groups");
+    pub async fn function_to_operation(code: &str) -> Result<Option<()>, Errors> {
+        openai::OpenAI::function_to_operation(&code).await
+    }
+
+    pub async fn infer_group_match(
+        meta_context: Arc<RwLock<MetaContext>>,
+        group: Vec<Arc<Context>>,
+    ) -> Result<(bool, (u64,)), Errors> {
+        log::trace!("In infer_group_match");
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
-        log::debug!("║                    GET NODE GROUPS START                      ║");
+        log::debug!("║                  INFER GROUP MATCH START                      ║");
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
 
-        let mut user_prompt = String::new();
-        user_prompt.push_str(&format!("Acyclic Lineage: {}\n\n", acyclic_lineage.to_string()));
+        let sample_size = std::cmp::min(60, group.len());
+        let use_all = group.len() <= 20;
 
-        let mut lineage_map: HashMap<String, Lineage> = HashMap::new();
-        let mut indexed_lineage_map: HashMap<String, Lineage> = HashMap::new();
+        let sampled_contexts = if use_all {
+            group.clone()
+        } else {
+            let mut rng = rand::rng();
+            let mut shuffled = group.clone();
+            shuffled.shuffle(&mut rng);
+            shuffled.into_iter().take(sample_size).collect()
+        };
 
-        for (lineage, subgroup) in lineage_subgroups {
-            lineage_map.insert(lineage.to_string(), lineage.clone());
+        let snippets: Vec<String> = sampled_contexts
+            .iter()
+            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&meta_context)))
+            .collect();
 
-            user_prompt.push_str(&format!("{}\nLineage: {}\n{}\n\n", "#".repeat(100), lineage.to_string(), "#".repeat(100)));
+        log::debug!("*****************************************************************************************************");
 
-            let sample: Vec<_> = subgroup.iter().take(12).collect();
-
-            let common_lineages = if !sample.is_empty() {
-                let mut common = read_lock!(sample[0].indexed_lineages).clone();
-                for context in &sample[1..] {
-                    let il = read_lock!(context.indexed_lineages);
-                    common.retain(|l| il.contains(l));
-                }
-                common
-            } else {
-                Vec::new()
-            };
-
-            for (ctx_idx, context) in sample.iter().enumerate() {
-                let document_node = read_lock!(context.document_node);
-                user_prompt.push_str(&format!("{}\nContext[{}]: {}\n{}\n\n", "-".repeat(96), ctx_idx, document_node.to_string(), "-".repeat(96)));
-
-                let indexed_lineages = read_lock!(context.indexed_lineages);
-                let diverging: Vec<_> = indexed_lineages
-                    .iter()
-                    .filter(|l| !common_lineages.contains(l))
-                    .collect();
-
-                if !diverging.is_empty() {
-                    user_prompt.push_str(&format!("Diverging indexed_lineages: {} entries\n", diverging.len()));
-                    for (div_idx, div_lineage) in diverging.iter().enumerate() {
-                        indexed_lineage_map.insert(div_lineage.to_string(), (*div_lineage).clone());
-                        user_prompt.push_str(&format!("  [{}]: {}\n", div_idx, div_lineage.to_string()));
-                    }
-                    user_prompt.push_str("\n");
-                }
-            }
+        for snippet in snippets {
+            log::debug!("#####################################################################################################");
+            log::debug!("{}", snippet);
         }
 
-        let (node_groups_data, metadata) = NodeAnalysis::get_node_groups(
-            user_prompt,
-        ).await?;
-
-        let mut node_groups: NodeGroups = HashMap::new();
-
-        for (lineage_str, classification) in node_groups_data.groups {
-            let lineage = lineage_map.get(&lineage_str).cloned().ok_or_else(|| {
-                Errors::LineageConversionError(format!("Lineage string not found in input: {}", lineage_str))
-            })?;
-
-            let node_group_classification = match classification {
-                LineageClassification::Acyclic => NodeGroupClassification::Acyclic,
-                LineageClassification::Uniform => NodeGroupClassification::Uniform,
-                LineageClassification::Diverging(strings) => {
-                    let lineages = strings.into_iter().map(|s| {
-                        indexed_lineage_map.get(&s).cloned().ok_or_else(|| {
-                            Errors::LineageConversionError(format!("Indexed lineage string not found in input: {}", s))
-                        })
-                    }).collect::<Result<Vec<Lineage>, Errors>>()?;
-
-                    NodeGroupClassification::Diverging(lineages)
-                }
-            };
-
-            node_groups.insert(lineage, node_group_classification);
-        }
-
-        Ok((node_groups, (metadata.tokens,)))
-    }
-
-    pub async fn function_to_operation(code: &str) -> Result<Option<()>, Errors> {
-        openai::OpenAI::function_to_operation(&code).await
+        unimplemented!();
     }
 }
