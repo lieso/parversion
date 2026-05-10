@@ -7,7 +7,7 @@ use crate::document_format::DocumentFormat;
 use crate::function_analysis::functions_to_operations;
 use crate::meta_context::MetaContext;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
-use crate::node_analysis::get_basis_nodes;
+use crate::node_analysis::{get_basis_nodes, get_basis_groups};
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -43,6 +43,18 @@ pub async fn normalize<P: Provider>(
     )
     .await?;
 
+    let stage = execution_context.enter_stage("Group analysis");
+
+    let basis_groups =
+        get_basis_groups(
+            Arc::clone(&provider),
+            Arc::clone(&meta_context),
+            &options,
+            &stage,
+        )
+        .await?;
+
+    stage.finish();
     let stage = execution_context.enter_stage("Node analysis");
 
     log::info!("Getting basis nodes");
