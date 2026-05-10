@@ -119,14 +119,6 @@ impl Html {
             Vec::new(),
         );
 
-        let mut seen: HashSet<ID> = HashSet::new();
-        for context in contexts.values() {
-            if seen.insert(context.id.clone()) {
-                let indexed_lineages = read_lock!(context.graph_node).get_indexed_lineages();
-                *context.indexed_lineages.write().unwrap() = indexed_lineages;
-            }
-        }
-
         Ok((contexts, graph_root))
     }
 
@@ -279,20 +271,14 @@ fn process_element(
             }
         }
 
-        let skip_tags = !has_attributes && matches!(tag_name.as_str(), "div" | "span");
-
-        if !skip_tags {
-            xhtml.push_str(&format!("{}<{}{}", real_indent, tag_name, attributes_str));
-            xhtml.push_str(">\n");
-        }
+        xhtml.push_str(&format!("{}<{}{}", real_indent, tag_name, attributes_str));
+        xhtml.push_str(">\n");
 
         for child in node.children() {
-            walk(xhtml, child, if skip_tags { indent } else { indent + 1 }, extracted_docs);
+            walk(xhtml, child, indent + 1, extracted_docs);
         }
 
-        if !skip_tags {
-            xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
-        }
+        xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
     }
 
     Some(())
