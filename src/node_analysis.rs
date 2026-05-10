@@ -29,6 +29,16 @@ pub async fn get_basis_nodes<P: Provider>(
 
     log::info!("Number of context groups: {}", context_groups.len());
 
+    for group in context_groups {
+        log::debug!("*****************************************************************************************************");
+        for context in group {
+            log::debug!("######################################################################################################");
+            log::debug!("{:?}", context.data_node.fields);
+        }
+    }
+
+
+    panic!("test");
 
 
 
@@ -147,18 +157,18 @@ async fn get_context_groups<P: Provider>(
     let mut empty_field_contexts: Vec<Arc<Context>> = Vec::new();
 
     for context in contexts.values() {
-
-        log::debug!("*****************************************************************************************************");
-        log::debug!("{:?}", context.data_node.fields);
-
         if context.data_node.fields.is_empty() {
             empty_field_contexts.push(context.clone());
         } else {
             filtered_contexts.push(context.clone());
         }
     }
+    
+    log::debug!("contexts.len(): {}", contexts.len());
+    log::debug!("filtered_contexts.len(): {}", filtered_contexts.len());
+    log::debug!("empty_field_contexts.len(): {}", empty_field_contexts.len());
 
-    panic!("test");
+    //panic!("test");
 
     // Empty-field contexts are intentionally skipped — they produce no BasisNode and require no
     // provider lookup or LLM interpretation.
@@ -172,6 +182,8 @@ async fn get_context_groups<P: Provider>(
             .or_insert_with(Vec::new)
             .push(context.clone());
     }
+
+    log::debug!("acyclic_contexts.len(): {}", acyclic_contexts.len());
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
