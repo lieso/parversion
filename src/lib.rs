@@ -45,3 +45,4 @@ pub mod basis_graph;
 pub mod xpath;
 pub mod traversal;
 pub mod normal_context;
+pub mod basis_group;

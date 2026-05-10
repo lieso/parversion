@@ -45,6 +45,7 @@ mod basis_graph;
 mod xpath;
 mod traversal;
 mod normal_context;
+mod basis_group;
 
 use crate::entrypoint::run;
 

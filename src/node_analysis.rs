@@ -177,7 +177,7 @@ async fn get_context_groups<P: Provider>(
     let mut context_groups: Vec<Vec<Arc<Context>>> = Vec::new();
 
     for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
-        log::debug!("@@@@@@@@@@@");
+        log::debug!("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
         log::debug!("contexts_in_group.len(): {}", contexts_in_group.len());
 
         for context in contexts_in_group {
