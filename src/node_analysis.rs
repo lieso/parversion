@@ -99,7 +99,7 @@ async fn get_acyclic_basis_groups<P: Provider>(
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_acyclic_basis_groups");
 
-    let (is_match, (tokens,)) = LLM::infer_group_match(
+    let (is_match, is_meaningful, (tokens,)) = LLM::infer_group_match(
         Arc::clone(&meta_context),
         contexts_in_group.clone()
     ).await?; 
@@ -110,6 +110,7 @@ async fn get_acyclic_basis_groups<P: Provider>(
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: None,
             indexed_lineage: None,
+            is_meaningful,
         };
 
         return Ok(vec![basis_group]);

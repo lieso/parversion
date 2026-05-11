@@ -299,7 +299,11 @@ impl LLM {
     pub async fn infer_group_match(
         meta_context: Arc<RwLock<MetaContext>>,
         group: Vec<Arc<Context>>,
-    ) -> Result<(bool, (u64,)), Errors> {
+    ) -> Result<(
+        bool, // match
+        bool, // meaningful
+        (u64,)
+    ), Errors> {
         log::trace!("In infer_group_match");
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -309,7 +313,7 @@ impl LLM {
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
         log::debug!("");
 
-        let sample_size = std::cmp::min(60, group.len());
+        let sample_size = std::cmp::min(40, group.len());
         let use_all = group.len() <= 20;
 
         let sampled_contexts = if use_all {
@@ -321,18 +325,14 @@ impl LLM {
             shuffled.into_iter().take(sample_size).collect()
         };
 
+        // TODO: a snippet points to an element, what if node has multiple attributes?
         let snippets: Vec<String> = sampled_contexts
             .iter()
             .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&meta_context)))
             .collect();
 
-        log::debug!("*****************************************************************************************************");
+        let (data, metadata) = crate::llm::node_analysis::NodeAnalysis::infer_snippets_match(snippets).await?;
 
-        for snippet in snippets {
-            log::debug!("#####################################################################################################");
-            log::debug!("{}", snippet);
-        }
-
-        unimplemented!();
+        Ok((data.match_result, data.meaningful, (metadata.tokens,)))
     }
 }
