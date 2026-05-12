@@ -105,6 +105,8 @@ async fn get_acyclic_basis_groups<P: Provider>(
     ).await?; 
 
     if is_match {
+        log::info!("Contexts with acyclic lineage: {} have been inferred to match", acyclic_lineage.to_string());
+
         let basis_group = BasisGroup {
             id: ID::new(),
             acyclic_lineage: acyclic_lineage.clone(),
@@ -115,6 +117,85 @@ async fn get_acyclic_basis_groups<P: Provider>(
 
         return Ok(vec![basis_group]);
     }
+
+    log::info!("Contexts with acyclic lineage: {} have been inferred to not match", acyclic_lineage.to_string());
+
+    let mut cyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+
+    for context in contexts_in_group {
+        cyclic_contexts
+            .entry(context.lineage.clone())
+            .or_insert_with(Vec::new)
+            .push(context.clone());
+    }
+
+    log::info!("Number of cyclic contexts: {}", cyclic_contexts.len());
+
+    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let mut handles = Vec::new();
+
+    for (lineage, contexts_in_subgroup) in cyclic_contexts {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_acyclic_lineage = acyclic_lineage.clone();
+
+        let handle = task::spawn(async move {
+            let _permit = permit;
+            get_cyclic_basis_groups(
+                cloned_provider,
+                cloned_meta_context,
+                cloned_acyclic_lineage,
+                lineage,
+                contexts_in_subgroup
+            )
+            .await
+        });
+        handles.push(handle);
+    }
+
+    let results: Vec<Result<Vec<BasisGroup>, Errors>> = try_join_all(handles).await?;
+
+    let flattened: Vec<BasisGroup> = results
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+    Ok(flattened)
+}
+
+async fn get_cyclic_basis_groups<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    acyclic_lineage: Lineage,
+    lineage: Lineage,
+    contexts_in_group: Vec<Arc<Context>>
+) -> Result<Vec<BasisGroup>, Errors> {
+    log::trace!("In get_cyclic_basis_groups");
+
+    let (is_match, is_meaningful, (tokens,)) = LLM::infer_group_match(
+        Arc::clone(&meta_context),
+        contexts_in_group.clone()
+    ).await?;
+
+    if is_match {
+        log::info!("Contexts with cyclic lineage: {} have been inferred to match", lineage.to_string());
+
+        let basis_group = BasisGroup {
+            id: ID::new(),
+            acyclic_lineage: acyclic_lineage.clone(),
+            lineage: Some(lineage.clone()),
+            indexed_lineage: None,
+            is_meaningful,
+        };
+
+        return Ok(vec![basis_group]);
+    }
+
+    log::info!("Contexts with cyclic lineage: {} have been inferred to not match", lineage.to_string());
 
     unimplemented!()
 }
