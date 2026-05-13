@@ -7,7 +7,6 @@ use crate::xpath::{XPath, XPathAxis, XPathSegment, XPathPredicate};
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
-pub type BottomUpIndexedLineages = Vec<Lineage>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GraphNode {
@@ -321,14 +320,12 @@ impl GraphNode {
         Ok(current.first().cloned())
     }
 
-    pub fn get_indexed_lineages(&self) -> BottomUpIndexedLineages {
+    pub fn get_indexed_lineage_at_depth(&self, target_depth: usize) -> Option<Lineage> {
         let mut ancestors = Vec::new();
-        let _current_id = self.id.clone();
 
         ancestors.push((self.id.clone(), self.hash.clone(), self.index_in_parent()));
 
         let mut remaining_parents = self.parents.clone();
-
         while !remaining_parents.is_empty() {
             let parent = read_lock!(remaining_parents[0]).clone();
             ancestors.push((parent.id.clone(), parent.hash.clone(), parent.index_in_parent()));
@@ -337,23 +334,21 @@ impl GraphNode {
 
         ancestors.reverse();
 
-        let mut indexed_lineages = Vec::new();
-
-        for inject_at_depth in 0..ancestors.len() {
-            let mut lineage = Lineage::new();
-
-            for (depth, (_, hash, index)) in ancestors.iter().enumerate() {
-                if depth == inject_at_depth {
-                    if let Some(idx) = index {
-                        lineage = lineage.with_hash(Hash::from_str(&idx.to_string()));
-                    }
-                }
-                lineage = lineage.with_hash(hash.clone());
-            }
-
-            indexed_lineages.push(lineage);
+        if target_depth >= ancestors.len() {
+            return None;
         }
 
-        indexed_lineages
+        let mut lineage = Lineage::new();
+
+        for (depth, (_, hash, index)) in ancestors.iter().enumerate() {
+            if depth == target_depth {
+                if let Some(idx) = index {
+                    lineage = lineage.with_hash(Hash::from_str(&idx.to_string()));
+                }
+            }
+            lineage = lineage.with_hash(hash.clone());
+        }
+
+        Some(lineage)
     }
 }

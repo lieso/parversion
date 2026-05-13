@@ -226,11 +226,11 @@ async fn get_cyclic_basis_groups<P: Provider>(
             get_indexed_basis_groups(
                 cloned_provider,
                 cloned_meta_context,
-                acyclic_lineage.clone(),
-                lineage.clone(),
+                cloned_acyclic_lineage,
+                cloned_lineage,
                 indexed_lineage.clone(),
                 contexts_in_subgroup.clone(),
-                &1
+                1
             )
             .await
         });
@@ -256,7 +256,7 @@ async fn get_indexed_basis_groups<P: Provider>(
     lineage: Lineage,
     indexed_lineage: Lineage,
     contexts_in_group: Vec<Arc<Context>>,
-    depth: &usize
+    depth: usize
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_index_basis_groups");
 
@@ -312,13 +312,13 @@ async fn get_indexed_basis_groups<P: Provider>(
         let handle = task::spawn(async move {
             let _permit = permit;
             get_indexed_basis_groups(
-                Arc::clone(&provider),
-                Arc::clone(&meta_context),
-                acyclic_lineage.clone(),
-                lineage.clone(),
+                cloned_provider,
+                cloned_meta_context,
+                cloned_acyclic_lineage,
+                cloned_lineage,
                 next_indexed_lineage.clone(),
                 contexts_in_subgroup.clone(),
-                &(depth + 1)
+                depth + 1
             )
             .await
         });

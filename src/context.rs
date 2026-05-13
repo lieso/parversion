@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
-use crate::graph_node::{GraphNode, GraphNodeID, BottomUpIndexedLineages};
+use crate::graph_node::{GraphNode, GraphNodeID};
 use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
@@ -30,6 +30,11 @@ impl Context {
 }
 
 impl Context {
+    pub fn get_indexed_lineage(&self, depth: usize) -> Option<Lineage> {
+        let graph_node = read_lock!(self.graph_node);
+        graph_node.get_indexed_lineage_at_depth(depth)
+    }
+
     pub fn generate_json_snippet(
         &self,
         meta_context: Arc<RwLock<MetaContext>>

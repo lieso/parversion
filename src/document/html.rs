@@ -64,7 +64,6 @@ impl Html {
                 id: ID::new(),
                 acyclic_lineage: data_node.lineage.acyclic(),
                 lineage: data_node.lineage.clone(),
-                indexed_lineages: Arc::new(RwLock::new(Vec::new())),
                 basis_lineage: Arc::new(RwLock::new(None)),
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
