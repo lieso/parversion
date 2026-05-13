@@ -17,7 +17,6 @@ pub struct Context {
     pub id: ContextID,
     pub lineage: Lineage,
     pub acyclic_lineage: Lineage,
-    pub indexed_lineages: Arc<RwLock<BottomUpIndexedLineages>>,
     pub basis_lineage: Arc<RwLock<Option<Lineage>>>,
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
