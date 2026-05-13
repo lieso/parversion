@@ -813,25 +813,20 @@ Example {}:
 You are analyzing HTML snippets for data extraction. Your task is to determine if the extracted target content across all snippets represents the same semantic type of data.
 
 **TARGET EXTRACTION:**
-Within each snippet, focus on the text content between `<!-- Target node: Start -->` and `<!-- Target node: End -->` markers. Use the surrounding HTML context to understand what type of data this represents (e.g., is it within a title tag, a price field, a domain link, etc.).
+Within each snippet, focus on the content between `<!-- Target node: Start -->` and `<!-- Target node: End -->` markers. Use the surrounding HTML context (parent elements, sibling elements, HTML hierarchy) to understand what semantic purpose this content serves.
 
 **MATCHING RULE:**
-Snippets match if and only if all extracted contents represent the **same semantic type** of information. Examples:
-- All article titles → MATCH
-- All prices → MATCH
-- All product names → MATCH
-- Mix of titles and domain names → NO MATCH
-- Mix of prices and descriptions → NO MATCH
-- Mix of author names and dates → NO MATCH
-
-Different semantic types must NOT match, even if they appear in the same HTML structure or lineage.
+Snippets match if and only if all extracted contents represent the **same semantic type** based on their context:
+- If all targets are extracted from the same contextual role (e.g., all are titles within article elements), they match
+- If targets come from different contextual roles (e.g., some from titles, others from metadata, others from actions), they do NOT match
+- Different semantic purposes = NO MATCH, even if the content appears similar
 
 **MEANINGFUL RULE:**
-Content is meaningful if it represents actual data (titles, names, prices, descriptions, etc.), not just structural artifacts (empty elements, IDs, random strings, placeholder text).
+Content is meaningful if it represents actual data, not structural artifacts (empty elements, pure whitespace, single-letter navigation placeholders).
 
 Respond with JSON:
 {
-  "match": boolean - true only if ALL extracted contents are the same semantic type,
+  "match": boolean - true only if ALL extracted contents serve the same semantic purpose,
   "meaningful": boolean - true if the content represents actual meaningful data
 }
 "##;
