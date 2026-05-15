@@ -110,6 +110,20 @@ async fn get_acyclic_basis_groups<P: Provider>(
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_acyclic_basis_groups");
 
+    if contexts_in_group.len() == 1 {
+        log::info!("Acyclic context group has only one item.");
+
+        let basis_group = BasisGroup {
+            id: ID::new(),
+            acyclic_lineage: acyclic_lineage.clone(),
+            lineage: None,
+            indexed_lineage: None,
+            is_meaningful: true // ????
+        };
+
+        return Ok(vec![basis_group]);
+    }
+
     let (is_match, is_meaningful, (tokens,)) = LLM::infer_group_match(
         Arc::clone(&meta_context),
         contexts_in_group.clone()
@@ -186,6 +200,20 @@ async fn get_cyclic_basis_groups<P: Provider>(
     contexts_in_group: Vec<Arc<Context>>
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_cyclic_basis_groups");
+
+    if contexts_in_group.len() == 1 {
+        log::info!("Cyclic context group has only one item.");
+
+        let basis_group = BasisGroup {
+            id: ID::new(),
+            acyclic_lineage: acyclic_lineage.clone(),
+            lineage: Some(lineage.clone()),
+            indexed_lineage: None,
+            is_meaningful: true // ????
+        };
+
+        return Ok(vec![basis_group]);
+    }
 
     let (is_match, is_meaningful, (tokens,)) = LLM::infer_group_match(
         Arc::clone(&meta_context),
@@ -272,6 +300,20 @@ async fn get_indexed_basis_groups<P: Provider>(
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_index_basis_groups");
 
+    if contexts_in_group.len() == 1 {
+        log::info!("Cyclic context group has only one item.");
+
+        let basis_group = BasisGroup {
+            id: ID::new(),
+            acyclic_lineage: acyclic_lineage.clone(),
+            lineage: Some(lineage.clone()),
+            indexed_lineage: Some(indexed_lineage.clone()),
+            is_meaningful: true // ????
+        };
+
+        return Ok(vec![basis_group]);
+    }
+
     let (is_match, is_meaningful, (tokens,)) = LLM::infer_group_match(
         Arc::clone(&meta_context),
         contexts_in_group.clone()
@@ -293,21 +335,35 @@ async fn get_indexed_basis_groups<P: Provider>(
 
     log::info!("Contexts with indexed lineage: {} have been inferred to not match", indexed_lineage.to_string());
 
+    let mut next_depth = depth + 1;
     let mut indexed_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+    let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
 
-    for context in contexts_in_group {
-        if let Some(indexed_lineage) = context.get_indexed_lineage(depth + 1) {
-            indexed_contexts
-                .entry(indexed_lineage.clone())
-                .or_insert_with(Vec::new)
-                .push(context);
-        } else {
-            // If we've reached this point, that implies we've calculated indexed
-            // lineages all the way up to the root node, but did not infer a match for some reason
-            // That's fine. This context can just be a group of one, implying it's unique
-            // across the entire graph and justly deserves individual analysis
-            unimplemented!();
+    loop {
+        indexed_contexts.clear();
+        unique_contexts.clear();
+
+        for context in &contexts_in_group {
+            if let Some(indexed_lineage) = context.get_indexed_lineage(next_depth) {
+                indexed_contexts
+                    .entry(indexed_lineage.clone())
+                    .or_insert_with(Vec::new)
+                    .push(context.clone());
+            } else {
+                unique_contexts.push(context.clone());
+            }
         }
+
+        if indexed_contexts.len() > 1 {
+            break;
+        }
+
+        if unique_contexts.len() == contexts_in_group.len() {
+            // TODO: do something with unique contexts
+            return Ok(Vec::new());
+        }
+
+        next_depth += 1;
     }
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
@@ -330,7 +386,7 @@ async fn get_indexed_basis_groups<P: Provider>(
                 cloned_lineage,
                 next_indexed_lineage.clone(),
                 contexts_in_subgroup.clone(),
-                depth + 1
+                next_depth
             )
             .await
         });
