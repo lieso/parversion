@@ -1,5 +1,5 @@
 use futures::future::try_join_all;
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
@@ -24,6 +24,8 @@ pub async fn get_basis_groups<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisGroup>>, Errors> {
     log::trace!("In get_basis_groups");
 
+    // NOTE: there are three duplicate contexts: one for each data node, graph node and document node
+
     let contexts = {
         let lock = read_lock!(meta_context);
         lock.contexts
@@ -32,25 +34,33 @@ pub async fn get_basis_groups<P: Provider>(
                 Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
             })?
     };
-    
-    log::info!("Total number of contexts: {}", contexts.len());
 
-    let non_empty_contexts: Vec<&Arc<Context>> = contexts
-        .values()
+    log::info!("Number of contexts: {}", contexts.len());
+
+    let non_empty_contexts: Vec<Arc<Context>> = contexts
+        .into_values()
         .filter(|context| !context.data_node.fields.is_empty())
         .collect();
 
     log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
 
+    let mut seen = HashSet::new();
+    let unique_contexts: Vec<Arc<Context>> = non_empty_contexts
+        .into_iter()
+        .filter(|context| seen.insert(context.id.clone()))
+        .collect();
+
+    log::info!("Number of unique contexts: {}", unique_contexts.len());
+
     let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
 
-    for context in non_empty_contexts {
+    for context in unique_contexts {
         acyclic_contexts
             .entry(context.acyclic_lineage.clone())
             .or_insert_with(Vec::new)
             .push(context.clone());
     }
-    
+
     log::info!("Number of acyclic contexts: {}", acyclic_contexts.len());
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
