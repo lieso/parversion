@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
+use async_recursion::async_recursion;
 
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
@@ -249,6 +250,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
     Ok(flattened)
 }
 
+#[async_recursion]
 async fn get_indexed_basis_groups<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,

@@ -1,5 +1,5 @@
 use std::sync::{Arc, RwLock};
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use rand::prelude::*;
 
 use crate::basis_network::BasisNetwork;
@@ -312,6 +312,19 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
         log::debug!("");
+
+
+
+        let mut seen = HashSet::new();
+
+        for context in &group {
+            if !seen.insert(context.id.clone()) {
+                panic!("Why are there duplicate contexts here??");
+            }
+        }
+
+
+
 
         let sample_size = std::cmp::min(40, group.len());
         let use_all = group.len() <= 20;

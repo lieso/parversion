@@ -47,6 +47,7 @@ swc_ecma_codegen = "=21.0.0"
 swc_atoms = "=9.0.0"
 openrouter-rs = "0.4.7"
 rand = { version = "0.10.1", features = ["thread_rng"]}
+async-recursion = "1.1.1"
 
 [lib]
 name = "parversion"
