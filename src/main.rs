@@ -46,6 +46,7 @@ mod xpath;
 mod traversal;
 mod normal_context;
 mod basis_group;
+mod reports;
 
 use crate::entrypoint::run;
 
