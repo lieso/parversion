@@ -299,6 +299,7 @@ impl LLM {
     pub async fn infer_group_match(
         meta_context: Arc<RwLock<MetaContext>>,
         group: Vec<Arc<Context>>,
+        max_sample_size: usize,
     ) -> Result<(
         bool, // match
         (u64,)
@@ -312,25 +313,9 @@ impl LLM {
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
         log::debug!("");
 
+        let sample_size = std::cmp::min(max_sample_size, group.len());
 
-
-        let mut seen = HashSet::new();
-
-        for context in &group {
-            if !seen.insert(context.id.clone()) {
-                panic!("Why are there duplicate contexts here??");
-            }
-        }
-
-
-
-
-        let sample_size = std::cmp::min(40, group.len());
-        let use_all = group.len() <= 20;
-
-        let sampled_contexts = if use_all {
-            group.clone()
-        } else {
+        let sampled_contexts: Vec<Arc<Context>> = {
             let mut rng = rand::rng();
             let mut shuffled = group.clone();
             shuffled.shuffle(&mut rng);

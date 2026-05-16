@@ -40,8 +40,10 @@ pub async fn report_basis_groups<P: Provider>(
 
         let contexts = context_groups.get(&group.id).map(|v| v.as_slice()).unwrap_or(&[]);
 
+        log::info!("-----------------------------------------------------------------------------------------------------");
         log::info!("--- Group [{}] ---", lineage_desc);
         log::info!("  total contexts: {}", contexts.len());
+        log::info!("-----------------------------------------------------------------------------------------------------");
 
         for (i, context) in contexts.iter().take(10).enumerate() {
             let fields: Vec<String> = context
@@ -52,6 +54,8 @@ pub async fn report_basis_groups<P: Provider>(
                 .collect();
             log::info!("  [{}] {}", i + 1, fields.join(", "));
         }
+
+        log::info!("\n");
     }
 
     log::info!("=== End Basis Group Report ===");

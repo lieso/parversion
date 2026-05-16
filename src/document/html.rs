@@ -207,7 +207,7 @@ fn preprocess_attribute(attr_name: &str, attr_value: &str) -> Option<(String, St
         "id" => None,
         "aria-describedby" | "aria-controls" | "aria-expanded" | "aria-labelledby"
         | "aria-live" | "aria-level" | "aria-hidden" | "aria-atomic" => None,
-        "class" | "style" | "width" | "height" => None,
+        "style" | "width" | "height" => None,
         "type" | "lang" | "rel" | "role" => None,
         "crossorigin" | "xmlns" => None,
         "tabindex" | "maxlength" => None,
