@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
 use async_recursion::async_recursion;
+use std::time::Duration;
 
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
@@ -181,6 +182,9 @@ pub async fn get_basis_groups<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
             get_acyclic_basis_groups(
                 cloned_provider,
                 cloned_meta_context,
@@ -293,6 +297,9 @@ async fn get_acyclic_basis_groups<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
             get_cyclic_basis_groups(
                 cloned_provider,
                 cloned_meta_context,
@@ -423,6 +430,9 @@ async fn get_cyclic_basis_groups<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
             get_indexed_basis_groups(
                 cloned_provider,
                 cloned_meta_context,
@@ -556,6 +566,9 @@ async fn get_indexed_basis_groups<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
             get_indexed_basis_groups(
                 cloned_provider,
                 cloned_meta_context,
@@ -621,6 +634,9 @@ pub async fn get_basis_nodes<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
             let basis_node = get_basis_node(
                 cloned_provider,
                 cloned_meta_context,

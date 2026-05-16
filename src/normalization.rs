@@ -80,6 +80,8 @@ pub async fn normalize<P: Provider>(
         lock.update_basis_nodes(basis_nodes);
     }
 
+    panic!("test");
+
     stage.finish();
     let stage = execution_context.enter_stage("Network analysis");
 

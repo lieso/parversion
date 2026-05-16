@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
+use std::time::Duration;
 
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
@@ -164,6 +165,9 @@ pub async fn get_network_relationships<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
             get_traversal(
                 cloned_provider,
                 cloned_meta_context,
@@ -435,6 +439,9 @@ pub async fn get_basis_networks<P: Provider>(
 
         let handle = task::spawn(async move {
             let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
             let basis_network = get_basis_network(
                 cloned_provider,
                 cloned_meta_context,
