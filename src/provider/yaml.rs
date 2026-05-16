@@ -424,10 +424,10 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_basis_group_by_acyclic_lineage(
+    async fn get_basis_groups_by_acyclic_lineage(
         &self,
         acyclic_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
+    ) -> Result<Vec<BasisGroup>, Errors> {
         let yaml = self.load_data().await?;
 
         let basis_groups: Vec<BasisGroup> = yaml
@@ -440,22 +440,19 @@ impl Provider for YamlFileProvider {
                 }
                 deserialized.ok()
             })
-        .unwrap_or_else(Vec::new);
+            .unwrap_or_else(Vec::new);
 
-        for basis_group in basis_groups {
-            if &basis_group.acyclic_lineage == acyclic_lineage {
-                return Ok(Some(basis_group));
-            }
-        }
-
-        Ok(None)
+        Ok(basis_groups
+            .into_iter()
+            .filter(|bg| &bg.acyclic_lineage == acyclic_lineage)
+            .collect())
     }
 
-    async fn get_basis_group_by_lineage(
+    async fn get_basis_groups_by_lineage(
         &self,
         acyclic_lineage: &Lineage,
         lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
+    ) -> Result<Vec<BasisGroup>, Errors> {
         let yaml = self.load_data().await?;
 
         let basis_groups: Vec<BasisGroup> = yaml
@@ -468,24 +465,21 @@ impl Provider for YamlFileProvider {
                 }
                 deserialized.ok()
             })
-        .unwrap_or_else(Vec::new);
+            .unwrap_or_else(Vec::new);
 
-        for basis_group in basis_groups {
-            if &basis_group.acyclic_lineage == acyclic_lineage
-                && basis_group.lineage.as_ref() == Some(lineage) {
-                return Ok(Some(basis_group));
-            }
-        }
-
-        Ok(None)
+        Ok(basis_groups
+            .into_iter()
+            .filter(|bg| &bg.acyclic_lineage == acyclic_lineage
+                && bg.lineage.as_ref() == Some(lineage))
+            .collect())
     }
 
-    async fn get_basis_group_by_indexed_lineage(
-      &self,
-      acyclic_lineage: &Lineage,
-      lineage: &Lineage,
-      indexed_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
+    async fn get_basis_groups_by_indexed_lineage(
+        &self,
+        acyclic_lineage: &Lineage,
+        lineage: &Lineage,
+        indexed_lineage: &Lineage,
+    ) -> Result<Vec<BasisGroup>, Errors> {
         let yaml = self.load_data().await?;
 
         let basis_groups: Vec<BasisGroup> = yaml
@@ -498,18 +492,14 @@ impl Provider for YamlFileProvider {
                 }
                 deserialized.ok()
             })
-        .unwrap_or_else(Vec::new);
+            .unwrap_or_else(Vec::new);
 
-        for basis_group in basis_groups {
-            if &basis_group.acyclic_lineage == acyclic_lineage
-                && basis_group.lineage.as_ref() == Some(lineage)
-                    && basis_group.indexed_lineage.as_ref() == Some(indexed_lineage)
-            {
-                return Ok(Some(basis_group));
-            }
-        }
-
-        Ok(None)
+        Ok(basis_groups
+            .into_iter()
+            .filter(|bg| &bg.acyclic_lineage == acyclic_lineage
+                && bg.lineage.as_ref() == Some(lineage)
+                && bg.indexed_lineage.as_ref() == Some(indexed_lineage))
+            .collect())
     }
 
     async fn save_basis_group(

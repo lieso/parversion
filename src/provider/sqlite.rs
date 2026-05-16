@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 
 use crate::basis_graph::BasisGraph;
+use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
@@ -97,26 +98,26 @@ impl Provider for SqliteProvider {
     ) -> Result<(), Errors> {
         Ok(())
     }
-    async fn get_basis_group_by_acyclic_lineage(
+    async fn get_basis_groups_by_acyclic_lineage(
         &self,
         _acyclic_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
-        Ok(None)
+    ) -> Result<Vec<BasisGroup>, Errors> {
+        Ok(Vec::new())
     }
-    async fn get_basis_group_by_lineage(
+    async fn get_basis_groups_by_lineage(
         &self,
         _acyclic_lineage: &Lineage,
         _lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
-        Ok(None)
+    ) -> Result<Vec<BasisGroup>, Errors> {
+        Ok(Vec::new())
     }
-    async fn get_basis_group_by_indexed_lineage(
+    async fn get_basis_groups_by_indexed_lineage(
         &self,
         _acyclic_lineage: &Lineage,
         _lineage: &Lineage,
         _indexed_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
-        Ok(None)
+    ) -> Result<Vec<BasisGroup>, Errors> {
+        Ok(Vec::new())
     }
     async fn save_basis_group(
         &self,

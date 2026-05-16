@@ -117,10 +117,13 @@ async fn get_acyclic_basis_groups<P: Provider>(
     log::trace!("In get_acyclic_basis_groups");
 
     if !options.regenerate {
-        if let Some(basis_group) = provider.get_basis_group_by_acyclic_lineage(&acyclic_lineage).await? {
-            if basis_group.lineage.is_none() && basis_group.indexed_lineage.is_none() {
-                return Ok(vec![basis_group]);
-            }
+        let cached: Vec<BasisGroup> = provider
+            .get_basis_groups_by_acyclic_lineage(&acyclic_lineage).await?
+            .into_iter()
+            .filter(|bg| bg.lineage.is_none() && bg.indexed_lineage.is_none())
+            .collect();
+        if !cached.is_empty() {
+            return Ok(cached);
         }
     }
 
@@ -223,10 +226,13 @@ async fn get_cyclic_basis_groups<P: Provider>(
     log::trace!("In get_cyclic_basis_groups");
 
     if !options.regenerate {
-        if let Some(basis_group) = provider.get_basis_group_by_lineage(&acyclic_lineage, &lineage).await? {
-            if basis_group.indexed_lineage.is_none() {
-                return Ok(vec![basis_group]);
-            }
+        let cached: Vec<BasisGroup> = provider
+            .get_basis_groups_by_lineage(&acyclic_lineage, &lineage).await?
+            .into_iter()
+            .filter(|bg| bg.indexed_lineage.is_none())
+            .collect();
+        if !cached.is_empty() {
+            return Ok(cached);
         }
     }
 
@@ -338,8 +344,10 @@ async fn get_indexed_basis_groups<P: Provider>(
     log::trace!("In get_index_basis_groups");
 
     if !options.regenerate {
-        if let Some(basis_group) = provider.get_basis_group_by_indexed_lineage(&acyclic_lineage, &lineage, &indexed_lineage).await? {
-            return Ok(vec![basis_group]);
+        let cached = provider
+            .get_basis_groups_by_indexed_lineage(&acyclic_lineage, &lineage, &indexed_lineage).await?;
+        if !cached.is_empty() {
+            return Ok(cached);
         }
     }
 

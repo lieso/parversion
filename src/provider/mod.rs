@@ -17,21 +17,21 @@ pub mod sqlite;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
-    async fn get_basis_group_by_acyclic_lineage(
+    async fn get_basis_groups_by_acyclic_lineage(
         &self,
         acyclic_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors>;
-    async fn get_basis_group_by_lineage(
+    ) -> Result<Vec<BasisGroup>, Errors>;
+    async fn get_basis_groups_by_lineage(
         &self,
         acyclic_lineage: &Lineage,
         lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors>;
-    async fn get_basis_group_by_indexed_lineage(
+    ) -> Result<Vec<BasisGroup>, Errors>;
+    async fn get_basis_groups_by_indexed_lineage(
         &self,
         acyclic_lineage: &Lineage,
         lineage: &Lineage,
         indexed_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors>;
+    ) -> Result<Vec<BasisGroup>, Errors>;
     async fn save_basis_group(
         &self,
         acyclic_lineage: &Lineage,
@@ -89,26 +89,26 @@ pub struct VoidProvider;
 
 #[async_trait]
 impl Provider for VoidProvider {
-    async fn get_basis_group_by_acyclic_lineage(
+    async fn get_basis_groups_by_acyclic_lineage(
         &self,
         _acyclic_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
-        Ok(None)
+    ) -> Result<Vec<BasisGroup>, Errors> {
+        Ok(Vec::new())
     }
-    async fn get_basis_group_by_lineage(
+    async fn get_basis_groups_by_lineage(
         &self,
         _acyclic_lineage: &Lineage,
         _lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
-        Ok(None)
+    ) -> Result<Vec<BasisGroup>, Errors> {
+        Ok(Vec::new())
     }
-    async fn get_basis_group_by_indexed_lineage(
+    async fn get_basis_groups_by_indexed_lineage(
         &self,
         _acyclic_lineage: &Lineage,
         _lineage: &Lineage,
         _indexed_lineage: &Lineage,
-    ) -> Result<Option<BasisGroup>, Errors> {
-        Ok(None)
+    ) -> Result<Vec<BasisGroup>, Errors> {
+        Ok(Vec::new())
     }
     async fn save_basis_group(
         &self,
