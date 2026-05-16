@@ -7,6 +7,7 @@ use tokio::sync::RwLock as AsyncRwLock;
 
 use crate::basis_graph::BasisGraph;
 use crate::classification::Classification;
+use crate::basis_group::BasisGroup;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::bloom_filter::BloomFilter;
@@ -418,6 +419,131 @@ impl Provider for YamlFileProvider {
                 .push(serialized_operation);
         } else {
             yaml["operations"] = serde_yaml::Value::Sequence(vec![serialized_operation]);
+        }
+
+        self.save_data(&yaml).await
+    }
+
+    async fn get_basis_group_by_acyclic_lineage(
+        &self,
+        acyclic_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        let yaml = self.load_data().await?;
+
+        let basis_groups: Vec<BasisGroup> = yaml
+            .get("basis_groups")
+            .and_then(|bg| {
+                let deserialized: Result<Vec<BasisGroup>, _> =
+                    serde_yaml::from_value(bg.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error for basis_groups: {:?}", err);
+                }
+                deserialized.ok()
+            })
+        .unwrap_or_else(Vec::new);
+
+        for basis_group in basis_groups {
+            if &basis_group.acyclic_lineage == acyclic_lineage {
+                return Ok(Some(basis_group));
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn get_basis_group_by_lineage(
+        &self,
+        acyclic_lineage: &Lineage,
+        lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        let yaml = self.load_data().await?;
+
+        let basis_groups: Vec<BasisGroup> = yaml
+            .get("basis_groups")
+            .and_then(|bg| {
+                let deserialized: Result<Vec<BasisGroup>, _> =
+                    serde_yaml::from_value(bg.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error for basis_groups: {:?}", err);
+                }
+                deserialized.ok()
+            })
+        .unwrap_or_else(Vec::new);
+
+        for basis_group in basis_groups {
+            if &basis_group.acyclic_lineage == acyclic_lineage
+                && basis_group.lineage.as_ref() == Some(lineage) {
+                return Ok(Some(basis_group));
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn get_basis_group_by_indexed_lineage(
+      &self,
+      acyclic_lineage: &Lineage,
+      lineage: &Lineage,
+      indexed_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        let yaml = self.load_data().await?;
+
+        let basis_groups: Vec<BasisGroup> = yaml
+            .get("basis_groups")
+            .and_then(|bg| {
+                let deserialized: Result<Vec<BasisGroup>, _> =
+                    serde_yaml::from_value(bg.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error for basis_groups: {:?}", err);
+                }
+                deserialized.ok()
+            })
+        .unwrap_or_else(Vec::new);
+
+        for basis_group in basis_groups {
+            if &basis_group.acyclic_lineage == acyclic_lineage
+                && basis_group.lineage.as_ref() == Some(lineage)
+                    && basis_group.indexed_lineage.as_ref() == Some(indexed_lineage)
+            {
+                return Ok(Some(basis_group));
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn save_basis_group(
+        &self,
+        acyclic_lineage: &Lineage,
+        lineage: Option<&Lineage>,
+        indexed_lineage: Option<&Lineage>,
+        basis_group: BasisGroup,
+    ) -> Result<(), Errors> {
+        let mut yaml = self.load_data().await?;
+
+        let serialized_basis_group =
+            serde_yaml::to_value(&basis_group).map_err(|_| Errors::UnexpectedError)?;
+
+        if let Some(basis_groups) = yaml.get_mut("basis_groups") {
+            let sequence = basis_groups.as_sequence_mut().ok_or_else(|| {
+                Errors::YamlParseError(
+                    "Failed to get mutable sequence for 'basis_groups'.".to_string(),
+                )
+            })?;
+
+            sequence.retain(|entry| {
+                if let Ok(existing) = serde_yaml::from_value::<BasisGroup>(entry.clone()) {
+                    !(existing.acyclic_lineage == *acyclic_lineage
+                        && existing.lineage.as_ref().map(|l| l) == lineage
+                        && existing.indexed_lineage.as_ref().map(|l| l) == indexed_lineage)
+                } else {
+                    true
+                }
+            });
+
+            sequence.push(serialized_basis_group);
+        } else {
+            yaml["basis_groups"] = serde_yaml::Value::Sequence(vec![serialized_basis_group]);
         }
 
         self.save_data(&yaml).await

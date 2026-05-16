@@ -9,4 +9,3 @@ pub struct BasisGroup {
     pub lineage: Option<Lineage>,
     pub indexed_lineage: Option<Lineage>,
 }
-

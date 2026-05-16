@@ -90,11 +90,40 @@ impl Provider for SqliteProvider {
     async fn get_basis_graph_by_hash(&self, _hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
         Ok(None)
     }
-
     async fn save_basis_graph(
         &self,
         _hash: &Hash,
         _basis_graph: BasisGraph,
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+    async fn get_basis_group_by_acyclic_lineage(
+        &self,
+        _acyclic_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        Ok(None)
+    }
+    async fn get_basis_group_by_lineage(
+        &self,
+        _acyclic_lineage: &Lineage,
+        _lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        Ok(None)
+    }
+    async fn get_basis_group_by_indexed_lineage(
+        &self,
+        _acyclic_lineage: &Lineage,
+        _lineage: &Lineage,
+        _indexed_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        Ok(None)
+    }
+    async fn save_basis_group(
+        &self,
+        _acyclic_lineage: &Lineage,
+        _lineage: Option<&Lineage>,
+        _indexed_lineage: Option<&Lineage>,
+        _basis_group: BasisGroup,
     ) -> Result<(), Errors> {
         Ok(())
     }

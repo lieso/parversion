@@ -71,6 +71,8 @@ pub async fn get_basis_groups<P: Provider>(
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
         let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -79,6 +81,8 @@ pub async fn get_basis_groups<P: Provider>(
                 cloned_meta_context,
                 acyclic_lineage,
                 contexts_in_group,
+                cloned_options,
+                cloned_stage_context,
             )
             .await
         });
@@ -107,37 +111,50 @@ async fn get_acyclic_basis_groups<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
     acyclic_lineage: Lineage,
     contexts_in_group: Vec<Arc<Context>>,
+    options: Options,
+    stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_acyclic_basis_groups");
 
-    if contexts_in_group.len() == 1 {
-        log::info!("Acyclic context group has only one item.");
-
-        let basis_group = BasisGroup {
-            id: ID::new(),
-            acyclic_lineage: acyclic_lineage.clone(),
-            lineage: None,
-            indexed_lineage: None,
-        };
-
-        return Ok(vec![basis_group]);
+    if !options.regenerate {
+        if let Some(basis_group) = provider.get_basis_group_by_acyclic_lineage(&acyclic_lineage).await? {
+            if basis_group.lineage.is_none() && basis_group.indexed_lineage.is_none() {
+                return Ok(vec![basis_group]);
+            }
+        }
     }
 
-    let (is_match, (tokens,)) = LLM::infer_group_match(
-        Arc::clone(&meta_context),
-        contexts_in_group.clone()
-    ).await?;
-
-    if is_match {
-        log::info!("Contexts with acyclic lineage: {} have been inferred to match", acyclic_lineage.to_string());
-
-        let basis_group = BasisGroup {
+    let maybe_basis_group: Option<BasisGroup> = if contexts_in_group.len() == 1 {
+        log::info!("Acyclic context group has only one item.");
+        Some(BasisGroup {
             id: ID::new(),
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: None,
             indexed_lineage: None,
-        };
+        })
+    } else {
+        let (is_match, (tokens,)) = LLM::infer_group_match(
+            Arc::clone(&meta_context),
+            contexts_in_group.clone()
+        ).await?;
 
+        if is_match {
+            log::info!("Contexts with acyclic lineage: {} have been inferred to match",
+                acyclic_lineage.to_string());
+            stage_context.record_events("Group analysis", tokens);
+            Some(BasisGroup {
+                id: ID::new(),
+                acyclic_lineage: acyclic_lineage.clone(),
+                lineage: None,
+                indexed_lineage: None,
+            })
+        } else {
+            None
+        }
+    };
+
+    if let Some(basis_group) = maybe_basis_group {
+        provider.save_basis_group(&acyclic_lineage, None, None, basis_group.clone()).await?;
         return Ok(vec![basis_group]);
     }
 
@@ -163,6 +180,8 @@ async fn get_acyclic_basis_groups<P: Provider>(
         let cloned_provider = Arc::clone(&provider);
         let cloned_meta_context = Arc::clone(&meta_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -171,7 +190,9 @@ async fn get_acyclic_basis_groups<P: Provider>(
                 cloned_meta_context,
                 cloned_acyclic_lineage,
                 lineage,
-                contexts_in_subgroup
+                contexts_in_subgroup,
+                cloned_options,
+                cloned_stage_context
             )
             .await
         });
@@ -195,38 +216,50 @@ async fn get_cyclic_basis_groups<P: Provider>(
     meta_context: Arc<RwLock<MetaContext>>,
     acyclic_lineage: Lineage,
     lineage: Lineage,
-    contexts_in_group: Vec<Arc<Context>>
+    contexts_in_group: Vec<Arc<Context>>,
+    options: Options,
+    stage_context: StageContext
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_cyclic_basis_groups");
 
-    if contexts_in_group.len() == 1 {
-        log::info!("Cyclic context group has only one item.");
-
-        let basis_group = BasisGroup {
-            id: ID::new(),
-            acyclic_lineage: acyclic_lineage.clone(),
-            lineage: Some(lineage.clone()),
-            indexed_lineage: None,
-        };
-
-        return Ok(vec![basis_group]);
+    if !options.regenerate {
+        if let Some(basis_group) = provider.get_basis_group_by_lineage(&acyclic_lineage, &lineage).await? {
+            if basis_group.indexed_lineage.is_none() {
+                return Ok(vec![basis_group]);
+            }
+        }
     }
 
-    let (is_match, (tokens,)) = LLM::infer_group_match(
-        Arc::clone(&meta_context),
-        contexts_in_group.clone()
-    ).await?;
-
-    if is_match {
-        log::info!("Contexts with cyclic lineage: {} have been inferred to match", lineage.to_string());
-
-        let basis_group = BasisGroup {
+    let maybe_basis_group: Option<BasisGroup> = if contexts_in_group.len() == 1 {
+        log::info!("Cyclic context group has only one item.");
+        Some(BasisGroup {
             id: ID::new(),
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: Some(lineage.clone()),
             indexed_lineage: None,
-        };
+        })
+    } else {
+        let (is_match, (tokens,)) = LLM::infer_group_match(
+            Arc::clone(&meta_context),
+            contexts_in_group.clone()
+        ).await?;
 
+        if is_match {
+            log::info!("Contexts with cyclic lineage: {} have been inferred to match", lineage.to_string());
+            stage_context.record_events("Group analysis", tokens);
+            Some(BasisGroup {
+                id: ID::new(),
+                acyclic_lineage: acyclic_lineage.clone(),
+                lineage: Some(lineage.clone()),
+                indexed_lineage: None,
+            })
+        } else {
+            None
+        }
+    };
+
+    if let Some(basis_group) = maybe_basis_group {
+        provider.save_basis_group(&acyclic_lineage, Some(&lineage), None, basis_group.clone()).await?;
         return Ok(vec![basis_group]);
     }
 
@@ -242,6 +275,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
                 .or_insert_with(Vec::new)
                 .push(context);
         } else {
+            log::warn!("Ran out of indexed lineages");
             unique_contexts.push(context.clone());
         }
     }
@@ -256,6 +290,8 @@ async fn get_cyclic_basis_groups<P: Provider>(
         let cloned_meta_context = Arc::clone(&meta_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_lineage = lineage.clone();
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -266,7 +302,9 @@ async fn get_cyclic_basis_groups<P: Provider>(
                 cloned_lineage,
                 indexed_lineage.clone(),
                 contexts_in_subgroup.clone(),
-                1
+                1,
+                cloned_options,
+                cloned_stage_context
             )
             .await
         });
@@ -293,38 +331,48 @@ async fn get_indexed_basis_groups<P: Provider>(
     lineage: Lineage,
     indexed_lineage: Lineage,
     contexts_in_group: Vec<Arc<Context>>,
-    depth: usize
+    depth: usize,
+    options: Options,
+    stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
     log::trace!("In get_index_basis_groups");
 
-    if contexts_in_group.len() == 1 {
-        log::info!("Indexed context group has only one item.");
+    if !options.regenerate {
+        if let Some(basis_group) = provider.get_basis_group_by_indexed_lineage(&acyclic_lineage, &lineage, &indexed_lineage).await? {
+            return Ok(vec![basis_group]);
+        }
+    }
 
-        let basis_group = BasisGroup {
+    let maybe_basis_group: Option<BasisGroup> = if contexts_in_group.len() == 1 {
+        log::info!("Indexed context group has only one item.");
+        Some(BasisGroup {
             id: ID::new(),
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: Some(lineage.clone()),
             indexed_lineage: Some(indexed_lineage.clone()),
-        };
+        })
+    } else {
+        let (is_match, (tokens,)) = LLM::infer_group_match(
+            Arc::clone(&meta_context),
+            contexts_in_group.clone()
+        ).await?;
 
-        return Ok(vec![basis_group]);
-    }
+        if is_match {
+            log::info!("Contexts with indexed lineage: {} have been inferred to match", indexed_lineage.to_string());
+            stage_context.record_events("Group analysis", tokens);
+            Some(BasisGroup {
+                id: ID::new(),
+                acyclic_lineage: acyclic_lineage.clone(),
+                lineage: Some(lineage.clone()),
+                indexed_lineage: Some(indexed_lineage.clone()),
+            })
+        } else {
+            None
+        }
+    };
 
-    let (is_match, (tokens,)) = LLM::infer_group_match(
-        Arc::clone(&meta_context),
-        contexts_in_group.clone()
-    ).await?;
-
-    if is_match {
-        log::info!("Contexts with indexed lineage: {} have been inferred to match", indexed_lineage.to_string());
-
-        let basis_group = BasisGroup {
-            id: ID::new(),
-            acyclic_lineage: acyclic_lineage.clone(),
-            lineage: Some(lineage.clone()),
-            indexed_lineage: Some(indexed_lineage),
-        };
-
+    if let Some(basis_group) = maybe_basis_group {
+        provider.save_basis_group(&acyclic_lineage, Some(&lineage), Some(&indexed_lineage), basis_group.clone()).await?;
         return Ok(vec![basis_group]);
     }
 
@@ -345,6 +393,7 @@ async fn get_indexed_basis_groups<P: Provider>(
                     .or_insert_with(Vec::new)
                     .push(context.clone());
             } else {
+                log::warn!("Ran out of indexed lineages");
                 unique_contexts.push(context.clone());
             }
         }
@@ -371,6 +420,8 @@ async fn get_indexed_basis_groups<P: Provider>(
         let cloned_meta_context = Arc::clone(&meta_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_lineage = lineage.clone();
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -381,7 +432,9 @@ async fn get_indexed_basis_groups<P: Provider>(
                 cloned_lineage,
                 next_indexed_lineage.clone(),
                 contexts_in_subgroup.clone(),
-                next_depth
+                next_depth,
+                cloned_options,
+                cloned_stage_context,
             )
             .await
         });

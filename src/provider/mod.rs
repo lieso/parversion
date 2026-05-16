@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
+use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::basis_graph::BasisGraph;
 use crate::operation::Operation;
@@ -16,6 +17,28 @@ pub mod sqlite;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
+    async fn get_basis_group_by_acyclic_lineage(
+        &self,
+        acyclic_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors>;
+    async fn get_basis_group_by_lineage(
+        &self,
+        acyclic_lineage: &Lineage,
+        lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors>;
+    async fn get_basis_group_by_indexed_lineage(
+        &self,
+        acyclic_lineage: &Lineage,
+        lineage: &Lineage,
+        indexed_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors>;
+    async fn save_basis_group(
+        &self,
+        acyclic_lineage: &Lineage,
+        lineage: Option<&Lineage>,
+        indexed_lineage: Option<&Lineage>,
+        basis_group: BasisGroup,
+    ) -> Result<(), Errors>;
     async fn get_basis_node_by_lineage(
         &self,
         lineage: &Lineage,
@@ -66,6 +89,36 @@ pub struct VoidProvider;
 
 #[async_trait]
 impl Provider for VoidProvider {
+    async fn get_basis_group_by_acyclic_lineage(
+        &self,
+        _acyclic_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        Ok(None)
+    }
+    async fn get_basis_group_by_lineage(
+        &self,
+        _acyclic_lineage: &Lineage,
+        _lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        Ok(None)
+    }
+    async fn get_basis_group_by_indexed_lineage(
+        &self,
+        _acyclic_lineage: &Lineage,
+        _lineage: &Lineage,
+        _indexed_lineage: &Lineage,
+    ) -> Result<Option<BasisGroup>, Errors> {
+        Ok(None)
+    }
+    async fn save_basis_group(
+        &self,
+        _acyclic_lineage: &Lineage,
+        _lineage: Option<&Lineage>,
+        _indexed_lineage: Option<&Lineage>,
+        _basis_group: BasisGroup,
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
     async fn get_basis_node_by_lineage(
         &self,
         _lineage: &Lineage,
