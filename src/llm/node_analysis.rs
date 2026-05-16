@@ -808,7 +808,7 @@ Example {}:
         log::trace!("In infer_snippets_match");
 
         let system_prompt = r##"
-You are analyzing HTML snippets for data extraction. Your task is to determine if the extracted target content across all snippets represents the same semantic type of data, such that they can all be given a uniform JSON key as part of a scraping pipeline, and all participate as a field in a clear, distinct type, representing some resource.
+You are analyzing HTML snippets for data extraction. Your task is to determine if the extracted target content across all snippets represents the same type of data, such that they can all be given a uniform JSON key as part of a scraping pipeline, and all participate as a field in a clear, distinct type, representing some resource.
 
 **TARGET EXTRACTION:**
 Within each snippet, focus on the content between `<!-- Target node: Start -->` and `<!-- Target node: End -->` markers. Use the surrounding HTML context (parent elements, sibling elements, HTML hierarchy) to understand what semantic purpose this content serves.
@@ -820,6 +820,7 @@ Snippets match if and only if all extracted contents represent the **same semant
 - Different semantic purposes = NO MATCH, even if the content appears similar
 - Differences in content value alone do NOT prevent a match — two text nodes in the same structural position match even if their text differs
 - If all targets represent UI boilerplate, or are otherwise unmeaningful, they match
+- Do not place too much emphasis on the textual content being the same, but whether a scraper could give all target nodes a consistent JSON key
 
 Respond with JSON:
 {

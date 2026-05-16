@@ -67,6 +67,28 @@ pub async fn get_basis_groups<P: Provider>(
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
 
+    //acyclic_lineage: 3e65acf518bab4c9de4ea66bc0e5f99d5cfe521f8ad3ab271de7ef9322218158
+    //acyclic_lineage: a3acb34ba68555eddbe6ed689fb784583d0aaaf6b2853b5692690c20b3cc1b2b
+    //acyclic_lineage: eb4e14353c351d09f4d9f39ffef6fc76b07590d4cd70b328ea59ef63bed0bd73
+    //acyclic_lineage: cb2f8581836cd366f1069f195de3b886c207f26b5cbc516a44faa7447c474728
+    //acyclic_lineage: 094e98ed2d413f5305fa38dfe902d7d0238135fae5be9246d75ec3d5c75622af
+    //acyclic_lineage: 1d91950406f091317c16c11abf29ea036bd10c05ebc269d91cc7988d5db9809d
+    //acyclic_lineage: feec3200612cc322c1843f515ab906c7260a17ca41d5301da25740448e401eaa
+    //acyclic_lineage: 611610efbd6fedcd5482b771613484dcfe9618de4ded1ae1d28613ebd05bfd3d
+    //acyclic_lineage: 00eb84aa485f3a7bed226de2d8326e8b08de096a8885a23d9338b6f8b9fb12ef
+    //acyclic_lineage: 3357fba982a4dac4893c1c0d5cdcf1453680206b32091a4d75c9ae8391da988f
+    //acyclic_lineage: 815d93b325b4bcfd5ddbb228c9f0d50d21ff7e5c93290ef538db0f139b64ede5
+    //acyclic_lineage: cda088d9c97e1716ba13b41ea63a387ae43ec8e117774aa8b5af2100a32626dc
+    //acyclic_lineage: b2c9530df6192bd55e175ce0acf0a8ad0a7643596900f6aa077953d5f5edd19b
+    //acyclic_lineage: 90c5c7629e7e6b9490fd82cafb2f7242810d413556a0ad1347c02e75b0b0fac0
+    //acyclic_lineage: 6885f8c0617174c9d9e214ac4a7a583eb6541f8fd389b12a9ccc28dcb4abd0e4
+    //acyclic_lineage: d04b31a9f136ed03247a206d643a4261bd0cf08fd3119e1ea136cf2a27b52a6f
+    //acyclic_lineage: 0c18b140203d0e571956a0cefa4d741fd7054e1dda7a199bf329c1e7ff7c841d
+    //acyclic_lineage: 0cf3d0969acb4c8cb01984f9300f670b4f4b4156bea4c30c92ddc00c501b94f6
+    //acyclic_lineage: 0e489bd26aa07646c34bd586ba34f42eaa075cebdea8c9325a2ada6f6edd31ae
+    //acyclic_lineage: dd22c0b36c1d4293f6af93dfa7778752531b0335683861391174182b800e4a2b
+    //acyclic_lineage: 39b0c01c08324dd3d622b1978f07d5cc9b3a7603dc531a72c90853034f56ea4f
+
     for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
@@ -74,19 +96,21 @@ pub async fn get_basis_groups<P: Provider>(
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
 
-        let handle = task::spawn(async move {
-            let _permit = permit;
-            get_acyclic_basis_groups(
-                cloned_provider,
-                cloned_meta_context,
-                acyclic_lineage,
-                contexts_in_group,
-                cloned_options,
-                cloned_stage_context,
-            )
-            .await
-        });
-        handles.push(handle);
+        //if acyclic_lineage.to_string() == "3e65acf518bab4c9de4ea66bc0e5f99d5cfe521f8ad3ab271de7ef9322218158".to_string() {
+            let handle = task::spawn(async move {
+                let _permit = permit;
+                get_acyclic_basis_groups(
+                    cloned_provider,
+                    cloned_meta_context,
+                    acyclic_lineage,
+                    contexts_in_group,
+                    cloned_options,
+                    cloned_stage_context,
+                )
+                .await
+            });
+            handles.push(handle);
+        //}
     }
 
     let results: Vec<Result<Vec<BasisGroup>, Errors>> = try_join_all(handles).await?;
@@ -120,7 +144,6 @@ async fn get_acyclic_basis_groups<P: Provider>(
         let cached: Vec<BasisGroup> = provider
             .get_basis_groups_by_acyclic_lineage(&acyclic_lineage).await?
             .into_iter()
-            .filter(|bg| bg.lineage.is_none() && bg.indexed_lineage.is_none())
             .collect();
         if !cached.is_empty() {
             return Ok(cached);
@@ -229,7 +252,6 @@ async fn get_cyclic_basis_groups<P: Provider>(
         let cached: Vec<BasisGroup> = provider
             .get_basis_groups_by_lineage(&acyclic_lineage, &lineage).await?
             .into_iter()
-            .filter(|bg| bg.indexed_lineage.is_none())
             .collect();
         if !cached.is_empty() {
             return Ok(cached);
@@ -271,19 +293,36 @@ async fn get_cyclic_basis_groups<P: Provider>(
 
     log::info!("Contexts with cyclic lineage: {} have been inferred to not match", lineage.to_string());
 
+    let mut next_depth = 0;
     let mut indexed_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
     let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
 
-    for context in contexts_in_group {
-        if let Some(indexed_lineage) = context.get_indexed_lineage(1) {
-            indexed_contexts
-                .entry(indexed_lineage.clone())
-                .or_insert_with(Vec::new)
-                .push(context);
-        } else {
-            log::warn!("Ran out of indexed lineages");
-            unique_contexts.push(context.clone());
+    loop {
+        indexed_contexts.clear();
+        unique_contexts.clear();
+
+        for context in &contexts_in_group {
+            if let Some(indexed_lineage) = context.get_indexed_lineage(next_depth) {
+                indexed_contexts
+                    .entry(indexed_lineage.clone())
+                    .or_insert_with(Vec::new)
+                    .push(context.clone());
+            } else {
+                log::warn!("Ran out of indexed lineages");
+                unique_contexts.push(context.clone());
+            }
         }
+
+        if indexed_contexts.len() > 1 {
+            break;
+        }
+
+        if unique_contexts.len() == contexts_in_group.len() {
+            // TODO: do something with unique contexts
+            return Ok(Vec::new());
+        }
+
+        next_depth += 1;
     }
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
@@ -308,7 +347,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
                 cloned_lineage,
                 indexed_lineage.clone(),
                 contexts_in_subgroup.clone(),
-                1,
+                0,
                 cloned_options,
                 cloned_stage_context
             )

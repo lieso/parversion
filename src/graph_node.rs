@@ -332,8 +332,6 @@ impl GraphNode {
             remaining_parents = parent.parents.clone();
         }
 
-        ancestors.reverse();
-
         if target_depth >= ancestors.len() {
             return None;
         }
