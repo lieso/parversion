@@ -16,6 +16,101 @@ use crate::provider::Provider;
 use crate::traversal::{get_original_document_condensed};
 use crate::context::Context;
 
+pub async fn get_context_groups<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+) -> Result<HashMap<ID, Vec<Arc<Context>>>, Errors> {
+    log::trace!("In get_context_groups");
+
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+            })?
+    };
+
+    log::info!("Number of contexts: {}", contexts.len());
+
+    let non_empty_contexts: Vec<Arc<Context>> = contexts
+        .into_values()
+        .filter(|context| !context.data_node.fields.is_empty())
+        .collect();
+
+    log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
+
+    let mut seen = HashSet::new();
+    let unique_contexts: Vec<Arc<Context>> = non_empty_contexts
+        .into_iter()
+        .filter(|context| seen.insert(context.id.clone()))
+        .collect();
+
+    log::info!("Number of unique contexts: {}", unique_contexts.len());
+
+    let basis_groups = {
+        let lock = read_lock!(meta_context);
+        lock.basis_groups
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Basis groups not provided in meta context".to_string())
+            })?
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    let mut context_groups: HashMap<ID, Vec<Arc<Context>>> = HashMap::new();
+
+    for context in unique_contexts {
+        let current_groups: Vec<&Arc<BasisGroup>> = basis_groups
+            .iter()
+            .filter(|item| item.acyclic_lineage == context.acyclic_lineage)
+            .collect();
+
+        for group in current_groups {
+            if let Some(lineage) = &group.lineage {
+                if context.lineage != *lineage {
+                    continue;
+                }
+
+                if let Some(indexed_lineage) = &group.indexed_lineage {
+                    let mut depth = 0;
+                    loop {
+                        if let Some(context_indexed_lineage) = context.get_indexed_lineage(depth) {
+                            if context_indexed_lineage == *indexed_lineage {
+                                context_groups
+                                    .entry(group.id.clone())
+                                    .or_insert_with(Vec::new)
+                                    .push(context.clone());
+
+                                break;
+                            } else {
+                                depth += 1;
+                            }
+                        } else {
+                            log::warn!("what do we do here?");
+                            break;
+                        }
+                    }
+                } else {
+                    context_groups
+                        .entry(group.id.clone())
+                        .or_insert_with(Vec::new)
+                        .push(context.clone());
+                }
+            } else {
+                context_groups
+                    .entry(group.id.clone())
+                    .or_insert_with(Vec::new)
+                    .push(context.clone());
+            }
+        }
+    }
+
+    Ok(context_groups)
+}
+
 pub async fn get_basis_groups<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
