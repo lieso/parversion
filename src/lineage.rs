@@ -5,7 +5,7 @@ use crate::hash::Hash;
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct Lineage {
     source_hashes: Vec<Hash>,
-    identity_hash: Hash,
+    pub identity_hash: Hash,
 }
 
 impl Lineage {

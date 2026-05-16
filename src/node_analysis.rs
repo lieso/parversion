@@ -591,47 +591,58 @@ pub async fn get_basis_nodes<P: Provider>(
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
-    
-    unimplemented!();
 
-    //let document_summary = Arc::new(get_original_document_condensed(Arc::clone(&meta_context))?);
-    //let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-    //let semaphore = Arc::new(Semaphore::new(max_concurrency));
-    //let mut handles = Vec::new();
+    let document_summary = Arc::new(get_original_document_condensed(Arc::clone(&meta_context))?);
+    let basis_groups = {
+        let lock = read_lock!(meta_context);
+        lock.basis_groups
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Basis groups not provided in meta context".to_string())
+            })?
+    };
+    let context_groups = get_context_groups(Arc::clone(&provider), Arc::clone(&meta_context)).await?;
+    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let mut handles = Vec::new();
 
-    //for group in context_groups {
-    //    stage_context.record_events("Node analysis", 0);
+    for (basis_group_id, group) in context_groups {
+        stage_context.record_events("Node analysis", 0);
 
-    //    let permit = semaphore.clone().acquire_owned().await.unwrap();
-    //    let cloned_provider = Arc::clone(&provider);
-    //    let cloned_meta_context = Arc::clone(&meta_context);
-    //    let cloned_options = options.clone();
-    //    let cloned_stage_context = stage_context.clone();
-    //    let cloned_document_summary = Arc::clone(&document_summary);
+        let basis_group = basis_groups.get(&basis_group_id).unwrap();
+        let basis_lineage = basis_group.get_basis_lineage();
 
-    //    let handle = task::spawn(async move {
-    //        let _permit = permit;
-    //        let basis_node = get_basis_node(
-    //            cloned_provider,
-    //            cloned_meta_context,
-    //            group,
-    //            &cloned_options,
-    //            &cloned_stage_context,
-    //            &cloned_document_summary,
-    //        )
-    //        .await?;
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
+        let cloned_document_summary = Arc::clone(&document_summary);
 
-    //        Ok((basis_node.id.clone(), Arc::new(basis_node)))
-    //    });
-    //    handles.push(handle);
-    //}
+        let handle = task::spawn(async move {
+            let _permit = permit;
+            let basis_node = get_basis_node(
+                cloned_provider,
+                cloned_meta_context,
+                group,
+                &cloned_options,
+                &cloned_stage_context,
+                &cloned_document_summary,
+                basis_lineage,
+            )
+            .await?;
 
-    //let results: Vec<Result<(ID, Arc<BasisNode>), Errors>> = try_join_all(handles).await?;
+            Ok((basis_node.id.clone(), Arc::new(basis_node)))
+        });
+        handles.push(handle);
+    }
 
-    //let hashmap_results: HashMap<ID, Arc<BasisNode>> =
-    //    results.into_iter().collect::<Result<_, _>>()?;
+    let results: Vec<Result<(ID, Arc<BasisNode>), Errors>> = try_join_all(handles).await?;
 
-    //Ok(hashmap_results)
+    let hashmap_results: HashMap<ID, Arc<BasisNode>> =
+        results.into_iter().collect::<Result<_, _>>()?;
+
+    Ok(hashmap_results)
 }
 
 async fn get_basis_node<P: Provider>(
@@ -641,6 +652,7 @@ async fn get_basis_node<P: Provider>(
     options: &Options,
     stage_context: &StageContext,
     document_summary: &str,
+    basis_lineage: Lineage,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
 
@@ -651,10 +663,6 @@ async fn get_basis_node<P: Provider>(
             "get_basis_node called with empty fields group".to_string(),
         ));
     }
-
-    let basis_lineage = first.basis_lineage().ok_or_else(|| {
-        Errors::InsufficientPrerequisites("basis_lineage not set on context".to_string())
-    })?;
 
     let data_node = &first.data_node;
     let hash = data_node.hash.clone();

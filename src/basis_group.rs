@@ -9,3 +9,19 @@ pub struct BasisGroup {
     pub lineage: Option<Lineage>,
     pub indexed_lineage: Option<Lineage>,
 }
+
+impl BasisGroup {
+    pub fn get_basis_lineage(&self) -> Lineage {
+        let mut hashes: Vec<Hash> = vec![self.acyclic_lineage.identity_hash.clone()];
+
+        if let Some(lineage) = &self.lineage {
+            hashes.push(lineage.identity_hash.clone());
+        }
+
+        if let Some(indexed_lineage) = &self.indexed_lineage {
+            hashes.push(indexed_lineage.identity_hash.clone());
+        }
+
+        Lineage::from_hashes(hashes)
+    }
+}
