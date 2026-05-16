@@ -8,6 +8,5 @@ pub struct BasisGroup {
     pub acyclic_lineage: Lineage,
     pub lineage: Option<Lineage>,
     pub indexed_lineage: Option<Lineage>,
-    pub is_meaningful: bool,
 }
 

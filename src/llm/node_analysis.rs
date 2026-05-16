@@ -14,13 +14,11 @@ use crate::environment::get_env_variable;
 struct SnippetMatchLLMResponse {
     #[serde(rename = "match")]
     match_result: bool,
-    meaningful: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SnippetMatchData {
     pub match_result: bool,
-    pub meaningful: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -821,13 +819,9 @@ Snippets match if and only if all extracted contents represent the **same semant
 - If targets come from different contextual roles (e.g., some from titles, others from metadata, others from actions), they do NOT match
 - Different semantic purposes = NO MATCH, even if the content appears similar
 
-**MEANINGFUL RULE:**
-Content is meaningful if it represents actual data, not structural artifacts (empty elements, pure whitespace, single-letter navigation placeholders).
-
 Respond with JSON:
 {
-  "match": boolean - true only if ALL extracted contents serve the same semantic purpose,
-  "meaningful": boolean - true if the content represents actual meaningful data
+  "match": boolean - true only if ALL extracted contents serve the same semantic purpose
 }
 "##;
 
@@ -860,13 +854,9 @@ Respond with JSON:
                     "match": {
                         "type": "boolean",
                         "description": "Whether snippets represent the same semantic content"
-                    },
-                    "meaningful": {
-                        "type": "boolean",
-                        "description": "Whether the content represents meaningful data for extraction"
                     }
                 },
-                "required": ["match", "meaningful"],
+                "required": ["match"],
                 "additionalProperties": false
             }),
         );
@@ -912,7 +902,6 @@ Respond with JSON:
 
                     let data = SnippetMatchData {
                         match_result: match_response.match_result,
-                        meaningful: match_response.meaningful,
                     };
 
                     let metadata = {

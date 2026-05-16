@@ -301,7 +301,6 @@ impl LLM {
         group: Vec<Arc<Context>>,
     ) -> Result<(
         bool, // match
-        bool, // meaningful
         (u64,)
     ), Errors> {
         log::trace!("In infer_group_match");
@@ -346,6 +345,6 @@ impl LLM {
 
         let (data, metadata) = crate::llm::node_analysis::NodeAnalysis::infer_snippets_match(snippets).await?;
 
-        Ok((data.match_result, data.meaningful, (metadata.tokens,)))
+        Ok((data.match_result, (metadata.tokens,)))
     }
 }
