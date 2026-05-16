@@ -25,6 +25,8 @@ pub struct MetaContext {
     pub functions: Option<Vec<Function>>,
     pub normal_contexts: Option<HashMap<ID, Arc<NormalContext>>>,
     pub normal_graph_root: Option<Graph>,
+    pub context_groups: Option<HashMap<ID, Vec<Arc<Context>>>>,
+    pub context_to_group: Option<HashMap<ID, Arc<BasisGroup>>>,
 }
 
 impl MetaContext {
@@ -41,6 +43,8 @@ impl MetaContext {
             functions: None,
             normal_contexts: None,
             normal_graph_root: None,
+            context_groups: None,
+            context_to_group: None,
         }
     }
 
@@ -129,4 +133,14 @@ impl MetaContext {
     pub fn update_functions(&mut self, functions: Vec<Function>) {
         self.functions = Some(functions);
     }
+
+    pub fn update_context_groups(
+        &mut self,
+        context_groups: HashMap<ID, Vec<Arc<Context>>>,
+        context_to_group: HashMap<ID, Arc<BasisGroup>>
+    ) {
+        self.context_groups = Some(context_groups);
+        self.context_to_group = Some(context_to_group);
+    }
+
 }

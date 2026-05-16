@@ -9,8 +9,14 @@ pub async fn report_basis_groups<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
 ) -> Result<(), Errors> {
-    let context_groups = get_context_groups(Arc::clone(&provider), Arc::clone(&meta_context)).await?;
-
+    let context_groups = {
+        let lock = read_lock!(meta_context);
+        lock.context_groups
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Context groups not provided in meta context".to_string())
+            })?
+    };
     let basis_groups = {
         let lock = read_lock!(meta_context);
         lock.basis_groups

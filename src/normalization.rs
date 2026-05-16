@@ -7,7 +7,7 @@ use crate::document_format::DocumentFormat;
 use crate::function_analysis::functions_to_operations;
 use crate::meta_context::MetaContext;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
-use crate::node_analysis::{get_basis_nodes, get_basis_groups};
+use crate::node_analysis::{get_basis_nodes, get_basis_groups, get_context_groups};
 use crate::reports::report_basis_groups;
 use crate::package::Package;
 use crate::prelude::*;
@@ -58,6 +58,16 @@ pub async fn normalize<P: Provider>(
     {
         let mut lock = write_lock!(meta_context);
         lock.update_basis_groups(basis_groups);
+    }
+
+    let (context_groups, context_to_group) = get_context_groups(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context),
+    )?;
+
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_context_groups(context_groups, context_to_group);
     }
 
     report_basis_groups(Arc::clone(&provider), Arc::clone(&meta_context)).await?;

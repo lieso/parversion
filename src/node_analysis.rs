@@ -17,10 +17,13 @@ use crate::provider::Provider;
 use crate::traversal::{get_original_document_condensed};
 use crate::context::Context;
 
-pub async fn get_context_groups<P: Provider>(
+pub fn get_context_groups<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
-) -> Result<HashMap<ID, Vec<Arc<Context>>>, Errors> {
+) -> Result<(
+    HashMap<ID, Vec<Arc<Context>>>,
+    HashMap<ID, Arc<BasisGroup>>
+), Errors> {
     log::trace!("In get_context_groups");
 
     let contexts = {
@@ -70,6 +73,7 @@ pub async fn get_context_groups<P: Provider>(
     }
 
     let mut context_groups: HashMap<ID, Vec<Arc<Context>>> = HashMap::new();
+    let mut context_to_group: HashMap<ID, Arc<BasisGroup>> = HashMap::new();
 
     for context in unique_contexts {
         let Some(candidate_groups) = groups_by_acyclic.get(&context.acyclic_lineage) else {
@@ -111,6 +115,10 @@ pub async fn get_context_groups<P: Provider>(
             };
 
             if matches {
+                context_to_group.insert(
+                    context.id.clone(),
+                    Arc::clone(&group),
+                );
                 context_groups
                     .entry(group.id.clone())
                     .or_insert_with(Vec::new)
@@ -119,7 +127,7 @@ pub async fn get_context_groups<P: Provider>(
         }
     }
 
-    Ok(context_groups)
+    Ok((context_groups, context_to_group))
 }
 
 pub async fn get_basis_groups<P: Provider>(
@@ -614,7 +622,14 @@ pub async fn get_basis_nodes<P: Provider>(
                 Errors::DeficientMetaContextError("Basis groups not provided in meta context".to_string())
             })?
     };
-    let context_groups = get_context_groups(Arc::clone(&provider), Arc::clone(&meta_context)).await?;
+    let context_groups = {
+        let lock = read_lock!(meta_context);
+        lock.context_groups
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Context groups not provided in meta context".to_string())
+            })?
+    };
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
