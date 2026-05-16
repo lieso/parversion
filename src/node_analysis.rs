@@ -60,50 +60,60 @@ pub async fn get_context_groups<P: Provider>(
             .collect::<Vec<_>>()
     };
 
+    let mut groups_by_acyclic: HashMap<Lineage, Vec<Arc<BasisGroup>>> = HashMap::new();
+    for group in basis_groups {
+        groups_by_acyclic
+            .entry(group.acyclic_lineage.clone())
+            .or_insert_with(Vec::new)
+            .push(group);
+    }
+
     let mut context_groups: HashMap<ID, Vec<Arc<Context>>> = HashMap::new();
 
     for context in unique_contexts {
-        let current_groups: Vec<&Arc<BasisGroup>> = basis_groups
-            .iter()
-            .filter(|item| item.acyclic_lineage == context.acyclic_lineage)
-            .collect();
+        let Some(candidate_groups) = groups_by_acyclic.get(&context.acyclic_lineage) else {
+            continue;
+        };
 
-        for group in current_groups {
-            if let Some(lineage) = &group.lineage {
-                if context.lineage != *lineage {
-                    continue;
-                }
+        let mut indexed_lineages: HashSet<Lineage> = HashSet::new();
+        let mut next_depth = 0;
+        let mut indexed_exhausted = false;
 
-                if let Some(indexed_lineage) = &group.indexed_lineage {
-                    let mut depth = 0;
-                    loop {
-                        if let Some(context_indexed_lineage) = context.get_indexed_lineage(depth) {
-                            if context_indexed_lineage == *indexed_lineage {
-                                context_groups
-                                    .entry(group.id.clone())
-                                    .or_insert_with(Vec::new)
-                                    .push(context.clone());
-
+        for group in candidate_groups {
+            let matches = match (&group.lineage, &group.indexed_lineage) {
+                (None, _) => true,
+                (Some(l), None) => context.lineage == *l,
+                (Some(l), Some(il)) => {
+                    if context.lineage != *l {
+                        false
+                    } else if indexed_lineages.contains(il) {
+                        true
+                    } else if indexed_exhausted {
+                        false
+                    } else {
+                        let mut found = false;
+                        while let Some(new_il) = context.get_indexed_lineage(next_depth) {
+                            next_depth += 1;
+                            let is_match = new_il == *il;
+                            indexed_lineages.insert(new_il);
+                            if is_match {
+                                found = true;
                                 break;
-                            } else {
-                                depth += 1;
                             }
-                        } else {
-                            log::warn!("what do we do here?");
-                            break;
                         }
+                        if !found {
+                            indexed_exhausted = true;
+                        }
+                        found
                     }
-                } else {
-                    context_groups
-                        .entry(group.id.clone())
-                        .or_insert_with(Vec::new)
-                        .push(context.clone());
                 }
-            } else {
+            };
+
+            if matches {
                 context_groups
                     .entry(group.id.clone())
                     .or_insert_with(Vec::new)
-                    .push(context.clone());
+                    .push(Arc::clone(&context));
             }
         }
     }
