@@ -21,6 +21,7 @@ use crate::graph_node::Graph;
 use crate::graph_node::GraphNode;
 use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
+use crate::basis_group::BasisGroup;
 use crate::normal_context::NormalContext;
 use crate::data_node::DataNode;
 use crate::network_relationship::NetworkRelationshipType;
@@ -89,8 +90,6 @@ pub async fn normalize<P: Provider>(
         let mut lock = write_lock!(meta_context);
         lock.update_basis_nodes(basis_nodes);
     }
-
-    panic!("test");
 
     stage.finish();
     let stage = execution_context.enter_stage("Network analysis");
@@ -854,8 +853,20 @@ fn process_node(
 
         contexts.get(&read_lock!(node).id).cloned().unwrap()
     };
+    let context_to_group = {
+        let lock = read_lock!(meta_context);
+        lock.context_to_group.clone().unwrap()
+    };
     let data_node = &context.data_node;
-    let basis_lineage = read_lock!(context.basis_lineage).clone();
+    let maybe_basis_group: Option<Arc<BasisGroup>> = context_to_group.get(&context.id).cloned();
+
+    let basis_lineage: Option<Lineage> = {
+        if let Some(basis_group) = maybe_basis_group {
+            Some(basis_group.get_basis_lineage())
+        } else {
+            None
+        }
+    };
 
     if let Some(basis_lineage) = basis_lineage {
         let basis_node = {

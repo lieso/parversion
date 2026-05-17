@@ -7,6 +7,7 @@ use crate::prelude::*;
 use crate::basis_network::BasisNetwork;
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
+use crate::basis_group::BasisGroup;
 use crate::llm::LLM;
 use crate::traversal::{Traversal, TraversalValue, get_original_document_condensed};
 use crate::xpath::XPath;
@@ -453,10 +454,24 @@ impl NetworkRelationship {
                 let lock = read_lock!(meta_context);
                 lock.contexts.clone().unwrap()
             };
+            let context_to_group = {
+                let lock = read_lock!(meta_context);
+                lock.context_to_group.clone().unwrap()
+            };
 
             let context = contexts.get(&read_lock!(graph_node).id).unwrap();
             let data_node = &context.data_node;
-            let basis_lineage = read_lock!(context.basis_lineage).clone();
+
+            let maybe_basis_group: Option<Arc<BasisGroup>> = context_to_group.get(&context.id).cloned();
+
+            let basis_lineage: Option<Lineage> = {
+                if let Some(basis_group) = maybe_basis_group {
+                    Some(basis_group.get_basis_lineage())
+                } else {
+                    None
+                }
+            };
+
             if let Some(basis_lineage) = basis_lineage {
                 let basis_node = {
                     let lock = read_lock!(meta_context);

@@ -9,6 +9,7 @@ use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::basis_group::BasisGroup;
 
 pub type ContextID = ID;
 
@@ -17,16 +18,9 @@ pub struct Context {
     pub id: ContextID,
     pub lineage: Lineage,
     pub acyclic_lineage: Lineage,
-    pub basis_lineage: Arc<RwLock<Option<Lineage>>>,
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
-}
-
-impl Context {
-    pub fn basis_lineage(&self) -> Option<Lineage> {
-        self.basis_lineage.read().unwrap().clone()
-    }
 }
 
 impl Context {
@@ -56,6 +50,10 @@ impl Context {
             let contexts = {
                 let lock = read_lock!(meta_context);
                 lock.contexts.clone().unwrap()
+            };
+            let context_to_group = {
+                let lock = read_lock!(meta_context);
+                lock.context_to_group.clone().unwrap()
             };
 
 
@@ -104,7 +102,15 @@ impl Context {
 
             let context = contexts.get(&read_lock!(graph_node).id).unwrap();
             let data_node = &context.data_node;
-            let basis_lineage = read_lock!(context.basis_lineage).clone();
+            let maybe_basis_group: Option<Arc<BasisGroup>> = context_to_group.get(&context.id).cloned();
+
+            let basis_lineage: Option<Lineage> = {
+                if let Some(basis_group) = maybe_basis_group {
+                    Some(basis_group.get_basis_lineage())
+                } else {
+                    None
+                }
+            };
 
             if let Some(basis_lineage) = basis_lineage {
                 let basis_node = {
