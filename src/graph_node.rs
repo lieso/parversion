@@ -139,7 +139,21 @@ impl GraphNode {
                     Err(Errors::XPathTraverseError("Trying to visit following sibling on a root node".to_string()))
                 }
             },
-            XPathAxis::PrecedingSibling => unimplemented!(),
+            XPathAxis::PrecedingSibling => {
+                if let Some(parent) = lock.parents.first() {
+                    if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
+                        read_lock!(child).id == lock.id
+                    }) {
+                        let siblings: Vec<Graph> = read_lock!(parent).children[..index_current].to_vec();
+                        log::info!("Found {} preceding siblings", siblings.len());
+                        Ok(siblings)
+                    } else {
+                        Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
+                    }
+                } else {
+                    Err(Errors::XPathTraverseError("Trying to visit preceding sibling on a root node".to_string()))
+                }
+            },
         }
     }
 
