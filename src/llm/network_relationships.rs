@@ -290,10 +290,10 @@ The opening tag immediately following Start is the anchor element.
 Your task is to:
 
 1. Provide two XPath expressions, each relative to an anchor element as the context node:
-   - forward_xpath — evaluated from a Network A anchor, must select exactly one Network B anchor
-   - reverse_xpath — evaluated from a Network B anchor, must select exactly one Network A anchor
+   - forward_xpath — evaluated from a Network A anchor, navigates to the related Network B anchor for that particular instance
+   - reverse_xpath — evaluated from a Network B anchor, navigates to the related Network A anchor for that particular instance
 
-   Both XPaths must be relative (do not start with /). Each must reliably select exactly one element across all instances shown in the document. If a candidate XPath would select more than one element for any instance shown, it is incorrect.
+   Both XPaths must be relative (do not start with /). When evaluated from an anchor that has a corresponding counterpart, each XPath must select exactly one element. Not every Network A instance is required to have a related Network B instance — Network B may appear only once and be associated with a single Network A instance. An XPath that returns no elements for an unrelated anchor is acceptable; returning more than one element is not.
 
    Base your XPaths strictly on the structure visible in the provided HTML. Do not infer paths that are not evidenced by the examples.
 
