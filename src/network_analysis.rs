@@ -1,5 +1,5 @@
 use futures::future::try_join_all;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
@@ -152,16 +152,27 @@ pub async fn get_network_relationships<P: Provider>(
         config_lock.llm.max_concurrency
     };
 
+    let existing_relationship_ids: HashSet<ID> = if !options.regenerate {
+        provider.get_basis_graph_by_hash(&graph_hash).await?
+            .and_then(|bg| bg.traversals)
+            .map(|ts| ts.into_iter().map(|t| t.relationship_id).collect())
+            .unwrap_or_default()
+    } else {
+        HashSet::new()
+    };
+
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
 
     for resolved_relationship in relationships {
+        if existing_relationship_ids.contains(&resolved_relationship.id) {
+            log::info!("TraversalTransformation already exists for this relationship");
+            continue;
+        }
+
         let permit = semaphore.clone().acquire_owned().await.unwrap();
-        let cloned_provider = Arc::clone(&provider);
         let cloned_meta_context = Arc::clone(&meta_context);
-        let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
-        let cloned_graph_hash = graph_hash.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -169,122 +180,83 @@ pub async fn get_network_relationships<P: Provider>(
             tokio::time::sleep(Duration::from_millis(50)).await;
 
             get_traversal(
-                cloned_provider,
                 cloned_meta_context,
                 resolved_relationship,
-                &cloned_options,
                 &cloned_stage_context,
-                &cloned_graph_hash,
             ).await
         });
         handles.push(handle);
     }
 
-    let _results: Vec<Result<(), Errors>> = try_join_all(handles).await?;
+    let new_traversals: Vec<TraversalTransformation> = try_join_all(handles).await?
+        .into_iter()
+        .collect::<Result<Vec<_>, Errors>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+    if !new_traversals.is_empty() {
+        let mut basis_graph = provider.get_basis_graph_by_hash(&graph_hash).await?
+            .ok_or(Errors::UnexpectedError)?;
+        basis_graph.traversals.get_or_insert_with(Vec::new).extend(new_traversals);
+        provider.save_basis_graph(&graph_hash, basis_graph).await?;
+    }
 
     provider.get_basis_graph_by_hash(&graph_hash).await?
         .ok_or(Errors::UnexpectedError)
 }
 
-async fn get_traversal<P: Provider>(
-    provider: Arc<P>,
+async fn get_traversal(
     meta_context: Arc<RwLock<MetaContext>>,
     resolved_relationship: ResolvedRelationshipTransformation,
-    options: &Options,
     stage_context: &StageContext,
-    graph_hash: &Hash,
-) -> Result<(), Errors> {
+) -> Result<Option<TraversalTransformation>, Errors> {
     log::trace!("In get_traversal");
 
     match resolved_relationship.relationship_type {
         NetworkRelationshipType::Composition => {
-
             stage_context.record_events("Composition linking", 0);
 
-            if let Some(mut basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
-                if !options.regenerate {
-                    if let Some(traversals) = &basis_graph.traversals {
-                        if traversals.iter().any(|t| t.relationship_id == resolved_relationship.id) {
-                            log::info!("TraversalTransformation already exists for this relationship");
-                            return Ok(());
-                        }
-                    }
-                }
+            let (traversal, name, (tokens,)) = NetworkRelationship::process_composition(
+                Arc::clone(&meta_context),
+                Arc::clone(&resolved_relationship.from),
+                Arc::clone(&resolved_relationship.to),
+            ).await?;
 
-                let (traversal, name, (tokens,)) = NetworkRelationship::process_composition(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&resolved_relationship.from),
-                    Arc::clone(&resolved_relationship.to),
-                ).await?;
+            stage_context.record_events("Composition linking", tokens);
 
-                let traversal = TraversalTransformation {
-                    id: ID::new(),
-                    relationship_id: resolved_relationship.id.clone(),
-                    traversal,
-                    name,
-                    description: String::new(),
-                };
-
-                if basis_graph.traversals.is_none() {
-                    basis_graph.traversals = Some(Vec::new());
-                }
-                if let Some(ref mut traversals) = basis_graph.traversals {
-                    traversals.push(traversal);
-                }
-
-                stage_context.record_events("Composition linking", tokens);
-
-                provider.save_basis_graph(graph_hash, basis_graph).await?;
-            }
-
+            Ok(Some(TraversalTransformation {
+                id: ID::new(),
+                relationship_id: resolved_relationship.id.clone(),
+                traversal,
+                name,
+                description: String::new(),
+            }))
         }
         NetworkRelationshipType::ParentChild => {
-
             stage_context.record_events("Parent-child linking", 0);
 
-            if let Some(mut basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
-                if !options.regenerate {
-                    if let Some(traversals) = &basis_graph.traversals {
-                        if traversals.iter().any(|t| t.relationship_id == resolved_relationship.id) {
-                            log::info!("TraversalTransformation already exists for this relationship");
-                            return Ok(());
-                        }
-                    }
-                }
+            let (traversal, (tokens,)) = NetworkRelationship::process_parent_child(
+                Arc::clone(&meta_context),
+                Arc::clone(&resolved_relationship.from),
+                Arc::clone(&resolved_relationship.to),
+            ).await?;
 
-                let (traversal, (tokens,)) = NetworkRelationship::process_parent_child(
-                    Arc::clone(&meta_context),
-                    Arc::clone(&resolved_relationship.from),
-                    Arc::clone(&resolved_relationship.to),
-                ).await?;
+            stage_context.record_events("Parent-child linking", tokens);
 
-                let traversal_transformation = TraversalTransformation {
-                    id: ID::new(),
-                    relationship_id: resolved_relationship.id.clone(),
-                    traversal,
-                    name: String::new(),
-                    description: String::new(),
-                };
-
-                if basis_graph.traversals.is_none() {
-                    basis_graph.traversals = Some(Vec::new());
-                }
-                if let Some(ref mut traversals) = basis_graph.traversals {
-                    traversals.push(traversal_transformation);
-                }
-
-                stage_context.record_events("Parent-child linking", tokens);
-
-                provider.save_basis_graph(graph_hash, basis_graph).await?;
-            }
-
+            Ok(Some(TraversalTransformation {
+                id: ID::new(),
+                relationship_id: resolved_relationship.id.clone(),
+                traversal,
+                name: String::new(),
+                description: String::new(),
+            }))
         }
         _ => {
             log::warn!("Ignoring relationship type: {:?}", resolved_relationship.relationship_type);
+            Ok(None)
         }
     }
-
-    Ok(())
 }
 
 pub async fn get_relationship_typing<P: Provider>(
