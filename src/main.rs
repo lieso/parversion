@@ -47,6 +47,7 @@ mod traversal;
 mod normal_context;
 mod basis_group;
 mod reports;
+mod basis_field;
 
 use crate::entrypoint::run;
 

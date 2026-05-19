@@ -21,6 +21,11 @@ pub enum Runtime {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BasisFieldTransformation {
+    pub id: ID,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldMetadata {
     pub data_type: String,
 }

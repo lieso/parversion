@@ -199,26 +199,6 @@ fn preprocess_element(tag_name: &str) -> Option<String> {
     }
 }
 
-fn preprocess_attribute(attr_name: &str, attr_value: &str) -> Option<(String, String)> {
-    let attr_name_lower = attr_name.to_lowercase();
-
-    match attr_name_lower.as_str() {
-        "id" => None,
-        "aria-describedby" | "aria-controls" | "aria-expanded" | "aria-labelledby"
-        | "aria-live" | "aria-level" | "aria-hidden" | "aria-atomic" => None,
-        "style" | "width" | "height" => None,
-        "type" | "lang" | "rel" | "role" => None,
-        "crossorigin" | "xmlns" => None,
-        "tabindex" | "maxlength" => None,
-        "fill" => None,
-        "cellspacing" | "cellpadding" | "border" | "bgcolor" => None,
-        "align" | "valign" | "colspan" => None,
-        "target" if attr_value == "_blank" => None,
-        "method" => None,
-        _ if attr_value.is_empty() => None,
-        _ => Some((attr_name.to_string(), attr_value.trim().to_string())),
-    }
-}
 
 fn process_element(
     node: NodeRef<ScraperNode>,
@@ -235,13 +215,8 @@ fn process_element(
         let mut attributes_str = String::new();
 
         for (attr_name, attr_value) in element.attrs() {
-            let attr_name = attr_name.trim();
-            let attr_value = attr_value.trim();
-
-            let (attr_name, attr_value) = match preprocess_attribute(attr_name, attr_value) {
-                Some((name, value)) => (name, value.trim().to_string()),
-                None => continue,
-            };
+            let attr_name = attr_name.trim().to_string();
+            let attr_value = attr_value.trim().to_string();
 
             has_attributes = true;
 
