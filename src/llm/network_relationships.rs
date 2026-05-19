@@ -277,7 +277,7 @@ Do not include any explanation outside the JSON.
         log::trace!("In get_composition_link");
 
         let system_prompt = r##"
-You are given an HTML document containing instances of two networks that have a composition relationship. This means each instance of Network A and one corresponding instance of Network B together form a single complete resource. They are separate elements in the DOM — neither is nested inside the other.
+You are given an HTML document containing instances of two networks that have a composition relationship. Network A and Network B are separate elements in the DOM — neither is nested inside the other. When a Network B instance exists for a given Network A instance, together they form a single complete resource. Network B may appear fewer times than Network A; not every Network A instance is guaranteed to have a corresponding Network B instance.
 
 Each network instance has an anchor element marked with comments:
 

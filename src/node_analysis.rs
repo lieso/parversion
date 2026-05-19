@@ -634,6 +634,8 @@ pub async fn get_basis_nodes<P: Provider>(
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
 
+    log::info!("Number of context groups: {}", context_groups.len());
+
     for (basis_group_id, group) in context_groups {
         stage_context.record_events("Node analysis", 0);
 

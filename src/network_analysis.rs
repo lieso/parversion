@@ -140,7 +140,7 @@ pub async fn get_network_relationships<P: Provider>(
         .collect::<Result<Vec<_>, _>>()?;
 
     if relationships.is_empty() {
-        panic!("No relationships?");
+        //panic!("No relationships?");
     }
 
     // ═════════════════════════════════════════════════════════════════════════════════
