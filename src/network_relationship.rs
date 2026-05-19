@@ -342,7 +342,15 @@ impl NetworkRelationship {
 
         let canonical_networks: Vec<BasisNetwork> = networks
             .iter()
-            .filter(|n| canonical_ids.contains(&n.id.to_string()))
+            .filter(|network| {
+                for id in &canonical_ids {
+                    if network.id.to_string().starts_with(&*id) {
+                        return true;
+                    }
+                }
+
+                false
+            })
             .map(|n| (**n).clone())
             .collect();
 
