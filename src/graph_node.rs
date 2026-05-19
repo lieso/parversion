@@ -154,6 +154,46 @@ impl GraphNode {
                     Err(Errors::XPathTraverseError("Trying to visit preceding sibling on a root node".to_string()))
                 }
             },
+            XPathAxis::Following => {
+                let mut result = Vec::new();
+                let mut current_id = lock.id.clone();
+                let mut current_parents = lock.parents.clone();
+
+                loop {
+                    let Some(parent) = current_parents.first().cloned() else {
+                        break;
+                    };
+
+                    let (next_id, next_parents, following_siblings) = {
+                        let parent_lock = read_lock!(parent);
+                        let Some(index) = parent_lock.children.iter().position(|child| {
+                            read_lock!(child).id == current_id
+                        }) else {
+                            return Err(Errors::XPathTraverseError(
+                                "Could not find index of current node as a child of parent".to_string()
+                            ));
+                        };
+                        let following_siblings = parent_lock.children[index + 1..].to_vec();
+                        (parent_lock.id.clone(), parent_lock.parents.clone(), following_siblings)
+                    };
+
+                    for sibling in following_siblings {
+                        result.push(sibling.clone());
+                        let mut queue = read_lock!(sibling).children.clone();
+                        while !queue.is_empty() {
+                            let desc = queue.remove(0);
+                            result.push(desc.clone());
+                            queue.extend(read_lock!(desc).children.clone());
+                        }
+                    }
+
+                    current_id = next_id;
+                    current_parents = next_parents;
+                }
+
+                log::info!("Found {} following nodes", result.len());
+                Ok(result)
+            },
         }
     }
 

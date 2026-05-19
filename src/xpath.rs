@@ -23,6 +23,7 @@ pub enum XPathAxis {
     Ancestor,
     FollowingSibling,
     PrecedingSibling,
+    Following,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -118,6 +119,7 @@ impl XPathAxis {
             "ancestor" => Ok(XPathAxis::Ancestor),
             "following-sibling" => Ok(XPathAxis::FollowingSibling),
             "preceding-sibling" => Ok(XPathAxis::PrecedingSibling),
+            "following" => Ok(XPathAxis::Following),
             _ => Err(Errors::XPathParseError(format!("Unknown axis: {}", s))),
         }
     }
@@ -131,6 +133,7 @@ impl XPathAxis {
             XPathAxis::Ancestor => "ancestor",
             XPathAxis::FollowingSibling => "following-sibling",
             XPathAxis::PrecedingSibling => "preceding-sibling",
+            XPathAxis::Following => "following",
         }
     }
 }
