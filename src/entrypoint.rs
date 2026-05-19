@@ -307,7 +307,8 @@ async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
 
              log::debug!("provider_path: {}", provider_path.display());
 
-             Ok(Arc::new(SqliteProvider::new(provider_path.to_string_lossy().into_owned())))
+             let provider = SqliteProvider::new(&provider_path.to_string_lossy())?;
+             Ok(Arc::new(provider))
 
          } else {
              log::warn!("Using VoidProvider, document will be completely reprocessed each time");
