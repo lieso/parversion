@@ -199,7 +199,6 @@ fn preprocess_element(tag_name: &str) -> Option<String> {
     }
 }
 
-
 fn process_element(
     node: NodeRef<ScraperNode>,
     xhtml: &mut String,

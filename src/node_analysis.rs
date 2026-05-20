@@ -6,6 +6,7 @@ use tokio::task;
 use async_recursion::async_recursion;
 use std::time::Duration;
 
+use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::config::CONFIG;
@@ -16,6 +17,17 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::traversal::{get_original_document_condensed};
 use crate::context::Context;
+
+pub async fn get_basis_fields<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+) -> Result<HashMap<ID, Arc<BasisField>>, Errors> {
+    log::trace!("In get_basis_fields");
+
+    unimplemented!();
+}
 
 pub fn get_context_groups<P: Provider>(
     provider: Arc<P>,
