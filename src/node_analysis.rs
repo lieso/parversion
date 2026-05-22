@@ -26,6 +26,38 @@ pub async fn get_basis_fields<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisField>>, Errors> {
     log::trace!("In get_basis_fields");
 
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+            })?
+    };
+
+    log::info!("Number of contexts: {}", contexts.len());
+
+    let mut seen = HashSet::new();
+    let unique_contexts: Vec<Arc<Context>> = contexts
+        .into_values()
+        .filter(|context| seen.insert(context.id.clone()))
+        .collect();
+
+    log::info!("Number of unique contexts: {}", unique_contexts.len());
+
+    let mut contexts_by_field: HashMap<String, Vec<Arc<Context>>> = HashMap::new();
+    for context in unique_contexts {
+        for field_name in context.data_node.fields.keys() {
+            contexts_by_field
+                .entry(field_name.clone())
+                .or_insert_with(Vec::new)
+                .push(Arc::clone(&context));
+        }
+    }
+
+    log::info!("Number of field groups: {}", contexts_by_field.len());
+
+
     unimplemented!();
 }
 

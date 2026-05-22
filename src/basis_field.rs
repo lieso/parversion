@@ -6,6 +6,6 @@ use crate::transformation::BasisFieldTransformation;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisField {
     pub id: ID,
-    pub lineage: Lineage,
-    pub transformation: BasisFieldTransformation
+    pub acyclic_subgraph_hash: Hash,
+    pub name: String
 }

@@ -64,6 +64,8 @@ pub async fn normalize<P: Provider>(
     stage.finish();
     let stage = execution_context.enter_stage("Group analysis");
 
+    panic!();
+
     let basis_groups =
         get_basis_groups(
             Arc::clone(&provider),
