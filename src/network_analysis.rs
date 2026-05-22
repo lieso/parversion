@@ -41,6 +41,7 @@ pub async fn get_classification<P: Provider>(
             .ok_or(Errors::GraphRootNotProvided)?
     };
     let lineage = read_lock!(graph_root).lineage.clone();
+    let acyclic_subgraph_hash: Hash = read_lock!(graph_root).acyclic_subgraph_hash();
 
     if !options.regenerate {
         if let Some(classification) = provider.get_classification_by_lineage(&lineage).await? {
@@ -59,6 +60,7 @@ pub async fn get_classification<P: Provider>(
         description,
         structure,
         lineage: lineage.clone(),
+        acyclic_subgraph_hash: acyclic_subgraph_hash.clone(),
     };
 
     provider

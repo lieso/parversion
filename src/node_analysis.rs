@@ -336,12 +336,12 @@ async fn get_acyclic_basis_groups<P: Provider>(
     log::trace!("In get_acyclic_basis_groups");
 
     if !options.regenerate {
-        let cached: Vec<BasisGroup> = provider
+        let basis_groups: Vec<BasisGroup> = provider
             .get_basis_groups_by_acyclic_lineage(&acyclic_lineage).await?
             .into_iter()
             .collect();
-        if !cached.is_empty() {
-            return Ok(cached);
+        if !basis_groups.is_empty() {
+            return Ok(basis_groups);
         }
     }
 

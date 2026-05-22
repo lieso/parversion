@@ -6,6 +6,7 @@ use crate::prelude::*;
 pub struct Classification {
     pub id: ID,
     pub lineage: Lineage,
+    pub acyclic_subgraph_hash: Hash,
     pub name: String,
     pub aliases: Vec<String>,
     pub description: String,
