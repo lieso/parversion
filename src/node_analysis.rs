@@ -57,6 +57,64 @@ pub async fn get_basis_fields<P: Provider>(
 
     log::info!("Number of field groups: {}", contexts_by_field.len());
 
+    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let mut handles = Vec::new();
+
+    for (field, contexts_in_group) in contexts_by_field {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
+
+        let handle = task::spawn(async move {
+            let _permit = permit;
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            get_basis_field(
+                cloned_provider,
+                cloned_meta_context,
+                field,
+                contexts_in_group,
+                cloned_options,
+                cloned_stage_context
+            )
+            .await
+        });
+        handles.push(handle);
+    }
+
+    let results: Vec<Result<Option<BasisField>, Errors>> = try_join_all(handles).await?;
+
+    let basis_fields: HashMap<ID, Arc<BasisField>> = results.into_iter()
+        .filter_map(|res| {
+            match res {
+                Ok(Some(basis_field)) => {
+                    let basis_field = Arc::new(basis_field);
+                    let id = basis_field.id.clone();
+                    Some(Ok((id, basis_field)))
+                }
+                Ok(None) => None,
+                Err(e) => Some(Err(e)),
+            }
+        })
+        .collect::<Result<HashMap<ID, Arc<BasisField>>, Errors>>()?;
+
+        
+    Ok(basis_fields)
+}
+
+async fn get_basis_field<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    field: String,
+    contexts_in_group: Vec<Arc<Context>>,
+    options: Options,
+    stage_context: StageContext,
+) -> Result<Option<BasisField>, Errors> {
+    log::trace!("In get_basis_field");
 
     unimplemented!();
 }
