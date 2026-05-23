@@ -946,7 +946,7 @@ Respond with JSON:
         log::trace!("In infer_attribute_meaningfulness");
 
         let system_prompt = r##"
-You are an expert web scraping and data extraction assistant. Your task is to analyze a specific HTML attribute and its contextual usage across multiple snippets to determine if ALL instances of this attribute can be safely ignored, or if it contains "meaningful" data.
+You are an expert web scraping and data extraction assistant. Your task is to analyze a specific HTML attribute and its contextual usage across multiple snippets to determine if ALL instances of this attribute can be safely ignored, or if it contains "meaningful" data. Meaningful to a human being. 
 
 **WHAT IS MEANINGFUL DATA?**
 An attribute is meaningful if its value contributes to the underlying data model or semantic understanding of the web page. If the value likely originates from a backend database or server logic (e.g., content, resource URLs, timestamps, unique backend IDs), it is meaningful. If it exists solely due to frontend development, layout, presentation, or compilation/minification tooling, it is not meaningful.
@@ -955,7 +955,7 @@ An attribute is meaningful if its value contributes to the underlying data model
 - URLs, links, or navigation targets (e.g., `href`, `src`, or custom data attributes holding URLs like `data-href`).
 - Descriptive metadata, text content, or timestamps (e.g., `title`, `alt`, `datetime`).
 - True backend data/identifiers.
-- **CRITICAL:** If the attribute's purpose is ambiguous, context is insufficient, or you are unsure, you MUST default to `true`.
+- All text nodes
 
 **RULES FOR "NO" (is_meaningful: false):**
 - Visual presentation, styling, or layout directives (e.g., `class`, `style`, `bgcolor`, `width`, `align`).

@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 use std::collections::{HashSet, HashMap};
 use rand::prelude::*;
 
+use crate::basis_field::BasisField;
 use crate::basis_network::BasisNetwork;
 use crate::config::CONFIG;
 use crate::network_relationship::NetworkRelationshipType;
@@ -265,6 +266,29 @@ impl LLM {
         let mut tokens: u64 = 0;
 
         for (field, value) in fields.into_iter() {
+
+            let basis_fields: Vec<Arc<BasisField>> = {
+                let lock = read_lock!(meta_context);
+                lock.basis_fields
+                    .as_ref()
+                    .ok_or_else(|| {
+                        Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+                    })?
+                    .values()
+                    .cloned()
+                    .collect::<Vec<_>>()
+            };
+
+            let is_basis_field = basis_fields.iter().find(|item| {
+                item.name == field
+            }).is_some();
+
+            if !is_basis_field {
+                continue;
+            }
+
+
+
             let result = NodeAnalysis::get_node_transformation(
                 &field,
                 &value,

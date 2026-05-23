@@ -193,23 +193,7 @@ pub fn get_context_groups<P: Provider>(
 ), Errors> {
     log::trace!("In get_context_groups");
 
-    let contexts = {
-        let lock = read_lock!(meta_context);
-        lock.contexts
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
-            })?
-    };
-
-    log::info!("Number of contexts: {}", contexts.len());
-
-    let non_empty_contexts: Vec<Arc<Context>> = contexts
-        .into_values()
-        .filter(|context| !context.data_node.fields.is_empty())
-        .collect();
-
-    log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
+    let non_empty_contexts = get_non_empty_contexts(Arc::clone(&meta_context))?;
 
     let mut seen = HashSet::new();
     let unique_contexts: Vec<Arc<Context>> = non_empty_contexts
@@ -307,23 +291,7 @@ pub async fn get_basis_groups<P: Provider>(
 
     // NOTE: there are three duplicate contexts: one for each data node, graph node and document node
 
-    let contexts = {
-        let lock = read_lock!(meta_context);
-        lock.contexts
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
-            })?
-    };
-
-    log::info!("Number of contexts: {}", contexts.len());
-
-    let non_empty_contexts: Vec<Arc<Context>> = contexts
-        .into_values()
-        .filter(|context| {
-            !context.data_node.fields.is_empty()
-        })
-        .collect();
+    let non_empty_contexts = get_non_empty_contexts(Arc::clone(&meta_context))?;
 
     log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
 
@@ -897,4 +865,48 @@ async fn get_basis_node<P: Provider>(
     stage_context.record_events("Node analysis", tokens);
 
     Ok(basis_node)
+}
+
+fn get_non_empty_contexts(meta_context: Arc<RwLock<MetaContext>>) -> Result<Vec<Arc<Context>>, Errors> {
+    let contexts = {
+        let lock = read_lock!(meta_context);
+        lock.contexts
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+            })?
+    };
+    
+    let basis_fields: Vec<Arc<BasisField>> = {
+        let lock = read_lock!(meta_context);
+        lock.basis_fields
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+            })?
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    log::info!("Number of contexts: {}", contexts.len());
+
+    let non_empty_contexts: Vec<Arc<Context>> = contexts
+        .into_values()
+        .filter(|context| {
+            for (field, _value) in &context.data_node.fields {
+                for basis_field in &basis_fields {
+                    if basis_field.name == *field {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        })
+        .collect();
+
+    log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
+
+    Ok(non_empty_contexts)
 }
