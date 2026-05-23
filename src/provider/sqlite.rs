@@ -3,12 +3,12 @@ use rusqlite::params;
 use std::sync::{Arc, Mutex};
 use tokio::task;
 
+use crate::basis_field::BasisField;
 use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
-use crate::basis_field::BasisField;
 use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -26,6 +26,10 @@ impl SqliteProvider {
 
         conn.execute_batch(
             "PRAGMA journal_mode=WAL;
+             CREATE TABLE IF NOT EXISTS basis_fields (
+                 acyclic_subgraph_hash  TEXT PRIMARY KEY,
+                 data                   TEXT NOT NULL
+             );
              CREATE TABLE IF NOT EXISTS basis_nodes (
                  lineage_hash TEXT PRIMARY KEY,
                  data         TEXT NOT NULL
@@ -387,6 +391,55 @@ impl Provider for SqliteProvider {
                 params![acyclic_key, lineage_key, indexed_key, data],
             )
             .map_err(|e| db_err(e))?;
+            Ok(())
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError)?
+    }
+
+    async fn get_basis_fields_by_acyclic_subgraph_hash(
+        &self,
+        acyclic_subgraph_hash: &Hash
+    ) -> Result<Vec<BasisField>, Errors> {
+        let conn = self.connection.clone();
+        let key = acyclic_subgraph_hash.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM basis_fields
+                 WHERE acyclic_subgraph_hash = ?1",
+                 params![key],
+                 |row| row.get::<_, String>(0),
+            ) {
+                Ok(data) => deserialize(data),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(Vec::new()),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError)?
+    }
+
+    async fn save_basis_fields(
+        &self,
+        acyclic_subgraph_hash: &Hash,
+        basis_fields: Vec<BasisField>
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let key = acyclic_subgraph_hash.to_string();
+        let data = serialize(&basis_fields)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            conn.execute(
+                "INSERT OR REPLACE INTO basis_fields
+                (acyclic_subgraph_hash, data)
+                VALUES (?1, ?2)",
+                params![key, data]
+            )
+            .map_err(|e| db_err(e))?;
+
             Ok(())
         })
         .await
