@@ -40,9 +40,7 @@ impl DocumentNode {
     pub fn get_fields(&self) -> HashMap<String, String> {
         match &self.data {
             XMLNode::Element(element_node) => {
-                let mut fields = element_node.attributes.clone();
-                fields.remove("class"); // yikes!
-                fields
+                element_node.attributes.clone()
             }
             XMLNode::Text(text_node) => {
                 HashMap::from([("text".to_string(), text_node.trim().to_string())])

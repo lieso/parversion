@@ -61,6 +61,11 @@ pub async fn normalize<P: Provider>(
         )
         .await?;
 
+    {
+        let mut lock = write_lock!(meta_context);
+        lock.update_basis_fields(basis_fields);
+    }
+
     stage.finish();
     let stage = execution_context.enter_stage("Group analysis");
 

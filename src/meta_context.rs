@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
@@ -17,6 +18,7 @@ pub struct MetaContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
     pub graph_root: Option<Graph>,
+    pub basis_fields: Option<HashMap<ID, Arc<BasisField>>>,
     pub basis_groups: Option<HashMap<ID, Arc<BasisGroup>>>,
     pub basis_nodes: Option<HashMap<ID, Arc<BasisNode>>>,
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
@@ -35,6 +37,7 @@ impl MetaContext {
             document_versions: HashMap::new(),
             contexts: None,
             graph_root: None,
+            basis_fields: None,
             basis_groups: None,
             basis_nodes: None,
             basis_networks: None,
@@ -116,6 +119,10 @@ impl MetaContext {
 
     pub fn update_basis_groups(&mut self, groups: HashMap<ID, Arc<BasisGroup>>) {
         self.basis_groups = Some(groups);
+    }
+
+    pub fn update_basis_fields(&mut self, fields: HashMap<ID, Arc<BasisField>>) {
+        self.basis_fields = Some(fields);
     }
 
     pub fn update_basis_nodes(&mut self, nodes: HashMap<ID, Arc<BasisNode>>) {

@@ -320,7 +320,9 @@ pub async fn get_basis_groups<P: Provider>(
 
     let non_empty_contexts: Vec<Arc<Context>> = contexts
         .into_values()
-        .filter(|context| !context.data_node.fields.is_empty())
+        .filter(|context| {
+            !context.data_node.fields.is_empty()
+        })
         .collect();
 
     log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
