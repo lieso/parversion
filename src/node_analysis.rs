@@ -43,8 +43,6 @@ pub async fn get_basis_fields<P: Provider>(
             .into_iter()
             .collect();
 
-        // Edge case: It's possible for a graph to correctly have zero basis fields...
-
         if !basis_fields.is_empty() {
             let field_map: HashMap<ID, Arc<BasisField>> = basis_fields.into_iter()
                 .map(|basis_field| {
@@ -122,7 +120,7 @@ pub async fn get_basis_fields<P: Provider>(
 
     let results: Vec<Result<Option<BasisField>, Errors>> = try_join_all(handles).await?;
 
-    let basis_fields: Vec<BasisField> = results.into_iter()
+    let mut basis_fields: Vec<BasisField> = results.into_iter()
         .filter_map(|res| {
             match res {
                 Ok(Some(basis_field)) => Some(Ok(basis_field)),
@@ -132,11 +130,12 @@ pub async fn get_basis_fields<P: Provider>(
         })
         .collect::<Result<Vec<BasisField>, Errors>>()?;
 
-    log::info!("=====================================================================================================");
-    for basis_field in &basis_fields {
-        log::info!("BASIS FIELD: {}", basis_field.name);
-    }
-    log::info!("=====================================================================================================");
+    // Always ensure 'text' is a basis field
+    basis_fields.push(BasisField {
+        id: ID::new(),
+        acyclic_subgraph_hash: acyclic_subgraph_hash.clone(),
+        name: "text".to_string()
+    });
 
     provider.save_basis_fields(
         &classification.acyclic_subgraph_hash,
@@ -164,6 +163,11 @@ async fn get_basis_field<P: Provider>(
     stage_context: StageContext,
 ) -> Result<Option<BasisField>, Errors> {
     log::trace!("In get_basis_field");
+
+    if field == "text" {
+        // text fields are always basis fields, it gets added explictly
+        return Ok(None);
+    }
 
     let (is_basis, (tokens,)) = LLM::infer_basis_field(
         Arc::clone(&meta_context),
