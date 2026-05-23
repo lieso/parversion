@@ -25,6 +25,36 @@ pub async fn get_basis_fields<P: Provider>(
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisField>>, Errors> {
     log::trace!("In get_basis_fields");
+    
+    let classification = {
+        let lock = read_lock!(meta_context);
+        lock.classification
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientMetaContextError("Classification not provided in meta context".to_string())
+            })?
+    };
+
+    if !options.regenerate {
+        let basis_fields: Vec<BasisField> = provider
+            .get_basis_fields_by_acyclic_subgraph_hash(&classification.acyclic_subgraph_hash).await?
+            .into_iter()
+            .collect();
+
+        // Edge case: It's possible for a graph to correctly have zero basis fields...
+
+        if !basis_fields.is_empty() {
+            let field_map: HashMap<ID, Arc<BasisField>> = basis_fields.into_iter()
+                .map(|basis_field| {
+                    let basis_field = Arc::new(basis_field);
+                    let id = basis_field.id.clone();
+                    (id, basis_field)
+                })
+                .collect();
+
+            return Ok(field_map);
+        }
+    }
 
     let contexts = {
         let lock = read_lock!(meta_context);
@@ -88,22 +118,30 @@ pub async fn get_basis_fields<P: Provider>(
 
     let results: Vec<Result<Option<BasisField>, Errors>> = try_join_all(handles).await?;
 
-    let basis_fields: HashMap<ID, Arc<BasisField>> = results.into_iter()
+    let basis_fields: Vec<BasisField> = results.into_iter()
         .filter_map(|res| {
             match res {
-                Ok(Some(basis_field)) => {
-                    let basis_field = Arc::new(basis_field);
-                    let id = basis_field.id.clone();
-                    Some(Ok((id, basis_field)))
-                }
+                Ok(Some(basis_field)) => Some(Ok(basis_field)),
                 Ok(None) => None,
                 Err(e) => Some(Err(e)),
             }
         })
-        .collect::<Result<HashMap<ID, Arc<BasisField>>, Errors>>()?;
+        .collect::<Result<Vec<BasisField>, Errors>>()?;
 
-        
-    Ok(basis_fields)
+    provider.save_basis_fields(
+        &classification.acyclic_subgraph_hash,
+        basis_fields.clone()
+    ).await?;
+
+    let field_map: HashMap<ID, Arc<BasisField>> = basis_fields.into_iter()
+        .map(|basis_field| {
+            let basis_field = Arc::new(basis_field);
+            let id = basis_field.id.clone();
+            (id, basis_field)
+        })
+        .collect();
+
+    Ok(field_map)
 }
 
 async fn get_basis_field<P: Provider>(

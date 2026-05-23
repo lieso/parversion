@@ -10,6 +10,7 @@ use crate::classification::Classification;
 use crate::basis_group::BasisGroup;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
+use crate::basis_field::BasisField;
 use crate::bloom_filter::BloomFilter;
 use crate::operation::Operation;
 use crate::prelude::*;
@@ -534,6 +535,65 @@ impl Provider for YamlFileProvider {
             sequence.push(serialized_basis_group);
         } else {
             yaml["basis_groups"] = serde_yaml::Value::Sequence(vec![serialized_basis_group]);
+        }
+
+        self.save_data(&yaml).await
+    }
+
+    async fn get_basis_fields_by_acyclic_subgraph_hash(
+        &self,
+        acyclic_subgraph_hash: &Hash
+    ) -> Result<Vec<BasisField>, Errors> {
+        let yaml = self.load_data().await?;
+
+        let basis_fields: Vec<BasisField> = yaml
+            .get("basis_fields")
+            .and_then(|bf| {
+                let deserialized: Result<Vec<BasisField>, _> =
+                    serde_yaml::from_value(bf.clone());
+                if let Err(ref err) = deserialized {
+                    log::error!("Deserialization error for basis_fields: {:?}", err);
+                }
+                deserialized.ok()
+            })
+            .unwrap_or_else(Vec::new);
+
+        Ok(basis_fields
+            .into_iter()
+            .filter(|bf| &bf.acyclic_subgraph_hash == acyclic_subgraph_hash)
+            .collect())
+    }
+
+    async fn save_basis_fields(
+        &self,
+        acyclic_subgraph_hash: &Hash,
+        basis_fields: Vec<BasisField>
+    ) -> Result<(), Errors> {
+        let mut yaml = self.load_data().await?;
+
+        let serialized_basis_fields: Vec<serde_yaml::Value> = basis_fields
+            .into_iter()
+            .map(|field| serde_yaml::to_value(&field).map_err(|_| Errors::UnexpectedError))
+            .collect::<Result<_, _>>()?;
+
+        if let Some(existing_basis_fields) = yaml.get_mut("basis_fields") {
+            let sequence = existing_basis_fields.as_sequence_mut().ok_or_else(|| {
+                Errors::YamlParseError(
+                    "Failed to get mutable sequence for 'basis_fields'.".to_string(),
+                )
+            })?;
+
+            sequence.retain(|entry| {
+                if let Ok(existing) = serde_yaml::from_value::<BasisField>(entry.clone()) {
+                    existing.acyclic_subgraph_hash != *acyclic_subgraph_hash
+                } else {
+                    true
+                }
+            });
+
+            sequence.extend(serialized_basis_fields);
+        } else {
+            yaml["basis_fields"] = serde_yaml::Value::Sequence(serialized_basis_fields);
         }
 
         self.save_data(&yaml).await

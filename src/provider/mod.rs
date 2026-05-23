@@ -6,6 +6,7 @@ use crate::basis_network::BasisNetwork;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::basis_graph::BasisGraph;
+use crate::basis_field::BasisField;
 use crate::operation::Operation;
 use crate::prelude::*;
 
@@ -17,6 +18,15 @@ pub mod sqlite;
 
 #[async_trait]
 pub trait Provider: Send + Sync + Sized + 'static {
+    async fn get_basis_fields_by_acyclic_subgraph_hash(
+        &self,
+        acyclic_subgraph_hash: &Hash
+    ) -> Result<Vec<BasisField>, Errors>;
+    async fn save_basis_fields(
+        &self,
+        acyclic_subgraph_hash: &Hash,
+        basis_fields: Vec<BasisField>
+    ) -> Result<(), Errors>;
     async fn get_basis_groups_by_acyclic_lineage(
         &self,
         acyclic_lineage: &Lineage,
@@ -182,6 +192,21 @@ impl Provider for VoidProvider {
         &self,
         _hash: &Hash,
         _basis_graph: BasisGraph,
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_basis_fields_by_acyclic_subgraph_hash(
+        &self,
+        acyclic_subgraph_hash: &Hash
+    ) -> Result<Vec<BasisField>, Errors> {
+        Ok(Vec::new())
+    }
+
+    async fn save_basis_fields(
+        &self,
+        acyclic_subgraph_hash: &Hash,
+        basis_fields: Vec<BasisField>
     ) -> Result<(), Errors> {
         Ok(())
     }

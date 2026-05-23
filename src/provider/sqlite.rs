@@ -8,6 +8,7 @@ use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
+use crate::basis_field::BasisField;
 use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
