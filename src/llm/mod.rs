@@ -328,8 +328,47 @@ impl LLM {
             .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&meta_context)))
             .collect();
 
-        let (data, metadata) = crate::llm::node_analysis::NodeAnalysis::infer_snippets_match(snippets).await?;
+        let (data, metadata) = NodeAnalysis::infer_snippets_match(snippets).await?;
 
         Ok((data.match_result, (metadata.tokens,)))
+    }
+
+    pub async fn infer_basis_field(
+        meta_context: Arc<RwLock<MetaContext>>,
+        field: String,
+        group: Vec<Arc<Context>>,
+    ) -> Result<(
+        bool, // is basis field
+        (u64,)
+    ), Errors> {
+        log::trace!("In infer_basis_field");
+
+        let sample_size = std::cmp::min(20, group.len());
+
+        let sampled_contexts: Vec<Arc<Context>> = {
+            let mut rng = rand::rng();
+            let mut shuffled = group.clone();
+            shuffled.shuffle(&mut rng);
+            shuffled.into_iter().take(sample_size).collect()
+        };
+
+        let snippets: Vec<String> = sampled_contexts
+            .iter()
+            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&meta_context)))
+            .collect();
+
+        let merged_snippets = snippets.join("\n\n---SNIPPET SEPARATOR---\n\n");
+
+        let user_prompt = format!(r##"
+[Attribute]
+{}
+
+[Snippets]
+{}
+"##, field, merged_snippets);
+
+        let (data, metadata) = NodeAnalysis::infer_basis_field(&user_prompt).await?;
+
+        Ok((data, (metadata.tokens,)))
     }
 }

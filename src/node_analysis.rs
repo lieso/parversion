@@ -35,9 +35,11 @@ pub async fn get_basis_fields<P: Provider>(
             })?
     };
 
+    let acyclic_subgraph_hash = &classification.acyclic_subgraph_hash;
+
     if !options.regenerate {
         let basis_fields: Vec<BasisField> = provider
-            .get_basis_fields_by_acyclic_subgraph_hash(&classification.acyclic_subgraph_hash).await?
+            .get_basis_fields_by_acyclic_subgraph_hash(acyclic_subgraph_hash).await?
             .into_iter()
             .collect();
 
@@ -97,6 +99,7 @@ pub async fn get_basis_fields<P: Provider>(
         let cloned_meta_context = Arc::clone(&meta_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
+        let cloned_acyclic_subgraph_hash = acyclic_subgraph_hash.clone();
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -106,6 +109,7 @@ pub async fn get_basis_fields<P: Provider>(
             get_basis_field(
                 cloned_provider,
                 cloned_meta_context,
+                cloned_acyclic_subgraph_hash,
                 field,
                 contexts_in_group,
                 cloned_options,
@@ -128,6 +132,12 @@ pub async fn get_basis_fields<P: Provider>(
         })
         .collect::<Result<Vec<BasisField>, Errors>>()?;
 
+    log::info!("=====================================================================================================");
+    for basis_field in &basis_fields {
+        log::info!("BASIS FIELD: {}", basis_field.name);
+    }
+    log::info!("=====================================================================================================");
+
     provider.save_basis_fields(
         &classification.acyclic_subgraph_hash,
         basis_fields.clone()
@@ -147,6 +157,7 @@ pub async fn get_basis_fields<P: Provider>(
 async fn get_basis_field<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
+    acyclic_subgraph_hash: Hash,
     field: String,
     contexts_in_group: Vec<Arc<Context>>,
     options: Options,
@@ -154,7 +165,23 @@ async fn get_basis_field<P: Provider>(
 ) -> Result<Option<BasisField>, Errors> {
     log::trace!("In get_basis_field");
 
-    unimplemented!();
+    let (is_basis, (tokens,)) = LLM::infer_basis_field(
+        Arc::clone(&meta_context),
+        field.clone(),
+        contexts_in_group.clone(),
+    ).await?;
+
+    if is_basis {
+        let basis_field = BasisField {
+            id: ID::new(),
+            acyclic_subgraph_hash,
+            name: field.clone(),
+        };
+
+        Ok(Some(basis_field))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn get_context_groups<P: Provider>(

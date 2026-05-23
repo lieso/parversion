@@ -11,6 +11,16 @@ use crate::prelude::*;
 use crate::environment::get_env_variable;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+struct BasisFieldResponse {
+    is_meaningful: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BasisFieldResponseMetadata {
+    pub tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct SnippetMatchLLMResponse {
     #[serde(rename = "match")]
     match_result: bool,
@@ -925,6 +935,130 @@ Respond with JSON:
             }
             Err(e) => {
                 log::error!("Failed to get response from OpenRouter: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
+    pub async fn infer_basis_field(
+        user_prompt: &str,
+    ) -> Result<(bool, BasisFieldResponseMetadata), Errors> {
+        log::trace!("In infer_attribute_meaningfulness");
+
+        let system_prompt = r##"
+You are an expert web scraping and data extraction assistant. Your task is to analyze a specific HTML attribute and its contextual usage across multiple snippets to determine if ALL instances of this attribute can be safely ignored, or if it contains "meaningful" data.
+
+**WHAT IS MEANINGFUL DATA?**
+An attribute is meaningful if its value contributes to the underlying data model or semantic understanding of the web page. If the value likely originates from a backend database or server logic (e.g., content, resource URLs, timestamps, unique backend IDs), it is meaningful. If it exists solely due to frontend development, layout, presentation, or compilation/minification tooling, it is not meaningful.
+
+**RULES FOR "YES" (is_meaningful: true):**
+- URLs, links, or navigation targets (e.g., `href`, `src`, or custom data attributes holding URLs like `data-href`).
+- Descriptive metadata, text content, or timestamps (e.g., `title`, `alt`, `datetime`).
+- True backend data/identifiers.
+- **CRITICAL:** If the attribute's purpose is ambiguous, context is insufficient, or you are unsure, you MUST default to `true`.
+
+**RULES FOR "NO" (is_meaningful: false):**
+- Visual presentation, styling, or layout directives (e.g., `class`, `style`, `bgcolor`, `width`, `align`).
+- Purely frontend JavaScript states, UI bindings, or event listeners (e.g., `onclick`, JS framework generated IDs).
+- Empty attributes or generic structural boilerplate that cannot possibly inform a user's understanding of the document.
+- Only output `false` if the attribute can ALWAYS be safely ignored without losing semantic meaning or structural data.
+
+Respond with JSON:
+{
+  "is_meaningful": boolean - true if meaningful/ambiguous, false ONLY if completely safe to ignore globally
+}
+"##;
+
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║       INFER ATTRIBUTE MEANINGFULNESS - LLM REQUEST            ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+
+    let client = Self::build_client();
+
+    let response_format = ResponseFormat::json_schema(
+        "attribute_meaningfulness",
+        true,
+        json!({
+            "type": "object",
+            "properties": {
+                "is_meaningful": {
+                    "type": "boolean",
+                    "description": "Whether the attribute contains meaningful data (true) or is safe to ignore entirely (false)"
+                }
+            },
+            "required": ["is_meaningful"],
+            "additionalProperties": false
+        }),
+    );
+
+    let request = ChatCompletionRequest::builder()
+        .model("gpt-5-mini")
+        .messages(vec![
+            Message::new(Role::System, system_prompt),
+            Message::new(Role::User, user_prompt),
+        ])
+        .response_format(response_format)
+        .build()
+        .expect("Could not create llm request");
+
+        match client.send_chat_completion(&request).await {
+            Ok(response) => {
+                log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
+                log::debug!("{:?}", response);
+                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                log::debug!("");
+
+                if let Some(content) = response.choices[0].content() {
+                    log::debug!("┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐");
+                    log::debug!("{}", content);
+                    log::debug!("└───────────────────────────────────────────────────────────────┘");
+                    log::debug!("");
+
+                    let meaning_response = {
+                        match serde_json::from_str::<BasisFieldResponse>(content) {
+                            Ok(parsed_response) => {
+                                log::debug!("┌─── PARSED RESPONSE ───────────────────────────────────────────┐");
+                                log::debug!("{:?}", parsed_response);
+                                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                                log::debug!("");
+                                Ok(parsed_response)
+                            }
+                            Err(e) => {
+                                log::error!("Failed to parse LLM response: {}", e);
+                                Err(Errors::UnexpectedError)
+                            }
+                        }
+                    }?;
+
+                    let metadata = {
+                        if let Some(usage) = response.usage {
+                            BasisFieldResponseMetadata {
+                                tokens: usage.total_tokens as u64,
+                            }
+                        } else {
+                            BasisFieldResponseMetadata { tokens: 0 }
+                        }
+                    };
+
+                    Ok((meaning_response.is_meaningful, metadata))
+                } else {
+                    log::error!("No content in LLM response");
+                    Err(Errors::UnexpectedError)
+                }
+            }
+            Err(e) => {
+                log::error!("Failed to get response from OpenRouter/LLM: {}", e);
                 Err(Errors::UnexpectedError)
             }
         }
