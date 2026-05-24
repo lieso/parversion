@@ -7,6 +7,7 @@ use crate::normalization::{normalize, normalize_text};
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::normalization;
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
@@ -24,12 +25,20 @@ pub async fn translate_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
     translation: String,
-    _options: &Options,
+    options: &Options,
     metadata: &Metadata,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
+
+    let normalized = normalization::normalize_text(
+        Arc::clone(&provider),
+        text,
+        options,
+        metadata,
+        execution_context,
+    ).await?;
 
     log::debug!("translation: {}", translation);
 
