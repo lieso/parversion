@@ -20,6 +20,22 @@ pub async fn translate<P: Provider>(
     unimplemented!()
 }
 
+pub async fn translate_text_to_document<P: Provider>(
+    provider: Arc<P>,
+    text: String,
+    translation: String,
+    _options: &Options,
+    metadata: &Metadata,
+    document_format: &DocumentFormat,
+    execution_context: Arc<ExecutionContext>,
+) -> Result<Document, Errors> {
+    log::trace!("In translate_text_to_document");
+
+    log::debug!("translation: {}", translation);
+
+    unimplemented!()
+}
+
 pub async fn translate_meta_context<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,

@@ -45,11 +45,13 @@ pub async fn run() -> Result<(), Errors> {
     let options = get_options(&matches)?;
     let metadata = get_metadata(&matches)?;
     let document: String = get_document(&matches).await?;
+    let translation: Option<String> = get_translation(&matches).await?;
     let document_format = document_format::DocumentFormat::default();
 
     let package = determine_document(
         provider,
         document,
+        translation,
         options,
         metadata,
         &document_format,
@@ -146,6 +148,13 @@ fn parse_arguments() -> clap::ArgMatches {
                 .help("Provide document for processing"),
         )
         .arg(
+            Arg::with_name("translation")
+                .short('a')
+                .long("translation-target")
+                .value_name("TRANSLATION_TARGET")
+                .help("Optional. Provide document as target output schema"),
+        )
+        .arg(
             Arg::with_name("version")
                 .short('v')
                 .long("version")
@@ -198,6 +207,22 @@ fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
     })
 }
 
+async fn get_translation(matches: &clap::ArgMatches) -> Result<Option<String>, Errors> {
+    if let Some(translation) = matches.value_of("translation") {
+        return if is_valid_url(translation) {
+            let text = fetch_url_as_text(translation).await?;
+            Ok(Some(text))
+        } else if is_valid_unix_path(translation) {
+            let text = get_file_as_text(translation)?;
+            Ok(Some(text))
+        } else {
+            Ok(Some(translation.to_string()))
+        }
+    }
+
+    Ok(None)
+}
+
 async fn get_document(matches: &clap::ArgMatches) -> Result<String, Errors> {
     if let Ok(stdin) = load_stdin() {
         log::info!("Received data from stdin");
@@ -236,6 +261,7 @@ fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors>
 async fn determine_document<P: Provider + ?Sized>(
     provider: Arc<P>,
     document: String,
+    translation: Option<String>,
     options: Options,
     metadata: Metadata,
     document_format: &document_format::DocumentFormat,
@@ -244,20 +270,38 @@ async fn determine_document<P: Provider + ?Sized>(
     log::debug!("options: {:?}", options);
     log::debug!("metadata: {:?}", metadata);
 
-    let normalized_document = normalization::normalize_text_to_document(
-        provider.clone(),
-        document,
-        &options,
-        &metadata,
-        document_format,
-        execution_context.clone(),
-    )
+    if let Some(translation) = translation {
+        let translated_document = translation::translate_text_to_document(
+            provider.clone(),
+            document,
+            translation,
+            &options,
+            &metadata,
+            document_format,
+            execution_context.clone(),
+        )
         .await?;
 
-    Ok(Package {
-        document: normalized_document,
-        mutations: Vec::new(),
-    })
+        Ok(Package {
+            document: translated_document,
+            mutations: Vec::new(),
+        })
+    } else {
+        let normalized_document = normalization::normalize_text_to_document(
+            provider.clone(),
+            document,
+            &options,
+            &metadata,
+            document_format,
+            execution_context.clone(),
+        )
+        .await?;
+
+        Ok(Package {
+            document: normalized_document,
+            mutations: Vec::new(),
+        })
+    }
 }
 
 fn init_execution_context() -> Arc<ExecutionContext> {
