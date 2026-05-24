@@ -15,7 +15,6 @@ use crate::llm::{LLM, NodeGroupClassification};
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::traversal::{get_original_document_condensed};
 use crate::context::Context;
 
 pub async fn get_basis_fields<P: Provider>(
@@ -754,7 +753,6 @@ pub async fn get_basis_nodes<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
 
-    let document_summary = Arc::new(get_original_document_condensed(Arc::clone(&meta_context))?);
     let basis_groups = {
         let lock = read_lock!(meta_context);
         lock.basis_groups
@@ -788,7 +786,6 @@ pub async fn get_basis_nodes<P: Provider>(
         let cloned_meta_context = Arc::clone(&meta_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
-        let cloned_document_summary = Arc::clone(&document_summary);
 
         let handle = task::spawn(async move {
             let _permit = permit;
@@ -801,7 +798,6 @@ pub async fn get_basis_nodes<P: Provider>(
                 group,
                 &cloned_options,
                 &cloned_stage_context,
-                &cloned_document_summary,
                 basis_lineage,
             )
             .await?;
@@ -825,7 +821,6 @@ async fn get_basis_node<P: Provider>(
     group: Vec<Arc<Context>>,
     options: &Options,
     stage_context: &StageContext,
-    document_summary: &str,
     basis_lineage: Lineage,
 ) -> Result<BasisNode, Errors> {
     log::trace!("In get_basis_node");
@@ -851,7 +846,6 @@ async fn get_basis_node<P: Provider>(
     let (field_transformations, (tokens,)) = LLM::get_node_transformations(
         group,
         Arc::clone(&meta_context),
-        document_summary,
     ).await?;
 
     let basis_node = BasisNode {

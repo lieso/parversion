@@ -238,7 +238,6 @@ impl LLM {
     pub async fn get_node_transformations(
         group: Vec<Arc<Context>>,
         meta_context: Arc<RwLock<MetaContext>>,
-        document_summary: &str,
     ) -> Result<(
         Vec<FieldTransformation>,
         (u64,)
@@ -293,7 +292,6 @@ impl LLM {
                 &field,
                 &value,
                 snippets.clone(),
-                document_summary,
             ).await?;
 
             if let Some(field_inference_response) = result.data {

@@ -105,7 +105,6 @@ impl NodeAnalysis {
         field: &str,
         value: &str,
         field_snippets: Vec<String>,
-        document_summary: &str
     ) -> Result<NodeTransformationResponse, Errors> {
         log::trace!("In get_node_transformation");
 
@@ -114,12 +113,10 @@ impl NodeAnalysis {
         let (should_eliminate_response, metadata): (EliminationResponse, EliminationResponseMetadata) = match field {
             "text" => Self::should_eliminate_text(
                 field_snippets.clone(),
-                document_summary,
             ).await?,
             _ => Self::should_eliminate_attribute(
                 field,
                 field_snippets.clone(),
-                document_summary,
             ).await?,
         };
 
@@ -140,12 +137,10 @@ impl NodeAnalysis {
             "text" => Self::infer_text_data_field(
                 value,
                 field_snippets.clone(),
-                document_summary,
             ).await?,
             _ => Self::infer_attribute_data_field(
                 field,
                 field_snippets.clone(),
-                document_summary,
             ).await?,
         };
 
@@ -164,15 +159,11 @@ impl NodeAnalysis {
     async fn infer_text_data_field(
         value: &str,
         snippets: Vec<String>,
-        document_summary: &str
     ) -> Result<(FieldInferenceResponse, FieldInferenceResponseMetadata), Errors> {
         log::trace!("In infer_text_data_field");
 
         let system_prompt = format!(r##"
 You are an expert data engineer reverse-engineering a backend data model from rendered HTML.
-
-### Document Context:
-Website Summary: {}
 
 ### Goal:
 Analyze the target text node (delimited by <!-- Target node: Start -->) and infer the original data field it represents.
@@ -189,7 +180,7 @@ Respond with valid JSON:
   "description": "string",
   "data_type": "string"
 }}
-"##, document_summary);
+"##);
 
         let examples = snippets
             .iter()
@@ -235,15 +226,11 @@ Example {}:
     async fn infer_attribute_data_field(
         field: &str,
         snippets: Vec<String>,
-        document_summary: &str
     ) -> Result<(FieldInferenceResponse, FieldInferenceResponseMetadata), Errors> {
         log::trace!("In infer_attribute_data_field");
 
         let system_prompt = format!(r##"
 You are an expert data engineer reverse-engineering a backend data model from rendered HTML.
-
-### Document Context:
-Website Summary: {}
 
 ### Goal:
 Analyze the target HTML attribute (delimited by <!-- Target node: Start -->) and infer the original data field it represents.
@@ -260,7 +247,7 @@ Respond with valid JSON:
   "description": "string",
   "data_type": "string"
 }}
-"##, document_summary);
+"##);
 
         let examples = snippets
             .iter()
@@ -405,7 +392,6 @@ Example {}:
 
     async fn should_eliminate_text(
         snippets: Vec<String>,
-        document_summary: &str
     ) -> Result<(EliminationResponse, EliminationResponseMetadata), Errors> {
         log::trace!("In should_eliminate_text");
 
@@ -413,10 +399,6 @@ Example {}:
 You are an expert data engineer specializing in reverse-engineering data models from rendered HTML. 
 
 Your goal is to determine if a specific text node represents "Application Data" (dynamic content that would be stored in a database/API) or "UI Boilerplate" (static text hardcoded into the frontend template).
-
-### Document Context:
-The following is a summary of the website being analyzed:
-{}
 
 ### Target Node Identification:
 You will be provided with one or more HTML snippets containing the text node to analyze. 
@@ -440,7 +422,7 @@ You must respond with valid JSON containing exactly one field:
 {{
   "is_boilerplate": boolean
 }}
-"##, document_summary);
+"##);
 
         let examples = snippets
             .iter()
@@ -609,7 +591,6 @@ Example {}:
     async fn should_eliminate_attribute(
         field: &str,
         snippets: Vec<String>,
-        document_summary: &str
     ) -> Result<(EliminationResponse, EliminationResponseMetadata), Errors> {
         log::trace!("In should_eliminate_attribute");
 
@@ -617,10 +598,6 @@ Example {}:
 You are an expert data engineer specializing in reverse-engineering data models from rendered HTML. 
 
 Your goal is to determine if a specific HTML attribute represents "Application Data" (dynamic content that would be stored in a database/API) or "UI Boilerplate" (static text hardcoded into the frontend template, code, or ancillary content).
-
-### Document Context:
-The following is a summary of the website being analyzed:
-{}
 
 ### Target Attribute Identification:
 You will be provided with one or more HTML snippets containing the attribute to analyze. 
@@ -643,7 +620,7 @@ You must respond with valid JSON containing exactly one field:
 {{
   "is_boilerplate": boolean
 }}
-"##, document_summary);
+"##);
 
         let examples = snippets
             .iter()
