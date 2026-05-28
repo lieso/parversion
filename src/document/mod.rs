@@ -1,6 +1,7 @@
 use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap};
+use std::str::FromStr;
 
 mod json;
 mod xml;
@@ -20,6 +21,24 @@ pub enum DocumentType {
     JavaScript,
     Xml,
     Html,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum DocumentRole {
+    Instance,
+    Schema,
+}
+
+impl FromStr for DocumentRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "instance" => Ok(DocumentRole::Instance),
+            "schema" => Ok(DocumentRole::Schema),
+            other => Err(format!("Invalid document role: {}", other)),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

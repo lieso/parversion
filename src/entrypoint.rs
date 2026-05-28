@@ -9,9 +9,10 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use std::fs;
+use std::str::FromStr;
 
 use crate::config::CONFIG;
-use crate::document::DocumentType;
+use crate::document::{DocumentType, DocumentRole};
 use crate::document_format;
 use crate::normalization;
 use crate::package::Package;
@@ -39,7 +40,7 @@ pub async fn run() -> Result<(), Errors> {
     let provider = init_provider().await?;
     let options = get_options(&matches)?;
     let documents: Vec<(String, Metadata)> = get_documents(&matches).await?;
-    let translation: Option<String> = get_translation(&matches).await?;
+    let translation: Option<(String, Metadata)> = get_translation(&matches).await?;
     let document_format = document_format::DocumentFormat::default();
 
     let package = determine_documents(
@@ -158,10 +159,19 @@ fn parse_arguments() -> clap::ArgMatches {
                 .help("Specify the origin of the document"),
         )
         .arg(
+            Arg::new("role")
+                .short('o')
+                .long("role")
+                .value_name("ROLE")
+                .help("Document purpose: instance, schema"),
+        )
+        .arg(
             Arg::new("translation")
                 .short('a')
-                .long("translation-target")
-                .value_name("TRANSLATION_TARGET")
+                .long("translation-spec")
+                .value_name("TRANSLATION_SPEC")
+                .num_args(1..)
+                .action(ArgAction::Append)
                 .help("Optional. Provide document as target output schema"),
         )
         .arg(
@@ -181,16 +191,50 @@ fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
     })
 }
 
-async fn get_translation(matches: &clap::ArgMatches) -> Result<Option<String>, Errors> {
-    if let Some(translation) = matches.get_one::<String>("translation") {
-        return if is_valid_url(translation) {
-            let text = fetch_url_as_text(translation).await?;
-            Ok(Some(text))
-        } else if is_valid_unix_path(translation) {
-            let text = get_file_as_text(translation)?;
-            Ok(Some(text))
-        } else {
-            Ok(Some(translation.to_string()))
+async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadata)>, Errors> {
+    let mut documents: Vec<(String, Metadata)> = Vec::new();
+
+    let fallback_type: Option<DocumentType> = matches
+        .get_one::<String>("document-type")
+        .map(|s| parse_document_type(s))
+        .transpose()?;
+
+    let fallback_origin: String = matches
+        .get_one::<String>("origin")
+        .cloned()
+        .expect("origin is required by clap");
+
+    let fallback_role: DocumentRole = matches
+        .get_one::<String>("role")
+        .map(|s| DocumentRole::from_str(s))
+        .transpose()
+        .map_err(|e| Errors::InvalidRole(e.to_string()))?
+        .unwrap_or(DocumentRole::Instance);
+
+    if let Some(values) = matches.get_many::<String>("translation") {
+        if values.len() > 1 {
+            return Err(Errors::TooManyTranslationDocuments);
+        }
+        
+        for raw_document in values {
+            let (parsed_document, partial) = parse_document(raw_document).await?;
+
+            let dt = partial
+                .document_type
+                .or_else(|| fallback_type.clone())
+                .ok_or(Errors::DocumentTypeNotProvided)?;
+
+            let origin = partial.origin.unwrap_or_else(|| fallback_origin.clone());
+
+            let role = partial.role.unwrap_or_else(|| fallback_role.clone());
+
+            let md = Metadata {
+                document_type: Some(dt),
+                origin,
+                role,
+            };
+
+            return Ok(Some((parsed_document, md)));
         }
     }
 
@@ -208,7 +252,14 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
     let fallback_origin: String = matches
         .get_one::<String>("origin")
         .cloned()
-        .expect("origin is required by clap");
+        .expect("An origin is expected");
+
+    let fallback_role: DocumentRole = matches
+        .get_one::<String>("role")
+        .map(|s| DocumentRole::from_str(s))
+        .transpose()
+        .map_err(|e| Errors::InvalidRole(e.to_string()))?
+        .unwrap_or(DocumentRole::Instance);
 
     if let Some(values) = matches.get_many::<String>("documents") {
         for raw_document in values {
@@ -221,9 +272,12 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
 
             let origin = partial.origin.unwrap_or_else(|| fallback_origin.clone());
 
+            let role = partial.role.unwrap_or_else(|| fallback_role.clone());
+
             let md = Metadata {
                 document_type: Some(dt),
                 origin,
+                role,
             };
 
             documents.push((parsed_document, md));
@@ -233,6 +287,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
         let metadata = Metadata {
             document_type: Some(dt),
             origin: fallback_origin,
+            role: fallback_role,
         };
         return Ok(vec![(stdin, metadata)]);
     } else {
@@ -246,6 +301,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
 struct MetadataPartial {
     document_type: Option<DocumentType>,
     origin: Option<String>,
+    role: Option<DocumentRole>,
 }
 
 async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial), Errors> {
@@ -280,6 +336,10 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
                 log::debug!("origin={}", value);
                 partial.origin = Some(value.to_string());
             }
+            "role" => {
+                log::debug!("role={}", value);
+                partial.role = Some(DocumentRole::from_str(value).map_err(|e| Errors::InvalidRole(e.to_string()))?);
+            }
             _ => return Err(Errors::UnexpectedParameter(key.to_string())),
         }
     }
@@ -301,7 +361,7 @@ fn parse_document_type(s: &str) -> Result<DocumentType, Errors> {
 async fn determine_documents<P: Provider + ?Sized>(
     provider: Arc<P>,
     documents: Vec<(String, Metadata)>,
-    translation: Option<String>,
+    translation: Option<(String, Metadata)>,
     options: Options,
     document_format: &document_format::DocumentFormat,
     execution_context: Arc<ExecutionContext>,
@@ -312,11 +372,14 @@ async fn determine_documents<P: Provider + ?Sized>(
         unimplemented!();
     };
 
-    if let Some(translation) = translation {
+    log::debug!("metadata: {:?}", metadata);
+
+    if let Some((translation, translation_metadata)) = translation {
         let translated_document = translation::translate_text_to_document(
             provider.clone(),
             document,
             translation,
+            &translation_metadata,
             &options,
             &metadata,
             document_format,

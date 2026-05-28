@@ -36,6 +36,8 @@ pub enum Errors {
     YamlProviderError,
     ProviderError(String),
     UnexpectedParameter(String),
+    TooManyTranslationDocuments,
+    InvalidRole(String),
 }
 
 impl From<JoinError> for Errors {

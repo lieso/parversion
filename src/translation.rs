@@ -25,6 +25,7 @@ pub async fn translate_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
     translation: String,
+    translation_metadata: &Metadata,
     options: &Options,
     metadata: &Metadata,
     document_format: &DocumentFormat,
