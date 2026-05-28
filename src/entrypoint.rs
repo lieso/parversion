@@ -35,11 +35,6 @@ pub async fn run() -> Result<(), Errors> {
 
     let matches = parse_arguments();
 
-    if matches.get_flag("version") {
-        println!("{} {}", PROGRAM_NAME, VERSION);
-        return Ok(());
-    }
-
     let execution_context = init_execution_context();
     let provider = init_provider().await?;
     let options = get_options(&matches)?;
@@ -47,12 +42,11 @@ pub async fn run() -> Result<(), Errors> {
     let translation: Option<String> = get_translation(&matches).await?;
     let document_format = document_format::DocumentFormat::default();
 
-    let package = determine_document(
+    let package = determine_documents(
         provider,
-        document,
+        documents,
         translation,
         options,
-        metadata,
         &document_format,
         execution_context.clone(),
     ).await?;
@@ -171,15 +165,10 @@ fn parse_arguments() -> clap::ArgMatches {
                 .help("Optional. Provide document as target output schema"),
         )
         .arg(
-            Arg::new("version")
-                .short('v')
-                .long("version")
-                .help("Display program version"),
-        )
-        .arg(
             Arg::new("regenerate")
                 .short('r')
                 .long("regenerate")
+                .action(ArgAction::SetTrue)
                 .help("Regenerate inferences"),
         )
         .get_matches()
@@ -272,6 +261,7 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
 
         match key {
             "uri" => {
+                log::debug!("uri={}", value);
                 if value == "-" {
                     text = Some(load_stdin().map_err(|_| Errors::DocumentNotProvided)?);
                 } else if is_valid_url(value) {
@@ -283,9 +273,11 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
                 }
             }
             "type" => {
+                log::debug!("type={}", value);
                 partial.document_type = Some(parse_document_type(&value)?);
             }
             "origin" => {
+                log::debug!("origin={}", value);
                 partial.origin = Some(value.to_string());
             }
             _ => return Err(Errors::UnexpectedParameter(key.to_string())),
@@ -306,17 +298,19 @@ fn parse_document_type(s: &str) -> Result<DocumentType, Errors> {
     }
 }
 
-async fn determine_document<P: Provider + ?Sized>(
+async fn determine_documents<P: Provider + ?Sized>(
     provider: Arc<P>,
-    document: String,
+    documents: Vec<(String, Metadata)>,
     translation: Option<String>,
     options: Options,
-    metadata: Metadata,
     document_format: &document_format::DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::debug!("options: {:?}", options);
-    log::debug!("metadata: {:?}", metadata);
+
+    let Some((document, metadata)) = documents.into_iter().next() else {
+        unimplemented!();
+    };
 
     if let Some(translation) = translation {
         let translated_document = translation::translate_text_to_document(
