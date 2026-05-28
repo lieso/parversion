@@ -1,5 +1,5 @@
 use atty::Stream;
-use clap::{App, Arg};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use fern::Dispatch;
 use log::LevelFilter;
 use std::env;
@@ -35,7 +35,7 @@ pub async fn run() -> Result<(), Errors> {
 
     let matches = parse_arguments();
 
-    if matches.is_present("version") {
+    if matches.get_flag("version") {
         println!("{} {}", PROGRAM_NAME, VERSION);
         return Ok(());
     }
@@ -43,8 +43,7 @@ pub async fn run() -> Result<(), Errors> {
     let execution_context = init_execution_context();
     let provider = init_provider().await?;
     let options = get_options(&matches)?;
-    let metadata = get_metadata(&matches)?;
-    let document: String = get_document(&matches).await?;
+    let documents: Vec<(String, Metadata)> = get_documents(&matches).await?;
     let translation: Option<String> = get_translation(&matches).await?;
     let document_format = document_format::DocumentFormat::default();
 
@@ -138,77 +137,63 @@ fn handle_error(err: Errors) {
 }
 
 fn parse_arguments() -> clap::ArgMatches {
-    App::new(PROGRAM_NAME)
+    Command::new(PROGRAM_NAME)
         .version(VERSION)
         .arg(
-            Arg::with_name("document")
+            Arg::new("documents")
                 .short('d')
-                .long("document")
-                .value_name("DOCUMENT")
-                .help("Provide document for processing"),
+                .long("documents")
+                .value_name("DOCUMENTS")
+                .num_args(1..)
+                .action(ArgAction::Append)
+                .help("Provide documents for processing"),
         )
         .arg(
-            Arg::with_name("translation")
-                .short('a')
-                .long("translation-target")
-                .value_name("TRANSLATION_TARGET")
-                .help("Optional. Provide document as target output schema"),
-        )
-        .arg(
-            Arg::with_name("version")
-                .short('v')
-                .long("version")
-                .help("Display program version"),
-        )
-        .arg(
-            Arg::with_name("regenerate")
-                .short('r')
-                .long("regenerate")
-                .help("Regenerate interpretation of document"),
-        )
-        .arg(
-            Arg::with_name("document-type")
+            Arg::new("document-type")
                 .short('t')
                 .long("document-type")
                 .value_name("DOCUMENT_TYPE")
                 .help("The document type : html, xml, js"),
         )
         .arg(
-            Arg::with_name("origin")
+            Arg::new("origin")
                 .short('o')
                 .long("origin")
                 .value_name("ORIGIN")
                 .required(true)
                 .help("Specify the origin of the document"),
         )
+        .arg(
+            Arg::new("translation")
+                .short('a')
+                .long("translation-target")
+                .value_name("TRANSLATION_TARGET")
+                .help("Optional. Provide document as target output schema"),
+        )
+        .arg(
+            Arg::new("version")
+                .short('v')
+                .long("version")
+                .help("Display program version"),
+        )
+        .arg(
+            Arg::new("regenerate")
+                .short('r')
+                .long("regenerate")
+                .help("Regenerate inferences"),
+        )
         .get_matches()
-}
-
-fn get_metadata(matches: &clap::ArgMatches) -> Result<Metadata, Errors> {
-    let origin = matches
-        .value_of("origin")
-        .ok_or(Errors::OriginNotProvidedError)?
-        .to_string();
-
-    Ok(Metadata {
-        document_type: Some(get_document_type(&matches)?),
-        origin,
-    })
 }
 
 fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
     Ok(Options {
-        regenerate: if matches.is_present("regenerate") {
-            true
-        } else {
-            false
-        },
+        regenerate: matches.get_flag("regenerate"),
         ..Options::default()
     })
 }
 
 async fn get_translation(matches: &clap::ArgMatches) -> Result<Option<String>, Errors> {
-    if let Some(translation) = matches.value_of("translation") {
+    if let Some(translation) = matches.get_one::<String>("translation") {
         return if is_valid_url(translation) {
             let text = fetch_url_as_text(translation).await?;
             Ok(Some(text))
@@ -223,38 +208,101 @@ async fn get_translation(matches: &clap::ArgMatches) -> Result<Option<String>, E
     Ok(None)
 }
 
-async fn get_document(matches: &clap::ArgMatches) -> Result<String, Errors> {
-    if let Ok(stdin) = load_stdin() {
-        log::info!("Received data from stdin");
-        return Ok(stdin);
-    }
+async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, Errors> {
+    let mut documents: Vec<(String, Metadata)> = Vec::new();
 
-    if let Some(document) = matches.value_of("document") {
-        return if is_valid_url(document) {
-            let text = fetch_url_as_text(document).await?;
-            Ok(text)
-        } else if is_valid_unix_path(document) {
-            let text = get_file_as_text(document)?;
-            Ok(text)
-        } else {
-            log::info!("Received inline document");
-            Ok(document.to_string())
+    let fallback_type: Option<DocumentType> = matches
+        .get_one::<String>("document-type")
+        .map(|s| parse_document_type(s))
+        .transpose()?;
+
+    let fallback_origin: String = matches
+        .get_one::<String>("origin")
+        .cloned()
+        .expect("origin is required by clap");
+
+    if let Some(values) = matches.get_many::<String>("documents") {
+        for raw_document in values {
+            let (parsed_document, partial) = parse_document(raw_document).await?;
+
+            let dt = partial
+                .document_type
+                .or_else(|| fallback_type.clone())
+                .ok_or(Errors::DocumentTypeNotProvided)?;
+
+            let origin = partial.origin.unwrap_or_else(|| fallback_origin.clone());
+
+            let md = Metadata {
+                document_type: Some(dt),
+                origin,
+            };
+
+            documents.push((parsed_document, md));
+        }
+    } else if let Ok(stdin) = load_stdin() {
+        let dt = fallback_type.ok_or(Errors::DocumentTypeNotProvided)?;
+        let metadata = Metadata {
+            document_type: Some(dt),
+            origin: fallback_origin,
         };
+        return Ok(vec![(stdin, metadata)]);
+    } else {
+        return Err(Errors::DocumentNotProvided);
     }
 
-    Err(Errors::DocumentNotProvided)
+    Ok(documents)
 }
 
-fn get_document_type(matches: &clap::ArgMatches) -> Result<DocumentType, Errors> {
-    if let Some(document_type_input) = matches.value_of("document-type") {
-        match document_type_input {
-            "js" => Ok(DocumentType::JavaScript),
-            "html" => Ok(DocumentType::Html),
-            "xml" => Ok(DocumentType::Xml),
-            _ => Err(Errors::UnexpectedDocumentType),
+#[derive(Default)]
+struct MetadataPartial {
+    document_type: Option<DocumentType>,
+    origin: Option<String>,
+}
+
+async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial), Errors> {
+    let mut text: Option<String> = None;
+    let mut partial = MetadataPartial::default();
+
+    for pair in raw_document.split(',') {
+        let (key, value) = pair
+            .split_once('=')
+            .ok_or_else(|| Errors::UnexpectedParameter(pair.to_string()))?;
+        let key: &str = key.trim();
+        let value: &str = value.trim();
+
+        match key {
+            "uri" => {
+                if value == "-" {
+                    text = Some(load_stdin().map_err(|_| Errors::DocumentNotProvided)?);
+                } else if is_valid_url(value) {
+                    text = Some(fetch_url_as_text(value).await?);
+                } else if is_valid_unix_path(value) {
+                    text = Some(get_file_as_text(value)?);
+                } else {
+                    text = Some(value.to_string());
+                }
+            }
+            "type" => {
+                partial.document_type = Some(parse_document_type(&value)?);
+            }
+            "origin" => {
+                partial.origin = Some(value.to_string());
+            }
+            _ => return Err(Errors::UnexpectedParameter(key.to_string())),
         }
-    } else {
-        Err(Errors::DocumentTypeNotProvided)
+    }
+
+    let text = text.ok_or(Errors::DocumentNotProvided)?;
+    Ok((text, partial))
+}
+
+fn parse_document_type(s: &str) -> Result<DocumentType, Errors> {
+    match s {
+        "js" => Ok(DocumentType::JavaScript),
+        "json" => Ok(DocumentType::Json),
+        "html" => Ok(DocumentType::Html),
+        "xml" => Ok(DocumentType::Xml),
+        _ => Err(Errors::UnexpectedDocumentType),
     }
 }
 

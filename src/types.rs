@@ -35,6 +35,7 @@ pub enum Errors {
     LineageConversionError(String),
     YamlProviderError,
     ProviderError(String),
+    UnexpectedParameter(String),
 }
 
 impl From<JoinError> for Errors {

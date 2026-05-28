@@ -16,7 +16,6 @@ use crate::document::{Document, DocumentType, DocumentMetadata};
 pub struct Html;
 
 impl Html {
-
     pub fn get_contexts(
         meta_context: Arc<RwLock<MetaContext>>,
         metadata: &Metadata,
