@@ -136,7 +136,7 @@ fn parse_arguments() -> clap::ArgMatches {
         .version(VERSION)
         .arg(
             Arg::new("documents")
-                .short('d')
+                .short('i')
                 .long("documents")
                 .value_name("DOCUMENTS")
                 .num_args(1..)
@@ -144,15 +144,15 @@ fn parse_arguments() -> clap::ArgMatches {
                 .help("Provide documents for processing"),
         )
         .arg(
-            Arg::new("document-type")
-                .short('t')
-                .long("document-type")
-                .value_name("DOCUMENT_TYPE")
+            Arg::new("document-format")
+                .short('f')
+                .long("document-format")
+                .value_name("DOCUMENT_FORMAT")
                 .help("The document type : html, xml, js"),
         )
         .arg(
             Arg::new("origin")
-                .short('o')
+                .short('s')
                 .long("origin")
                 .value_name("ORIGIN")
                 .required(true)
@@ -160,14 +160,14 @@ fn parse_arguments() -> clap::ArgMatches {
         )
         .arg(
             Arg::new("role")
-                .short('o')
+                .short('k')
                 .long("role")
                 .value_name("ROLE")
                 .help("Document purpose: instance, schema"),
         )
         .arg(
             Arg::new("translation")
-                .short('a')
+                .short('m')
                 .long("translation-spec")
                 .value_name("TRANSLATION_SPEC")
                 .num_args(1..)
@@ -176,7 +176,7 @@ fn parse_arguments() -> clap::ArgMatches {
         )
         .arg(
             Arg::new("regenerate")
-                .short('r')
+                .short('g')
                 .long("regenerate")
                 .action(ArgAction::SetTrue)
                 .help("Regenerate inferences"),
@@ -195,7 +195,7 @@ async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadat
     let mut documents: Vec<(String, Metadata)> = Vec::new();
 
     let fallback_type: Option<DocumentType> = matches
-        .get_one::<String>("document-type")
+        .get_one::<String>("document-format")
         .map(|s| parse_document_type(s))
         .transpose()?;
 
@@ -245,7 +245,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
     let mut documents: Vec<(String, Metadata)> = Vec::new();
 
     let fallback_type: Option<DocumentType> = matches
-        .get_one::<String>("document-type")
+        .get_one::<String>("document-format")
         .map(|s| parse_document_type(s))
         .transpose()?;
 

@@ -33,13 +33,13 @@ pub async fn translate_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let normalized: Arc<RwLock<MetaContext>> = normalization::normalize_text(
-        Arc::clone(&provider),
-        text,
-        options,
-        metadata,
-        execution_context,
-    ).await?;
+    //let normalized: Arc<RwLock<MetaContext>> = normalization::normalize_text(
+    //    Arc::clone(&provider),
+    //    text,
+    //    options,
+    //    metadata,
+    //    execution_context,
+    //).await?;
 
     log::debug!("translation: {}", translation);
 
