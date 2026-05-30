@@ -52,7 +52,7 @@ pub async fn translate_text_to_document<P: Provider>(
                 Arc::clone(&provider),
                 translation,
                 options,
-                metadata
+                translation_metadata
             ).await?;
 
             log::debug!("document: {:?}", document);
