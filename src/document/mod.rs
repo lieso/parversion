@@ -11,6 +11,9 @@ use crate::prelude::*;
 use crate::context::Context;
 use crate::graph_node::GraphNode;
 use crate::document_format::DocumentFormat;
+use crate::provider::Provider;
+use crate::llm::LLM;
+
 use json::Json;
 use html::Html;
 
@@ -56,6 +59,32 @@ pub struct Document {
 }
 
 impl Document {
+    pub async fn from_schema_string<P: Provider>(
+        provider: Arc<P>,
+        value: String,
+        options: &Options,
+        metadata: &Metadata
+    ) -> Result<Self, Errors> {
+        log::trace!("In from_schema_string");
+
+        if value.trim().is_empty() {
+            return Err(Errors::DocumentNotProvided);
+        }
+
+        let (instance, (tokens,)) = LLM::schema_to_instance(value).await?;
+
+        let document = Document {
+            document_type: metadata.document_type.clone().unwrap(),
+            metadata: DocumentMetadata {
+                origin: options.origin.clone(),
+                date: options.date.clone(),
+            },
+            data: instance.clone(),
+        };
+
+        Ok(document)
+    }
+
     pub fn from_string(
         value: String,
         options: &Options,

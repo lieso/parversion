@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use crate::document::{Document, DocumentType};
+use crate::document::{Document, DocumentType, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::meta_context::MetaContext;
 use crate::normalization::{normalize, normalize_text};
@@ -43,7 +43,21 @@ pub async fn translate_text_to_document<P: Provider>(
 
     log::debug!("translation: {}", translation);
 
+    match translation_metadata.role {
+        DocumentRole::Instance => {
+            let document = Document::from_string(translation, options, metadata)?;
+        },
+        DocumentRole::Schema => {
+            let document = Document::from_schema_string(
+                Arc::clone(&provider),
+                translation,
+                options,
+                metadata
+            ).await?;
 
+            log::debug!("document: {:?}", document);
+        }
+    }
 
 
 

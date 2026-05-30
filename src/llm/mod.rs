@@ -15,10 +15,12 @@ mod categorization;
 mod node_analysis;
 mod network_analysis;
 mod network_relationships;
+mod document;
 
 use node_analysis::{NodeAnalysis, LineageClassification};
 use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
+use document::Document;
 
 #[derive(Clone, Debug)]
 pub enum NodeGroupClassification {
@@ -32,6 +34,22 @@ pub type NodeGroups = HashMap<Lineage, NodeGroupClassification>;
 pub struct LLM {}
 
 impl LLM {
+    pub async fn schema_to_instance(
+        schema: String
+    ) -> Result<(String, (u64,)), Errors> {
+        log::trace!("In schema_to_instance");
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║                  SCHEMA TO INSTANCE START                     ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        let (response, metadata) = Document::schema_to_instance(schema).await?;
+
+        Ok((response.instance_document, (metadata.tokens,)))
+    }
+
     pub async fn get_parent_child_link(
         snippet: String,
     ) -> Result<((String, Vec<(String, String)>, Vec<(String, String)>, String), (u64,)), Errors> {
