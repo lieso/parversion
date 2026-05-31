@@ -11,15 +11,56 @@ use crate::normalization;
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
-    normalized: Arc<RwLock<MetaContext>>,
+    source: Document,
     target: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
 
+    let meta_context: Arc<RwLock<MetaContext>> = normalization::normalize(
+        Arc::clone(&provider),
+        source,
+        options,
+        execution_context.clone(),
+    ).await?;
 
-    unimplemented!()
+    match target.document_type {
+        DocumentType::Html => {
+            unimplemented!()
+        }
+        DocumentType::Json => {
+            translate_json(
+                Arc::clone(&provider),
+                Arc::clone(&meta_context),
+                target,
+                options,
+            )
+            .await?;
+        }
+        DocumentType::PlainText => {
+            unimplemented!()
+        }
+        DocumentType::JavaScript => {
+            unimplemented!()
+        }
+        DocumentType::Xml => {
+            unimplemented!()
+        }
+    }
+
+    Ok(meta_context)
+}
+
+pub async fn translate_json<P: Provider>(
+    provider: Arc<P>,
+    meta_context: Arc<RwLock<MetaContext>>,
+    document: Document,
+    options: &Options
+) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+    log::trace!("In translate_json");
+
+    unimplemented!();
 }
 
 pub async fn translate_text_to_document<P: Provider>(
@@ -58,15 +99,9 @@ pub async fn translate_text_to_meta_context<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_text_to_meta_context");
 
-    let meta_context: Arc<RwLock<MetaContext>> = normalization::normalize_text(
-        Arc::clone(&provider),
-        text,
-        options,
-        metadata,
-        execution_context.clone(),
-    ).await?;
+    let source_document = Document::from_string(text, options, metadata)?;
 
-    let document: Document = {
+    let target_document = {
         match translation_metadata.role {
             DocumentRole::Instance => {
                 Document::from_string(translation, options, metadata)?
@@ -82,10 +117,10 @@ pub async fn translate_text_to_meta_context<P: Provider>(
         }
     };
 
-    translate(
+    let meta_context = translate(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
-        document,
+        source_document,
+        target_document,
         options,
         execution_context.clone(),
     ).await?;

@@ -126,7 +126,6 @@ impl Document {
     pub fn get_contexts(
         &self,
         meta_context: Arc<RwLock<MetaContext>>,
-        metadata: &Metadata,
     ) -> Result<
         (
             HashMap<ID, Arc<Context>>, // context
@@ -143,7 +142,7 @@ impl Document {
             DocumentType::Xml => unimplemented!(),
             DocumentType::Html => Html::get_contexts(
                 Arc::clone(&meta_context),
-                metadata,
+                &self.metadata,
                 self.data.clone()
             ),
         }

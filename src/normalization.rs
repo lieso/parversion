@@ -36,7 +36,6 @@ pub async fn normalize<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Options,
-    metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize");
@@ -45,7 +44,6 @@ pub async fn normalize<P: Provider>(
         Arc::clone(&provider),
         document,
         options,
-        metadata,
         execution_context.clone(),
     )
     .await?;
@@ -174,7 +172,6 @@ pub async fn normalize_to_classification<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Options,
-    metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_to_classification");
@@ -188,39 +185,34 @@ pub async fn normalize_to_classification<P: Provider>(
         lock.add_document_version(DocumentVersion::InputDocument, document.clone());
     }
 
-    match metadata.document_type {
-        Some(DocumentType::Html) => {
+    match document.document_type {
+        DocumentType::Html => {
             normalize_html(
                 Arc::clone(&provider),
                 document,
                 options,
-                metadata,
                 meta_context.clone(),
                 &stage,
             )
             .await?;
         }
-        Some(DocumentType::Json) => {
+        DocumentType::Json => {
             normalize_json(
                 Arc::clone(&provider),
                 document,
                 options,
-                metadata,
                 meta_context.clone(),
                 &stage,
             )
             .await?;
         }
-        Some(DocumentType::PlainText) => {
+        DocumentType::PlainText => {
             unimplemented!();
         }
-        Some(DocumentType::JavaScript) => {
+        DocumentType::JavaScript => {
             unimplemented!();
         }
-        Some(DocumentType::Xml) => {
-            unimplemented!();
-        }
-        None => {
+        DocumentType::Xml => {
             unimplemented!();
         }
     }
@@ -234,14 +226,13 @@ async fn normalize_html<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Options,
-    _metadata: &Metadata,
     meta_context: Arc<RwLock<MetaContext>>,
     stage: &StageContext,
 ) -> Result<(), Errors> {
     let mut document = document;
 
     log::info!("Traversing document");
-    let (contexts, graph_root) = document.get_contexts(meta_context.clone(), _metadata)?;
+    let (contexts, graph_root) = document.get_contexts(meta_context.clone())?;
 
     {
         let mut lock = write_lock!(meta_context);
@@ -270,7 +261,6 @@ async fn normalize_json<P: Provider>(
     _provider: Arc<P>,
     _document: Document,
     _options: &Options,
-    _metadata: &Metadata,
     _meta_context: Arc<RwLock<MetaContext>>,
     _stage: &StageContext,
 ) -> Result<(), Errors> {
@@ -281,7 +271,6 @@ pub async fn normalize_document_to_classification<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Options,
-    metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In normalize_document_to_classification");
@@ -290,7 +279,6 @@ pub async fn normalize_document_to_classification<P: Provider>(
         Arc::clone(&provider),
         document,
         _options,
-        metadata,
         execution_context,
     )
     .await
@@ -300,14 +288,13 @@ pub async fn normalize_document<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Options,
-    metadata: &Metadata,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_document");
 
     let meta_context =
-        normalize(Arc::clone(&provider), document, _options, metadata, execution_context).await?;
+        normalize(Arc::clone(&provider), document, _options, execution_context).await?;
 
     let normalized_document = Document::from_normalized_graph(Arc::clone(&meta_context), document_format)?;
 
@@ -321,7 +308,6 @@ pub async fn normalize_document_to_string<P: Provider>(
     provider: Arc<P>,
     document: Document,
     _options: &Options,
-    metadata: &Metadata,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<String, Errors> {
@@ -331,7 +317,6 @@ pub async fn normalize_document_to_string<P: Provider>(
         Arc::clone(&provider),
         document,
         _options,
-        metadata,
         document_format,
         execution_context,
     )
@@ -355,7 +340,6 @@ pub async fn normalize_text<P: Provider>(
         Arc::clone(&provider),
         document,
         _options,
-        metadata,
         execution_context,
     )
     .await
@@ -376,7 +360,6 @@ pub async fn normalize_text_to_classification<P: Provider>(
         Arc::clone(&provider),
         document,
         _options,
-        metadata,
         execution_context,
     )
     .await

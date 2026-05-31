@@ -18,7 +18,7 @@ pub struct Html;
 impl Html {
     pub fn get_contexts(
         meta_context: Arc<RwLock<MetaContext>>,
-        metadata: &Metadata,
+        metadata: &DocumentMetadata,
         data: String
     ) -> Result<
         (
@@ -106,7 +106,7 @@ impl Html {
             graph_node
         }
 
-        let origin_hash = Hash::from_str(&metadata.origin);
+        let origin_hash = Hash::from_str(&metadata.origin.clone().unwrap_or_default());
         let initial_lineage = Lineage::new().with_hash(origin_hash);
 
         let graph_root = recurse(
