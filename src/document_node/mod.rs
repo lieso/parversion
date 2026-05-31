@@ -27,13 +27,6 @@ impl DocumentNode {
         }
     }
 
-    pub fn to_string(&self) -> String {
-        match &self.data {
-            DocumentNodeData::Xml(node) => Xml::to_string(&node),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
-        }
-    }
-
     pub fn to_string_components(&self) -> (String, Option<String>) {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::to_string_components(&node),
@@ -44,7 +37,7 @@ impl DocumentNode {
     pub fn get_fields(&self) -> DataNodeFields {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_fields(&node),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(map) => Json::get_fields(map),
         }
     }
 
@@ -58,7 +51,7 @@ impl DocumentNode {
     pub fn get_description(&self) -> String {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_description(&node),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(value) => Json::get_description(&value),
         }
     }
     
@@ -66,11 +59,12 @@ impl DocumentNode {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_children(&node)
                 .into_iter()
-                .map(|xml_node| {
-                    DocumentNode::new(DocumentNodeData::Xml(xml_node))
-                })
+                .map(|xml_node| DocumentNode::new(DocumentNodeData::Xml(xml_node)))
                 .collect(),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(map) => Json::get_children(map)
+                .into_iter()
+                .map(|child_map| DocumentNode::new(DocumentNodeData::Json(child_map)))
+                .collect(),
         }
     }
     
@@ -84,7 +78,7 @@ impl DocumentNode {
     pub fn get_hash(&self) -> Hash {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_hash(&node),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(map) => Json::get_hash(map),
         }
     }
 }

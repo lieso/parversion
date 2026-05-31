@@ -228,8 +228,6 @@ impl GraphNode {
         let document_node = current_context.document_node.clone();
         let name = read_lock!(document_node).get_element_name();
 
-        log::debug!("document_node: {}", read_lock!(document_node).to_string());
-
         if node_test.trim() == name.trim() {
             log::debug!("Graph passes node test");
             Ok(vec![graph.clone()])

@@ -2,16 +2,11 @@ use std::collections::HashMap;
 use xmltree::{Element, XMLNode};
 
 use crate::prelude::*;
+use crate::data_node::DataNodeFields;
 
 pub struct Xml;
 
 impl Xml {
-    pub fn to_string(xml_node: &XMLNode) -> String {
-        let (a, b) = Self::to_string_components(xml_node);
-
-        format!("{}{}", a, b.unwrap_or("".to_string()))
-    }
-
     pub fn to_string_components(xml_node: &XMLNode) -> (String, Option<String>) {
         match xml_node {
             XMLNode::Element(element_node) => {
@@ -25,7 +20,7 @@ impl Xml {
         }
     }
 
-    pub fn get_fields(xml_node: &XMLNode) -> HashMap<String, String> {
+    pub fn get_fields(xml_node: &XMLNode) -> DataNodeFields {
         match xml_node {
             XMLNode::Element(element_node) => {
                 element_node.attributes.clone()
