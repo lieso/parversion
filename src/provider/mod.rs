@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use std::collections::HashSet;
 
+use crate::document::Document;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_group::BasisGroup;
@@ -93,6 +94,15 @@ pub trait Provider: Send + Sync + Sized + 'static {
         hash: &Hash,
         basis_graph: BasisGraph,
     ) -> Result<(), Errors>;
+    async fn save_schema_instance_document(
+        &self,
+        hash: &Hash,
+        document: Document
+    ) -> Result<(), Errors>;
+    async fn get_instance_document_by_schema_hash(
+        &self,
+        hash: &Hash
+    ) -> Result<Option<Document>, Errors>;
 }
 
 pub struct VoidProvider;
@@ -209,5 +219,20 @@ impl Provider for VoidProvider {
         basis_fields: Vec<BasisField>
     ) -> Result<(), Errors> {
         Ok(())
+    }
+
+    async fn save_schema_instance_document(
+        &self,
+        hash: &Hash,
+        document: Document
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_instance_document_by_schema_hash(
+        &self,
+        hash: &Hash
+    ) -> Result<Option<Document>, Errors> {
+        Ok(None)
     }
 }

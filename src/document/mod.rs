@@ -53,7 +53,6 @@ pub struct DocumentMetadata {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Document {
     pub document_type: DocumentType,
-    #[serde(skip_serializing)]
     pub data: String,
     pub metadata: DocumentMetadata,
 }
@@ -71,6 +70,15 @@ impl Document {
             return Err(Errors::DocumentNotProvided);
         }
 
+        let mut hash = Hash::from_str(&value);
+        hash.finalize();
+
+        if !options.regenerate {
+            if let Some(instance) = provider.get_instance_document_by_schema_hash(&hash).await? {
+                return Ok(instance);
+            }
+        }
+
         let (instance, (tokens,)) = LLM::schema_to_instance(value).await?;
 
         let document = Document {
@@ -81,6 +89,11 @@ impl Document {
             },
             data: instance.clone(),
         };
+
+        provider.save_schema_instance_document(
+            &hash,
+            document.clone(),
+        ).await?;
 
         Ok(document)
     }

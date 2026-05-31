@@ -12,6 +12,7 @@ use crate::basis_node::BasisNode;
 use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::document::Document;
 
 #[cfg(feature = "sqlite-provider")]
 pub struct SqliteProvider {
@@ -26,6 +27,10 @@ impl SqliteProvider {
 
         conn.execute_batch(
             "PRAGMA journal_mode=WAL;
+             CREATE TABLE IF NOT EXISTS documents (
+                 hash         TEXT PRIMARY KEY,
+                 data         TEXT NOT NULL
+             );
              CREATE TABLE IF NOT EXISTS basis_fields (
                  acyclic_subgraph_hash  TEXT PRIMARY KEY,
                  data                   TEXT NOT NULL
@@ -445,4 +450,56 @@ impl Provider for SqliteProvider {
         .await
         .map_err(|_| Errors::UnexpectedError)?
     }
+
+		async fn save_schema_instance_document(
+				&self,
+				hash: &Hash,
+				document: Document
+		) -> Result<(), Errors> {
+				let conn = self.connection.clone();
+				let key = hash.to_string();
+				let data = serialize(&document)?;
+
+				task::spawn_blocking(move || {
+						let conn = conn.lock().map_err(|_| lock_err())?;
+						conn.execute(
+								"INSERT OR REPLACE INTO documents
+				 (hash, data)
+				 VALUES (?1, ?2)",
+				params![key, data]
+			)
+			.map_err(|e| db_err(e))?;
+
+								Ok(())
+				})
+				.await
+						.map_err(|_| Errors::UnexpectedError)?
+		}
+
+		async fn get_instance_document_by_schema_hash(
+				&self,
+				hash: &Hash
+		) -> Result<Option<Document>, Errors> {
+				let conn = self.connection.clone();
+				let key = hash.to_string();
+
+				task::spawn_blocking(move || {
+						let conn = conn.lock().map_err(|_| lock_err())?;
+						match conn.query_row(
+								"SELECT data FROM documents
+				 WHERE hash = ?1",
+				 params![key],
+				 |row| row.get::<_, String>(0),
+			) {
+				Ok(data) => {
+					let doc = deserialize(data)?;
+					Ok(Some(doc))
+				},
+				Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+				Err(e) => Err(db_err(e)),
+			}
+		})
+		.await
+		.map_err(|_| Errors::UnexpectedError)?
+	}
 }
