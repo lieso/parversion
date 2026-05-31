@@ -3,25 +3,20 @@ use xmltree::{Element, XMLNode};
 
 use crate::prelude::*;
 
-#[derive(Clone, Debug)]
-pub struct DocumentNode {
-    pub id: ID,
-    data: XMLNode,
-}
+pub struct Xml;
 
-impl DocumentNode {
-    pub fn new(xml_node: XMLNode) -> Self {
-        DocumentNode {
-            id: ID::new(),
-            data: xml_node.clone(),
-        }
+impl Xml {
+    pub fn to_string(xml_node: &XMLNode) -> String {
+        let (a, b) = Self::to_string_components(xml_node);
+
+        format!("{}{}", a, b.unwrap_or("".to_string()))
     }
 
-    pub fn to_string_components(&self) -> (String, Option<String>) {
-        match &self.data {
+    pub fn to_string_components(xml_node: &XMLNode) -> (String, Option<String>) {
+        match xml_node {
             XMLNode::Element(element_node) => {
-                let opening_tag = DocumentNode::get_opening_tag(&element_node);
-                let closing_tag = DocumentNode::get_closing_tag(&element_node);
+                let opening_tag = Self::get_opening_tag(&element_node);
+                let closing_tag = Self::get_closing_tag(&element_node);
 
                 (opening_tag, Some(closing_tag))
             }
@@ -30,15 +25,8 @@ impl DocumentNode {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn to_string(&self) -> String {
-        let (a, b) = self.to_string_components();
-
-        format!("{}{}", a, b.unwrap_or("".to_string()))
-    }
-
-    pub fn get_fields(&self) -> HashMap<String, String> {
-        match &self.data {
+    pub fn get_fields(xml_node: &XMLNode) -> HashMap<String, String> {
+        match xml_node {
             XMLNode::Element(element_node) => {
                 element_node.attributes.clone()
             }
@@ -49,8 +37,8 @@ impl DocumentNode {
         }
     }
 
-    pub fn get_attribute_value(&self, attribute: &str) -> Option<String> {
-        match &self.data {
+    pub fn get_attribute_value(xml_node: &XMLNode, attribute: &str) -> Option<String> {
+        match xml_node {
             XMLNode::Element(element_node) => {
                 log::debug!("element_node.attributes: {:?}", element_node.attributes);
                 element_node.attributes.get(attribute).cloned()
@@ -59,8 +47,8 @@ impl DocumentNode {
         }
     }
 
-    pub fn get_description(&self) -> String {
-        match &self.data {
+    pub fn get_description(xml_node: &XMLNode) -> String {
+        match xml_node {
             XMLNode::Element(element_node) => element_node.name.clone(),
             XMLNode::Text(text_node) => {
                 let mut description = text_node.to_string();
@@ -77,28 +65,28 @@ impl DocumentNode {
         }
     }
 
-    pub fn get_children(&self) -> Vec<DocumentNode> {
-        match &self.data {
+    pub fn get_children(xml_node: &XMLNode) -> Vec<XMLNode> {
+        match xml_node {
             XMLNode::Element(element_node) => element_node
                 .children
                 .iter()
-                .map(|child| DocumentNode::new(child.clone()))
+                .map(|child| child.clone())
                 .collect(),
             XMLNode::Text(_text_node) => Vec::new(),
             _ => panic!("Unexpected XML node type"),
         }
     }
 
-    pub fn get_element_name(&self) -> String {
-        match &self.data {
+    pub fn get_element_name(xml_node: &XMLNode) -> String {
+        match xml_node {
             XMLNode::Element(element_node) => element_node.name.clone(),
             XMLNode::Text(_) => "#text".to_string(),
             _ => panic!("Unexpected XML node type"),
         }
     }
 
-    pub fn get_hash(&self) -> Hash {
-        match &self.data {
+    pub fn get_hash(xml_node: &XMLNode) -> Hash {
+        match xml_node {
             XMLNode::Element(element_node) => {
                 let mut attr_names: Vec<&String> = element_node.attributes.keys().collect();
                 attr_names.sort();

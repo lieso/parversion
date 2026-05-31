@@ -8,7 +8,7 @@ use xmltree::Element;
 use crate::prelude::*;
 use crate::context::Context;
 use crate::data_node::DataNode;
-use crate::document_node::DocumentNode;
+use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::graph_node::GraphNode;
 use crate::hash::Hash;
 use crate::document::{Document, DocumentType, DocumentMetadata};
@@ -140,7 +140,13 @@ impl Html {
             let reader = std::io::Cursor::new(xml);
 
             match Element::parse(reader) {
-                Ok(element) => Ok(DocumentNode::new(xmltree::XMLNode::Element(element))),
+                Ok(element) => Ok(
+                    DocumentNode::new(
+                        DocumentNodeData::Xml(
+                            xmltree::XMLNode::Element(element)
+                        )
+                    )
+                ),
                 Err(e) => {
                     log::error!("Could not parse XML: {}", e);
 

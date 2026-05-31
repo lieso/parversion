@@ -60,6 +60,8 @@ pub async fn translate_json<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_json");
 
+    let (contexts, graph_root) = document.get_contexts(Arc::clone(&meta_context))?;
+
     unimplemented!();
 }
 
