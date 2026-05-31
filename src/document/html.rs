@@ -120,14 +120,8 @@ impl Html {
     }
 
     fn get_document_node(data: String) -> Result<DocumentNode, Errors> {
-        log::trace!("In get_document_node");
-
         if let Some(dom) = to_dom(data.clone()) {
             let _ = fs::create_dir("debug");
-
-            let mut raw_xml = String::from("");
-            walk_raw(&mut raw_xml, dom.tree.root(), 0);
-            let _ = fs::write("debug/html_before.html", &raw_xml);
 
             let mut xml = String::from("");
 
@@ -135,7 +129,6 @@ impl Html {
             let mut extracted_docs: Vec<Document> = Vec::new();
 
             walk(&mut xml, dom.tree.root(), 0, &mut extracted_docs);
-            let _ = fs::write("debug/html_after.html", &xml);
 
             let reader = std::io::Cursor::new(xml);
 
@@ -335,51 +328,4 @@ fn escape_xml(data: &str) -> String {
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
         .replace("'", "&apos;")
-}
-
-fn walk_raw(xhtml: &mut String, node: NodeRef<ScraperNode>, indent: usize) {
-    let real_indent = " ".repeat(indent * 2);
-
-    match node.value() {
-        ScraperNode::Document => {
-            for child in node.children() {
-                walk_raw(xhtml, child, indent);
-            }
-        }
-        ScraperNode::Text(text) => {
-            let text_content = text.trim();
-            let text = format!("{}{}\n", real_indent, escape_xml(text_content));
-
-            if !text.trim().is_empty() {
-                xhtml.push_str(&text);
-            }
-        }
-        ScraperNode::Comment(comment) => {
-            let text = format!("{}<!-- {} -->\n", real_indent, escape_xml(comment));
-            xhtml.push_str(&text);
-        }
-        ScraperNode::Element(_) => {
-            if let ScraperNode::Element(element) = node.value() {
-                let tag_name = element.name();
-                let mut attributes_str = String::new();
-
-                for (attr_name, attr_value) in element.attrs() {
-                    let attr_name = attr_name.trim();
-                    let attr_value = attr_value.trim();
-                    let escaped_attr_value = escape_xml(attr_value);
-                    attributes_str.push_str(&format!(" {}=\"{}\"", attr_name, escaped_attr_value));
-                }
-
-                xhtml.push_str(&format!("{}<{}{}", real_indent, tag_name, attributes_str));
-                xhtml.push_str(">\n");
-
-                for child in node.children() {
-                    walk_raw(xhtml, child, indent + 1);
-                }
-
-                xhtml.push_str(&format!("{}</{}>\n", real_indent, tag_name));
-            }
-        }
-        _ => {}
-    }
 }
