@@ -10,7 +10,7 @@ use json::Json;
 #[derive(Clone, Debug)]
 pub enum DocumentNodeData {
     Xml(xmltree::XMLNode),
-    Json(serde_json::Value),
+    Json(serde_json::Map<String, serde_json::Value>),
 }
 
 #[derive(Clone, Debug)]

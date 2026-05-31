@@ -136,7 +136,11 @@ impl Document {
         log::trace!("In get_contexts");
 
         match self.document_type {
-            DocumentType::Json => unimplemented!(),
+            DocumentType::Json => Json::get_contexts(
+                Arc::clone(&meta_context),
+                &self.metadata,
+                self.data.clone()
+            ),
             DocumentType::PlainText => unimplemented!(),
             DocumentType::JavaScript => unimplemented!(),
             DocumentType::Xml => unimplemented!(),

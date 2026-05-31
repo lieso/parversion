@@ -11,6 +11,7 @@ pub enum Errors {
     FileInputError,
     FileOutputError,
     YamlParseError(String),
+    JsonParseError(String),
     DocumentNotProvided,
     UnexpectedDocumentType,
     DocumentTypeNotProvided,

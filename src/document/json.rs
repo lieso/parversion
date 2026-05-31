@@ -1,13 +1,121 @@
 use std::sync::{Arc, RwLock};
 use serde_json::{json, Value, Map};
+use std::collections::{HashMap};
 
 use crate::prelude::*;
 use crate::graph_node::GraphNode;
 use crate::json_node::JsonNode;
+use crate::context::Context;
+use crate::document::{Document, DocumentType, DocumentMetadata};
+use crate::document_node::{DocumentNode, DocumentNodeData};
+use crate::data_node::DataNode;
 
 pub struct Json {}
 
 impl Json {
+    pub fn get_contexts(
+        meta_context: Arc<RwLock<MetaContext>>,
+        metadata: &DocumentMetadata,
+        data: String
+    ) -> Result<
+        (
+            HashMap<ID, Arc<Context>>, // context
+            Arc<RwLock<GraphNode>>,    // graph root
+        ),
+        Errors,
+    > {
+        log::trace!("In get_contexts");
+
+        let document_root = Self::get_document_node(data)?;
+        let document_root = Arc::new(RwLock::new(document_root.clone()));
+
+        let mut contexts: HashMap<ID, Arc<Context>> = HashMap::new();
+
+        fn recurse(
+            document_node: Arc<RwLock<DocumentNode>>,
+            parent_lineage: &Lineage,
+            contexts: &mut HashMap<ID, Arc<Context>>,
+            parents: Vec<Arc<RwLock<GraphNode>>>,
+        ) -> Arc<RwLock<GraphNode>> {
+            let (hash, lineage, fields, description) = {
+                let lock = read_lock!(document_node);
+                let hash = lock.get_hash();
+                let lineage = parent_lineage.with_hash(hash.clone());
+                (hash, lineage, lock.get_fields(), lock.get_description())
+            };
+
+            let data_node = Arc::new(DataNode::new(
+                hash,
+                lineage.clone(),
+                fields,
+                description,
+            ));
+
+            let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
+                Arc::clone(&data_node),
+                parents.clone(),
+            )));
+
+            let context = Arc::new(Context {
+                id: ID::new(),
+                acyclic_lineage: data_node.lineage.acyclic(),
+                lineage: data_node.lineage.clone(),
+                document_node: Arc::clone(&document_node),
+                graph_node: Arc::clone(&graph_node),
+                data_node: Arc::clone(&data_node),
+            });
+
+            contexts.insert(data_node.id.clone(), Arc::clone(&context));
+            contexts.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
+            contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
+
+            {
+                let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
+                    .get_children()
+                    .into_iter()
+                    .map(|child| {
+                        recurse(
+                            Arc::new(RwLock::new(child)),
+                            &data_node.lineage,
+                            contexts,
+                            vec![Arc::clone(&graph_node)],
+                        )
+                    })
+                    .collect();
+
+                let mut write_lock = graph_node.write().unwrap();
+
+                let child_hashes: Vec<Hash> = children
+                    .iter()
+                    .map(|child| read_lock!(child).hash.clone())
+                    .collect();
+
+                let mut subgraph_hash = Hash::from_items(child_hashes.clone());
+                let subgraph_hash = subgraph_hash
+                    .sort()
+                    .push(write_lock.hash.clone())
+                    .finalize();
+
+                write_lock.subgraph_hash = subgraph_hash.clone();
+                write_lock.children.extend(children);
+            }
+
+            graph_node
+        }
+
+        let origin_hash = Hash::from_str(&metadata.origin.clone().unwrap_or_default());
+        let initial_lineage = Lineage::new().with_hash(origin_hash);
+
+        let graph_root = recurse(
+            Arc::clone(&document_root),
+            &initial_lineage,
+            &mut contexts,
+            Vec::new(),
+        );
+
+        Ok((contexts, graph_root))
+    }
+
     pub fn from_normalized_graph(
         meta_context: Arc<RwLock<MetaContext>>,
     ) -> Result<String, Errors> {
@@ -89,4 +197,15 @@ impl Json {
         Ok(data)
     }
 
+    fn get_document_node(data: String) -> Result<DocumentNode, Errors> {
+        let value: Value = serde_json::from_str(&data)
+            .map_err(|e| {
+                Errors::JsonParseError(e.to_string())
+            })?;
+
+        match value {
+            serde_json::Value::Object(map) => Ok(DocumentNode::new(DocumentNodeData::Json(map))),
+            _ => Err(Errors::JsonParseError("JSON root must be an object".to_string())),
+        }
+    }
 }
