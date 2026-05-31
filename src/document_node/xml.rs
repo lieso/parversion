@@ -109,15 +109,11 @@ impl Xml {
         attributes.sort_by(|a, b| a.0.cmp(b.0));
 
         for (attr, value) in attributes {
-            let fixed_value = {
-                if is_valid_url(value) {
-                    return shorten_url(value);
-                }
-
-                value
+            let fixed_value = if is_valid_url(value) {
+                shorten_url(value)
+            } else {
+                value.chars().take(100).collect()
             };
-
-            let fixed_value: String = fixed_value.chars().take(100).collect();
 
             tag.push_str(&format!(
                 " {}=\"{}\"",
