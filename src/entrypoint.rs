@@ -377,10 +377,8 @@ async fn determine_documents<P: Provider + ?Sized>(
     if let Some((translation, translation_metadata)) = translation {
         let translated_document = translation::translate_text_to_document(
             provider.clone(),
-            document,
-            &metadata,
-            translation,
-            &translation_metadata,
+            (document, &metadata),
+            (translation, &translation_metadata),
             &options,
             document_format,
             execution_context.clone(),

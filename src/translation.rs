@@ -65,10 +65,8 @@ pub async fn translate_json<P: Provider>(
 
 pub async fn translate_text_to_document<P: Provider>(
     provider: Arc<P>,
-    text: String,
-    metadata: &Metadata,
-    translation: String,
-    translation_metadata: &Metadata,
+    source: (String, &Metadata),
+    target: (String, &Metadata),
     options: &Options,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
@@ -77,10 +75,8 @@ pub async fn translate_text_to_document<P: Provider>(
 
     let meta_context = translate_text_to_meta_context(
         Arc::clone(&provider),
-        text,
-        metadata,
-        translation,
-        translation_metadata,
+        source,
+        target,
         options,
         execution_context,
     ).await?;
@@ -90,28 +86,26 @@ pub async fn translate_text_to_document<P: Provider>(
 
 pub async fn translate_text_to_meta_context<P: Provider>(
     provider: Arc<P>,
-    text: String,
-    metadata: &Metadata,
-    translation: String,
-    translation_metadata: &Metadata,
+    source: (String, &Metadata),
+    target: (String, &Metadata),
     options: &Options,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_text_to_meta_context");
 
-    let source_document = Document::from_string(text, options, metadata)?;
+    let source_document = Document::from_string(source.0, options, source.1)?;
 
     let target_document = {
-        match translation_metadata.role {
+        match target.1.role {
             DocumentRole::Instance => {
-                Document::from_string(translation, options, metadata)?
+                Document::from_string(target.0, options, target.1)?
             },
             DocumentRole::Schema => {
                 Document::from_schema_string(
                     Arc::clone(&provider),
-                    translation,
+                    target.0,
                     options,
-                    translation_metadata
+                    target.1
                 ).await?
             }
         }
@@ -130,10 +124,8 @@ pub async fn translate_text_to_meta_context<P: Provider>(
 
 pub async fn translate_text_to_package<P: Provider>(
     provider: Arc<P>,
-    text: String,
-    metadata: &Metadata,
-    translation: String,
-    translation_metadata: &Metadata,
+    source: (String, &Metadata),
+    target: (String, &Metadata),
     options: &Options,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
@@ -142,10 +134,8 @@ pub async fn translate_text_to_package<P: Provider>(
 
     let translated_document = translate_text_to_document(
         Arc::clone(&provider),
-        text,
-        metadata,
-        translation,
-        translation_metadata,
+        source,
+        target,
         options,
         document_format,
         execution_context,
