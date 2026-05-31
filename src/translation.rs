@@ -11,12 +11,13 @@ use crate::normalization;
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalized: Arc<RwLock<MetaContext>>,
+    target: Document,
     options: &Options,
-    _metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate");
+
 
     unimplemented!()
 }
@@ -24,369 +25,96 @@ pub async fn translate<P: Provider>(
 pub async fn translate_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
+    metadata: &Metadata,
     translation: String,
     translation_metadata: &Metadata,
     options: &Options,
-    metadata: &Metadata,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    //let normalized: Arc<RwLock<MetaContext>> = normalization::normalize_text(
-    //    Arc::clone(&provider),
-    //    text,
-    //    options,
-    //    metadata,
-    //    execution_context,
-    //).await?;
-
-    log::debug!("translation: {}", translation);
-
-    match translation_metadata.role {
-        DocumentRole::Instance => {
-            let document = Document::from_string(translation, options, metadata)?;
-        },
-        DocumentRole::Schema => {
-            let document = Document::from_schema_string(
-                Arc::clone(&provider),
-                translation,
-                options,
-                translation_metadata
-            ).await?;
-
-            log::debug!("document: {:?}", document);
-        }
-    }
-
-
-
-    unimplemented!()
-}
-
-pub async fn translate_meta_context<P: Provider>(
-    provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In translate_meta_context");
-
-    translate(
+    let meta_context = translate_text_to_meta_context(
         Arc::clone(&provider),
-        meta_context,
-        _options,
+        text,
         metadata,
+        translation,
+        translation_metadata,
+        options,
         execution_context,
-    )
-    .await
+    ).await?;
+
+    Document::from_translated_graph(Arc::clone(&meta_context), document_format)
 }
 
 pub async fn translate_text_to_meta_context<P: Provider>(
     provider: Arc<P>,
     text: String,
-    _options: &Options,
     metadata: &Metadata,
+    translation: String,
+    translation_metadata: &Metadata,
+    options: &Options,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_text_to_meta_context");
 
-    let meta_context =
-        normalize_text(Arc::clone(&provider), text, _options, metadata, execution_context.clone())
-            .await?;
-
-    translate_meta_context(
+    let meta_context: Arc<RwLock<MetaContext>> = normalization::normalize_text(
         Arc::clone(&provider),
-        meta_context,
-        _options,
+        text,
+        options,
         metadata,
-        execution_context,
-    )
-    .await
+        execution_context.clone(),
+    ).await?;
+
+    let document: Document = {
+        match translation_metadata.role {
+            DocumentRole::Instance => {
+                Document::from_string(translation, options, metadata)?
+            },
+            DocumentRole::Schema => {
+                Document::from_schema_string(
+                    Arc::clone(&provider),
+                    translation,
+                    options,
+                    translation_metadata
+                ).await?
+            }
+        }
+    };
+
+    translate(
+        Arc::clone(&provider),
+        Arc::clone(&meta_context),
+        document,
+        options,
+        execution_context.clone(),
+    ).await?;
+
+    Ok(meta_context)
 }
 
 pub async fn translate_text_to_package<P: Provider>(
     provider: Arc<P>,
     text: String,
-    _options: &Options,
     metadata: &Metadata,
+    translation: String,
+    translation_metadata: &Metadata,
+    options: &Options,
+    document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Package, Errors> {
     log::trace!("In translate_text_to_package");
 
-    let meta_context = translate_text_to_meta_context(
+    let translated_document = translate_text_to_document(
         Arc::clone(&provider),
         text,
-        _options,
         metadata,
-        execution_context.clone(),
-    )
-    .await?;
-
-    let document_format = DocumentFormat::default();
-    let translated_document = Document::from_normalized_graph(
-        Arc::clone(&meta_context),
-        &document_format,
-    )?;
-
-    Ok(Package {
-        document: translated_document,
-        mutations: Vec::new(),
-    })
-}
-
-pub async fn translate_text<P: Provider>(
-    provider: Arc<P>,
-    text: String,
-    _options: &Options,
-    metadata: &Metadata,
-    document_format: &Option<DocumentFormat>,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<String, Errors> {
-    log::trace!("In translate_text");
-
-    let document = translate_text_to_package(
-        provider,
-        text,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await?;
-
-    Ok(document.to_string())
-}
-
-pub async fn translate_document_to_meta_context<P: Provider>(
-    provider: Arc<P>,
-    document: Document,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In translate_document_to_meta_context");
-
-    let meta_context = normalize(
-        Arc::clone(&provider),
-        document,
-        _options,
-        metadata,
-        execution_context.clone(),
-    )
-    .await?;
-
-    translate_meta_context(
-        Arc::clone(&provider),
-        meta_context,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await
-}
-
-pub async fn translate_document<P: Provider>(
-    provider: Arc<P>,
-    document: Document,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Document, Errors> {
-    log::trace!("In translate_document");
-
-    let meta_context = translate_document_to_meta_context(
-        provider.clone(),
-        document,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await?;
-
-    let document_format = DocumentFormat::default();
-    let translated_document = Document::from_normalized_graph(
-        Arc::clone(&meta_context),
-        &document_format,
-    )?;
-
-    Ok(translated_document)
-}
-
-pub async fn translate_document_to_text<P: Provider>(
-    provider: Arc<P>,
-    document: Document,
-    _options: &Options,
-    metadata: &Metadata,
-    document_format: &Option<DocumentFormat>,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<String, Errors> {
-    log::trace!("In translate_document_to_text");
-
-    let document = translate_document(
-        provider,
-        document,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await?;
-
-    Ok(document.to_string())
-}
-
-pub async fn translate_file_to_meta_context<P: Provider>(
-    provider: Arc<P>,
-    path: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In translate_file_to_meta_context");
-    log::debug!("file path: {}", path);
-
-    let text = get_file_as_text(path).map_err(|err| {
-        log::error!("Failed to get file as text: {:?}", err);
-        Errors::FileInputError
-    })?;
-
-    translate_text_to_meta_context(
-        Arc::clone(&provider),
-        text,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await
-}
-
-pub async fn translate_file_to_package<P: Provider>(
-    provider: Arc<P>,
-    path: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Package, Errors> {
-    log::trace!("In translate_file_to_package");
-
-    let meta_context = translate_file_to_meta_context(
-        Arc::clone(&provider),
-        path,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await?;
-
-    let document_format = DocumentFormat::default();
-    let translated_document = Document::from_normalized_graph(
-        Arc::clone(&meta_context),
-        &document_format,
-    )?;
-
-    Ok(Package {
-        document: translated_document,
-        mutations: Vec::new(),
-    })
-}
-
-pub async fn translate_file_to_text<P: Provider>(
-    provider: Arc<P>,
-    path: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    document_format: &Option<DocumentFormat>,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<String, Errors> {
-    log::trace!("In translate_file_to_text");
-
-    let package = translate_file_to_package(
-        provider,
-        path,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await?;
-
-    Ok(package.to_string())
-}
-
-pub async fn translate_file<P: Provider>(
-    provider: Arc<P>,
-    path: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    document_format: &Option<DocumentFormat>,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<(), Errors> {
-    log::trace!("In translate_file");
-    log::debug!("file path: {}", path);
-
-    let text = translate_file_to_text(
-        Arc::clone(&provider),
-        path,
-        _options,
-        metadata,
+        translation,
+        translation_metadata,
+        options,
         document_format,
         execution_context,
-    )
-    .await?;
-    let new_path = append_to_filename(path, "_translated")?;
-
-    write_text_to_file(&new_path, &text).map_err(|err| {
-        log::error!("Failed to write translated text to file: {:?}", err);
-        Errors::FileOutputError
-    })
-}
-
-pub async fn translate_url_to_meta_context<P: Provider>(
-    provider: Arc<P>,
-    url: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
-    log::trace!("In translate_url_to_meta_context");
-    log::debug!("url: {}", url);
-
-    let text = fetch_url_as_text(url).await?;
-
-    translate_text_to_meta_context(
-        Arc::clone(&provider),
-        text,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await
-}
-
-pub async fn translate_url_to_package<P: Provider>(
-    provider: Arc<P>,
-    url: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Package, Errors> {
-    log::trace!("In translate_url_to_package");
-    log::debug!("url: {}", url);
-
-    let meta_context =
-        translate_url_to_meta_context(
-            Arc::clone(&provider),
-            url,
-            _options,
-            metadata,
-            execution_context,
-        )
-        .await?;
-
-    let document_format = DocumentFormat::default();
-    let translated_document = Document::from_normalized_graph(
-        Arc::clone(&meta_context),
-        &document_format,
-    )?;
+    ).await?;
 
     Ok(Package {
         document: translated_document,

@@ -163,4 +163,13 @@ impl Document {
             DocumentType::Html => unimplemented!(),
         }
     }
+
+    pub fn from_translated_graph(
+        meta_context: Arc<RwLock<MetaContext>>,
+        document_format: &DocumentFormat
+    ) -> Result<Self, Errors> {
+        log::trace!("In from_translated_graph");
+
+        unimplemented!()
+    }
 }
