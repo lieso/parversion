@@ -102,6 +102,47 @@ pub async fn translate_json<P: Provider>(
     // -----------------------------------------------------------------------------------------------------
 
 
+
+
+    let normalized_json = Document::from_normalized_graph(
+        Arc::clone(&meta_context),
+        &DocumentFormat {
+            format_type: DocumentType::Json,
+            encoding: Some(String::from("UTF-8")),
+            indent: None,
+            line_ending: None,
+            headers: None,
+            wrap_text: None,
+            exclude_nulls: None,
+            custom_delimiter: None,
+        }
+    )?;
+
+
+
+    // -----------------------------------------------------------------------------------------------------
+    let (contexts, graph_root) = normalized_json.get_contexts(Arc::clone(&meta_context))?;
+
+    let mut seen = HashSet::new();
+    let unique_contexts: Vec<Arc<Context>> = contexts
+        .into_values()
+        .filter(|context| seen.insert(context.id.clone()))
+        .collect();
+
+    for context in unique_contexts {
+
+
+        log::debug!("lineage: {}", context.lineage.to_string());
+
+        let document_node = read_lock!(context.document_node);
+
+        log::debug!("document_node: {:?}", document_node.to_string());
+
+    }
+
+    // -----------------------------------------------------------------------------------------------------
+
+
     unimplemented!();
 }
 

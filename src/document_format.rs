@@ -4,13 +4,13 @@ use crate::document::DocumentType;
 #[allow(dead_code)]
 pub struct DocumentFormat {
     pub format_type: DocumentType,
-    encoding: Option<String>,
-    indent: Option<usize>,
-    line_ending: Option<String>,
-    headers: Option<bool>,
-    wrap_text: Option<bool>,
-    exclude_nulls: Option<bool>,
-    custom_delimiter: Option<char>,
+    pub encoding: Option<String>,
+    pub indent: Option<usize>,
+    pub line_ending: Option<String>,
+    pub headers: Option<bool>,
+    pub wrap_text: Option<bool>,
+    pub exclude_nulls: Option<bool>,
+    pub custom_delimiter: Option<char>,
 }
 
 impl Default for DocumentFormat {
