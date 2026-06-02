@@ -7,6 +7,10 @@ use crate::data_node::DataNodeFields;
 pub struct Json;
 
 impl Json {
+    pub fn to_string(map: &Map<String, Value>) -> String {
+        map.keys().cloned().collect::<Vec<_>>().join(", ")
+    }
+
     pub fn get_description(map: &Map<String, Value>) -> String {
         map.keys().map(|k| k.as_str()).collect::<Vec<_>>().join(", ")
     }

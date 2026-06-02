@@ -27,6 +27,13 @@ impl DocumentNode {
         }
     }
 
+    pub fn to_string(&self) -> String {
+        match &self.data {
+            DocumentNodeData::Xml(node) => Xml::to_string(&node),
+            DocumentNodeData::Json(map) => Json::to_string(map),
+        }
+    }
+
     pub fn to_string_components(&self) -> (String, Option<String>) {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::to_string_components(&node),

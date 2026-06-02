@@ -1,10 +1,12 @@
 use std::sync::{Arc, RwLock};
+use std::collections::HashSet;
 
 use crate::document::{Document, DocumentType, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::meta_context::MetaContext;
 use crate::normalization::{normalize, normalize_text};
 use crate::package::Package;
+use crate::context::Context;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::normalization;
@@ -52,6 +54,23 @@ pub async fn translate<P: Provider>(
     Ok(meta_context)
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 pub async fn translate_json<P: Provider>(
     provider: Arc<P>,
     meta_context: Arc<RwLock<MetaContext>>,
@@ -60,10 +79,60 @@ pub async fn translate_json<P: Provider>(
 ) -> Result<Arc<RwLock<MetaContext>>, Errors> {
     log::trace!("In translate_json");
 
+    // -----------------------------------------------------------------------------------------------------
     let (contexts, graph_root) = document.get_contexts(Arc::clone(&meta_context))?;
+
+    let mut seen = HashSet::new();
+    let unique_contexts: Vec<Arc<Context>> = contexts
+        .into_values()
+        .filter(|context| seen.insert(context.id.clone()))
+        .collect();
+
+    for context in unique_contexts {
+
+
+        log::debug!("lineage: {}", context.lineage.to_string());
+
+        let document_node = read_lock!(context.document_node);
+
+        log::debug!("document_node: {:?}", document_node.to_string());
+
+    }
+
+    // -----------------------------------------------------------------------------------------------------
+
 
     unimplemented!();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub async fn translate_text_to_document<P: Provider>(
     provider: Arc<P>,
