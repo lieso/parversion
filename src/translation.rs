@@ -55,6 +55,10 @@ pub async fn translate<P: Provider>(
         }
     }
 
+
+
+
+
     Ok(normalization_context)
 }
 
@@ -81,7 +85,7 @@ pub async fn translate_json<P: Provider>(
     translation_context: Arc<RwLock<TranslationContext>>,
     document: Document,
     options: &Options
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+) -> Result<(), Errors> {
     log::trace!("In translate_json");
 
     let (translation_contexts, translation_graph_root) = document.get_contexts(Arc::clone(&normalization_context))?;
@@ -112,7 +116,7 @@ pub async fn translate_json<P: Provider>(
         );
     }
 
-    unimplemented!();
+    Ok(())
 }
 
 

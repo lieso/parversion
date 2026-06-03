@@ -49,6 +49,7 @@ mod basis_group;
 mod reports;
 mod basis_field;
 mod translation_context;
+mod translation_node;
 
 use crate::entrypoint::run;
 
