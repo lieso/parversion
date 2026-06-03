@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use crate::document::{Document, DocumentType, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::normalization_context::NormalizationContext;
+use crate::translation_context::TranslationContext;
 use crate::normalization::{normalize, normalize_text};
 use crate::package::Package;
 use crate::context::Context;
@@ -27,6 +28,8 @@ pub async fn translate<P: Provider>(
         execution_context.clone(),
     ).await?;
 
+    let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
+
     match target.document_type {
         DocumentType::Html => {
             unimplemented!()
@@ -35,6 +38,7 @@ pub async fn translate<P: Provider>(
             translate_json(
                 Arc::clone(&provider),
                 Arc::clone(&normalization_context),
+                Arc::clone(&translation_context),
                 target,
                 options,
             )
@@ -74,6 +78,7 @@ pub async fn translate<P: Provider>(
 pub async fn translate_json<P: Provider>(
     provider: Arc<P>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
+    translation_context: Arc<RwLock<TranslationContext>>,
     document: Document,
     options: &Options
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
@@ -97,7 +102,15 @@ pub async fn translate_json<P: Provider>(
 
     let (normalized_contexts, normalized_graph_root) = normalized_document.get_contexts(Arc::clone(&normalization_context))?;
 
-
+    {
+        let mut lock = write_lock!(translation_context);
+        lock.update_contexts(
+            normalized_contexts,
+            normalized_graph_root,
+            translation_contexts,
+            translation_graph_root
+        );
+    }
 
     unimplemented!();
 }
