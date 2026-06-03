@@ -14,7 +14,7 @@ use crate::graph_node::Graph;
 use crate::prelude::*;
 use crate::normal_context::NormalContext;
 
-pub struct MetaContext {
+pub struct NormalizationContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
     pub contexts: Option<HashMap<ID, Arc<Context>>>,
     pub graph_root: Option<Graph>,
@@ -31,9 +31,9 @@ pub struct MetaContext {
     pub context_to_group: Option<HashMap<ID, Arc<BasisGroup>>>,
 }
 
-impl MetaContext {
+impl NormalizationContext {
     pub fn new() -> Self {
-        MetaContext {
+        NormalizationContext {
             document_versions: HashMap::new(),
             contexts: None,
             graph_root: None,

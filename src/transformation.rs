@@ -154,13 +154,13 @@ pub struct TraversalTransformation {
 impl TraversalTransformation {
     pub fn transform(
         &self,
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
     ) -> Result<Option<Graph>, Errors> {
         use crate::graph_node::GraphNode;
 
         GraphNode::traverse_using_xpath(
-            meta_context,
+            normalization_context,
             start,
             &self.traversal.candidate,
         )

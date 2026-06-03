@@ -125,7 +125,7 @@ impl Document {
 
     pub fn get_contexts(
         &self,
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
     ) -> Result<
         (
             HashMap<ID, Arc<Context>>, // context
@@ -137,7 +137,7 @@ impl Document {
 
         match self.document_type {
             DocumentType::Json => Json::get_contexts(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 &self.metadata,
                 self.data.clone()
             ),
@@ -145,7 +145,7 @@ impl Document {
             DocumentType::JavaScript => unimplemented!(),
             DocumentType::Xml => unimplemented!(),
             DocumentType::Html => Html::get_contexts(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 &self.metadata,
                 self.data.clone()
             ),
@@ -153,14 +153,14 @@ impl Document {
     }
 
     pub fn from_normalized_graph(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         document_format: &DocumentFormat,
     ) -> Result<Self, Errors> {
         log::trace!("In from_normalized_graph");
 
         match document_format.format_type {
             DocumentType::Json => {
-                let data = Json::from_normalized_graph(Arc::clone(&meta_context))?;
+                let data = Json::from_normalized_graph(Arc::clone(&normalization_context))?;
 
                 let document = Document {
                     document_type: DocumentType::Json,
@@ -181,7 +181,7 @@ impl Document {
     }
 
     pub fn from_translated_graph(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         document_format: &DocumentFormat
     ) -> Result<Self, Errors> {
         log::trace!("In from_translated_graph");

@@ -17,7 +17,7 @@ pub struct Html;
 
 impl Html {
     pub fn get_contexts(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         metadata: &DocumentMetadata,
         data: String
     ) -> Result<

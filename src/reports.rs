@@ -1,16 +1,16 @@
 use std::sync::{Arc, RwLock};
 
-use crate::meta_context::MetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::node_analysis::get_context_groups;
 use crate::prelude::*;
 use crate::provider::Provider;
 
 pub async fn report_basis_groups<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
     let context_groups = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.context_groups
             .clone()
             .ok_or_else(|| {
@@ -18,7 +18,7 @@ pub async fn report_basis_groups<P: Provider>(
             })?
     };
     let basis_groups = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {

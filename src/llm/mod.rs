@@ -98,7 +98,7 @@ impl LLM {
     }
 
     pub async fn identify_relationships(
-        _meta_context: Arc<RwLock<MetaContext>>,
+        _meta_context: Arc<RwLock<NormalizationContext>>,
         original_document: String,
         network_jsons: Vec<(Arc<BasisNetwork>, Vec<String>)>
     ) -> Result<(Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, (u64,)), Errors> {
@@ -151,7 +151,7 @@ impl LLM {
     }
 
     pub async fn check_redundancy(
-        _meta_context: Arc<RwLock<MetaContext>>,
+        _meta_context: Arc<RwLock<NormalizationContext>>,
         original_document: String,
         all_network_jsons: String
     ) -> Result<(Vec<String>, (u64,)), Errors> {
@@ -255,7 +255,7 @@ impl LLM {
 
     pub async fn get_node_transformations(
         group: Vec<Arc<Context>>,
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
     ) -> Result<(
         Vec<FieldTransformation>,
         (u64,)
@@ -276,7 +276,7 @@ impl LLM {
         let snippets: Vec<String> = group
             .iter()
             .take(example_snippet_count)
-            .map(|c| c.generate_snippet(Arc::clone(&meta_context)))
+            .map(|c| c.generate_snippet(Arc::clone(&normalization_context)))
             .collect();
 
         let mut field_transformations = Vec::new();
@@ -285,7 +285,7 @@ impl LLM {
         for (field, value) in fields.into_iter() {
 
             let basis_fields: Vec<Arc<BasisField>> = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.basis_fields
                     .as_ref()
                     .ok_or_else(|| {
@@ -337,7 +337,7 @@ impl LLM {
     }
 
     pub async fn infer_group_match(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         group: Vec<Arc<Context>>,
         max_sample_size: usize,
     ) -> Result<(
@@ -365,7 +365,7 @@ impl LLM {
         // TODO: a snippet points to an element, what if node has multiple attributes?
         let snippets: Vec<String> = sampled_contexts
             .iter()
-            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&meta_context)))
+            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&normalization_context)))
             .collect();
 
         let (data, metadata) = NodeAnalysis::infer_snippets_match(snippets).await?;
@@ -374,7 +374,7 @@ impl LLM {
     }
 
     pub async fn infer_basis_field(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         field: String,
         group: Vec<Arc<Context>>,
     ) -> Result<(
@@ -394,7 +394,7 @@ impl LLM {
 
         let snippets: Vec<String> = sampled_contexts
             .iter()
-            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&meta_context)))
+            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&normalization_context)))
             .collect();
 
         let merged_snippets = snippets.join("\n\n---SNIPPET SEPARATOR---\n\n");

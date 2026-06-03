@@ -23,14 +23,14 @@ pub struct NetworkRelationship {}
 
 impl NetworkRelationship {
     pub async fn process_composition(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
     ) -> Result<(Traversal, String, (u64,)), Errors> {
         log::trace!("In process_composition");
 
         let snippet = Self::create_network_snippet(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&network_from),
             Arc::clone(&network_to),
         )?;
@@ -50,14 +50,14 @@ impl NetworkRelationship {
     }
 
     pub async fn process_parent_child(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
     ) -> Result<(Traversal, (u64,)), Errors> {
         log::trace!("In process_parent_child");
 
         let snippet = Self::create_network_snippet(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&network_from),
             Arc::clone(&network_to),
         )?;
@@ -82,12 +82,12 @@ impl NetworkRelationship {
     }
 
     fn create_network_snippet(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
     ) -> Result<String, Errors> {
         let graph_root = {
-            let lock = read_lock!(meta_context);
+            let lock = read_lock!(normalization_context);
             lock.graph_root
                 .clone()
                 .ok_or(Errors::GraphRootNotProvided)?
@@ -102,7 +102,7 @@ impl NetworkRelationship {
         let mut snippet = String::new();
 
         Self::get_network_snippet(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&graph_root),
             &target_graph_nodes,
             &network_from.subgraph_hash,
@@ -114,7 +114,7 @@ impl NetworkRelationship {
     }
 
     fn get_network_snippet(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         current: Graph,
         target_graph_nodes: &HashSet<ID>,
         network_from_subgraph_hash: &Hash,
@@ -124,7 +124,7 @@ impl NetworkRelationship {
         let lock = read_lock!(current);
         
         let contexts = {
-            let lock = read_lock!(meta_context);
+            let lock = read_lock!(normalization_context);
             lock.contexts.clone().unwrap()
         };
 
@@ -160,7 +160,7 @@ impl NetworkRelationship {
 
         for child in &lock.children {
             Self::get_network_snippet(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 Arc::clone(&child),
                 target_graph_nodes,
                 network_from_subgraph_hash,
@@ -257,13 +257,13 @@ impl NetworkRelationship {
     }
 
     pub async fn get_relationship_typing(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         networks: Vec<Arc<BasisNetwork>>
     ) -> Result<(Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, (u64,)), Errors> {
         log::trace!("In get_relationship_typing");
 
         let _graph_root = {
-            let lock = read_lock!(meta_context);
+            let lock = read_lock!(normalization_context);
             lock.graph_root
                 .clone()
                 .ok_or(Errors::GraphRootNotProvided)?
@@ -273,7 +273,7 @@ impl NetworkRelationship {
 
         for network in networks.iter() {
             let json_examples = Self::get_network_json(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 network.clone()
             ).await?;
 
@@ -284,10 +284,10 @@ impl NetworkRelationship {
             network_jsons.push((Arc::clone(network), json_examples));
         }
 
-        let original_document = get_original_document_condensed(Arc::clone(&meta_context))?;
+        let original_document = get_original_document_condensed(Arc::clone(&normalization_context))?;
 
         let (typed_relationships, (tokens,)) = LLM::identify_relationships(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             original_document,
             network_jsons
         ).await?;
@@ -296,11 +296,11 @@ impl NetworkRelationship {
     }
 
     pub async fn get_canonical_networks(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         networks: Vec<Arc<BasisNetwork>>
     ) -> Result<(Vec<BasisNetwork>, (u64,)), Errors> {
         let _graph_root = {
-            let lock = read_lock!(meta_context);
+            let lock = read_lock!(normalization_context);
             lock.graph_root
                 .clone()
                 .ok_or(Errors::GraphRootNotProvided)?
@@ -310,7 +310,7 @@ impl NetworkRelationship {
 
         for network in networks.iter() {
             let json_examples = Self::get_network_json(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 network.clone()
             ).await?;
 
@@ -332,10 +332,10 @@ impl NetworkRelationship {
             all_network_jsons.push_str(&network_section);
         }
 
-        let original_document = get_original_document_condensed(Arc::clone(&meta_context))?;
+        let original_document = get_original_document_condensed(Arc::clone(&normalization_context))?;
 
         let (canonical_ids, (tokens,)) = LLM::check_redundancy(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             original_document,
             all_network_jsons
         ).await?;
@@ -362,13 +362,13 @@ impl NetworkRelationship {
     }
 
     async fn get_network_json(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         network: Arc<BasisNetwork>
     ) -> Result<Vec<String>, Errors> {
 
         let mut network_jsons: Vec<String> = Vec::new();
 
-        let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
+        let graph_root = read_lock!(normalization_context).graph_root.clone().unwrap();
 
         let mut queue = VecDeque::new();
         queue.push_back(graph_root);
@@ -385,7 +385,7 @@ impl NetworkRelationship {
 
             if subgraph_hash == network.subgraph_hash {
                 let json = Self::process_network(
-                    Arc::clone(&meta_context),
+                    Arc::clone(&normalization_context),
                     Arc::clone(&current)
                 )?;
 
@@ -401,14 +401,14 @@ impl NetworkRelationship {
     }
 
     fn process_network(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         graph_node: Arc<RwLock<GraphNode>>
     ) -> Result<String, Errors> {
 
         let mut result: Map<String, Value> = Map::new();
 
         fn recurse(
-            meta_context: Arc<RwLock<MetaContext>>,
+            normalization_context: Arc<RwLock<NormalizationContext>>,
             graph_node: Arc<RwLock<GraphNode>>,
             result: &mut Map<String, Value>,
         ) {
@@ -423,12 +423,12 @@ impl NetworkRelationship {
 
                 if count <= 3 {
                     let basis_network_opt: Option<Arc<BasisNetwork>> = {
-                        let lock = read_lock!(meta_context);
+                        let lock = read_lock!(normalization_context);
                         lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash).unwrap()
                     };
 
                     let Some(basis_network) = basis_network_opt else {
-                        recurse(Arc::clone(&meta_context), Arc::clone(&child), result);
+                        recurse(Arc::clone(&normalization_context), Arc::clone(&child), result);
                         continue;
                     };
 
@@ -436,7 +436,7 @@ impl NetworkRelationship {
                     let mut inner_result: Map<String, Value> = Map::new();
 
                     recurse(
-                        Arc::clone(&meta_context),
+                        Arc::clone(&normalization_context),
                         Arc::clone(&child),
                         &mut inner_result,
                     );
@@ -459,11 +459,11 @@ impl NetworkRelationship {
             }
 
             let contexts = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.contexts.clone().unwrap()
             };
             let context_to_group = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.context_to_group.clone().unwrap()
             };
 
@@ -482,7 +482,7 @@ impl NetworkRelationship {
 
             if let Some(basis_lineage) = basis_lineage {
                 let basis_node = {
-                    let lock = read_lock!(meta_context);
+                    let lock = read_lock!(normalization_context);
                     lock.get_basis_node_by_lineage(&basis_lineage)
                         .expect("Could not get basis node by lineage")
                         .unwrap()
@@ -508,7 +508,7 @@ impl NetworkRelationship {
         }
 
         recurse(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&graph_node),
             &mut result,
         );

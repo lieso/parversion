@@ -2,7 +2,7 @@ pub use crate::hash::Hash;
 pub use crate::id::ID;
 pub use crate::lineage::Lineage;
 pub use crate::macros::*;
-pub use crate::meta_context::MetaContext;
+pub use crate::normalization_context::NormalizationContext;
 pub use crate::metadata::Metadata;
 pub use crate::options::Options;
 pub use crate::types::*;

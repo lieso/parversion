@@ -11,7 +11,7 @@ use crate::basis_graph::BasisGraph;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::llm::LLM;
-use crate::meta_context::MetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::transformation::{
@@ -25,7 +25,7 @@ use crate::traversal::{get_original_document_condensed};
 
 pub async fn get_classification<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<Arc<Classification>, Errors> {
@@ -33,9 +33,9 @@ pub async fn get_classification<P: Provider>(
 
     stage_context.record_events("Document classification", 0);
 
-    let original_document = get_original_document_condensed(Arc::clone(&meta_context))?;
+    let original_document = get_original_document_condensed(Arc::clone(&normalization_context))?;
     let graph_root = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.graph_root
             .clone()
             .ok_or(Errors::GraphRootNotProvided)?
@@ -74,16 +74,16 @@ pub async fn get_classification<P: Provider>(
 
 pub async fn get_network_relationships<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext
 ) -> Result<BasisGraph, Errors> {
     log::trace!("In get_network_relationships");
 
-    let complex_networks: Vec<Arc<BasisNetwork>> = collect_complex_unique_subgraphs(Arc::clone(&meta_context))
+    let complex_networks: Vec<Arc<BasisNetwork>> = collect_complex_unique_subgraphs(Arc::clone(&normalization_context))
         .into_iter()
         .filter_map(|(subgraph_hash, _)| {
-            let meta_context_lock = read_lock!(meta_context);
+            let meta_context_lock = read_lock!(normalization_context);
             meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)
                 .ok()
                 .flatten()
@@ -109,7 +109,7 @@ pub async fn get_network_relationships<P: Provider>(
 
     let basis_graph: BasisGraph = get_canonical_networks(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         options,
         stage_context,
         &graph_hash,
@@ -127,7 +127,7 @@ pub async fn get_network_relationships<P: Provider>(
 
     let basis_graph: BasisGraph = get_relationship_typing(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         options,
         stage_context,
         &graph_hash,
@@ -173,7 +173,7 @@ pub async fn get_network_relationships<P: Provider>(
         }
 
         let permit = semaphore.clone().acquire_owned().await.unwrap();
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_stage_context = stage_context.clone();
 
         let handle = task::spawn(async move {
@@ -209,7 +209,7 @@ pub async fn get_network_relationships<P: Provider>(
 }
 
 async fn get_traversal(
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     resolved_relationship: ResolvedRelationshipTransformation,
     stage_context: &StageContext,
 ) -> Result<Option<TraversalTransformation>, Errors> {
@@ -220,7 +220,7 @@ async fn get_traversal(
             stage_context.record_events("Composition linking", 0);
 
             let (traversal, name, (tokens,)) = NetworkRelationship::process_composition(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 Arc::clone(&resolved_relationship.from),
                 Arc::clone(&resolved_relationship.to),
             ).await?;
@@ -239,7 +239,7 @@ async fn get_traversal(
             stage_context.record_events("Parent-child linking", 0);
 
             let (traversal, (tokens,)) = NetworkRelationship::process_parent_child(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 Arc::clone(&resolved_relationship.from),
                 Arc::clone(&resolved_relationship.to),
             ).await?;
@@ -263,7 +263,7 @@ async fn get_traversal(
 
 pub async fn get_relationship_typing<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
     graph_hash: &Hash,
@@ -281,7 +281,7 @@ pub async fn get_relationship_typing<P: Provider>(
         }
 
         let (typed_relationships, (tokens,)) = NetworkRelationship::get_relationship_typing(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             canonical_networks.clone()
         ).await?;
 
@@ -313,7 +313,7 @@ pub async fn get_relationship_typing<P: Provider>(
 
 pub async fn get_canonical_networks<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
     graph_hash: &Hash,
@@ -330,7 +330,7 @@ pub async fn get_canonical_networks<P: Provider>(
     }
 
     let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         complex_networks
     ).await?;
     let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
@@ -360,13 +360,13 @@ pub async fn get_canonical_networks<P: Provider>(
 
 pub async fn get_basis_networks<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In get_basis_networks");
 
-    let unique_subgraphs: HashMap<Hash, Vec<Graph>> = collect_complex_unique_subgraphs(Arc::clone(&meta_context));
+    let unique_subgraphs: HashMap<Hash, Vec<Graph>> = collect_complex_unique_subgraphs(Arc::clone(&normalization_context));
 
     let all_subgraph_hashes = Arc::new(
         unique_subgraphs
@@ -376,7 +376,7 @@ pub async fn get_basis_networks<P: Provider>(
     );
 
     let document_summary = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         let classification = lock.get_classification().unwrap();
 
         format!(r##"
@@ -403,7 +403,7 @@ pub async fn get_basis_networks<P: Provider>(
     for (subgraph_hash, graphs) in unique_subgraphs {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
         let cloned_document_summary = Arc::clone(&document_summary_string);
@@ -444,7 +444,7 @@ pub async fn get_basis_networks<P: Provider>(
 
 async fn get_basis_network<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     subgraph_hash: Hash,
     graphs: Vec<Graph>,
     options: &Options,
@@ -458,7 +458,7 @@ async fn get_basis_network<P: Provider>(
     stage_context.record_events("Network analysis", 0);
 
     let contexts = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.contexts.clone().ok_or(Errors::ContextsNotProvided)?
     };
 
@@ -476,7 +476,7 @@ async fn get_basis_network<P: Provider>(
     for graph in graphs.iter().take(5) {
         let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
         let json = context.generate_json_snippet(
-            Arc::clone(&meta_context)
+            Arc::clone(&normalization_context)
         )?;
 
         let subgraph_hash_string = subgraph_hash.to_string().unwrap();
@@ -520,19 +520,19 @@ async fn get_basis_network<P: Provider>(
     Ok(basis_network)
 }
 
-fn collect_complex_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Vec<Graph>> {
+fn collect_complex_unique_subgraphs(normalization_context: Arc<RwLock<NormalizationContext>>) -> HashMap<Hash, Vec<Graph>> {
     let contexts = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.contexts.clone().unwrap_or_default()
     };
 
-    get_unique_subgraphs(Arc::clone(&meta_context))
+    get_unique_subgraphs(Arc::clone(&normalization_context))
         .into_iter()
         .filter(|(_, graphs)| {
             graphs.iter().take(5).any(|graph| {
                 let graph_id = read_lock!(graph).id.clone();
                 if let Some(context) = contexts.get(&graph_id) {
-                    if let Ok(json) = context.generate_json_snippet(Arc::clone(&meta_context)) {
+                    if let Ok(json) = context.generate_json_snippet(Arc::clone(&normalization_context)) {
                         return json.len() > 1;
                     }
                 }
@@ -542,9 +542,9 @@ fn collect_complex_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> H
         .collect()
 }
 
-fn get_unique_subgraphs(meta_context: Arc<RwLock<MetaContext>>) -> HashMap<Hash, Vec<Graph>> {
+fn get_unique_subgraphs(normalization_context: Arc<RwLock<NormalizationContext>>) -> HashMap<Hash, Vec<Graph>> {
     let graph_root = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.graph_root.as_ref().unwrap().clone()
     };
 

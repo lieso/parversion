@@ -20,16 +20,16 @@ pub struct Traversal {
     pub filter_function: String,
 }
 
-pub fn get_original_document_condensed(meta_context: Arc<RwLock<MetaContext>>) -> Result<String, Errors> {
+pub fn get_original_document_condensed(normalization_context: Arc<RwLock<NormalizationContext>>) -> Result<String, Errors> {
     let mut document = String::new();
     let mut visited_lineages: HashSet<Lineage> = HashSet::new();
     let root_node = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.graph_root.clone().unwrap()
     };
 
     traverse_for_condensed_document(
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         Arc::clone(&root_node),
         &mut visited_lineages,
         &mut document,
@@ -39,14 +39,14 @@ pub fn get_original_document_condensed(meta_context: Arc<RwLock<MetaContext>>) -
 }
 
 fn traverse_for_condensed_document(
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     current_node: Graph,
     visited_lineages: &mut HashSet<Lineage>,
     document: &mut String,
 ) {
     let lock = read_lock!(current_node);
     let current_id = lock.id.clone();
-    let current_context = read_lock!(meta_context).contexts.clone().unwrap();
+    let current_context = read_lock!(normalization_context).contexts.clone().unwrap();
     let current_context = current_context.get(&current_id).unwrap();
     let current_lineage = current_context.lineage.clone();
     let document_node = current_context.document_node.clone();
@@ -63,7 +63,7 @@ fn traverse_for_condensed_document(
 
     for child in &lock.children {
         traverse_for_condensed_document(
-            meta_context.clone(),
+            normalization_context.clone(),
             Arc::clone(child),
             visited_lineages,
             document,

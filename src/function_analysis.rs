@@ -7,19 +7,19 @@ use tokio::task;
 use crate::config::CONFIG;
 use crate::function::Function;
 use crate::llm::LLM;
-use crate::meta_context::MetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
 
 pub async fn functions_to_operations<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<HashMap<Hash, Arc<Operation>>, Errors> {
     log::trace!("In functions_to_operations");
 
     let functions: Vec<Function> = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
 
         lock.functions.clone().ok_or_else(|| {
             Errors::DeficientMetaContextError("Missings functions from meta context".to_string())
@@ -33,7 +33,7 @@ pub async fn functions_to_operations<P: Provider>(
 
         for function in functions.iter() {
             let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_meta_context = Arc::clone(&normalization_context);
             let result =
                 function_to_operation(cloned_provider, cloned_meta_context, function.clone())
                     .await?;
@@ -49,7 +49,7 @@ pub async fn functions_to_operations<P: Provider>(
         for function in functions.into_iter() {
             let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
-            let cloned_meta_context = Arc::clone(&meta_context);
+            let cloned_meta_context = Arc::clone(&normalization_context);
 
             let handle = task::spawn(async move {
                 let _permit = permit;
@@ -74,7 +74,7 @@ pub async fn functions_to_operations<P: Provider>(
 
 async fn function_to_operation<P: Provider>(
     provider: Arc<P>,
-    _meta_context: Arc<RwLock<MetaContext>>,
+    _meta_context: Arc<RwLock<NormalizationContext>>,
     function: Function,
 ) -> Result<Operation, Errors> {
     log::trace!("In function_to_operation");

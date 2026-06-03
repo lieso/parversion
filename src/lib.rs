@@ -22,7 +22,7 @@ pub mod json_node;
 pub mod lineage;
 pub mod llm;
 pub mod macros;
-pub mod meta_context;
+pub mod normalization_context;
 pub mod metadata;
 pub mod mutation;
 pub mod network_analysis;

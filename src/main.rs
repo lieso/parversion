@@ -22,7 +22,7 @@ mod json_node;
 mod lineage;
 mod llm;
 mod macros;
-mod meta_context;
+mod normalization_context;
 mod metadata;
 mod mutation;
 mod network_analysis;

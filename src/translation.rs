@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use crate::document::{Document, DocumentType, DocumentRole};
 use crate::document_format::DocumentFormat;
-use crate::meta_context::MetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::normalization::{normalize, normalize_text};
 use crate::package::Package;
 use crate::context::Context;
@@ -17,10 +17,10 @@ pub async fn translate<P: Provider>(
     target: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In translate");
 
-    let meta_context: Arc<RwLock<MetaContext>> = normalization::normalize(
+    let normalization_context: Arc<RwLock<NormalizationContext>> = normalization::normalize(
         Arc::clone(&provider),
         source,
         options,
@@ -34,7 +34,7 @@ pub async fn translate<P: Provider>(
         DocumentType::Json => {
             translate_json(
                 Arc::clone(&provider),
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 target,
                 options,
             )
@@ -51,7 +51,7 @@ pub async fn translate<P: Provider>(
         }
     }
 
-    Ok(meta_context)
+    Ok(normalization_context)
 }
 
 
@@ -73,39 +73,16 @@ pub async fn translate<P: Provider>(
 
 pub async fn translate_json<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     document: Document,
     options: &Options
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In translate_json");
 
-    // -----------------------------------------------------------------------------------------------------
-    let (contexts, graph_root) = document.get_contexts(Arc::clone(&meta_context))?;
+    let (translation_contexts, translation_graph_root) = document.get_contexts(Arc::clone(&normalization_context))?;
 
-    let mut seen = HashSet::new();
-    let unique_contexts: Vec<Arc<Context>> = contexts
-        .into_values()
-        .filter(|context| seen.insert(context.id.clone()))
-        .collect();
-
-    for context in unique_contexts {
-
-
-        log::debug!("lineage: {}", context.lineage.to_string());
-
-        let document_node = read_lock!(context.document_node);
-
-        log::debug!("document_node: {:?}", document_node.to_string());
-
-    }
-
-    // -----------------------------------------------------------------------------------------------------
-
-
-
-
-    let normalized_json = Document::from_normalized_graph(
-        Arc::clone(&meta_context),
+    let normalized_document = Document::from_normalized_graph(
+        Arc::clone(&normalization_context),
         &DocumentFormat {
             format_type: DocumentType::Json,
             encoding: Some(String::from("UTF-8")),
@@ -118,29 +95,8 @@ pub async fn translate_json<P: Provider>(
         }
     )?;
 
+    let (normalized_contexts, normalized_graph_root) = normalized_document.get_contexts(Arc::clone(&normalization_context))?;
 
-
-    // -----------------------------------------------------------------------------------------------------
-    let (contexts, graph_root) = normalized_json.get_contexts(Arc::clone(&meta_context))?;
-
-    let mut seen = HashSet::new();
-    let unique_contexts: Vec<Arc<Context>> = contexts
-        .into_values()
-        .filter(|context| seen.insert(context.id.clone()))
-        .collect();
-
-    for context in unique_contexts {
-
-
-        log::debug!("lineage: {}", context.lineage.to_string());
-
-        let document_node = read_lock!(context.document_node);
-
-        log::debug!("document_node: {:?}", document_node.to_string());
-
-    }
-
-    // -----------------------------------------------------------------------------------------------------
 
 
     unimplemented!();
@@ -185,7 +141,7 @@ pub async fn translate_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let meta_context = translate_text_to_meta_context(
+    let normalization_context = translate_text_to_meta_context(
         Arc::clone(&provider),
         source,
         target,
@@ -193,7 +149,7 @@ pub async fn translate_text_to_document<P: Provider>(
         execution_context,
     ).await?;
 
-    Document::from_translated_graph(Arc::clone(&meta_context), document_format)
+    Document::from_translated_graph(Arc::clone(&normalization_context), document_format)
 }
 
 pub async fn translate_text_to_meta_context<P: Provider>(
@@ -202,7 +158,7 @@ pub async fn translate_text_to_meta_context<P: Provider>(
     target: (String, &Metadata),
     options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In translate_text_to_meta_context");
 
     let source_document = Document::from_string(source.0, options, source.1)?;
@@ -223,7 +179,7 @@ pub async fn translate_text_to_meta_context<P: Provider>(
         }
     };
 
-    let meta_context = translate(
+    let normalization_context = translate(
         Arc::clone(&provider),
         source_document,
         target_document,
@@ -231,7 +187,7 @@ pub async fn translate_text_to_meta_context<P: Provider>(
         execution_context.clone(),
     ).await?;
 
-    Ok(meta_context)
+    Ok(normalization_context)
 }
 
 pub async fn translate_text_to_package<P: Provider>(

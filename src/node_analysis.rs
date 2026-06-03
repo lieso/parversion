@@ -12,21 +12,21 @@ use crate::basis_node::BasisNode;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::llm::{LLM, NodeGroupClassification};
-use crate::meta_context::MetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::context::Context;
 
 pub async fn get_basis_fields<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisField>>, Errors> {
     log::trace!("In get_basis_fields");
     
     let classification = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.classification
             .clone()
             .ok_or_else(|| {
@@ -56,7 +56,7 @@ pub async fn get_basis_fields<P: Provider>(
     }
 
     let contexts = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.contexts
             .clone()
             .ok_or_else(|| {
@@ -93,7 +93,7 @@ pub async fn get_basis_fields<P: Provider>(
     for (field, contexts_in_group) in contexts_by_field {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
         let cloned_acyclic_subgraph_hash = acyclic_subgraph_hash.clone();
@@ -154,7 +154,7 @@ pub async fn get_basis_fields<P: Provider>(
 
 async fn get_basis_field<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_subgraph_hash: Hash,
     field: String,
     contexts_in_group: Vec<Arc<Context>>,
@@ -169,7 +169,7 @@ async fn get_basis_field<P: Provider>(
     }
 
     let (is_basis, (tokens,)) = LLM::infer_basis_field(
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         field.clone(),
         contexts_in_group.clone(),
     ).await?;
@@ -189,14 +189,14 @@ async fn get_basis_field<P: Provider>(
 
 pub fn get_context_groups<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(
     HashMap<ID, Vec<Arc<Context>>>,
     HashMap<ID, Arc<BasisGroup>>
 ), Errors> {
     log::trace!("In get_context_groups");
 
-    let non_empty_contexts = get_non_empty_contexts(Arc::clone(&meta_context))?;
+    let non_empty_contexts = get_non_empty_contexts(Arc::clone(&normalization_context))?;
 
     let mut seen = HashSet::new();
     let unique_contexts: Vec<Arc<Context>> = non_empty_contexts
@@ -207,7 +207,7 @@ pub fn get_context_groups<P: Provider>(
     log::info!("Number of unique contexts: {}", unique_contexts.len());
 
     let basis_groups = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {
@@ -286,7 +286,7 @@ pub fn get_context_groups<P: Provider>(
 
 pub async fn get_basis_groups<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisGroup>>, Errors> {
@@ -294,7 +294,7 @@ pub async fn get_basis_groups<P: Provider>(
 
     // NOTE: there are three duplicate contexts: one for each data node, graph node and document node
 
-    let non_empty_contexts = get_non_empty_contexts(Arc::clone(&meta_context))?;
+    let non_empty_contexts = get_non_empty_contexts(Arc::clone(&normalization_context))?;
 
     log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
 
@@ -324,7 +324,7 @@ pub async fn get_basis_groups<P: Provider>(
     for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
 
@@ -365,7 +365,7 @@ pub async fn get_basis_groups<P: Provider>(
 
 async fn get_acyclic_basis_groups<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_lineage: Lineage,
     contexts_in_group: Vec<Arc<Context>>,
     options: Options,
@@ -393,7 +393,7 @@ async fn get_acyclic_basis_groups<P: Provider>(
         })
     } else {
         let (is_match, (tokens,)) = LLM::infer_group_match(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             contexts_in_group.clone(),
             30
         ).await?;
@@ -438,7 +438,7 @@ async fn get_acyclic_basis_groups<P: Provider>(
     for (lineage, contexts_in_subgroup) in cyclic_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
@@ -476,7 +476,7 @@ async fn get_acyclic_basis_groups<P: Provider>(
 
 async fn get_cyclic_basis_groups<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_lineage: Lineage,
     lineage: Lineage,
     contexts_in_group: Vec<Arc<Context>>,
@@ -505,7 +505,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
         })
     } else {
         let (is_match, (tokens,)) = LLM::infer_group_match(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             contexts_in_group.clone(),
             20
         ).await?;
@@ -570,7 +570,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
     for (indexed_lineage, contexts_in_subgroup) in indexed_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_lineage = lineage.clone();
         let cloned_options = options.clone();
@@ -612,7 +612,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
 #[async_recursion]
 async fn get_indexed_basis_groups<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_lineage: Lineage,
     lineage: Lineage,
     indexed_lineage: Lineage,
@@ -641,7 +641,7 @@ async fn get_indexed_basis_groups<P: Provider>(
         })
     } else {
         let (is_match, (tokens,)) = LLM::infer_group_match(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             contexts_in_group.clone(),
             10
         ).await?;
@@ -706,7 +706,7 @@ async fn get_indexed_basis_groups<P: Provider>(
     for (next_indexed_lineage, contexts_in_subgroup) in indexed_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_lineage = lineage.clone();
         let cloned_options = options.clone();
@@ -747,14 +747,14 @@ async fn get_indexed_basis_groups<P: Provider>(
 
 pub async fn get_basis_nodes<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
     log::trace!("In get_basis_nodes");
 
     let basis_groups = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.basis_groups
             .clone()
             .ok_or_else(|| {
@@ -762,7 +762,7 @@ pub async fn get_basis_nodes<P: Provider>(
             })?
     };
     let context_groups = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.context_groups
             .clone()
             .ok_or_else(|| {
@@ -783,7 +783,7 @@ pub async fn get_basis_nodes<P: Provider>(
 
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
-        let cloned_meta_context = Arc::clone(&meta_context);
+        let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
 
@@ -817,7 +817,7 @@ pub async fn get_basis_nodes<P: Provider>(
 
 async fn get_basis_node<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
     options: &Options,
     stage_context: &StageContext,
@@ -845,7 +845,7 @@ async fn get_basis_node<P: Provider>(
 
     let (field_transformations, (tokens,)) = LLM::get_node_transformations(
         group,
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
     ).await?;
 
     let basis_node = BasisNode {
@@ -865,9 +865,9 @@ async fn get_basis_node<P: Provider>(
     Ok(basis_node)
 }
 
-fn get_non_empty_contexts(meta_context: Arc<RwLock<MetaContext>>) -> Result<Vec<Arc<Context>>, Errors> {
+fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext>>) -> Result<Vec<Arc<Context>>, Errors> {
     let contexts = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.contexts
             .clone()
             .ok_or_else(|| {
@@ -876,7 +876,7 @@ fn get_non_empty_contexts(meta_context: Arc<RwLock<MetaContext>>) -> Result<Vec<
     };
     
     let basis_fields: Vec<Arc<BasisField>> = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.basis_fields
             .as_ref()
             .ok_or_else(|| {

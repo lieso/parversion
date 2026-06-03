@@ -6,7 +6,7 @@ use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{GraphNode, GraphNodeID};
 use crate::json_node::JsonNode;
-use crate::meta_context::MetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::basis_group::BasisGroup;
@@ -31,7 +31,7 @@ impl Context {
 
     pub fn generate_json_snippet(
         &self,
-        meta_context: Arc<RwLock<MetaContext>>
+        normalization_context: Arc<RwLock<NormalizationContext>>
     ) -> Result<Map<String, Value>, Errors> {
 
 
@@ -40,7 +40,7 @@ impl Context {
 
 
         fn recurse(
-            meta_context: Arc<RwLock<MetaContext>>,
+            normalization_context: Arc<RwLock<NormalizationContext>>,
             graph_node: Arc<RwLock<GraphNode>>,
             result: &mut Map<String, Value>
         ) {
@@ -48,11 +48,11 @@ impl Context {
 
 
             let contexts = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.contexts.clone().unwrap()
             };
             let context_to_group = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.context_to_group.clone().unwrap()
             };
 
@@ -72,7 +72,7 @@ impl Context {
                     let mut inner_result: Map<String, Value> = Map::new();
 
                     recurse(
-                        Arc::clone(&meta_context),
+                        Arc::clone(&normalization_context),
                         Arc::clone(&child),
                         &mut inner_result,
                     );
@@ -114,7 +114,7 @@ impl Context {
 
             if let Some(basis_lineage) = basis_lineage {
                 let basis_node = {
-                    let lock = read_lock!(meta_context);
+                    let lock = read_lock!(normalization_context);
                     lock.get_basis_node_by_lineage(&basis_lineage)
                         .expect("Could not get basis node by lineage")
                         .unwrap()
@@ -149,7 +149,7 @@ impl Context {
         }
 
         recurse(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&self.graph_node),
             &mut result,
         );
@@ -159,18 +159,18 @@ impl Context {
         //Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
     }
     
-    pub fn generate_snippet(&self, meta_context: Arc<RwLock<MetaContext>>) -> String {
+    pub fn generate_snippet(&self, normalization_context: Arc<RwLock<NormalizationContext>>) -> String {
         let mut neighbour_ids = HashSet::new();
         let graph_node = self.graph_node.clone();
 
         Self::traverse_for_neighbours(Arc::clone(&graph_node), &mut neighbour_ids);
 
         let mut snippet = String::new();
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         let graph_root = lock.graph_root.clone().unwrap();
 
         Self::traverse_for_snippet(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&graph_root),
             &neighbour_ids,
             &read_lock!(graph_node).id,
@@ -181,13 +181,13 @@ impl Context {
     }
 
     fn traverse_for_snippet(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         current_node: Arc<RwLock<GraphNode>>,
         neighbour_ids: &HashSet<GraphNodeID>,
         target_id: &GraphNodeID,
         snippet: &mut String,
     ) {
-        let meta_context_lock = read_lock!(meta_context);
+        let meta_context_lock = read_lock!(normalization_context);
         let lock = read_lock!(current_node);
         let current_id = lock.id.clone();
         let contexts = meta_context_lock.contexts.as_ref().unwrap();
@@ -213,7 +213,7 @@ impl Context {
 
         for child in &lock.children {
             Self::traverse_for_snippet(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 Arc::clone(child),
                 neighbour_ids,
                 target_id,

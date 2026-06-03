@@ -14,7 +14,7 @@ pub struct Json {}
 
 impl Json {
     pub fn get_contexts(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         metadata: &DocumentMetadata,
         data: String
     ) -> Result<
@@ -117,21 +117,21 @@ impl Json {
     }
 
     pub fn from_normalized_graph(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
     ) -> Result<String, Errors> {
         log::trace!("In from_normalized_graph_json");
 
-        let graph_root = read_lock!(meta_context).normal_graph_root.clone().unwrap();
+        let graph_root = read_lock!(normalization_context).normal_graph_root.clone().unwrap();
 
         let mut result: Map<String, Value> = Map::new();
 
         fn recurse(
-            meta_context: Arc<RwLock<MetaContext>>,
+            normalization_context: Arc<RwLock<NormalizationContext>>,
             graph_node: Arc<RwLock<GraphNode>>,
             result: &mut Map<String, Value>,
         ) {
             let contexts = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.normal_contexts.clone().unwrap()
             };
 
@@ -156,7 +156,7 @@ impl Json {
                     let mut inner_result: Map<String, Value> = Map::new();
 
                     recurse(
-                        Arc::clone(&meta_context),
+                        Arc::clone(&normalization_context),
                         Arc::clone(&child),
                         &mut inner_result
                     );
@@ -178,7 +178,7 @@ impl Json {
 
                 } else {
                     recurse(
-                        Arc::clone(&meta_context),
+                        Arc::clone(&normalization_context),
                         Arc::clone(&child),
                         result
                     );
@@ -187,7 +187,7 @@ impl Json {
         }
 
         recurse(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&graph_root),
             &mut result,
         );

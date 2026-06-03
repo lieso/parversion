@@ -5,7 +5,7 @@ use crate::ast::program_to_functions;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::function_analysis::functions_to_operations;
-use crate::meta_context::MetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
 use crate::node_analysis::{
     get_basis_nodes,
@@ -37,10 +37,10 @@ pub async fn normalize<P: Provider>(
     document: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize");
 
-    let meta_context = normalize_to_classification(
+    let normalization_context = normalize_to_classification(
         Arc::clone(&provider),
         document,
         options,
@@ -53,14 +53,14 @@ pub async fn normalize<P: Provider>(
     let basis_fields =
         get_basis_fields(
             Arc::clone(&provider),
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             &options,
             &stage,
         )
         .await?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_basis_fields(basis_fields);
     }
 
@@ -70,28 +70,28 @@ pub async fn normalize<P: Provider>(
     let basis_groups =
         get_basis_groups(
             Arc::clone(&provider),
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             &options,
             &stage,
         )
         .await?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_basis_groups(basis_groups);
     }
 
     let (context_groups, context_to_group) = get_context_groups(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
     )?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_context_groups(context_groups, context_to_group);
     }
 
-    report_basis_groups(Arc::clone(&provider), Arc::clone(&meta_context)).await?;
+    report_basis_groups(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
 
     stage.finish();
     let stage = execution_context.enter_stage("Node analysis");
@@ -100,14 +100,14 @@ pub async fn normalize<P: Provider>(
     let basis_nodes =
         get_basis_nodes(
             Arc::clone(&provider),
-            meta_context.clone(),
+            normalization_context.clone(),
             &options,
             &stage,
         )
         .await?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_basis_nodes(basis_nodes);
     }
 
@@ -118,14 +118,14 @@ pub async fn normalize<P: Provider>(
     let basis_networks =
         get_basis_networks(
             Arc::clone(&provider),
-            meta_context.clone(),
+            normalization_context.clone(),
             &options,
             &stage,
         )
         .await?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_basis_networks(basis_networks);
     }
 
@@ -137,14 +137,14 @@ pub async fn normalize<P: Provider>(
     let basis_graph =
         get_network_relationships(
             Arc::clone(&provider),
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             &options,
             &stage,
         )
         .await?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_basis_graph(basis_graph);
     }
 
@@ -153,19 +153,19 @@ pub async fn normalize<P: Provider>(
 
     let (contexts, normalized_graph_root) = build_normalized_graph(
         Arc::clone(&provider),
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         &options,
     )?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_normalized_graph(contexts, normalized_graph_root);
     }
 
 
     stage.finish();
 
-    Ok(meta_context)
+    Ok(normalization_context)
 }
 
 pub async fn normalize_to_classification<P: Provider>(
@@ -173,15 +173,15 @@ pub async fn normalize_to_classification<P: Provider>(
     document: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize_to_classification");
 
     let stage = execution_context.enter_stage("Document preprocessing and classification");
 
-    let meta_context = Arc::new(RwLock::new(MetaContext::new()));
+    let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.add_document_version(DocumentVersion::InputDocument, document.clone());
     }
 
@@ -191,7 +191,7 @@ pub async fn normalize_to_classification<P: Provider>(
                 Arc::clone(&provider),
                 document,
                 options,
-                meta_context.clone(),
+                normalization_context.clone(),
                 &stage,
             )
             .await?;
@@ -201,7 +201,7 @@ pub async fn normalize_to_classification<P: Provider>(
                 Arc::clone(&provider),
                 document,
                 options,
-                meta_context.clone(),
+                normalization_context.clone(),
                 &stage,
             )
             .await?;
@@ -219,23 +219,23 @@ pub async fn normalize_to_classification<P: Provider>(
 
     stage.finish();
 
-    Ok(meta_context)
+    Ok(normalization_context)
 }
 
 async fn normalize_html<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Options,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     stage: &StageContext,
 ) -> Result<(), Errors> {
     let mut document = document;
 
     log::info!("Traversing document");
-    let (contexts, graph_root) = document.get_contexts(meta_context.clone())?;
+    let (contexts, graph_root) = document.get_contexts(normalization_context.clone())?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_data_structures(contexts, graph_root);
     }
 
@@ -243,14 +243,14 @@ async fn normalize_html<P: Provider>(
     let classification =
         get_classification(
             Arc::clone(&provider),
-            meta_context.clone(),
+            normalization_context.clone(),
             &options,
             stage,
         )
         .await?;
 
     {
-        let mut lock = write_lock!(meta_context);
+        let mut lock = write_lock!(normalization_context);
         lock.update_classification(classification);
     }
 
@@ -261,7 +261,7 @@ async fn normalize_json<P: Provider>(
     _provider: Arc<P>,
     _document: Document,
     _options: &Options,
-    _meta_context: Arc<RwLock<MetaContext>>,
+    _meta_context: Arc<RwLock<NormalizationContext>>,
     _stage: &StageContext,
 ) -> Result<(), Errors> {
     unimplemented!();
@@ -272,7 +272,7 @@ pub async fn normalize_document_to_classification<P: Provider>(
     document: Document,
     _options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize_document_to_classification");
 
     normalize_to_classification(
@@ -293,10 +293,10 @@ pub async fn normalize_document<P: Provider>(
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_document");
 
-    let meta_context =
+    let normalization_context =
         normalize(Arc::clone(&provider), document, _options, execution_context).await?;
 
-    let normalized_document = Document::from_normalized_graph(Arc::clone(&meta_context), document_format)?;
+    let normalized_document = Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)?;
 
     Ok(Package {
         document: normalized_document,
@@ -331,7 +331,7 @@ pub async fn normalize_text<P: Provider>(
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize_text");
 
     let document = Document::from_string(text, _options, metadata)?;
@@ -351,7 +351,7 @@ pub async fn normalize_text_to_classification<P: Provider>(
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize_text_to_classification");
 
     let document = Document::from_string(text, _options, metadata)?;
@@ -375,10 +375,10 @@ pub async fn normalize_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_text_to_document");
 
-    let meta_context =
+    let normalization_context =
         normalize_text(Arc::clone(&provider), text, _options, metadata, execution_context).await?;
 
-    Document::from_normalized_graph(Arc::clone(&meta_context), document_format)
+    Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
 }
 
 pub async fn normalize_file<P: Provider>(
@@ -387,7 +387,7 @@ pub async fn normalize_file<P: Provider>(
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file path: {}", path);
 
@@ -412,7 +412,7 @@ pub async fn normalize_file_to_classification<P: Provider>(
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<MetaContext>>, Errors> {
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize_file_to_classification");
     log::debug!("file path: {}", path);
 
@@ -442,10 +442,10 @@ pub async fn normalize_file_to_document<P: Provider>(
     log::trace!("In normalize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let meta_context =
+    let normalization_context =
         normalize_file(Arc::clone(&provider), path, _options, metadata, execution_context).await?;
 
-    Document::from_normalized_graph(Arc::clone(&meta_context), document_format)
+    Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
 }
 
 pub async fn normalize_file_to_string<P: Provider>(
@@ -474,7 +474,7 @@ pub async fn normalize_file_to_string<P: Provider>(
 
 fn build_normalized_graph<P: Provider>(
     provider: Arc<P>,
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options
 ) -> Result<
     (
@@ -486,7 +486,7 @@ fn build_normalized_graph<P: Provider>(
     log::trace!("In build_normalized_graph");
 
     let classification: Arc<Classification> = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.classification.clone().ok_or(Errors::ClassificationNotFound)?
     };
     let normalized = Arc::new(RwLock::new(GraphNode {
@@ -535,9 +535,9 @@ fn build_normalized_graph<P: Provider>(
 
 
 
-    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
-    let graph_root = read_lock!(meta_context).graph_root.clone().unwrap();
+    let graph_root = read_lock!(normalization_context).graph_root.clone().unwrap();
 
     let mut queue = VecDeque::new();
     queue.push_back(graph_root);
@@ -548,13 +548,13 @@ fn build_normalized_graph<P: Provider>(
         log::debug!("build_normalized_graph: visiting node, subgraph_hash={:?}", subgraph_hash);
 
         let is_canonical = {
-            if let Some(basis_network) = read_lock!(meta_context).get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)? {
+            if let Some(basis_network) = read_lock!(normalization_context).get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)? {
                 log::debug!("build_normalized_graph: found basis_network for subgraph_hash");
                 if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
                     log::info!("Found a canonical network");
 
                     process_canonical_network(
-                        Arc::clone(&meta_context),
+                        Arc::clone(&normalization_context),
                         Arc::clone(&normalized),
                         Arc::clone(&current),
                         &mut contexts,
@@ -584,17 +584,17 @@ fn build_normalized_graph<P: Provider>(
 }
 
 fn process_canonical_network(
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     normalized_parent_node: Graph,
     current_node: Graph,
     contexts: &mut HashMap<ID, Arc<NormalContext>>,
     visited: &mut HashSet<ID>,
 ) -> Result<(), Errors> {
-    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
     let relationships: Vec<RelationshipTransformation> = basis_graph.relationships.unwrap();
     let subgraph_hash: Hash = read_lock!(current_node).subgraph_hash.clone();
     let basis_network: Arc<BasisNetwork> = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?.unwrap()
     };
 
@@ -606,7 +606,7 @@ fn process_canonical_network(
     // No relationships, but still a canonical network so we include it
     if current_relationships.is_empty() {
         process_network(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&normalized_parent_node),
             Arc::clone(&current_node),
             contexts,
@@ -659,7 +659,7 @@ fn process_canonical_network(
 
 
                     process_network(
-                        Arc::clone(&meta_context),
+                        Arc::clone(&normalization_context),
                         Arc::clone(&normalized_graph_node),
                         Arc::clone(&current_node),
                         contexts,
@@ -667,7 +667,7 @@ fn process_canonical_network(
                     )?;
 
                     process_composition_relationship(
-                        Arc::clone(&meta_context),
+                        Arc::clone(&normalization_context),
                         Arc::clone(&normalized_graph_node),
                         Arc::clone(&current_node),
                         *relationship,
@@ -688,7 +688,7 @@ fn process_canonical_network(
 }
 
 fn process_composition_relationship(
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     normalized_parent_node: Graph,
     current_node: Graph,
     relationship: &RelationshipTransformation,
@@ -697,7 +697,7 @@ fn process_composition_relationship(
 ) -> Result<(), Errors> {
     log::trace!("In process_composition_relationship");
 
-    let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+    let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
     let traversals: Option<Vec<TraversalTransformation>> = basis_graph.traversals;
 
     let Some(traversals) = traversals else {
@@ -709,7 +709,7 @@ fn process_composition_relationship(
     };
 
     if let Some(target_network) = traversal.transform(
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         Arc::clone(&current_node),
     )? {
         log::info!("Traversal found target network");
@@ -719,7 +719,7 @@ fn process_composition_relationship(
             log::info!("Composition target is already being processed — skipping to prevent cycle");
         } else {
             process_network(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 Arc::clone(&normalized_parent_node),
                 Arc::clone(&target_network),
                 contexts,
@@ -734,7 +734,7 @@ fn process_composition_relationship(
 }
 
 fn process_network(
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     normalized_parent_node: Graph,
     current_node: Graph,
     contexts: &mut HashMap<ID, Arc<NormalContext>>,
@@ -745,17 +745,17 @@ fn process_network(
     visited.insert(read_lock!(current_node).id.clone());
 
     fn recurse(
-        meta_context: Arc<RwLock<MetaContext>>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         current_node: Graph,
         parent_normalized_node: Graph,
         contexts: &mut HashMap<ID, Arc<NormalContext>>,
         visited: &mut HashSet<ID>,
     ) -> Result<(), Errors> {
-        let basis_graph: BasisGraph = read_lock!(meta_context).basis_graph.clone().unwrap();
+        let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
         let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
         
         let normalized_data_node = process_node(
-            Arc::clone(&meta_context),
+            Arc::clone(&normalization_context),
             Arc::clone(&current_node)
         )?;
 
@@ -778,7 +778,7 @@ fn process_network(
             let subgraph_hash: Hash = read_lock!(current_node).subgraph_hash.clone();
 
             let basis_network = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?
             };
 
@@ -820,7 +820,7 @@ fn process_network(
             let subgraph_hash: Hash = read_lock!(child).subgraph_hash.clone();
 
             let basis_network = {
-                let lock = read_lock!(meta_context);
+                let lock = read_lock!(normalization_context);
                 lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)?
             };
 
@@ -832,7 +832,7 @@ fn process_network(
                    log::info!("Found a canonical network");
 
                    process_canonical_network(
-                       Arc::clone(&meta_context),
+                       Arc::clone(&normalization_context),
                        Arc::clone(&normalized_graph_node),
                        Arc::clone(&child),
                        contexts,
@@ -843,7 +843,7 @@ fn process_network(
            }
 
             recurse(
-                Arc::clone(&meta_context),
+                Arc::clone(&normalization_context),
                 Arc::clone(&child),
                 Arc::clone(&normalized_graph_node),
                 contexts,
@@ -855,7 +855,7 @@ fn process_network(
     }
 
     recurse(
-        Arc::clone(&meta_context),
+        Arc::clone(&normalization_context),
         Arc::clone(&current_node),
         Arc::clone(&normalized_parent_node),
         contexts,
@@ -866,19 +866,19 @@ fn process_network(
 }
 
 fn process_node(
-    meta_context: Arc<RwLock<MetaContext>>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
     node: Graph,
 ) -> Result<DataNode, Errors> {
     log::trace!("In process_node");
 
     let context = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         let contexts = lock.contexts.clone().unwrap();
 
         contexts.get(&read_lock!(node).id).cloned().unwrap()
     };
     let context_to_group = {
-        let lock = read_lock!(meta_context);
+        let lock = read_lock!(normalization_context);
         lock.context_to_group.clone().unwrap()
     };
     let data_node = &context.data_node;
@@ -894,7 +894,7 @@ fn process_node(
 
     if let Some(basis_lineage) = basis_lineage {
         let basis_node = {
-            let lock = read_lock!(meta_context);
+            let lock = read_lock!(normalization_context);
             lock.get_basis_node_by_lineage(&basis_lineage)
                 .expect("Could not get basis node by lineage")
                 .unwrap()
