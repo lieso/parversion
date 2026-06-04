@@ -13,9 +13,22 @@ use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::llm::{LLM, NodeGroupClassification};
 use crate::normalization_context::NormalizationContext;
+use crate::translation_context::TranslationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::context::Context;
+use crate::translation_node::TranslationNode;
+
+pub async fn get_translation_nodes<P: Provider>(
+    provider: Arc<P>,
+    translation_context: Arc<RwLock<TranslationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+) -> Result<HashMap<ID, Arc<TranslationNode>>, Errors> {
+    log::trace!("In get_translation_nodes");
+
+    unimplemented!()
+}
 
 pub async fn get_basis_fields<P: Provider>(
     provider: Arc<P>,

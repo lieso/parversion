@@ -11,6 +11,7 @@ use crate::context::Context;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::normalization;
+use crate::node_analysis::{get_translation_nodes};
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
@@ -56,6 +57,24 @@ pub async fn translate<P: Provider>(
     }
 
 
+
+    let stage = execution_context.enter_stage("Translating nodes");
+
+    let translation_nodes = 
+        get_translation_nodes(
+            Arc::clone(&provider),
+            Arc::clone(&translation_context),
+            &options,
+            &stage,
+        )
+        .await?;
+
+    {
+        let mut lock = write_lock!(translation_context);
+        lock.update_translation_nodes(translation_nodes);
+    }
+
+    stage.finish();
 
 
 

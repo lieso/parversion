@@ -4,12 +4,14 @@ use std::sync::Arc;
 use crate::prelude::*;
 use crate::context::Context;
 use crate::graph_node::Graph;
+use crate::translation_node::TranslationNode;
 
 pub struct TranslationContext {
     pub input_contexts: Option<HashMap<ID, Arc<Context>>>,
     pub input_graph_root: Option<Graph>,
     pub target_contexts: Option<HashMap<ID, Arc<Context>>>,
     pub target_graph_root: Option<Graph>,
+    pub translation_nodes: Option<HashMap<ID, Arc<TranslationNode>>>,
 }
 
 impl TranslationContext {
@@ -19,6 +21,7 @@ impl TranslationContext {
             input_graph_root: None,
             target_contexts: None,
             target_graph_root: None,
+            translation_nodes: None,
         }
     }
 
@@ -33,5 +36,9 @@ impl TranslationContext {
         self.input_graph_root = Some(input_graph_root);
         self.target_contexts = Some(target_contexts);
         self.target_graph_root = Some(target_graph_root);
+    }
+    
+    pub fn update_translation_nodes(&mut self, nodes: HashMap<ID, Arc<TranslationNode>>) {
+        self.translation_nodes = Some(nodes);
     }
 }
