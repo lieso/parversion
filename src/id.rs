@@ -3,6 +3,12 @@ use serde::ser::{Serialize, Serializer};
 use std::fmt;
 use uuid::Uuid;
 
+pub type ContextID = ID;
+pub type GraphNodeID = ID;
+pub type DocumentNodeID = ID;
+pub type DataNodeID = ID;
+pub type NodeID = ID;
+
 #[derive(Clone, Debug, Hash)]
 pub struct ID {
     value: String,

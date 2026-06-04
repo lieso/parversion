@@ -27,6 +27,10 @@ pub async fn get_translation_nodes<P: Provider>(
 ) -> Result<HashMap<ID, Arc<TranslationNode>>, Errors> {
     log::trace!("In get_translation_nodes");
 
+    let unique_input_contexts = read_lock!(translation_context).must_get_unique_input_contexts()?;
+    let unique_target_contexts = read_lock!(translation_context).must_get_unique_target_contexts()?;
+
+
     unimplemented!()
 }
 

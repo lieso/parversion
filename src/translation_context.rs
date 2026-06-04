@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::sync::Arc;
 
 use crate::prelude::*;
@@ -7,9 +7,9 @@ use crate::graph_node::Graph;
 use crate::translation_node::TranslationNode;
 
 pub struct TranslationContext {
-    pub input_contexts: Option<HashMap<ID, Arc<Context>>>,
+    pub input_contexts: Option<HashMap<NodeID, Arc<Context>>>,
     pub input_graph_root: Option<Graph>,
-    pub target_contexts: Option<HashMap<ID, Arc<Context>>>,
+    pub target_contexts: Option<HashMap<NodeID, Arc<Context>>>,
     pub target_graph_root: Option<Graph>,
     pub translation_nodes: Option<HashMap<ID, Arc<TranslationNode>>>,
 }
@@ -23,6 +23,14 @@ impl TranslationContext {
             target_graph_root: None,
             translation_nodes: None,
         }
+    }
+
+    pub fn must_get_unique_input_contexts(&self) -> Result<Vec<Arc<Context>>, Errors> {
+        Self::unique_contexts_from(&self.input_contexts)
+    }
+
+    pub fn must_get_unique_target_contexts(&self) -> Result<Vec<Arc<Context>>, Errors> {
+        Self::unique_contexts_from(&self.target_contexts)
     }
 
     pub fn update_contexts(
@@ -40,5 +48,13 @@ impl TranslationContext {
     
     pub fn update_translation_nodes(&mut self, nodes: HashMap<ID, Arc<TranslationNode>>) {
         self.translation_nodes = Some(nodes);
+    }
+
+    fn unique_contexts_from(maybe_contexts: &Option<HashMap<ID, Arc<Context>>>) -> Result<Vec<Arc<Context>>, Errors> {
+        let contexts = maybe_contexts.as_ref().ok_or_else(|| {
+            Errors::DeficientMetaContextError("Contexts missing in TranslationContext".to_string())
+        })?;
+        let mut seen = HashSet::new();
+        Ok(contexts.values().filter(|c| seen.insert(c.id.clone())).cloned().collect())
     }
 }
