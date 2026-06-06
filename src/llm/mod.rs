@@ -432,4 +432,21 @@ impl LLM {
 
         Ok((data, (metadata.tokens,)))
     }
+    
+    pub async fn get_node_translation(
+        translation_context: Arc<RwLock<TranslationContext>>,
+        input_context: Arc<Context>,
+        target_context: Arc<Context>
+    ) -> Result<(
+        Option<(
+            FieldTransformation
+        )>,
+        (u64,)
+    ), Errors> {
+        log::trace!("In get_node_translation");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        unimplemented!();
+    }
 }

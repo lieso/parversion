@@ -3,6 +3,7 @@ pub use crate::id::{ID, NodeID, ContextID, GraphNodeID, DocumentNodeID, DataNode
 pub use crate::lineage::Lineage;
 pub use crate::macros::*;
 pub use crate::normalization_context::NormalizationContext;
+pub use crate::translation_context::TranslationContext;
 pub use crate::metadata::Metadata;
 pub use crate::options::Options;
 pub use crate::types::*;

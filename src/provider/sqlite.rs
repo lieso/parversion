@@ -9,6 +9,7 @@ use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
+use crate::translation_node::TranslationNode;
 use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -31,6 +32,10 @@ impl SqliteProvider {
                  hash         TEXT PRIMARY KEY,
                  data         TEXT NOT NULL
              );
+             CREATE TABLE IF NOT EXISTS classifications (
+                 lineage_hash TEXT PRIMARY KEY,
+                 data         TEXT NOT NULL
+             );
              CREATE TABLE IF NOT EXISTS basis_fields (
                  acyclic_subgraph_hash  TEXT PRIMARY KEY,
                  data                   TEXT NOT NULL
@@ -45,10 +50,6 @@ impl SqliteProvider {
                  data           TEXT NOT NULL,
                  PRIMARY KEY (lineage_hash, subgraph_hash)
              );
-             CREATE TABLE IF NOT EXISTS classifications (
-                 lineage_hash TEXT PRIMARY KEY,
-                 data         TEXT NOT NULL
-             );
              CREATE TABLE IF NOT EXISTS basis_graphs (
                  hash TEXT PRIMARY KEY,
                  data TEXT NOT NULL
@@ -59,6 +60,12 @@ impl SqliteProvider {
                  indexed_lineage_hash  TEXT NOT NULL DEFAULT '',
                  data                  TEXT NOT NULL,
                  PRIMARY KEY (acyclic_lineage_hash, lineage_hash, indexed_lineage_hash)
+             );
+             CREATE TABLE IF NOT EXISTS translation_nodes (
+                 lineage_from       TEXT NOT NULL DEFAULT '',
+                 lineage_to         TEXT NOT NULL DEFAULT '',
+                 data               TEXT,
+                 PRIMARY KEY (lineage_from, lineage_to)
              );",
         )
         .map_err(|e| Errors::ProviderError(e.to_string()))?;
@@ -487,19 +494,69 @@ impl Provider for SqliteProvider {
 						let conn = conn.lock().map_err(|_| lock_err())?;
 						match conn.query_row(
 								"SELECT data FROM documents
-				 WHERE hash = ?1",
-				 params![key],
-				 |row| row.get::<_, String>(0),
-			) {
-				Ok(data) => {
-					let doc = deserialize(data)?;
-					Ok(Some(doc))
-				},
-				Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-				Err(e) => Err(db_err(e)),
-			}
-		})
-		.await
-		.map_err(|_| Errors::UnexpectedError)?
-	}
+             WHERE hash = ?1",
+             params![key],
+             |row| row.get::<_, String>(0),
+        ) {
+          Ok(data) => {
+            let doc = deserialize(data)?;
+            Ok(Some(doc))
+          },
+          Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+          Err(e) => Err(db_err(e)),
+        }
+      })
+      .await
+      .map_err(|_| Errors::UnexpectedError)?
+    }
+
+    async fn get_translation_node_by_lineages(
+        &self,
+        lineage_from: &Lineage,
+        lineage_to: &Lineage
+    ) -> Result<Option<Option<TranslationNode>>, Errors> {
+        let conn = self.connection.clone();
+        let key1 = lineage_from.to_string();
+        let key2 = lineage_to.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM translation_nodes WHERE lineage_from = ?1 AND lineage_to = ?2",
+                params![key1, key2],
+                |row| row.get::<_, Option<String>>(0),
+            ) {
+                Ok(data) => deserialize(data).map(Some),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError)?
+    }
+
+    async fn save_translation_node(
+        &self,
+        lineages: (Lineage, Lineage),
+        translation_node: Option<TranslationNode>
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let key1 = lineages.0.to_string();
+        let key2 = lineages.1.to_string();
+        let data = serialize(translation_node);
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+
+            conn.execute(
+                "INSERT OR REPLACE INTO translation_nodes (lineage_from, lineage_to, data) VALUES (?1, ?2, ?3)",
+                params![key1, key2, data],
+            )
+            .map_err(|e| db_err(e))?;
+
+            Ok(())
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError)?
+    }
 }

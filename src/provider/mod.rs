@@ -9,6 +9,7 @@ use crate::basis_node::BasisNode;
 use crate::basis_graph::BasisGraph;
 use crate::basis_field::BasisField;
 use crate::operation::Operation;
+use crate::translation_node::TranslationNode;
 use crate::prelude::*;
 
 #[cfg(feature = "yaml-provider")]
@@ -103,6 +104,16 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         hash: &Hash
     ) -> Result<Option<Document>, Errors>;
+    async fn get_translation_node_by_lineages(
+        &self,
+        lineage_from: &Lineage,
+        lineage_to: &Lineage
+    ) -> Result<Option<Option<TranslationNode>>, Errors>;
+    async fn save_translation_node(
+        &self,
+        lineages: (Lineage, Lineage),
+        translation_node: Option<TranslationNode>
+    ) -> Result<(), Errors>;
 }
 
 pub struct VoidProvider;
@@ -223,16 +234,32 @@ impl Provider for VoidProvider {
 
     async fn save_schema_instance_document(
         &self,
-        hash: &Hash,
-        document: Document
+        _hash: &Hash,
+        _document: Document
     ) -> Result<(), Errors> {
         Ok(())
     }
 
     async fn get_instance_document_by_schema_hash(
         &self,
-        hash: &Hash
+        _hash: &Hash
     ) -> Result<Option<Document>, Errors> {
         Ok(None)
+    }
+
+    async fn get_translation_node_by_lineages(
+        &self,
+        _lineage_from: &Lineage,
+        _lineage_to: &Lineage
+    ) -> Result<Option<Option<TranslationNode>>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_translation_node(
+        &self,
+        _lineages: (Lineage, Lineage),
+        _translation_node: Option<TranslationNode>
+    ) -> Result<(), Errors> {
+        Ok(())
     }
 }

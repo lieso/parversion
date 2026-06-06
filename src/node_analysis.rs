@@ -91,7 +91,7 @@ pub async fn get_translation_nodes<P: Provider>(
         let handle = task::spawn(async move {
             let _permit = permit;
 
-            let translation_node = get_translation_node(
+            let maybe_translation_node = get_translation_node(
                 cloned_provider,
                 cloned_translation_context,
                 pair,
@@ -100,14 +100,14 @@ pub async fn get_translation_nodes<P: Provider>(
             )
             .await?;
 
-            Ok(Arc::new(translation_node))
+            Ok(maybe_translation_node)
         });
         handles.push(handle);
     }
 
 
 
-    let results: Vec<Result<Arc<TranslationNode>, Errors>> = try_join_all(handles).await?;
+    let results: Vec<Result<Option<TranslationNode>, Errors>> = try_join_all(handles).await?;
 
 
 
@@ -123,10 +123,50 @@ async fn get_translation_node<P: Provider>(
     context_pair: (Arc<Context>, Arc<Context>),
     options: &Options,
     stage_context: &StageContext,
-) -> Result<TranslationNode, Errors> {
+) -> Result<Option<TranslationNode>, Errors> {
     log::trace!("In get_translation_node");
 
-    unimplemented!()
+    let (input_context, target_context) = context_pair;
+
+    if !options.regenerate {
+        if let Some(maybe_translation_node) = provider.get_translation_node_by_lineages(
+            &input_context.lineage,
+            &target_context.lineage,
+        ).await? {
+            return Ok(maybe_translation_node);
+        }
+    }
+
+    let (maybe_translation, (tokens,)) = LLM::get_node_translation(
+        Arc::clone(&translation_context),
+        Arc::clone(&input_context),
+        Arc::clone(&target_context)
+    ).await?;
+
+    if let Some(translation) = maybe_translation {
+        let (transformation) = translation;
+
+        let translation_node = TranslationNode {
+            id: ID::new(),
+            source_lineage: input_context.lineage.clone(),
+            target_lineage: target_context.lineage.clone(),
+            transformation: transformation.clone(),
+        };
+
+        provider.save_translation_node(
+            (input_context.lineage.clone(), target_context.lineage.clone()),
+            Some(translation_node.clone())
+        ).await?;
+
+        Ok(Some(translation_node))
+    } else {
+        provider.save_translation_node(
+            (input_context.lineage.clone(), target_context.lineage.clone()),
+            None
+        ).await?;
+
+        Ok(None)
+    }
 }
 
 pub async fn get_basis_fields<P: Provider>(
