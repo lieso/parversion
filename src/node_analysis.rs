@@ -24,11 +24,53 @@ pub async fn get_translation_nodes<P: Provider>(
     translation_context: Arc<RwLock<TranslationContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<HashMap<ID, Arc<TranslationNode>>, Errors> {
+) -> Result<HashMap<TranslationNodeID, Arc<TranslationNode>>, Errors> {
     log::trace!("In get_translation_nodes");
 
-    let unique_input_contexts = read_lock!(translation_context).must_get_unique_input_contexts()?;
     let unique_target_contexts = read_lock!(translation_context).must_get_unique_target_contexts()?;
+
+
+
+
+
+
+
+
+    let unique_input_contexts = read_lock!(translation_context).must_get_unique_input_contexts()?;
+
+    let mut seen = HashSet::new();
+    let unique_input_contexts: Vec<Arc<Context>> = unique_input_contexts
+        .into_iter()
+        .filter(|context| {
+            seen.insert(context.lineage.clone())
+        })
+        .collect();;
+
+
+
+
+
+
+
+    let context_pairs: Vec<(Arc<Context>, Arc<Context>)> = unique_input_contexts.iter()
+        .flat_map(|context_a| unique_target_contexts.iter().map(move |context_b| {
+            (context_a.clone(), context_b.clone())
+        }))
+        .collect();
+
+
+    for (from, to) in &context_pairs {
+
+        log::debug!("=====================================================================================================");
+
+        log::debug!("input context: {}", read_lock!(from.document_node).to_string());
+        log::debug!("target context: {}", read_lock!(to.document_node).to_string());
+
+    }
+
+    log::info!("Number of context pairs: {}", context_pairs.len());
+
+
 
 
     unimplemented!()

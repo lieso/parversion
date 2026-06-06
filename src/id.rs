@@ -8,6 +8,7 @@ pub type GraphNodeID = ID;
 pub type DocumentNodeID = ID;
 pub type DataNodeID = ID;
 pub type NodeID = ID;
+pub type TranslationNodeID = ID;
 
 #[derive(Clone, Debug, Hash)]
 pub struct ID {
