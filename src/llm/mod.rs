@@ -1,6 +1,7 @@
 use std::sync::{Arc, RwLock};
 use std::collections::{HashSet, HashMap};
 use rand::prelude::*;
+use std::time::Duration;
 
 use crate::basis_field::BasisField;
 use crate::basis_network::BasisNetwork;
@@ -45,6 +46,8 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
         let (response, metadata) = Document::schema_to_instance(schema).await?;
 
         Ok((response.instance_document, (metadata.tokens,)))
@@ -60,6 +63,8 @@ impl LLM {
         log::debug!("║                  PARENT CHILD LINK START                      ║");
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let (response, metadata) = NetworkRelationships::get_parent_child_link(&snippet).await?;
 
@@ -92,6 +97,8 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
         let (response, metadata) = NetworkRelationships::get_composition_link(&snippet).await?;
 
         Ok(((response.forward_xpath, response.reverse_xpath, response.merged_variable_name), (metadata.tokens,)))
@@ -108,6 +115,8 @@ impl LLM {
         log::debug!("║                  IDENTIFY RELATIONSHIPS START                 ║");
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let all_network_jsons: String = network_jsons.iter()
             .map(|(network, json_examples)| {
@@ -162,6 +171,8 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
 
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
         let (redundancy_response, metadata) = NetworkRelationships::get_canonical_networks(
             &original_document,
             &all_network_jsons,
@@ -189,6 +200,8 @@ impl LLM {
         log::debug!("║                  CATEGORIZE GRAPH START                       ║");
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let (categorization_response, metadata) = categorization::Categorization::categorize_graph(
             &document
@@ -227,6 +240,8 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
         log::debug!("");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let result = NetworkAnalysis::get_network_transformation(
             json_examples,
@@ -268,6 +283,8 @@ impl LLM {
         log::debug!("║                                                               ║");
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
         log::debug!("");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let first = group.first().unwrap();
         let fields = first.data_node.fields.clone();
@@ -353,6 +370,8 @@ impl LLM {
         log::debug!("╚═══════════════════════════════════════════════════════════════╝");
         log::debug!("");
 
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
         let sample_size = std::cmp::min(max_sample_size, group.len());
 
         let sampled_contexts: Vec<Arc<Context>> = {
@@ -382,6 +401,8 @@ impl LLM {
         (u64,)
     ), Errors> {
         log::trace!("In infer_basis_field");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
 
         let sample_size = std::cmp::min(20, group.len());
 
