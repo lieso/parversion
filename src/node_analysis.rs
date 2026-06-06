@@ -27,26 +27,7 @@ pub async fn get_translation_nodes<P: Provider>(
     log::trace!("In get_translation_nodes");
 
     let unique_target_contexts = read_lock!(translation_context).must_get_unique_target_contexts()?;
-
-
-
-
-
-
-
-
     let unique_input_contexts = read_lock!(translation_context).must_get_unique_input_contexts()?;
-
-    let mut seen = HashSet::new();
-    let unique_input_contexts: Vec<Arc<Context>> = unique_input_contexts
-        .into_iter()
-        .filter(|context| {
-            seen.insert(context.lineage.clone())
-        })
-        .collect();;
-
-
-
 
 
 
@@ -80,8 +61,23 @@ pub async fn get_translation_nodes<P: Provider>(
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
 
-    for pair in context_pairs {
 
+
+
+    for pair in context_pairs {
+        log::debug!("=====================================================================================================");
+
+        log::debug!("input: {}", serde_json::to_string_pretty(&pair.0.data_node.fields).expect("efnksjen"));
+        log::debug!("target: {}", serde_json::to_string_pretty(&pair.1.data_node.fields).expect("efnksjen"));
+    }
+
+
+
+    panic!();
+
+
+
+    for pair in context_pairs {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
         let cloned_translation_context = Arc::clone(&translation_context);

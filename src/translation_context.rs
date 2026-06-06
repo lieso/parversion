@@ -54,7 +54,18 @@ impl TranslationContext {
         let contexts = maybe_contexts.as_ref().ok_or_else(|| {
             Errors::DeficientMetaContextError("Contexts missing in TranslationContext".to_string())
         })?;
+
         let mut seen = HashSet::new();
-        Ok(contexts.values().filter(|c| seen.insert(c.id.clone())).cloned().collect())
+
+        let unique_contexts = contexts
+            .values()
+            .filter(|c| !c.data_node.fields.is_empty())
+            .filter(|c| {
+                seen.insert(c.id.to_string()) && seen.insert(c.lineage.to_string())
+            })
+            .cloned()
+            .collect();
+
+        Ok(unique_contexts)
     }
 }

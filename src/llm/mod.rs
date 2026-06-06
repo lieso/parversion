@@ -447,6 +447,17 @@ impl LLM {
 
         tokio::time::sleep(Duration::from_millis(50)).await;
 
+
+
+        log::debug!("-----------------------------------------------------------------------------------------------------");
+
+        log::debug!("input: {:?}", input_context.data_node);
+        log::debug!("target: {:?}", target_context.data_node);
+
+
+
+
+
         unimplemented!();
     }
 }

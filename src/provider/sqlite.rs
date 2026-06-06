@@ -526,7 +526,8 @@ impl Provider for SqliteProvider {
                 params![key1, key2],
                 |row| row.get::<_, Option<String>>(0),
             ) {
-                Ok(data) => deserialize(data).map(Some),
+                Ok(Some(data)) => deserialize(data).map(Some),
+                Ok(None) => Ok(Some(None)),
                 Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
                 Err(e) => Err(db_err(e)),
             }
@@ -543,7 +544,8 @@ impl Provider for SqliteProvider {
         let conn = self.connection.clone();
         let key1 = lineages.0.to_string();
         let key2 = lineages.1.to_string();
-        let data = serialize(translation_node);
+
+        let data = serialize(&translation_node)?;
 
         task::spawn_blocking(move || {
             let conn = conn.lock().map_err(|_| lock_err())?;
