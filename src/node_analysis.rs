@@ -39,15 +39,6 @@ pub async fn get_translation_nodes<P: Provider>(
         .collect();
 
 
-    for (from, to) in &context_pairs {
-
-        log::debug!("=====================================================================================================");
-
-        log::debug!("input context: {}", read_lock!(from.document_node).to_string());
-        log::debug!("target context: {}", read_lock!(to.document_node).to_string());
-
-    }
-
     log::info!("Number of context pairs: {}", context_pairs.len());
 
 
@@ -62,18 +53,6 @@ pub async fn get_translation_nodes<P: Provider>(
     let mut handles = Vec::new();
 
 
-
-
-    for pair in context_pairs {
-        log::debug!("=====================================================================================================");
-
-        log::debug!("input: {}", serde_json::to_string_pretty(&pair.0.data_node.fields).expect("efnksjen"));
-        log::debug!("target: {}", serde_json::to_string_pretty(&pair.1.data_node.fields).expect("efnksjen"));
-    }
-
-
-
-    panic!();
 
 
 

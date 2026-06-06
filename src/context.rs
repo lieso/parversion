@@ -1,10 +1,11 @@
 use serde_json::{json, Value, Map};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
+use std::fmt::Write;
 
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
-use crate::graph_node::{GraphNode, GraphNodeID};
+use crate::graph_node::{Graph, GraphNode, GraphNodeID};
 use crate::json_node::JsonNode;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
@@ -21,6 +22,89 @@ pub struct Context {
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
+}
+
+impl Context {
+    pub fn generate_data_node_snippet(
+        &self,
+        graph_root: Graph,
+        contexts: &HashMap<NodeID, Arc<Context>>
+    ) -> String {
+        let mut neighbour_ids = HashSet::new();
+        let graph_node = self.graph_node.clone();
+
+        Self::traverse_for_neighbours(
+            Arc::clone(&graph_node),
+            &mut neighbour_ids,
+            &10
+        );
+
+        let mut snippet = String::new();
+        let target_id = {
+            let lock = read_lock!(graph_node);
+            lock.id.clone()
+        };
+
+        fn traverse(
+            current: Graph,
+            snippet: &mut String,
+            neighbour_ids: &HashSet<GraphNodeID>,
+            target_id: &GraphNodeID,
+            contexts: &HashMap<NodeID, Arc<Context>>
+        ) {
+            let (current_id, children) = {
+                let lock = read_lock!(current);
+                (lock.id.clone(), lock.children.clone())
+            };
+            let current_context = contexts.get(&current_id).unwrap();
+            let data_node = &current_context.data_node;
+
+            let is_target_node = current_id == *target_id;
+            let should_render = is_target_node || neighbour_ids.contains(&current_id);
+
+            if should_render {
+                snippet.push_str("{");
+            }
+
+            if is_target_node {
+                snippet.push_str("// START TARGET NODE FIELDS //");
+
+                for (key, value) in &data_node.fields {
+                    let _ = writeln!(snippet, "{}: {},", key, value);
+                }
+
+                snippet.push_str("// END TARGET NODE FIELDS //");
+            } else if should_render {
+                for (key, value) in &data_node.fields {
+                    let _ = writeln!(snippet, "{}: {},", key, value);
+                }
+            }
+
+            for child in &children {
+                traverse(
+                    Arc::clone(&child),
+                    snippet,
+                    neighbour_ids,
+                    target_id,
+                    contexts,
+                );
+            }
+
+            if should_render {
+                snippet.push_str("}");
+            }
+        }
+
+        traverse(
+            Arc::clone(&graph_root),
+            &mut snippet,
+            &neighbour_ids,
+            &target_id,
+            contexts,
+        );
+
+        snippet
+    }
 }
 
 impl Context {
@@ -163,7 +247,7 @@ impl Context {
         let mut neighbour_ids = HashSet::new();
         let graph_node = self.graph_node.clone();
 
-        Self::traverse_for_neighbours(Arc::clone(&graph_node), &mut neighbour_ids);
+        Self::traverse_for_neighbours(Arc::clone(&graph_node), &mut neighbour_ids, &20);
 
         let mut snippet = String::new();
         let lock = read_lock!(normalization_context);
@@ -231,6 +315,7 @@ impl Context {
     fn traverse_for_neighbours(
         start_node: Arc<RwLock<GraphNode>>,
         visited: &mut HashSet<GraphNodeID>,
+        max_neighbours: &usize
     ) {
         let mut queue: VecDeque<Arc<RwLock<GraphNode>>> = VecDeque::new();
         queue.push_back(Arc::clone(&start_node));
@@ -245,7 +330,7 @@ impl Context {
 
             visited.insert(graph_node_id.clone());
 
-            if visited.len() > 20 {
+            if visited.len() > *max_neighbours {
                 return;
             }
 

@@ -455,6 +455,26 @@ impl LLM {
         log::debug!("target: {:?}", target_context.data_node);
 
 
+        let lock = read_lock!(translation_context);
+
+        let input_contexts = lock.input_contexts.as_ref().unwrap();
+        let input_graph_root = lock.input_graph_root.as_ref().unwrap();
+        let target_contexts = lock.target_contexts.as_ref().unwrap();
+        let target_graph_root = lock.target_graph_root.as_ref().unwrap();
+
+        let input_snippet = input_context.generate_data_node_snippet(
+            Arc::clone(&input_graph_root),
+            input_contexts,
+        );
+
+        let target_snippet = target_context.generate_data_node_snippet(
+            Arc::clone(&target_graph_root),
+            target_contexts,
+        );
+
+
+        log::debug!("input_snippet: {}", input_snippet);
+        log::debug!("target_snippet: {}", target_snippet);
 
 
 
