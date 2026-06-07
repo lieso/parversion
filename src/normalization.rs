@@ -232,11 +232,11 @@ async fn normalize_html<P: Provider>(
     let mut document = document;
 
     log::info!("Traversing document");
-    let (contexts, graph_root) = document.get_contexts(normalization_context.clone())?;
+    let meta_context = document.generate_meta_context()?;
 
     {
         let mut lock = write_lock!(normalization_context);
-        lock.update_data_structures(contexts, graph_root);
+        lock.update_meta_context(meta_context);
     }
 
     log::info!("Getting classification");

@@ -8,6 +8,7 @@ use xmltree::Element;
 use crate::prelude::*;
 use crate::context::Context;
 use crate::data_node::DataNode;
+use crate::meta_context::MetaContext;
 use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::graph_node::GraphNode;
 use crate::hash::Hash;
@@ -16,28 +17,23 @@ use crate::document::{Document, DocumentType, DocumentMetadata};
 pub struct Html;
 
 impl Html {
-    pub fn get_contexts(
-        normalization_context: Arc<RwLock<NormalizationContext>>,
+    pub fn generate_meta_context(
         metadata: &DocumentMetadata,
         data: String
-    ) -> Result<
-        (
-            HashMap<ID, Arc<Context>>, // context
-            Arc<RwLock<GraphNode>>,    // graph root
-        ),
-        Errors,
-    > {
-        log::trace!("In get_contexts");
+    ) -> Result<MetaContext, Errors> {
+        log::trace!("In generate_meta_context");
 
         let document_root = Self::get_document_node(data)?;
         let document_root = Arc::new(RwLock::new(document_root.clone()));
 
-        let mut contexts: HashMap<ID, Arc<Context>> = HashMap::new();
+        let mut contexts: HashMap<ContextID, Arc<Context>> = HashMap::new();
+        let mut contexts_lookup: HashMap<ID, Arc<Context>> = HashMap::new();
 
         fn recurse(
             document_node: Arc<RwLock<DocumentNode>>,
             parent_lineage: &Lineage,
-            contexts: &mut HashMap<ID, Arc<Context>>,
+            contexts: &mut HashMap<ContextID, Arc<Context>>,
+            contexts_lookup: &mut HashMap<ID, Arc<Context>>,
             parents: Vec<Arc<RwLock<GraphNode>>>,
         ) -> Arc<RwLock<GraphNode>> {
             let (hash, lineage, fields, description) = {
@@ -68,9 +64,10 @@ impl Html {
                 data_node: Arc::clone(&data_node),
             });
 
-            contexts.insert(data_node.id.clone(), Arc::clone(&context));
-            contexts.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
-            contexts.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
+            contexts.insert(context.id.clone(), Arc::clone(&context));
+            contexts_lookup.insert(data_node.id.clone(), Arc::clone(&context));
+            contexts_lookup.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
+            contexts_lookup.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
 
             {
                 let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
@@ -81,6 +78,7 @@ impl Html {
                             Arc::new(RwLock::new(child)),
                             &data_node.lineage,
                             contexts,
+                            contexts_lookup,
                             vec![Arc::clone(&graph_node)],
                         )
                     })
@@ -113,10 +111,15 @@ impl Html {
             Arc::clone(&document_root),
             &initial_lineage,
             &mut contexts,
+            &mut contexts_lookup,
             Vec::new(),
         );
 
-        Ok((contexts, graph_root))
+        Ok(MetaContext {
+            contexts,
+            graph_root,
+            contexts_lookup,
+        })
     }
 
     fn get_document_node(data: String) -> Result<DocumentNode, Errors> {

@@ -8,8 +8,6 @@ mod xml;
 mod html;
 
 use crate::prelude::*;
-use crate::context::Context;
-use crate::graph_node::GraphNode;
 use crate::document_format::DocumentFormat;
 use crate::provider::Provider;
 use crate::llm::LLM;
@@ -123,29 +121,18 @@ impl Document {
         self.data.clone()
     }
 
-    pub fn get_contexts(
-        &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-    ) -> Result<
-        (
-            HashMap<ID, Arc<Context>>, // context
-            Arc<RwLock<GraphNode>>,    // graph root
-        ),
-        Errors,
-    > {
-        log::trace!("In get_contexts");
+    pub fn generate_meta_context(&self) -> Result<MetaContext, Errors> {
+        log::trace!("In generate_meta_context");
 
         match self.document_type {
-            DocumentType::Json => Json::get_contexts(
-                Arc::clone(&normalization_context),
+            DocumentType::Json => Json::generate_meta_context(
                 &self.metadata,
                 self.data.clone()
             ),
             DocumentType::PlainText => unimplemented!(),
             DocumentType::JavaScript => unimplemented!(),
             DocumentType::Xml => unimplemented!(),
-            DocumentType::Html => Html::get_contexts(
-                Arc::clone(&normalization_context),
+            DocumentType::Html => Html::generate_meta_context(
                 &self.metadata,
                 self.data.clone()
             ),
