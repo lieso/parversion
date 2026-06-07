@@ -455,9 +455,9 @@ async fn get_basis_network<P: Provider>(
 
     stage_context.record_events("Network analysis", 0);
 
-    let contexts = {
+    let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.contexts.clone().ok_or(Errors::ContextsNotProvided)?
+        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
     };
 
     if !options.regenerate {
