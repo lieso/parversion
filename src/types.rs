@@ -22,6 +22,7 @@ pub enum Errors {
     FieldTransformationFieldNotFound,
     ContextTooLarge,
     DeficientNormalizationContextError(String),
+    DeficientTranslationContextError(String),
     DocumentVersionNotFound,
     ClassificationNotFound,
     OriginNotProvidedError,

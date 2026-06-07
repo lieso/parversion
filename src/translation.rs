@@ -1,13 +1,10 @@
 use std::sync::{Arc, RwLock};
-use std::collections::HashSet;
-
 use crate::document::{Document, DocumentType, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::normalization_context::NormalizationContext;
 use crate::translation_context::TranslationContext;
-use crate::normalization::{normalize, normalize_text};
+use crate::normalization::normalize;
 use crate::package::Package;
-use crate::context::Context;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::normalization;
@@ -107,7 +104,7 @@ pub async fn translate_json<P: Provider>(
 ) -> Result<(), Errors> {
     log::trace!("In translate_json");
 
-    let (translation_contexts, translation_graph_root) = document.get_contexts(Arc::clone(&normalization_context))?;
+    let translation_meta_context = document.generate_meta_context()?;
 
     let normalized_document = Document::from_normalized_graph(
         Arc::clone(&normalization_context),
@@ -123,16 +120,11 @@ pub async fn translate_json<P: Provider>(
         }
     )?;
 
-    let (normalized_contexts, normalized_graph_root) = normalized_document.get_contexts(Arc::clone(&normalization_context))?;
+    let normalized_meta_context = normalized_document.generate_meta_context()?;
 
     {
         let mut lock = write_lock!(translation_context);
-        lock.update_contexts(
-            normalized_contexts,
-            normalized_graph_root,
-            translation_contexts,
-            translation_graph_root
-        );
+        lock.update_meta_contexts(normalized_meta_context, translation_meta_context);
     }
 
     Ok(())
