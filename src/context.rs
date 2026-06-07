@@ -9,7 +9,6 @@ use crate::graph_node::{Graph, GraphNode, GraphNodeID};
 use crate::json_node::JsonNode;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
-use crate::provider::Provider;
 use crate::basis_group::BasisGroup;
 
 pub type ContextID = ID;
@@ -133,7 +132,7 @@ impl Context {
 
             let contexts = {
                 let lock = read_lock!(normalization_context);
-                lock.contexts.clone().unwrap()
+                lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
             };
             let context_to_group = {
                 let lock = read_lock!(normalization_context);
@@ -250,8 +249,10 @@ impl Context {
         Self::traverse_for_neighbours(Arc::clone(&graph_node), &mut neighbour_ids, &20);
 
         let mut snippet = String::new();
-        let lock = read_lock!(normalization_context);
-        let graph_root = lock.graph_root.clone().unwrap();
+        let graph_root = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.as_ref().unwrap().graph_root.clone()
+        };
 
         Self::traverse_for_snippet(
             Arc::clone(&normalization_context),
@@ -271,11 +272,11 @@ impl Context {
         target_id: &GraphNodeID,
         snippet: &mut String,
     ) {
-        let meta_context_lock = read_lock!(normalization_context);
+        let normalization_context_lock = read_lock!(normalization_context);
         let lock = read_lock!(current_node);
         let current_id = lock.id.clone();
-        let contexts = meta_context_lock.contexts.as_ref().unwrap();
-        let current_context = contexts.get(&current_id).unwrap();
+        let contexts_lookup = &normalization_context_lock.meta_context.as_ref().unwrap().contexts_lookup;
+        let current_context = contexts_lookup.get(&current_id).unwrap();
         let document_node = current_context.document_node.clone();
 
         let should_render = if current_id == *target_id {

@@ -537,7 +537,7 @@ fn build_normalized_graph<P: Provider>(
 
     let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
-    let graph_root = read_lock!(normalization_context).graph_root.clone().unwrap();
+    let graph_root = read_lock!(normalization_context).meta_context.as_ref().unwrap().graph_root.clone();
 
     let mut queue = VecDeque::new();
     queue.push_back(graph_root);
@@ -873,9 +873,10 @@ fn process_node(
 
     let context = {
         let lock = read_lock!(normalization_context);
-        let contexts = lock.contexts.clone().unwrap();
-
-        contexts.get(&read_lock!(node).id).cloned().unwrap()
+        lock.meta_context.as_ref().unwrap().contexts_lookup
+            .get(&read_lock!(node).id)
+            .cloned()
+            .unwrap()
     };
     let context_to_group = {
         let lock = read_lock!(normalization_context);
