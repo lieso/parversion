@@ -90,7 +90,7 @@ impl NetworkRelationship {
             let lock = read_lock!(normalization_context);
             lock.graph_root
                 .clone()
-                .ok_or(Errors::GraphRootNotProvided)?
+                .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
         };
 
         let target_graph_nodes = Self::get_target_graph_nodes(
@@ -266,7 +266,7 @@ impl NetworkRelationship {
             let lock = read_lock!(normalization_context);
             lock.graph_root
                 .clone()
-                .ok_or(Errors::GraphRootNotProvided)?
+                .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
         };
 
         let mut network_jsons: Vec<(Arc<BasisNetwork>, Vec<String>)> = Vec::new();
@@ -303,7 +303,7 @@ impl NetworkRelationship {
             let lock = read_lock!(normalization_context);
             lock.graph_root
                 .clone()
-                .ok_or(Errors::GraphRootNotProvided)?
+                .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
         };
 
         let mut all_network_jsons = String::new();

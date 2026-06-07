@@ -36,9 +36,11 @@ pub async fn get_classification<P: Provider>(
     let original_document = get_original_document_condensed(Arc::clone(&normalization_context))?;
     let graph_root = {
         let lock = read_lock!(normalization_context);
-        lock.graph_root
+        lock.meta_context
+            .as_ref()
+            .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
+            .graph_root
             .clone()
-            .ok_or(Errors::GraphRootNotProvided)?
     };
     let lineage = read_lock!(graph_root).lineage.clone();
     let acyclic_subgraph_hash: Hash = read_lock!(graph_root).acyclic_subgraph_hash();

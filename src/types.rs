@@ -20,7 +20,6 @@ pub enum Errors {
     PathConversionError,
     FetchUrlError(String),
     FieldTransformationFieldNotFound,
-    GraphRootNotProvided,
     ContextsNotProvided,
     ContextTooLarge,
     DeficientNormalizationContextError(String),
