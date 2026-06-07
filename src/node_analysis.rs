@@ -182,27 +182,21 @@ pub async fn get_basis_fields<P: Provider>(
         }
     }
 
-    let contexts = {
+    let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.contexts
+        lock.meta_context
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Contexts not provided in normalization context".to_string())
             })?
     };
 
+    let contexts: Vec<Arc<Context>> = meta_context.contexts.values().cloned().collect();
+
     log::info!("Number of contexts: {}", contexts.len());
 
-    let mut seen = HashSet::new();
-    let unique_contexts: Vec<Arc<Context>> = contexts
-        .into_values()
-        .filter(|context| seen.insert(context.id.clone()))
-        .collect();
-
-    log::info!("Number of unique contexts: {}", unique_contexts.len());
-
     let mut contexts_by_field: HashMap<String, Vec<Arc<Context>>> = HashMap::new();
-    for context in unique_contexts {
+    for context in contexts {
         for field_name in context.data_node.fields.keys() {
             contexts_by_field
                 .entry(field_name.clone())
@@ -323,20 +317,14 @@ pub fn get_context_groups<P: Provider>(
 
     let non_empty_contexts = get_non_empty_contexts(Arc::clone(&normalization_context))?;
 
-    let mut seen = HashSet::new();
-    let unique_contexts: Vec<Arc<Context>> = non_empty_contexts
-        .into_iter()
-        .filter(|context| seen.insert(context.id.clone()))
-        .collect();
-
-    log::info!("Number of unique contexts: {}", unique_contexts.len());
+    log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
 
     let basis_groups = {
         let lock = read_lock!(normalization_context);
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Basis groups not provided in normalization context".to_string())
             })?
             .values()
             .cloned()
@@ -354,7 +342,7 @@ pub fn get_context_groups<P: Provider>(
     let mut context_groups: HashMap<ID, Vec<Arc<Context>>> = HashMap::new();
     let mut context_to_group: HashMap<ID, Arc<BasisGroup>> = HashMap::new();
 
-    for context in unique_contexts {
+    for context in non_empty_contexts {
         let Some(candidate_groups) = groups_by_acyclic.get(&context.acyclic_lineage) else {
             continue;
         };
@@ -417,23 +405,13 @@ pub async fn get_basis_groups<P: Provider>(
 ) -> Result<HashMap<ID, Arc<BasisGroup>>, Errors> {
     log::trace!("In get_basis_groups");
 
-    // NOTE: there are three duplicate contexts: one for each data node, graph node and document node
-
     let non_empty_contexts = get_non_empty_contexts(Arc::clone(&normalization_context))?;
 
     log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
 
-    let mut seen = HashSet::new();
-    let unique_contexts: Vec<Arc<Context>> = non_empty_contexts
-        .into_iter()
-        .filter(|context| seen.insert(context.id.clone()))
-        .collect();
-
-    log::info!("Number of unique contexts: {}", unique_contexts.len());
-
     let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
 
-    for context in unique_contexts {
+    for context in non_empty_contexts {
         acyclic_contexts
             .entry(context.acyclic_lineage.clone())
             .or_insert_with(Vec::new)
@@ -981,31 +959,33 @@ async fn get_basis_node<P: Provider>(
 }
 
 fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext>>) -> Result<Vec<Arc<Context>>, Errors> {
-    let contexts = {
+    let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.contexts
+        lock.meta_context
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Contexts not provided in normalization context".to_string())
             })?
     };
-    
+
     let basis_fields: Vec<Arc<BasisField>> = {
         let lock = read_lock!(normalization_context);
         lock.basis_fields
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Basis fields not provided in normalization context".to_string())
             })?
             .values()
             .cloned()
             .collect::<Vec<_>>()
     };
 
+    let contexts: Vec<Arc<Context>> = meta_context.contexts.values().cloned().collect();
+
     log::info!("Number of contexts: {}", contexts.len());
 
     let non_empty_contexts: Vec<Arc<Context>> = contexts
-        .into_values()
+        .into_iter()
         .filter(|context| {
             for (field, _value) in &context.data_node.fields {
                 for basis_field in &basis_fields {
