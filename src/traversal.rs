@@ -25,7 +25,7 @@ pub fn get_original_document_condensed(normalization_context: Arc<RwLock<Normali
     let mut visited_lineages: HashSet<Lineage> = HashSet::new();
     let root_node = {
         let lock = read_lock!(normalization_context);
-        lock.graph_root.clone().unwrap()
+        lock.meta_context.as_ref().unwrap().graph_root.clone()
     };
 
     traverse_for_condensed_document(
@@ -46,8 +46,8 @@ fn traverse_for_condensed_document(
 ) {
     let lock = read_lock!(current_node);
     let current_id = lock.id.clone();
-    let current_context = read_lock!(normalization_context).contexts.clone().unwrap();
-    let current_context = current_context.get(&current_id).unwrap();
+    let contexts_lookup = read_lock!(normalization_context).meta_context.as_ref().unwrap().contexts_lookup.clone();
+    let current_context = contexts_lookup.get(&current_id).unwrap();
     let current_lineage = current_context.lineage.clone();
     let document_node = current_context.document_node.clone();
 

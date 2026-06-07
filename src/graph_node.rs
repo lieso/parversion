@@ -220,11 +220,11 @@ impl GraphNode {
             panic!("Received node_test '*'");
         }
 
-        let contexts = {
+        let contexts_lookup = {
             let lock = read_lock!(normalization_context);
-            lock.contexts.clone().unwrap()
+            lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
         };
-        let current_context = contexts.get(&read_lock!(graph).id).unwrap();
+        let current_context = contexts_lookup.get(&read_lock!(graph).id).unwrap();
         let document_node = current_context.document_node.clone();
         let name = read_lock!(document_node).get_element_name();
 
@@ -261,16 +261,16 @@ impl GraphNode {
             XPathPredicate::Attribute { name, value } => {
                 log::debug!("Checking Attribute predicate: {}='{}'", name, value);
 
-                let contexts = {
+                let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
-                    lock.contexts.clone().unwrap()
+                    lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
                 };
 
                 let filtered: Vec<Graph> = graphs
                     .iter()
                     .filter(|graph| {
                         let graph_id = read_lock!(graph).id.clone();
-                        contexts
+                        contexts_lookup
                             .get(&graph_id)
                             .and_then(|context| {
                                 let _foo = read_lock!(&context.document_node)

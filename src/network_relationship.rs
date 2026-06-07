@@ -88,9 +88,11 @@ impl NetworkRelationship {
     ) -> Result<String, Errors> {
         let graph_root = {
             let lock = read_lock!(normalization_context);
-            lock.graph_root
-                .clone()
+            lock.meta_context
+                .as_ref()
                 .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
+                .graph_root
+                .clone()
         };
 
         let target_graph_nodes = Self::get_target_graph_nodes(
@@ -123,12 +125,12 @@ impl NetworkRelationship {
     )  {
         let lock = read_lock!(current);
         
-        let contexts = {
+        let contexts_lookup = {
             let lock = read_lock!(normalization_context);
-            lock.contexts.clone().unwrap()
+            lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
         };
 
-        let current_context = contexts.get(&lock.id).unwrap();
+        let current_context = contexts_lookup.get(&lock.id).unwrap();
         let document_node = current_context.document_node.clone();
 
         let should_render = target_graph_nodes.contains(&lock.id);
@@ -262,13 +264,6 @@ impl NetworkRelationship {
     ) -> Result<(Vec<(Arc<BasisNetwork>, Arc<BasisNetwork>, NetworkRelationshipType)>, (u64,)), Errors> {
         log::trace!("In get_relationship_typing");
 
-        let _graph_root = {
-            let lock = read_lock!(normalization_context);
-            lock.graph_root
-                .clone()
-                .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
-        };
-
         let mut network_jsons: Vec<(Arc<BasisNetwork>, Vec<String>)> = Vec::new();
 
         for network in networks.iter() {
@@ -299,13 +294,6 @@ impl NetworkRelationship {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         networks: Vec<Arc<BasisNetwork>>
     ) -> Result<(Vec<BasisNetwork>, (u64,)), Errors> {
-        let _graph_root = {
-            let lock = read_lock!(normalization_context);
-            lock.graph_root
-                .clone()
-                .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
-        };
-
         let mut all_network_jsons = String::new();
 
         for network in networks.iter() {
@@ -368,7 +356,7 @@ impl NetworkRelationship {
 
         let mut network_jsons: Vec<String> = Vec::new();
 
-        let graph_root = read_lock!(normalization_context).graph_root.clone().unwrap();
+        let graph_root = read_lock!(normalization_context).meta_context.as_ref().unwrap().graph_root.clone();
 
         let mut queue = VecDeque::new();
         queue.push_back(graph_root);
@@ -458,16 +446,16 @@ impl NetworkRelationship {
                 }
             }
 
-            let contexts = {
+            let contexts_lookup = {
                 let lock = read_lock!(normalization_context);
-                lock.contexts.clone().unwrap()
+                lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
             };
             let context_to_group = {
                 let lock = read_lock!(normalization_context);
                 lock.context_to_group.clone().unwrap()
             };
 
-            let context = contexts.get(&read_lock!(graph_node).id).unwrap();
+            let context = contexts_lookup.get(&read_lock!(graph_node).id).unwrap();
             let data_node = &context.data_node;
 
             let maybe_basis_group: Option<Arc<BasisGroup>> = context_to_group.get(&context.id).cloned();
