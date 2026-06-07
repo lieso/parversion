@@ -472,7 +472,7 @@ async fn get_basis_network<P: Provider>(
     let mut complex_json: Vec<String> = Vec::new();
 
     for graph in graphs.iter().take(5) {
-        let context = contexts.get(&read_lock!(graph).id).unwrap().clone();
+        let context = meta_context.contexts_lookup.get(&read_lock!(graph).id).unwrap().clone();
         let json = context.generate_json_snippet(
             Arc::clone(&normalization_context)
         )?;
@@ -519,9 +519,9 @@ async fn get_basis_network<P: Provider>(
 }
 
 fn collect_complex_unique_subgraphs(normalization_context: Arc<RwLock<NormalizationContext>>) -> HashMap<Hash, Vec<Graph>> {
-    let contexts = {
+    let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.contexts.clone().unwrap_or_default()
+        lock.meta_context.clone()
     };
 
     get_unique_subgraphs(Arc::clone(&normalization_context))
@@ -529,7 +529,7 @@ fn collect_complex_unique_subgraphs(normalization_context: Arc<RwLock<Normalizat
         .filter(|(_, graphs)| {
             graphs.iter().take(5).any(|graph| {
                 let graph_id = read_lock!(graph).id.clone();
-                if let Some(context) = contexts.get(&graph_id) {
+                if let Some(context) = meta_context.as_ref().and_then(|m| m.contexts_lookup.get(&graph_id)) {
                     if let Ok(json) = context.generate_json_snippet(Arc::clone(&normalization_context)) {
                         return json.len() > 1;
                     }
@@ -543,7 +543,7 @@ fn collect_complex_unique_subgraphs(normalization_context: Arc<RwLock<Normalizat
 fn get_unique_subgraphs(normalization_context: Arc<RwLock<NormalizationContext>>) -> HashMap<Hash, Vec<Graph>> {
     let graph_root = {
         let lock = read_lock!(normalization_context);
-        lock.graph_root.as_ref().unwrap().clone()
+        lock.meta_context.as_ref().unwrap().graph_root.clone()
     };
 
     let mut queue = VecDeque::new();
