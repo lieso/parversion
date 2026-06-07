@@ -306,7 +306,7 @@ impl LLM {
                 lock.basis_fields
                     .as_ref()
                     .ok_or_else(|| {
-                        Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+                        Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
                     })?
                     .values()
                     .cloned()

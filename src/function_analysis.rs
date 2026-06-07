@@ -22,7 +22,7 @@ pub async fn functions_to_operations<P: Provider>(
         let lock = read_lock!(normalization_context);
 
         lock.functions.clone().ok_or_else(|| {
-            Errors::DeficientMetaContextError("Missings functions from meta context".to_string())
+            Errors::DeficientNormalizationContextError("Missings functions from meta context".to_string())
         })?
     };
 

@@ -52,7 +52,7 @@ impl TranslationContext {
 
     fn unique_contexts_from(maybe_contexts: &Option<HashMap<ID, Arc<Context>>>) -> Result<Vec<Arc<Context>>, Errors> {
         let contexts = maybe_contexts.as_ref().ok_or_else(|| {
-            Errors::DeficientMetaContextError("Contexts missing in TranslationContext".to_string())
+            Errors::DeficientNormalizationContextError("Contexts missing in TranslationContext".to_string())
         })?;
 
         let mut seen = HashSet::new();

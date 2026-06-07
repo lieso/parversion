@@ -14,7 +14,7 @@ pub async fn report_basis_groups<P: Provider>(
         lock.context_groups
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Context groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Context groups not provided in meta context".to_string())
             })?
     };
     let basis_groups = {
@@ -22,7 +22,7 @@ pub async fn report_basis_groups<P: Provider>(
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Basis groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
             })?
             .values()
             .cloned()

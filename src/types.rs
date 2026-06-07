@@ -23,7 +23,7 @@ pub enum Errors {
     GraphRootNotProvided,
     ContextsNotProvided,
     ContextTooLarge,
-    DeficientMetaContextError(String),
+    DeficientNormalizationContextError(String),
     DocumentVersionNotFound,
     ClassificationNotFound,
     OriginNotProvidedError,

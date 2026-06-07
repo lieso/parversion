@@ -122,7 +122,7 @@ fn handle_error(err: Errors) {
     match err {
         Errors::YamlParseError(msg)
         | Errors::FetchUrlError(msg)
-        | Errors::DeficientMetaContextError(msg) => {
+        | Errors::DeficientNormalizationContextError(msg) => {
             eprintln!("Error: {}", msg);
         }
         _ => {

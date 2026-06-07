@@ -157,7 +157,7 @@ pub async fn get_basis_fields<P: Provider>(
         lock.classification
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Classification not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Classification not provided in meta context".to_string())
             })?
     };
 
@@ -187,7 +187,7 @@ pub async fn get_basis_fields<P: Provider>(
         lock.contexts
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
             })?
     };
 
@@ -336,7 +336,7 @@ pub fn get_context_groups<P: Provider>(
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Basis groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
             })?
             .values()
             .cloned()
@@ -875,7 +875,7 @@ pub async fn get_basis_nodes<P: Provider>(
         lock.basis_groups
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Basis groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
             })?
     };
     let context_groups = {
@@ -883,7 +883,7 @@ pub async fn get_basis_nodes<P: Provider>(
         lock.context_groups
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Context groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Context groups not provided in meta context".to_string())
             })?
     };
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
@@ -986,7 +986,7 @@ fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext
         lock.contexts
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
             })?
     };
     
@@ -995,7 +995,7 @@ fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext
         lock.basis_fields
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Contexts not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
             })?
             .values()
             .cloned()
