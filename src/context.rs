@@ -39,7 +39,17 @@ impl Context {
             &mut neighbourhood
         );
 
-        unimplemented!()
+        let mut partial_document = String::new();
+
+        render_neighbourhood(
+            meta_context,
+            &neighbourhood,
+            &read_lock!(self.graph_node).id,
+            Arc::clone(&meta_context.graph_root),
+            &mut partial_document
+        );
+
+        partial_document
     }
 }
 
@@ -311,7 +321,6 @@ fn traverse_structural_envelope(
     // ******************************************
     let max_neighbours = 30;
     let max_children = 5;
-    let max_parents = 5;
     // ******************************************
     
     let mut queue: VecDeque<Graph> = VecDeque::new();
@@ -330,12 +339,42 @@ fn traverse_structural_envelope(
             return;
         }
 
-        for child in lock.children.iter().take(max_children) {
+        // Center the children around the target node,
+        // only if one of these children is the target_node
+        let children = lock.children.clone();
+
+        let children_to_enqueue = if children.iter().any(|child| {
+            read_lock!(child).id == read_lock!(target_node).id
+        }) {
+            let target_node_position = children.iter().position(|child| {
+                read_lock!(child).id == read_lock!(target_node).id
+            }).unwrap();
+
+            let half = max_children / 2;
+            let start = target_node_position.saturating_sub(half);
+            let end = (start + max_children).min(children.len());
+
+            &children[start..end]
+        } else {
+            &children[..max_children.min(children.len())]
+        };
+
+        for child in children_to_enqueue.iter() {
             queue.push_back(Arc::clone(child));
         }
 
-        for parent in lock.parents.iter().take(max_parents) {
+        for parent in lock.parents.iter() {
             queue.push_back(Arc::clone(parent));
         }
     }
+}
+
+fn render_neighbourhood(
+    meta_context: &MetaContext,
+    neighbourhood: &HashSet<GraphNodeID>,
+    target_id: &GraphNodeID,
+    current_node: Graph,
+    partial_document: &mut String
+) {
+    unimplemented!()
 }
