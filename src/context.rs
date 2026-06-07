@@ -24,87 +24,28 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn generate_data_node_snippet(
-        &self,
-        graph_root: Graph,
-        contexts: &HashMap<NodeID, Arc<Context>>
-    ) -> String {
-        let mut neighbour_ids = HashSet::new();
-        let graph_node = self.graph_node.clone();
+    pub fn generate_context_string(&self, meta_context: &MetaContext) -> String {
 
-        Self::traverse_for_neighbours(
-            Arc::clone(&graph_node),
-            &mut neighbour_ids,
-            &10
+        let spatial_context: String = self.generate_spatial_context(meta_context);
+
+        unimplemented!()
+    }
+
+    fn generate_spatial_context(&self, meta_context: &MetaContext) -> String {
+        let mut neighbourhood = HashSet::new();
+
+        traverse_structural_envelope(
+            Arc::clone(&self.graph_node),
+            &mut neighbourhood
         );
 
-        let mut snippet = String::new();
-        let target_id = {
-            let lock = read_lock!(graph_node);
-            lock.id.clone()
-        };
-
-        fn traverse(
-            current: Graph,
-            snippet: &mut String,
-            neighbour_ids: &HashSet<GraphNodeID>,
-            target_id: &GraphNodeID,
-            contexts: &HashMap<NodeID, Arc<Context>>
-        ) {
-            let (current_id, children) = {
-                let lock = read_lock!(current);
-                (lock.id.clone(), lock.children.clone())
-            };
-            let current_context = contexts.get(&current_id).unwrap();
-            let data_node = &current_context.data_node;
-
-            let is_target_node = current_id == *target_id;
-            let should_render = is_target_node || neighbour_ids.contains(&current_id);
-
-            if should_render {
-                snippet.push_str("{");
-            }
-
-            if is_target_node {
-                snippet.push_str("// START TARGET NODE FIELDS //");
-
-                for (key, value) in &data_node.fields {
-                    let _ = writeln!(snippet, "{}: {},", key, value);
-                }
-
-                snippet.push_str("// END TARGET NODE FIELDS //");
-            } else if should_render {
-                for (key, value) in &data_node.fields {
-                    let _ = writeln!(snippet, "{}: {},", key, value);
-                }
-            }
-
-            for child in &children {
-                traverse(
-                    Arc::clone(&child),
-                    snippet,
-                    neighbour_ids,
-                    target_id,
-                    contexts,
-                );
-            }
-
-            if should_render {
-                snippet.push_str("}");
-            }
-        }
-
-        traverse(
-            Arc::clone(&graph_root),
-            &mut snippet,
-            &neighbour_ids,
-            &target_id,
-            contexts,
-        );
-
-        snippet
+        unimplemented!()
     }
 }
+
+
+
+
 
 impl Context {
     pub fn get_indexed_lineage(&self, depth: usize) -> Option<Lineage> {
@@ -350,5 +291,51 @@ impl Context {
         let marker_suffix = "<!-- Target node: End -->";
 
         format!("{}{}{}", marker_prefix, text, marker_suffix)
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+fn traverse_structural_envelope(
+    target_node: Graph,
+    neighbourhood: &mut HashSet<GraphNodeID>,
+) {
+    // ******************************************
+    let max_neighbours = 30;
+    let max_children = 5;
+    let max_parents = 5;
+    // ******************************************
+    
+    let mut queue: VecDeque<Graph> = VecDeque::new();
+    queue.push_back(Arc::clone(&target_node));
+
+    while let Some(node) = queue.pop_front() {
+        let lock = read_lock!(node);
+
+        if neighbourhood.contains(&lock.id) {
+            continue;
+        }
+
+        neighbourhood.insert(lock.id.clone());
+
+        if neighbourhood.len() > max_neighbours {
+            return;
+        }
+
+        for child in lock.children.iter().take(max_children) {
+            queue.push_back(Arc::clone(child));
+        }
+
+        for parent in lock.parents.iter().take(max_parents) {
+            queue.push_back(Arc::clone(parent));
+        }
     }
 }
