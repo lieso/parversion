@@ -44,7 +44,6 @@ impl Context {
         render_neighbourhood(
             meta_context,
             &neighbourhood,
-            &read_lock!(self.graph_node).id,
             Arc::clone(&meta_context.graph_root),
             &mut partial_document
         );
@@ -372,9 +371,31 @@ fn traverse_structural_envelope(
 fn render_neighbourhood(
     meta_context: &MetaContext,
     neighbourhood: &HashSet<GraphNodeID>,
-    target_id: &GraphNodeID,
     current_node: Graph,
     partial_document: &mut String
 ) {
+    let current_context = meta_context.contexts_lookup.get(&read_lock!(current_node).id).unwrap();
+    let is_neighbour = neighbourhood.contains(&read_lock!(current_node).id);
+    let document_node = read_lock!(current_context.document_node);
+
+    if is_neighbour {
+        let prefix = document_node.render_prefix();
+        partial_document.push_str(&prefix);
+    }
+
+    for child in &read_lock!(current_node).children {
+        render_neighbourhood(
+            meta_context,
+            neighbourhood,
+            Arc::clone(&child),
+            partial_document
+        );
+    }
+
+    if is_neighbour {
+        let suffix = document_node.render_suffix();
+        partial_document.push_str(&suffix);
+    }
+
     unimplemented!()
 }

@@ -27,6 +27,14 @@ impl DocumentNode {
         }
     }
 
+    pub fn render_prefix(&self) -> String {
+        unimplemented!()
+    }
+
+    pub fn render_suffix(&self) -> String {
+        unimplemented!()
+    }
+
     pub fn to_string(&self) -> String {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::to_string(&node),
