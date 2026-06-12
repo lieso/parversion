@@ -10,6 +10,8 @@ use crate::json_node::JsonNode;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::basis_group::BasisGroup;
+use crate::document::Document;
+use crate::document_format::DocumentFormat;
 
 pub type ContextID = ID;
 
@@ -24,20 +26,37 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn generate_context_string(&self, meta_context: &MetaContext) -> String {
+    pub fn generate_context_string(&self, meta_context: &MetaContext) -> Result<String, Errors> {
 
-        let spatial_context: String = self.generate_spatial_context(meta_context);
+        let spatial_context: String = self.generate_spatial_context(meta_context)?;
 
         unimplemented!()
     }
 
-    fn generate_spatial_context(&self, meta_context: &MetaContext) -> String {
+    fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
 
         traverse_structural_envelope(
             Arc::clone(&self.graph_node),
             &mut neighbourhood
         );
+
+        let document_type = read_lock!(self.document_node).get_document_type();
+
+        let partial_document = Document::from_meta_context(
+            meta_context,
+            &DocumentFormat {
+                format_type: document_type,
+                encoding: Some(String::from("UTF-8")),
+                indent: None,
+                line_ending: None,
+                headers: None,
+                wrap_text: None,
+                exclude_nulls: None,
+                custom_delimiter: None,
+            },
+            Some(&neighbourhood)
+        )?;
 
         unimplemented!()
     }

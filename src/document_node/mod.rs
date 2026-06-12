@@ -1,5 +1,6 @@
 use crate::prelude::*;
 use crate::data_node::DataNodeFields;
+use crate::document::DocumentType;
 
 mod xml;
 mod json;
@@ -27,12 +28,11 @@ impl DocumentNode {
         }
     }
 
-    pub fn render_prefix(&self) -> String {
-        unimplemented!()
-    }
-
-    pub fn render_suffix(&self) -> String {
-        unimplemented!()
+    pub fn get_document_type(&self) -> DocumentType {
+        match &self.data {
+            DocumentNodeData::Xml(_node) => DocumentType::Xml,
+            DocumentNodeData::Json(_map) => DocumentType::Json,
+        }
     }
 
     pub fn to_string(&self) -> String {
