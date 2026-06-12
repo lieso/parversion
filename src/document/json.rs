@@ -3,7 +3,7 @@ use serde_json::{json, Value, Map};
 use std::collections::{HashMap, HashSet};
 
 use crate::prelude::*;
-use crate::graph_node::GraphNode;
+use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::context::Context;
 use crate::document::{Document, DocumentType, DocumentMetadata};
@@ -123,7 +123,53 @@ impl Json {
         meta_context: &MetaContext,
         render_ids: Option<&HashSet<GraphNodeID>>,
     ) -> Result<String, Errors> {
-        unimplemented!()
+
+        let graph_root = meta_context.graph_root.clone();
+
+        let mut result: Map<String, Value> = Map::new();
+
+        fn recurse(
+            meta_context: &MetaContext,
+            render_ids: Option<&HashSet<GraphNodeID>>,
+            graph_node: Graph,
+            result: &mut Map<String, Value>
+        ) {
+            let should_render = if let Some(render_ids) = render_ids {
+                render_ids.contains(&read_lock!(graph_node).id)
+            } else {
+                true
+            };
+
+            let context = meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap();
+
+            if should_render {
+                let data_node = &context.data_node;
+                let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
+                for json_node in json_nodes {
+                    let json = json_node.json;
+                    let value = json!(json.value.trim().to_string());
+                    result.insert(json.key, value);
+                }
+            }
+
+            for child in &read_lock!(graph_node).children {
+                let child_context = meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap();
+
+            }
+
+
+        }
+
+        recurse(
+            meta_context,
+            render_ids.clone(),
+            Arc::clone(&graph_root),
+            &mut result,
+        );
+
+        let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
+
+        Ok(data)
     }
 
     pub fn from_normalized_graph(
@@ -151,7 +197,7 @@ impl Json {
             let data_node = &context.data_node;
             let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
 
-            for json_node in json_nodes {
+for json_node in json_nodes {
                 let json = json_node.json;
                 let value = json!(json.value.trim().to_string());
                 result.insert(json.key, value);

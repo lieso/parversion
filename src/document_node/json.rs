@@ -7,6 +7,19 @@ use crate::data_node::DataNodeFields;
 pub struct Json;
 
 impl Json {
+    pub fn get_name(map: &Map<String, Value>) -> String {
+        if map.len() == 1 {
+            if let Some((key, val)) = map.iter().next() {
+                match val {
+                    Value::Object(_) => return key.clone(),
+                    Value::Array(arr) if arr.iter().any(|e| e.is_object()) => return key.clone(),
+                    _ => {}
+                }
+            }
+        }
+        String::new()
+    }
+
     pub fn to_string(map: &Map<String, Value>) -> String {
         map.keys().cloned().collect::<Vec<_>>().join(", ")
     }
@@ -40,11 +53,19 @@ impl Json {
                     .filter_map(|e| if let Value::Object(m) = e { Some(m.clone()) } else { None })
                     .collect();
             }
+
+            if let Some((_, Value::Object(inner))) = map.iter().next() {
+                return vec![inner.clone()];
+            }
         }
 
         map.iter()
             .flat_map(|(k, v)| match v {
-                Value::Object(child_map) => vec![child_map.clone()],
+                Value::Object(_) => {
+                    let mut wrapper = Map::new();
+                    wrapper.insert(k.clone(), v.clone());
+                    vec![wrapper]
+                },
                 Value::Array(arr) if arr.iter().any(|e| e.is_object()) => {
                     let mut wrapper = Map::new();
                     wrapper.insert(k.clone(), Value::Array(arr.clone()));

@@ -28,6 +28,13 @@ impl DocumentNode {
         }
     }
 
+    pub fn get_name(&self) -> String {
+        match &self.data {
+            DocumentNodeData::Xml(node) => Xml::get_name(&node),
+            DocumentNodeData::Json(map) => Json::get_name(map),
+        }
+    }
+
     pub fn get_document_type(&self) -> DocumentType {
         match &self.data {
             DocumentNodeData::Xml(_node) => DocumentType::Xml,

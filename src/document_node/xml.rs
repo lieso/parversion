@@ -7,6 +7,13 @@ use crate::data_node::DataNodeFields;
 pub struct Xml;
 
 impl Xml {
+    pub fn get_name(xml_node: &XMLNode) -> String {
+        match xml_node {
+            XMLNode::Element(element) => element.name.clone(),
+            _ => String::from("text"),
+        }
+    }
+
     pub fn to_string(xml_node: &XMLNode) -> String {
         let (a, b) = Self::to_string_components(xml_node);
         format!("{}{}", a, b.unwrap_or_default())
