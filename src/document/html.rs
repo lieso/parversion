@@ -36,11 +36,11 @@ impl Html {
             contexts_lookup: &mut HashMap<ID, Arc<Context>>,
             parents: Vec<Arc<RwLock<GraphNode>>>,
         ) -> Arc<RwLock<GraphNode>> {
-            let (hash, lineage, fields, description) = {
+            let (hash, lineage, fields, description, network_name) = {
                 let lock = read_lock!(document_node);
                 let hash = lock.get_hash();
                 let lineage = parent_lineage.with_hash(hash.clone());
-                (hash, lineage, lock.get_fields(), lock.get_description())
+                (hash, lineage, lock.get_fields(), lock.get_description(), lock.get_name())
             };
 
             let data_node = Arc::new(DataNode::new(
@@ -62,6 +62,7 @@ impl Html {
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
+                network_name,
             });
 
             contexts.insert(context.id.clone(), Arc::clone(&context));

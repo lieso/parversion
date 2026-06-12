@@ -23,12 +23,15 @@ pub struct Context {
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
+    pub network_name: String,
 }
 
 impl Context {
     pub fn generate_context_string(&self, meta_context: &MetaContext) -> Result<String, Errors> {
 
         let spatial_context: String = self.generate_spatial_context(meta_context)?;
+
+        log::debug!("spatial_context: {}", spatial_context);
 
         unimplemented!()
     }
@@ -58,7 +61,7 @@ impl Context {
             Some(&neighbourhood)
         )?;
 
-        unimplemented!()
+        Ok(partial_document.to_string())
     }
 }
 

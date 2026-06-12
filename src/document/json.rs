@@ -33,11 +33,11 @@ impl Json {
             contexts_lookup: &mut HashMap<ID, Arc<Context>>,
             parents: Vec<Arc<RwLock<GraphNode>>>,
         ) -> Arc<RwLock<GraphNode>> {
-            let (hash, lineage, fields, description) = {
+            let (hash, lineage, fields, description, network_name) = {
                 let lock = read_lock!(document_node);
                 let hash = lock.get_hash();
                 let lineage = parent_lineage.with_hash(hash.clone());
-                (hash, lineage, lock.get_fields(), lock.get_description())
+                (hash, lineage, lock.get_fields(), lock.get_description(), lock.get_name())
             };
 
             let data_node = Arc::new(DataNode::new(
@@ -59,6 +59,7 @@ impl Json {
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
+                network_name
             });
 
             contexts.insert(context.id.clone(), Arc::clone(&context));
@@ -154,10 +155,32 @@ impl Json {
 
             for child in &read_lock!(graph_node).children {
                 let child_context = meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap();
+                let network_name = child_context.network_name.clone();
 
+                let mut inner_result: Map<String, Value> = Map::new();
+
+                recurse(
+                    meta_context,
+                    render_ids.clone(),
+                    Arc::clone(&child),
+                    &mut inner_result
+                );
+
+                let inner_result_value = Value::Object(inner_result.clone());
+
+                if let Some(existing_object) = result.get_mut(&network_name) {
+                    if let Value::Array(ref mut arr) = existing_object {
+                        arr.push(inner_result_value.clone());
+                    } else {
+                        *existing_object = json!(vec![
+                            existing_object.clone(),
+                            inner_result_value.clone()
+                        ]);
+                    }
+                } else {
+                    result.insert(network_name.clone(), inner_result_value);
+                }
             }
-
-
         }
 
         recurse(
