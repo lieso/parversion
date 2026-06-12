@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 use serde_json::{json, Value, Map};
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 
 use crate::prelude::*;
 use crate::graph_node::GraphNode;
@@ -14,11 +14,11 @@ use crate::meta_context::MetaContext;
 pub struct Json {}
 
 impl Json {
-    pub fn generate_meta_context(
+    pub fn to_meta_context(
         metadata: &DocumentMetadata,
         data: String
     ) -> Result<MetaContext, Errors> {
-        log::trace!("In generate_meta_context");
+        log::trace!("In to_meta_context");
 
         let document_root = Self::get_document_node(data)?;
         let document_root = Arc::new(RwLock::new(document_root.clone()));
@@ -117,6 +117,13 @@ impl Json {
             graph_root,
             contexts_lookup,
         })
+    }
+
+    pub fn from_meta_context(
+        meta_context: &MetaContext,
+        render_ids: Option<&HashSet<GraphNodeID>>,
+    ) -> Result<String, Errors> {
+        unimplemented!()
     }
 
     pub fn from_normalized_graph(

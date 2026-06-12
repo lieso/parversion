@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 mod json;
@@ -121,21 +121,50 @@ impl Document {
         self.data.clone()
     }
 
-    pub fn generate_meta_context(&self) -> Result<MetaContext, Errors> {
-        log::trace!("In generate_meta_context");
+    pub fn to_meta_context(&self) -> Result<MetaContext, Errors> {
+        log::trace!("In to_meta_context");
 
         match self.document_type {
-            DocumentType::Json => Json::generate_meta_context(
+            DocumentType::Json => Json::to_meta_context(
                 &self.metadata,
                 self.data.clone()
             ),
             DocumentType::PlainText => unimplemented!(),
             DocumentType::JavaScript => unimplemented!(),
             DocumentType::Xml => unimplemented!(),
-            DocumentType::Html => Html::generate_meta_context(
+            DocumentType::Html => Html::to_meta_context(
                 &self.metadata,
                 self.data.clone()
             ),
+        }
+    }
+
+    pub fn from_meta_context(
+        meta_context: &MetaContext,
+        document_format: &DocumentFormat,
+        render_ids: Option<&HashSet<GraphNodeID>>,
+    ) -> Result<Self, Errors> {
+        log::trace!("In from_meta_context");
+
+        match document_format.format_type {
+            DocumentType::Json => {
+                let data = Json::from_meta_context(meta_context, render_ids)?;
+
+                let document = Document {
+                    document_type: DocumentType::Json,
+                    data,
+                    metadata: DocumentMetadata {
+                        origin: None,
+                        date: None,
+                    },
+                };
+
+                Ok(document)
+            }
+            DocumentType::PlainText => unimplemented!(),
+            DocumentType::JavaScript => unimplemented!(),
+            DocumentType::Xml => unimplemented!(),
+            DocumentType::Html => unimplemented!(),
         }
     }
 
@@ -165,14 +194,5 @@ impl Document {
             DocumentType::Xml => unimplemented!(),
             DocumentType::Html => unimplemented!(),
         }
-    }
-
-    pub fn from_translated_graph(
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        document_format: &DocumentFormat
-    ) -> Result<Self, Errors> {
-        log::trace!("In from_translated_graph");
-
-        unimplemented!()
     }
 }

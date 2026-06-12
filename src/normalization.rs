@@ -232,7 +232,7 @@ async fn normalize_html<P: Provider>(
     let mut document = document;
 
     log::info!("Traversing document");
-    let meta_context = document.generate_meta_context()?;
+    let meta_context = document.to_meta_context()?;
 
     {
         let mut lock = write_lock!(normalization_context);

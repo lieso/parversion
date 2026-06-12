@@ -104,7 +104,7 @@ pub async fn translate_json<P: Provider>(
 ) -> Result<(), Errors> {
     log::trace!("In translate_json");
 
-    let translation_meta_context = document.generate_meta_context()?;
+    let translation_meta_context = document.to_meta_context()?;
 
     let normalized_document = Document::from_normalized_graph(
         Arc::clone(&normalization_context),
@@ -120,7 +120,7 @@ pub async fn translate_json<P: Provider>(
         }
     )?;
 
-    let normalized_meta_context = normalized_document.generate_meta_context()?;
+    let normalized_meta_context = normalized_document.to_meta_context()?;
 
     {
         let mut lock = write_lock!(translation_context);
@@ -177,7 +177,7 @@ pub async fn translate_text_to_document<P: Provider>(
         execution_context,
     ).await?;
 
-    Document::from_translated_graph(Arc::clone(&normalization_context), document_format)
+    unimplemented!()
 }
 
 pub async fn translate_text_to_meta_context<P: Provider>(

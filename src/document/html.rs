@@ -17,11 +17,11 @@ use crate::document::{Document, DocumentType, DocumentMetadata};
 pub struct Html;
 
 impl Html {
-    pub fn generate_meta_context(
+    pub fn to_meta_context(
         metadata: &DocumentMetadata,
         data: String
     ) -> Result<MetaContext, Errors> {
-        log::trace!("In generate_meta_context");
+        log::trace!("In to_meta_context");
 
         let document_root = Self::get_document_node(data)?;
         let document_root = Arc::new(RwLock::new(document_root.clone()));
