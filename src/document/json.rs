@@ -233,6 +233,9 @@ impl Json {
                         }
                     }
                 } else {
+                    if let Value::Object(ref mut map) = result {
+                        map.insert("...".to_string(), json!("..."));
+                    }
                     recurse(
                         meta_context,
                         render_ids.clone(),
