@@ -31,13 +31,15 @@ impl Context {
         let spatial_context: String = self.generate_spatial_context(meta_context)?;
         let positional_context: String = self.generate_positional_context(meta_context)?;
 
-        format!(r##"
+        let result = format!(r##"
 [SPATIAL CONTEXT]
 {}
 
 [POSITIONAL CONTEXT]
 {}
-"##, spatial_context, positional_context)
+"##, spatial_context, positional_context);
+
+        Ok(result)
     }
 
     fn generate_positional_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {

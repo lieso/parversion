@@ -451,25 +451,21 @@ impl LLM {
 
         log::debug!("-----------------------------------------------------------------------------------------------------");
 
-        log::debug!("input: {:?}", input_context.data_node);
-        log::debug!("target: {:?}", target_context.data_node);
-
-
         let lock = read_lock!(translation_context);
 
         let input_meta_context = lock.input_meta_context.as_ref().unwrap();
         let target_meta_context = lock.target_meta_context.as_ref().unwrap();
 
-        //let input_snippet = input_context.generate_context_string(
-        //    &input_meta_context
-        //)?;
+        let input_snippet = input_context.generate_context_string(
+            &input_meta_context
+        )?;
 
         let target_snippet = target_context.generate_context_string(
             &target_meta_context
         )?;
 
 
-        //log::debug!("input_snippet: {}", input_snippet);
+        log::debug!("input_snippet: {}", input_snippet);
         log::debug!("target_snippet: {}", target_snippet);
 
 
