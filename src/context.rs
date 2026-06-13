@@ -28,12 +28,38 @@ pub struct Context {
 
 impl Context {
     pub fn generate_context_string(&self, meta_context: &MetaContext) -> Result<String, Errors> {
-
         let spatial_context: String = self.generate_spatial_context(meta_context)?;
+        let positional_context: String = self.generate_positional_context(meta_context)?;
 
-        log::debug!("spatial_context: {}", spatial_context);
+        format!(r##"
+[SPATIAL CONTEXT]
+{}
 
-        unimplemented!()
+[POSITIONAL CONTEXT]
+{}
+"##, spatial_context, positional_context)
+    }
+
+    fn generate_positional_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+        let root_to_target = get_path_to_target(Arc::clone(&self.graph_node));
+        let context_string = root_to_target.iter().fold(String::new(), |acc, graph| {
+            let current_context = meta_context.contexts_lookup.get(&read_lock!(graph).id).unwrap();
+
+            if current_context.network_name.is_empty() {
+                acc
+            } else {
+                if acc.is_empty() {
+                    format!("{}", current_context.network_name)
+                } else {
+                    format!("{} -> {}", acc, current_context.network_name)
+                }
+            }
+        });
+        let context_strings: Vec<String> = self.data_node.fields.keys().map(|key| {
+            format!("{} -> {}", context_string, key)
+        }).collect();
+
+        Ok(context_strings.join("\n"))
     }
 
     fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
@@ -379,4 +405,18 @@ fn traverse_structural_envelope(
             queue.push_back(Arc::clone(parent));
         }
     }
+}
+
+fn get_path_to_target(target_node: Graph) -> Vec<Graph> {
+    let mut ancestors: Vec<Graph> = Vec::new();
+    let mut current_parents = read_lock!(target_node).parents.clone();
+
+    while !current_parents.is_empty() {
+        let parent = current_parents[0].clone();
+        ancestors.push(parent.clone());
+        current_parents = read_lock!(parent).parents.clone();
+    }
+
+    ancestors.reverse();
+    ancestors
 }
