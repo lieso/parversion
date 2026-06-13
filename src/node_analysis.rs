@@ -26,8 +26,33 @@ pub async fn get_translation_nodes<P: Provider>(
 ) -> Result<HashMap<TranslationNodeID, Arc<TranslationNode>>, Errors> {
     log::trace!("In get_translation_nodes");
 
-    let unique_target_contexts = read_lock!(translation_context).must_get_unique_target_contexts()?;
-    let unique_input_contexts = read_lock!(translation_context).must_get_unique_input_contexts()?;
+
+
+
+    let target_contexts = read_lock!(translation_context).must_get_unique_target_contexts()?;
+
+    let mut unique_target_contexts: Vec<Arc<Context>> = Vec::new();
+    let mut seen: HashSet<Lineage> = HashSet::new();
+    for ctx in target_contexts {
+        if seen.insert(ctx.lineage.clone()) {
+            unique_target_contexts.push(ctx);
+        }
+    }
+
+
+
+
+
+
+    let input_contexts = read_lock!(translation_context).must_get_unique_input_contexts()?;
+
+    let mut unique_input_contexts: Vec<Arc<Context>> = Vec::new();
+    let mut seen: HashSet<Lineage> = HashSet::new();
+    for ctx in input_contexts {
+        if seen.insert(ctx.lineage.clone()) {
+            unique_input_contexts.push(ctx);
+        }
+    }
 
 
 
