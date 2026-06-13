@@ -143,5 +143,4 @@ impl NormalizationContext {
         self.context_groups = Some(context_groups);
         self.context_to_group = Some(context_to_group);
     }
-
 }

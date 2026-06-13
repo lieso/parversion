@@ -17,11 +17,13 @@ mod node_analysis;
 mod network_analysis;
 mod network_relationships;
 mod document;
+mod translation;
 
 use node_analysis::{NodeAnalysis, LineageClassification};
 use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
 use document::Document;
+use translation::Translation;
 
 #[derive(Clone, Debug)]
 pub enum NodeGroupClassification {
@@ -447,26 +449,37 @@ impl LLM {
 
         tokio::time::sleep(Duration::from_millis(50)).await;
 
+        let input_context_string = {
+            let lock = read_lock!(translation_context);
+            let meta_context = lock.input_meta_context.as_ref().unwrap();
+            input_context.generate_context_string(
+                &meta_context
+            )?
+        };
+
+        let target_context_string = {
+            let lock = read_lock!(translation_context);
+            let meta_context = lock.target_meta_context.as_ref().unwrap();
+            target_context.generate_context_string(
+                &meta_context
+            )?
+        };
+
+        let user_prompt = format!(r##"
+            [FIRST DOCUMENT]
+            {}
+            
+            [SECOND DOCUMENT]
+            {}
+        "##, input_context_string, target_context_string);
 
 
-        log::debug!("-----------------------------------------------------------------------------------------------------");
-
-        let lock = read_lock!(translation_context);
-
-        let input_meta_context = lock.input_meta_context.as_ref().unwrap();
-        let target_meta_context = lock.target_meta_context.as_ref().unwrap();
-
-        let input_snippet = input_context.generate_context_string(
-            &input_meta_context
-        )?;
-
-        let target_snippet = target_context.generate_context_string(
-            &target_meta_context
-        )?;
+        let (response, metadata) = Translation::translate_nodes(
+            &user_prompt
+        ).await?;
 
 
-        log::debug!("input_snippet: {}", input_snippet);
-        log::debug!("target_snippet: {}", target_snippet);
+        log::debug!("response: {:?}", response);
 
 
 

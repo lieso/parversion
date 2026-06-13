@@ -234,7 +234,7 @@ impl Json {
                     }
                 } else {
                     if let Value::Object(ref mut map) = result {
-                        map.insert("...".to_string(), json!("..."));
+                        map.insert("_omitted".to_string(), json!(true));
                     }
                     recurse(
                         meta_context,
