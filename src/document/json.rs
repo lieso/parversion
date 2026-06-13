@@ -127,13 +127,14 @@ impl Json {
 
         let graph_root = meta_context.graph_root.clone();
 
-        let mut result: Map<String, Value> = Map::new();
+        let mut result: Value = Value::Object(Map::new());
 
         fn recurse(
             meta_context: &MetaContext,
             render_ids: Option<&HashSet<GraphNodeID>>,
             graph_node: Graph,
-            result: &mut Map<String, Value>
+            network_name: &str,
+            result: &mut Value
         ) {
             let should_render = if let Some(render_ids) = render_ids {
                 render_ids.contains(&read_lock!(graph_node).id)
@@ -144,41 +145,101 @@ impl Json {
             let context = meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap();
 
             if should_render {
+                if !result.is_object() {
+                    *result = Value::Object(Map::new());
+                }
                 let data_node = &context.data_node;
                 let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
                 for json_node in json_nodes {
                     let json = json_node.json;
                     let value = json!(json.value.trim().to_string());
-                    result.insert(json.key, value);
+                    if let Value::Object(ref mut map) = result {
+                        map.insert(json.key, value);
+                    }
                 }
             }
 
             for child in &read_lock!(graph_node).children {
                 let child_context = meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap();
-                let network_name = child_context.network_name.clone();
+                let next_network_name = if child_context.network_name.is_empty() {
+                    network_name
+                } else {
+                    &child_context.network_name
+                };
 
-                let mut inner_result: Map<String, Value> = Map::new();
+                let should_render_child = if let Some(render_ids) = render_ids {
+                    render_ids.contains(&read_lock!(child).id)
+                } else {
+                    true
+                };
 
-                recurse(
-                    meta_context,
-                    render_ids.clone(),
-                    Arc::clone(&child),
-                    &mut inner_result
-                );
+                if should_render_child {
+                    if network_name == next_network_name {
+                        let mut inner_result: Value = Value::Object(Map::new());
 
-                let inner_result_value = Value::Object(inner_result.clone());
+                        recurse(
+                            meta_context,
+                            render_ids.clone(),
+                            Arc::clone(&child),
+                            next_network_name,
+                            &mut inner_result
+                        );
 
-                if let Some(existing_object) = result.get_mut(&network_name) {
-                    if let Value::Array(ref mut arr) = existing_object {
-                        arr.push(inner_result_value.clone());
+                        let inner_result_value = inner_result.clone();
+
+                        if result.is_object() && result.as_object().unwrap().is_empty() {
+                            *result = inner_result;
+                        } else if result.is_array() {
+                            if let Value::Array(ref mut arr) = result {
+                                arr.push(inner_result_value.clone());
+                            }
+                        } else {
+                            *result = json!(vec![
+                                result.clone(),
+                                inner_result_value.clone()
+                            ]);
+                        }
+
                     } else {
-                        *existing_object = json!(vec![
-                            existing_object.clone(),
-                            inner_result_value.clone()
-                        ]);
+                        let mut inner_result: Value = Value::Object(Map::new());
+
+                        recurse(
+                            meta_context,
+                            render_ids.clone(),
+                            Arc::clone(&child),
+                            next_network_name,
+                            &mut inner_result
+                        );
+
+                        let inner_result_value = inner_result.clone();
+
+                        if !result.is_object() {
+                            *result = Value::Object(Map::new());
+                        }
+
+                        if let Value::Object(ref mut map) = result {
+                            if let Some(existing_object) = map.get_mut(next_network_name) {
+                                if let Value::Array(ref mut arr) = existing_object {
+                                    arr.push(inner_result_value.clone());
+                                } else {
+                                    *existing_object = json!(vec![
+                                        existing_object.clone(),
+                                        inner_result_value.clone()
+                                    ]);
+                                }
+                            } else {
+                                map.insert(next_network_name.to_string(), inner_result_value);
+                            }
+                        }
                     }
                 } else {
-                    result.insert(network_name.clone(), inner_result_value);
+                    recurse(
+                        meta_context,
+                        render_ids.clone(),
+                        Arc::clone(&child),
+                        next_network_name,
+                        result,
+                    );
                 }
             }
         }
@@ -187,6 +248,7 @@ impl Json {
             meta_context,
             render_ids.clone(),
             Arc::clone(&graph_root),
+            "test",
             &mut result,
         );
 
