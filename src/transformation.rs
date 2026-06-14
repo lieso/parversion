@@ -35,7 +35,7 @@ pub struct FieldTranslationTransformation {
     pub id: ID,
     pub field: String,
     pub image: String,
-    pub code: String,
+    pub code: Option<String>,
 }
 
 

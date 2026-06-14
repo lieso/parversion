@@ -477,16 +477,23 @@ impl LLM {
             {}
         "##, input_context_string, target_context_string);
 
-
         let (response, metadata) = Translation::translate_nodes(
             &user_prompt
         ).await?;
 
+        let transformations: Vec<FieldTranslationTransformation> = response
+            .matches
+            .iter()
+            .map(|node_match| {
+                FieldTranslationTransformation {
+                    id: ID::new(),
+                    field: node_match.source_key.clone(),
+                    image: node_match.target_key.clone(),
+                    code: node_match.transform_code.clone()
+                }
+            })
+            .collect();
 
-        log::debug!("response: {:?}", response);
-
-
-
-        unimplemented!();
+        Ok((transformations, (metadata.tokens,)))
     }
 }
