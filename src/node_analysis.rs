@@ -105,16 +105,27 @@ pub async fn get_translation_nodes<P: Provider>(
         handles.push(handle);
     }
 
-
-
     let results: Vec<Result<Option<TranslationNode>, Errors>> = try_join_all(handles).await?;
+    
+    let translation_nodes: Vec<TranslationNode> = results.into_iter()
+        .filter_map(|res| {
+            match res {
+                Ok(Some(translation_node)) => Some(Ok(translation_node)),
+                Ok(None) => None,
+                Err(e) => Some(Err(e)),
+            }
+        })
+        .collect::<Result<Vec<TranslationNode>, Errors>>()?;
 
+    let hashmap: HashMap<ID, Arc<TranslationNode>> = translation_nodes.into_iter()
+        .map(|translation_node| {
+            let translation_node = Arc::new(translation_node);
+            let id = translation_node.id.clone();
+            (id, translation_node)
+        })
+        .collect();
 
-
-
-
-
-    unimplemented!()
+    Ok(hashmap)
 }
 
 async fn get_translation_node<P: Provider>(
