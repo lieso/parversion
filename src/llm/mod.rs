@@ -8,7 +8,13 @@ use crate::basis_network::BasisNetwork;
 use crate::config::CONFIG;
 use crate::network_relationship::NetworkRelationshipType;
 use crate::prelude::*;
-use crate::transformation::{FieldTransformation, FieldMetadata, NetworkTransformation, NetworkMetadata};
+use crate::transformation::{
+    FieldTransformation,
+    FieldMetadata,
+    NetworkTransformation,
+    NetworkMetadata,
+    FieldTranslationTransformation
+};
 use crate::context::Context;
 
 mod openai;
@@ -440,9 +446,7 @@ impl LLM {
         input_context: Arc<Context>,
         target_context: Arc<Context>
     ) -> Result<(
-        Option<(
-            FieldTransformation
-        )>,
+        Vec<FieldTranslationTransformation>,
         (u64,)
     ), Errors> {
         log::trace!("In get_node_translation");

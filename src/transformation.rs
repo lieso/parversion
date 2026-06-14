@@ -20,6 +20,36 @@ pub enum Runtime {
     QuickJS,
 }
 
+
+
+
+
+
+
+
+
+
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FieldTranslationTransformation {
+    pub id: ID,
+    pub field: String,
+    pub image: String,
+    pub code: String,
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisFieldTransformation {
     pub id: ID,

@@ -137,20 +137,25 @@ async fn get_translation_node<P: Provider>(
         }
     }
 
-    let (maybe_translation, (tokens,)) = LLM::get_node_translation(
+    let (transformations, (tokens,)) = LLM::get_node_translation(
         Arc::clone(&translation_context),
         Arc::clone(&input_context),
         Arc::clone(&target_context)
     ).await?;
 
-    if let Some(translation) = maybe_translation {
-        let (transformation) = translation;
+    if transformations.is_empty() {
+        provider.save_translation_node(
+            (input_context.lineage.clone(), target_context.lineage.clone()),
+            None
+        ).await?;
 
+        Ok(None)
+    } else {
         let translation_node = TranslationNode {
             id: ID::new(),
             source_lineage: input_context.lineage.clone(),
             target_lineage: target_context.lineage.clone(),
-            transformation: transformation.clone(),
+            transformations: transformations.clone(),
         };
 
         provider.save_translation_node(
@@ -159,13 +164,6 @@ async fn get_translation_node<P: Provider>(
         ).await?;
 
         Ok(Some(translation_node))
-    } else {
-        provider.save_translation_node(
-            (input_context.lineage.clone(), target_context.lineage.clone()),
-            None
-        ).await?;
-
-        Ok(None)
     }
 }
 
