@@ -15,8 +15,15 @@ pub struct TranslateNodesResponseMetadata {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeMatch {
+    pub source_key: String,
+    pub target_key: String,
+    pub transform_code: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TranslateNodesResponse {
-    pub is_match: bool,
+    pub matches: Vec<NodeMatch>,
 }
 
 pub struct Translation;
@@ -28,13 +35,38 @@ impl Translation {
         log::trace!("In translate_nodes");
 
         let system_prompt = r##"
-Your task is to compare keys from one JSON document to another.
+You are an expert data integration engineer specializing in JSON schema mapping and ETL transformations.
 
-In order for you to complete this task, the target node is provided along with its surrounding neighbourhood of nodes, which is to provide you context for the semantic meaning and purpose of a JSON key. This is will be referred to as the spatial context for a document, which will likely be an incomplete fragment from the larger document it was derived from. A special key value pair "omitted": true indicates that the content there is present in the original document, can be assumed to exist, but was ommitted for the sake of brevity.
+Your task is to compare candidate keys from exactly ONE Source JSON node against ONE Target JSON node, identify ALL semantically equivalent keys, and write data transformation code if the values require formatting changes.
 
-The positional context for each document refers to the key sequences needed to find the target keys you are to compare starting from the root of the document to the target node. For example, "invoices -> vendor -> name" implies a json path of .invoices.[index].vendor.name in the original document.
+CONCEPTS:
+1. FIRST DOCUMENT (Source): The original data source.
+2. SECOND DOCUMENT (Target): The desired final data shape.
+3. SPATIAL CONTEXT: An incomplete fragment (a small zoomed-in neighborhood) of the original JSON document centered directly around the node being evaluated. This is provided to save tokens while giving you the actual values and immediate siblings to deduce semantic meaning. (Note: "_omitted": true implies data exists in the original document but was removed for brevity).
+4. POSITIONAL CONTEXT: The complete, absolute JSON path from the root of the original document down to the candidate keys being evaluated (e.g., "root -> entries -> author -> url"). This provides the full structural lineage of the keys.
 
-Use the positional context for each document to isolate the json keys, then compare each set. If any from the first represent mean the same from any from the second, provide in your response is_match: true. For example, two documents might represent invoices, but with a different JSON shape, but an "invoiceDate": 2025-05-04 key from one document should be considered a match if the second document has a JSON key "date": 1746280800.
+CRITICAL RULES FOR DETERMINING A MATCH:
+- Combine contexts: Use the Positional Context to understand the full structural lineage of the key, and use the Spatial Context to analyze its actual value and immediate siblings.
+- DO NOT blindly map keys just because they share the same name.
+- You MUST analyze the SPATIAL CONTEXT (the actual values) to prove that the two fields represent the exact same real-world entity.
+- Example: If the Source Positional Context ends in "url" (value: "github.com/user") but the Target Positional Context ends in "url" (value: "example.com/article"), these DO NOT MATCH because one is an author profile and the other is an article link.
+- Example: If the Source ends in "submitted_at" (value: "2025-10-28T13:22") and the Target ends in "timestamp" (value: 1746280800), these DO MATCH because the values prove they represent the same publication time.
+
+INSTRUCTIONS:
+1. Evaluate the Candidate Keys found at the end of the Positional Context paths from the First Document against those from the Second Document.
+2. Identify ALL valid semantic matches based on the rules above.
+3. For each match, output ONLY the final `source_key` and `target_key` (e.g., output "url", NOT the full positional path).
+4. For each match, examine the values in the Spatial Context. If the data formats differ, you MUST write a pure JavaScript function to convert the source value to the target format.
+5. The JavaScript code must be a valid, standalone function named `transform` that takes a single parameter `value` and returns the converted result.
+
+EXAMPLE JAVASCRIPT:
+```javascript
+function transform(value) {
+    return Math.floor(new Date(value).getTime() / 1000);
+}
+```
+
+If the values are already in the exact same format and type, `transform_code` should be null. If no valid semantic matches exist between the two objects, return an empty array `[]` for matches.
         "##;
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -55,17 +87,36 @@ Use the positional context for each document to isolate the json keys, then comp
         let client = Self::build_client();
 
         let response_format = ResponseFormat::json_schema(
-            "schema_to_instance",
+            "node_key_mapping",
             true,
             json!({
                 "type": "object",
                 "properties": {
-                    "is_match": {
-                        "type": "boolean",
-                        "description": "Whether there is a match between the two nodes"
+                    "matches": {
+                        "type": "array",
+                        "description": "List of all semantically matched keys between the Source and Target nodes.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "source_key": {
+                                    "type": "string",
+                                    "description": "The exact key name from the FIRST DOCUMENT node."
+                                },
+                                "target_key": {
+                                    "type": "string",
+                                    "description": "The exact key name from the SECOND DOCUMENT node."
+                                },
+                                "transform_code": {
+                                    "type": ["string", "null"],
+                                    "description": "A standalone JS function named `transform(value)`. Null if no conversion is needed."
+                                }
+                            },
+                            "required": ["source_key", "target_key", "transform_code"],
+                            "additionalProperties": false
+                        }
                     }
                 },
-                "required": ["is_match"],
+                "required": ["matches"],
                 "additionalProperties": false
             }),
         );
@@ -103,7 +154,7 @@ Use the positional context for each document to isolate the json keys, then comp
                                 log::debug!(
                                     "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
                                 );
-                                log::debug!("{:?}", parsed_response);
+                                log::debug!("{:#?}", parsed_response);
                                 log::debug!(
                                     "└───────────────────────────────────────────────────────────────┘"
                                 );
@@ -138,7 +189,6 @@ Use the positional context for each document to isolate the json keys, then comp
                                 );
                                 log::error!("Failed to parse LLM response: {}", e);
                                 Err(Errors::UnexpectedError)
-
                             }
                         }
                     }?;
@@ -146,7 +196,7 @@ Use the positional context for each document to isolate the json keys, then comp
                     let metadata = {
                         if let Some(usage) = response.usage {
                             TranslateNodesResponseMetadata {
-                                tokens: usage.total_tokens.clone() as u64,
+                                tokens: usage.total_tokens as u64,
                             }
                         } else {
                             TranslateNodesResponseMetadata {
@@ -168,7 +218,6 @@ Use the positional context for each document to isolate the json keys, then comp
                     );
                     log::error!("No content in LLM response");
                     Err(Errors::UnexpectedError)
-
                 }
             }
             Err(e) => {
