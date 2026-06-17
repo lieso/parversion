@@ -38,6 +38,31 @@ pub struct FieldTranslationTransformation {
     pub code: Option<String>,
 }
 
+impl FieldTranslationTransformation {
+    pub fn transform(&self, data_node: Arc<DataNode>) -> Result<DataNode, Errors> {
+        let fields = {
+            if let Some(value) = data_node.fields.get(&self.field) {
+                let mut fields = HashMap::new();
+                fields.insert(self.image.clone(), value.to_string());
+
+                fields
+            } else {
+                HashMap::new()
+            }
+        };
+
+        let transformed = DataNode {
+            id: ID::new(),
+            hash: data_node.hash.clone(),
+            lineage: data_node.lineage.clone(),
+            description: data_node.description.clone(),
+            fields,
+        };
+
+        Ok(transformed)
+    }
+}
+
 
 
 
