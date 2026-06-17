@@ -1,4 +1,6 @@
 use std::sync::{Arc, RwLock};
+use serde_json::{json, Value, Map};
+
 use crate::document::{Document, DocumentType, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::normalization_context::NormalizationContext;
@@ -9,6 +11,9 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::normalization;
 use crate::node_analysis::{get_translation_nodes};
+use crate::graph_node::Graph;
+use crate::translation_node::TranslationNode;
+use crate::data_node::DataNode;
 
 pub async fn translate<P: Provider>(
     provider: Arc<P>,
@@ -57,7 +62,7 @@ pub async fn translate<P: Provider>(
 
     let stage = execution_context.enter_stage("Translating nodes");
 
-    let translation_nodes = 
+let translation_nodes = 
         get_translation_nodes(
             Arc::clone(&provider),
             Arc::clone(&translation_context),
@@ -72,6 +77,12 @@ pub async fn translate<P: Provider>(
     }
 
     stage.finish();
+
+
+
+    do_something(Arc::clone(&translation_context))?;
+
+
 
     unimplemented!();
 
@@ -242,4 +253,168 @@ pub async fn translate_text_to_package<P: Provider>(
         document: translated_document,
         mutations: Vec::new(),
     })
+}
+
+
+
+
+
+
+fn do_something(translation_context: Arc<RwLock<TranslationContext>>) -> Result<(), Errors> {
+
+
+
+    let graph_root: Graph = {
+        let lock = read_lock!(translation_context);
+        let meta_context = lock.input_meta_context.as_ref().unwrap();
+        meta_context.graph_root.clone()
+    };
+
+
+    let mut result: Value = Value::Object(Map::new());
+
+    fn recurse(
+        translation_context: Arc<RwLock<TranslationContext>>,
+        graph_node: Graph,
+        result: &mut Value
+    ) {
+
+        let current_context = {
+            let lock = read_lock!(translation_context);
+            let meta_context = lock.input_meta_context.as_ref().unwrap();
+            meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap().clone()
+        };
+
+        let translation_node: Option<Arc<TranslationNode>> = {
+            let lock = read_lock!(translation_context);
+            lock.translation_nodes
+                .as_ref()
+                .unwrap()
+                .values()
+                .cloned()
+                .find(|item| item.source_lineage == current_context.lineage)
+        };
+
+
+        if let Some(translation_node) = translation_node {
+
+            let data_node = &current_context.data_node;
+
+            let translated: Vec<DataNode> = translation_node
+                .transformations
+                .iter()
+                .map(|transformation| transformation.transform(data_node.clone()).expect("Could not transform"))
+                .collect();
+
+
+            for node in translated {
+                for (key, value) in node.fields {
+                    let json_value = json!(value.trim().to_string());
+
+                    if let Value::Object(ref mut map) = result {
+                        map.insert(key.clone(), json_value);
+                    }
+                }
+            }
+
+
+
+            for child in &read_lock!(graph_node).children {
+
+                let child_context = {
+                    let lock = read_lock!(translation_context);
+                    let input_meta_context = lock.input_meta_context.as_ref().unwrap();
+                    input_meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap().clone()
+                };
+
+                let child_translation_node: Option<Arc<TranslationNode>> = {
+                    let lock = read_lock!(translation_context);
+                    lock.translation_nodes
+                        .as_ref()
+                        .unwrap()
+                        .values()
+                        .cloned()
+                        .find(|item| item.source_lineage == child_context.lineage)
+                };
+
+                let target_context = {
+                    let lock = read_lock!(translation_context);
+                    let meta_context = lock.target_meta_context.as_ref().unwrap();
+
+                    meta_context.contexts
+                        .values()
+                        .cloned()
+                        .find(|item| item.lineage == child_context.lineage)
+                };
+
+                if let Some(target_context) = target_context {
+
+                    let mut inner_result: Value = Value::Object(Map::new());
+
+
+                    recurse(
+                        Arc::clone(&translation_context),
+                        Arc::clone(&child),
+                        &mut inner_result,
+                    );
+
+
+                    if let Value::Object(ref mut map) = result {
+                        map.insert(
+                            target_context.network_name.clone(),
+                            inner_result.clone()
+                        );
+                    }
+
+                } else {
+
+
+                    for child in &read_lock!(graph_node).children {
+                        recurse(
+                            Arc::clone(&translation_context),
+                            Arc::clone(&child),
+                            result,
+                        );
+                    }
+
+
+
+                }
+
+            }
+
+
+
+
+
+        } else {
+
+
+            for child in &read_lock!(graph_node).children {
+                recurse(
+                    Arc::clone(&translation_context),
+                    Arc::clone(&child),
+                    result,
+                );
+            }
+
+
+        }
+
+    }
+
+    recurse(
+        Arc::clone(&translation_context),
+        Arc::clone(&graph_root),
+        &mut result
+    );
+
+
+    let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
+    
+
+    log::debug!("data: {}", data);
+
+
+    unimplemented!()
 }
