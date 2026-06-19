@@ -278,7 +278,6 @@ fn do_something(translation_context: Arc<RwLock<TranslationContext>>) -> Result<
         graph_node: Graph,
         result: &mut Value
     ) {
-
         let current_context = {
             let lock = read_lock!(translation_context);
             let meta_context = lock.input_meta_context.as_ref().unwrap();
@@ -295,110 +294,51 @@ fn do_something(translation_context: Arc<RwLock<TranslationContext>>) -> Result<
                 .find(|item| item.source_lineage == current_context.lineage)
         };
 
-
         if let Some(translation_node) = translation_node {
 
-            let data_node = &current_context.data_node;
+            let any_target_context = {
+                let lock = read_lock!(translation_context);
+                let meta_context = lock.target_meta_context.as_ref().unwrap();
+                meta_context.contexts
+                    .values()
+                    .find(|item| item.lineage == translation_node.target_lineage)
+                    .cloned()
+                    .unwrap()
+            };
 
-            let translated: Vec<DataNode> = translation_node
-                .transformations
-                .iter()
-                .map(|transformation| transformation.transform(data_node.clone()).expect("Could not transform"))
-                .collect();
+            let mut network_name: String = any_target_context.network_name.clone();
+            let mut graph_node = any_target_context.graph_node.clone();
 
-
-            for node in translated {
-                for (key, value) in node.fields {
-                    let json_value = json!(value.trim().to_string());
-
-                    if let Value::Object(ref mut map) = result {
-                        map.insert(key.clone(), json_value);
-                    }
-                }
-            }
-
-
-
-            for child in &read_lock!(graph_node).children {
-
-                let child_context = {
-                    let lock = read_lock!(translation_context);
-                    let input_meta_context = lock.input_meta_context.as_ref().unwrap();
-                    input_meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap().clone()
+            while network_name.is_empty() {
+                let parent = {
+                    let lock = read_lock!(graph_node);
+                    lock.parents.first().cloned()
                 };
 
-                let child_translation_node: Option<Arc<TranslationNode>> = {
-                    let lock = read_lock!(translation_context);
-                    lock.translation_nodes
-                        .as_ref()
-                        .unwrap()
-                        .values()
-                        .cloned()
-                        .find(|item| item.source_lineage == child_context.lineage)
-                };
+                if let Some(parent) = parent {
+                    let parent_context = {
+                        let lock = read_lock!(translation_context);
+                        let meta_context = lock.target_meta_context.as_ref().unwrap();
+                        meta_context.contexts_lookup.get(&read_lock!(parent).id).unwrap().clone()
+                    };
 
-                let target_context = {
-                    let lock = read_lock!(translation_context);
-                    let meta_context = lock.target_meta_context.as_ref().unwrap();
-
-                    meta_context.contexts
-                        .values()
-                        .cloned()
-                        .find(|item| item.lineage == child_context.lineage)
-                };
-
-                if let Some(target_context) = target_context {
-
-                    let mut inner_result: Value = Value::Object(Map::new());
-
-
-                    recurse(
-                        Arc::clone(&translation_context),
-                        Arc::clone(&child),
-                        &mut inner_result,
-                    );
-
-
-                    if let Value::Object(ref mut map) = result {
-                        map.insert(
-                            target_context.network_name.clone(),
-                            inner_result.clone()
-                        );
-                    }
-
+                    network_name = parent_context.network_name.clone();
+                    graph_node = Arc::clone(&parent_context.graph_node);
                 } else {
-
-
-                    for child in &read_lock!(graph_node).children {
-                        recurse(
-                            Arc::clone(&translation_context),
-                            Arc::clone(&child),
-                            result,
-                        );
-                    }
-
-
-
+                    break;
                 }
-
             }
 
+            log::debug!("network_name: {}", network_name);
 
-
-
-
-        } else {
-
-
-            for child in &read_lock!(graph_node).children {
-                recurse(
-                    Arc::clone(&translation_context),
-                    Arc::clone(&child),
-                    result,
-                );
-            }
-
-
+        }
+        
+        for child in &read_lock!(graph_node).children {
+            recurse(
+                Arc::clone(&translation_context),
+                Arc::clone(&child),
+                result,
+            );
         }
 
     }
