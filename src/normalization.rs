@@ -184,53 +184,6 @@ pub async fn normalize<P: Provider>(
     Ok(normalization_context)
 }
 
-pub async fn init_normalization_context<P: Provider>(
-    provider: Arc<P>,
-    document: Document,
-    options: &Options,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
-    log::trace!("In init_normalization_context");
-
-    let stage = execution_context.enter_stage("Document preprocessing and classification");
-
-    let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
-
-    {
-        let mut lock = write_lock!(normalization_context);
-        lock.add_document_version(DocumentVersion::InputDocument, document.clone());
-    }
-
-    match document.document_type {
-        DocumentType::Html => {
-            normalize_html(
-                Arc::clone(&provider),
-                document,
-                options,
-                normalization_context.clone(),
-                &stage,
-            )
-            .await?;
-        }
-        DocumentType::Json => {
-            unimplemented!();
-        }
-        DocumentType::PlainText => {
-            unimplemented!();
-        }
-        DocumentType::JavaScript => {
-            unimplemented!();
-        }
-        DocumentType::Xml => {
-            unimplemented!();
-        }
-    }
-
-    stage.finish();
-
-    Ok(normalization_context)
-}
-
 async fn normalize_html<P: Provider>(
     provider: Arc<P>,
     document: Document,
@@ -392,6 +345,53 @@ pub async fn normalize_file_to_string<P: Provider>(
     .await?;
 
     Ok(document.to_string())
+}
+
+async fn init_normalization_context<P: Provider>(
+    provider: Arc<P>,
+    document: Document,
+    options: &Options,
+    execution_context: Arc<ExecutionContext>,
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+    log::trace!("In init_normalization_context");
+
+    let stage = execution_context.enter_stage("Document preprocessing and classification");
+
+    let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.add_document_version(DocumentVersion::InputDocument, document.clone());
+    }
+
+    match document.document_type {
+        DocumentType::Html => {
+            normalize_html(
+                Arc::clone(&provider),
+                document,
+                options,
+                normalization_context.clone(),
+                &stage,
+            )
+            .await?;
+        }
+        DocumentType::Json => {
+            unimplemented!();
+        }
+        DocumentType::PlainText => {
+            unimplemented!();
+        }
+        DocumentType::JavaScript => {
+            unimplemented!();
+        }
+        DocumentType::Xml => {
+            unimplemented!();
+        }
+    }
+
+    stage.finish();
+
+    Ok(normalization_context)
 }
 
 fn build_normalized_graph<P: Provider>(

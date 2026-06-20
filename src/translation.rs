@@ -71,52 +71,6 @@ pub async fn translate<P: Provider>(
     Ok(translation_context)
 }
 
-pub async fn init_translation_context<P: Provider>(
-    provider: Arc<P>,
-    source: Document,
-    target: Document,
-    options: &Options,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
-    log::trace!("In init_translation_context");
-
-    let normalization_context: Arc<RwLock<NormalizationContext>> = normalization::normalize(
-        Arc::clone(&provider),
-        source,
-        options,
-        execution_context.clone(),
-    ).await?;
-
-    let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
-
-    match target.document_type {
-        DocumentType::Html => {
-            unimplemented!()
-        }
-        DocumentType::Json => {
-            translate_json(
-                Arc::clone(&provider),
-                Arc::clone(&normalization_context),
-                Arc::clone(&translation_context),
-                target,
-                options,
-            )
-            .await?;
-        }
-        DocumentType::PlainText => {
-            unimplemented!()
-        }
-        DocumentType::JavaScript => {
-            unimplemented!()
-        }
-        DocumentType::Xml => {
-            unimplemented!()
-        }
-    }
-
-    Ok(translation_context)
-}
-
 pub async fn translate_json<P: Provider>(
     provider: Arc<P>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -236,6 +190,52 @@ pub async fn translate_text_to_package<P: Provider>(
         document: translated_document,
         mutations: Vec::new(),
     })
+}
+
+async fn init_translation_context<P: Provider>(
+    provider: Arc<P>,
+    source: Document,
+    target: Document,
+    options: &Options,
+    execution_context: Arc<ExecutionContext>,
+) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
+    log::trace!("In init_translation_context");
+
+    let normalization_context: Arc<RwLock<NormalizationContext>> = normalization::normalize(
+        Arc::clone(&provider),
+        source,
+        options,
+        execution_context.clone(),
+    ).await?;
+
+    let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
+
+    match target.document_type {
+        DocumentType::Html => {
+            unimplemented!()
+        }
+        DocumentType::Json => {
+            translate_json(
+                Arc::clone(&provider),
+                Arc::clone(&normalization_context),
+                Arc::clone(&translation_context),
+                target,
+                options,
+            )
+            .await?;
+        }
+        DocumentType::PlainText => {
+            unimplemented!()
+        }
+        DocumentType::JavaScript => {
+            unimplemented!()
+        }
+        DocumentType::Xml => {
+            unimplemented!()
+        }
+    }
+
+    Ok(translation_context)
 }
 
 
