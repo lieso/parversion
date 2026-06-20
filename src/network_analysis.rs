@@ -31,6 +31,51 @@ pub async fn get_translation_networks<P: Provider>(
     stage_context: &StageContext,
 ) -> Result<HashMap<TranslationNetworkID, Arc<TranslationNetwork>>, Errors> {
     log::trace!("In get_translation_networks");
+
+    let target_contexts = {
+        let lock = read_lock!(translation_context);
+        let meta_context = lock.target_meta_context.as_ref().ok_or_else(|| {
+            Errors::DeficientTranslationContextError("Target meta context missing in translation context".to_string())
+        })?;
+
+        let contexts: Vec<Arc<Context>> = meta_context.contexts.values()
+            .filter(|context| !context.network_name.is_empty())
+            .cloned()
+            .collect();
+
+        let mut seen: HashSet<Lineage> = HashSet::new();
+        let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
+        for context in contexts {
+            if seen.insert(context.lineage.clone()) {
+                unique_contexts.push(context);
+            }
+        }
+
+        unique_contexts
+    };
+
+    let input_contexts = {
+        let lock = read_lock!(translation_context);
+        let meta_context = lock.input_meta_context.as_ref().ok_or_else(|| {
+            Errors::DeficientTranslationContextError("Input meta context missing in translation context".to_string())
+        })?;
+
+        let contexts: Vec<Arc<Context>> = meta_context.contexts.values()
+            .filter(|context| !context.network_name.is_empty())
+            .cloned()
+            .collect();
+
+        let mut seen: HashSet<Lineage> = HashSet::new();
+        let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
+        for context in contexts {
+            if seen.insert(context.lineage.clone()) {
+                unique_contexts.push(context);
+            }
+        }
+
+        unique_contexts
+    };
+
     unimplemented!()
 }
 

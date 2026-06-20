@@ -10,3 +10,4 @@ pub use crate::options::Options;
 pub use crate::types::*;
 pub use crate::utility::*;
 pub use crate::execution_context::*;
+pub use crate::context::Context;
