@@ -14,7 +14,6 @@ pub mod document_node;
 pub mod entrypoint;
 pub mod environment;
 pub mod function;
-pub mod function_analysis;
 pub mod graph_node;
 pub mod hash;
 pub mod id;

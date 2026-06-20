@@ -1,5 +1,5 @@
 use std::sync::{Arc, RwLock};
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap};
 use rand::prelude::*;
 use std::time::Duration;
 
@@ -18,7 +18,6 @@ use crate::transformation::{
 };
 use crate::context::Context;
 
-mod openai;
 mod categorization;
 mod node_analysis;
 mod network_analysis;
@@ -31,15 +30,6 @@ use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
 use document::Document;
 use translation::Translation;
-
-#[derive(Clone, Debug)]
-pub enum NodeGroupClassification {
-    Acyclic,
-    Uniform,
-    Diverging(Vec<Lineage>),
-}
-
-pub type NodeGroups = HashMap<Lineage, NodeGroupClassification>;
 
 pub struct LLM {}
 
@@ -356,10 +346,6 @@ impl LLM {
         }
 
         Ok((field_transformations, (tokens,)))
-    }
-
-    pub async fn function_to_operation(code: &str) -> Result<Option<()>, Errors> {
-        openai::OpenAI::function_to_operation(&code).await
     }
 
     pub async fn infer_group_match(

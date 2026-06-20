@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use crate::ast::program_to_functions;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
-use crate::function_analysis::functions_to_operations;
 use crate::normalization_context::NormalizationContext;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
 use crate::node_analysis::{

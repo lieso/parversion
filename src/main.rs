@@ -14,7 +14,6 @@ mod document_node;
 mod entrypoint;
 mod environment;
 mod function;
-mod function_analysis;
 mod graph_node;
 mod hash;
 mod id;

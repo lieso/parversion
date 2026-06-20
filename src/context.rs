@@ -1,7 +1,6 @@
 use serde_json::{json, Value, Map};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
-use std::fmt::Write;
 
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;

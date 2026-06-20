@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use std::collections::HashSet;
 
 use crate::document::Document;
 use crate::classification::Classification;

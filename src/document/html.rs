@@ -1,6 +1,6 @@
 use ego_tree::NodeRef;
 use scraper::{Html as ScraperHtml, Node as ScraperNode};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 use std::fs;
 use std::sync::{Arc, RwLock};
 use xmltree::Element;

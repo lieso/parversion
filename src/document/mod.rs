@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::str::FromStr;
 
 mod json;

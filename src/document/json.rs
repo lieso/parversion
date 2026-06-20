@@ -6,7 +6,7 @@ use crate::prelude::*;
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::context::Context;
-use crate::document::{Document, DocumentType, DocumentMetadata};
+use crate::document::{DocumentMetadata};
 use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::data_node::DataNode;
 use crate::meta_context::MetaContext;

@@ -69,16 +69,6 @@ pub enum LineageClassification {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NodeGroupsData {
-    pub groups: HashMap<String, LineageClassification>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NodeGroupsResponseMetadata {
-    pub tokens: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 struct NodeGroupLLMEntry {
     lineage: String,
     classification: String,

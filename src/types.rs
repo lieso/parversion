@@ -29,10 +29,6 @@ pub enum Errors {
     InsufficientPrerequisites(String),
     XPathParseError(String),
     XPathTraverseError(String),
-    // LLM::get_node_groups returns lineage classifications keyed by lineage string; this error
-    // fires when converting those strings back to Lineage objects via reverse lookup fails,
-    // meaning the LLM returned a lineage string that was not present in the input.
-    LineageConversionError(String),
     YamlProviderError,
     ProviderError(String),
     UnexpectedParameter(String),

@@ -21,7 +21,7 @@ use crate::prelude::*;
 use crate::provider::sqlite::SqliteProvider;
 #[cfg(feature = "yaml-provider")]
 use crate::provider::yaml::YamlFileProvider;
-use crate::provider::{Provider, VoidProvider};
+use crate::provider::{Provider};
 use crate::translation;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
