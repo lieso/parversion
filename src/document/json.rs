@@ -295,8 +295,6 @@ for json_node in json_nodes {
                 let child_context = contexts.get(&read_lock!(child).id).unwrap();
 
                 if let Some(child_network_name) = &child_context.network_name {
-                    log::debug!("child_network_name: {}", child_network_name);
-
                     let mut inner_result: Map<String, Value> = Map::new();
 
                     recurse(

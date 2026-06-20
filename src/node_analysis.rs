@@ -134,8 +134,6 @@ async fn get_translation_node<P: Provider>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<Option<TranslationNode>, Errors> {
-    log::trace!("In get_translation_node");
-
     let (input_context, target_context) = context_pair;
 
     if !options.regenerate {
@@ -505,8 +503,6 @@ async fn get_acyclic_basis_groups<P: Provider>(
     options: Options,
     stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
-    log::trace!("In get_acyclic_basis_groups");
-
     if !options.regenerate {
         let basis_groups: Vec<BasisGroup> = provider
             .get_basis_groups_by_acyclic_lineage(&acyclic_lineage).await?
@@ -518,7 +514,6 @@ async fn get_acyclic_basis_groups<P: Provider>(
     }
 
     let maybe_basis_group: Option<BasisGroup> = if contexts_in_group.len() == 1 {
-        log::info!("Acyclic context group has only one item.");
         Some(BasisGroup {
             id: ID::new(),
             acyclic_lineage: acyclic_lineage.clone(),
@@ -533,8 +528,6 @@ async fn get_acyclic_basis_groups<P: Provider>(
         ).await?;
 
         if is_match {
-            log::info!("Contexts with acyclic lineage: {} have been inferred to match",
-                acyclic_lineage.to_string());
             stage_context.record_events("Group analysis", tokens);
             Some(BasisGroup {
                 id: ID::new(),
@@ -949,8 +942,6 @@ async fn get_basis_node<P: Provider>(
     stage_context: &StageContext,
     basis_lineage: Lineage,
 ) -> Result<BasisNode, Errors> {
-    log::trace!("In get_basis_node");
-
     let first = group.first().unwrap();
 
     if first.data_node.fields.is_empty() {

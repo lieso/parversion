@@ -96,8 +96,6 @@ pub async fn translate_json<P: Provider>(
         }
     )?;
 
-    log::debug!("normalized_document: {}", normalized_document.to_string());
-
     let normalized_meta_context = normalized_document.to_meta_context()?;
 
     {

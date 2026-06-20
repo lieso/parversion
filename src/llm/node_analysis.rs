@@ -62,13 +62,6 @@ pub struct NodeTransformationResponse {
 pub struct NodeAnalysis;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum LineageClassification {
-    Acyclic,
-    Uniform,
-    Diverging(Vec<String>),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 struct NodeGroupLLMEntry {
     lineage: String,
     classification: String,

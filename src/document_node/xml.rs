@@ -47,7 +47,6 @@ impl Xml {
     pub fn get_attribute_value(xml_node: &XMLNode, attribute: &str) -> Option<String> {
         match xml_node {
             XMLNode::Element(element_node) => {
-                log::debug!("element_node.attributes: {:?}", element_node.attributes);
                 element_node.attributes.get(attribute).cloned()
             }
             _ => panic!("Unexpected XML node type"),

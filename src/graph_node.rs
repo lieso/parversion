@@ -85,8 +85,6 @@ impl GraphNode {
         graph: Graph,
         xpath_axis: &XPathAxis
     ) -> Result<Vec<Graph>, Errors> {
-        log::debug!("xpath_axis: {:?}", xpath_axis);
-
         let lock = read_lock!(graph);
 
         if lock.parents.len() > 1 {
@@ -130,7 +128,6 @@ impl GraphNode {
                         read_lock!(child).id == lock.id
                     }) {
                         let siblings: Vec<Graph> = read_lock!(parent).children[index_current + 1..].to_vec();
-                        log::info!("Found {} following siblings", siblings.len());
                         Ok(siblings)
                     } else {
                         Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
@@ -145,7 +142,6 @@ impl GraphNode {
                         read_lock!(child).id == lock.id
                     }) {
                         let siblings: Vec<Graph> = read_lock!(parent).children[..index_current].to_vec();
-                        log::info!("Found {} preceding siblings", siblings.len());
                         Ok(siblings)
                     } else {
                         Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
@@ -191,7 +187,6 @@ impl GraphNode {
                     current_parents = next_parents;
                 }
 
-                log::info!("Found {} following nodes", result.len());
                 Ok(result)
             },
         }
@@ -202,8 +197,6 @@ impl GraphNode {
         graph: Graph,
         node_test: &String
     ) -> Result<Vec<Graph>, Errors> {
-        log::debug!("node_test: {}", node_test);
-
         if node_test == "node()" {
             panic!("Received node_test 'node()'");
         }
@@ -229,7 +222,6 @@ impl GraphNode {
         let name = read_lock!(document_node).get_element_name();
 
         if node_test.trim() == name.trim() {
-            log::debug!("Graph passes node test");
             Ok(vec![graph.clone()])
         } else {
             Ok(vec![])
@@ -241,26 +233,17 @@ impl GraphNode {
         graphs: Vec<Graph>,
         predicate: &XPathPredicate
     ) -> Result<Vec<Graph>, Errors> {
-        log::debug!("predicate: {:?}, filtering {} graphs", predicate, graphs.len());
-
         match predicate {
             XPathPredicate::Position(index) => {
-                log::debug!("Checking Position predicate, looking for index: {}", index);
-
                 // XPath positions are 1-indexed
-
                 if *index < 1 || *index as usize > graphs.len() {
-                    log::debug!("Position {} out of range (have {} graphs)", index, graphs.len());
                     return Ok(vec![]);
                 }
 
                 let selected_graph = graphs.get(*index as usize - 1).cloned().unwrap();
-                log::debug!("Position predicate matched graph at position {}", index);
                 Ok(vec![selected_graph])
             }
             XPathPredicate::Attribute { name, value } => {
-                log::debug!("Checking Attribute predicate: {}='{}'", name, value);
-
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
                     lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
@@ -285,7 +268,6 @@ impl GraphNode {
                     .cloned()
                     .collect();
 
-                log::debug!("Attribute predicate matched {} graphs", filtered.len());
                 Ok(filtered)
             }
         }
@@ -296,8 +278,6 @@ impl GraphNode {
         graph: Graph,
         xpath_segment: &XPathSegment
     ) -> Result<Vec<Graph>, Errors> {
-        log::debug!("xpath_segment: {}", xpath_segment.to_string());
-
         let next_graphs: Vec<Graph> = Self::traverse_using_xpath_axis(
             Arc::clone(&normalization_context),
             Arc::clone(&graph),
@@ -336,8 +316,6 @@ impl GraphNode {
         start: Graph,
         xpath: &XPath
     ) -> Result<Option<Graph>, Errors> {
-        log::debug!("xpath: {}", xpath.to_string());
-
         let segments = &xpath.segments;
 
         let mut current: Vec<Graph> = vec![Arc::clone(&start)];

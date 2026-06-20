@@ -456,14 +456,9 @@ fn build_normalized_graph<P: Provider>(
     while let Some(current) = queue.pop_front() {
         let subgraph_hash = read_lock!(current).subgraph_hash.clone();
 
-        log::debug!("build_normalized_graph: visiting node, subgraph_hash={:?}", subgraph_hash);
-
         let is_canonical = {
             if let Some(basis_network) = read_lock!(normalization_context).get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)? {
-                log::debug!("build_normalized_graph: found basis_network for subgraph_hash");
                 if let Some(basis_network) = canonicalization.transform(vec![basis_network])?.first() {
-                    log::info!("Found a canonical network");
-
                     process_canonical_network(
                         Arc::clone(&normalization_context),
                         Arc::clone(&normalized),
@@ -474,11 +469,9 @@ fn build_normalized_graph<P: Provider>(
 
                     true
                 } else {
-                    log::debug!("build_normalized_graph: basis_network not canonical");
                     false
                 }
             } else {
-                log::debug!("build_normalized_graph: no basis_network for subgraph_hash");
                 false
             }
         };
@@ -490,7 +483,6 @@ fn build_normalized_graph<P: Provider>(
         }
     }
 
-    log::debug!("build_normalized_graph: done, contexts count={}", contexts.len());
     Ok((contexts, normalized))
 }
 
@@ -576,8 +568,6 @@ fn process_canonical_network(
                         contexts,
                         visited,
                     )?;
-                } else {
-                    log::info!("Network is the 'to' in a composition relationship. Presumably it has been, or will be processed when the 'from' network matches.");
                 }
             }
             NetworkRelationshipType::ParentChild => {
@@ -597,8 +587,6 @@ fn process_composition_relationship(
     contexts: &mut HashMap<ID, Arc<NormalContext>>,
     visited: &mut HashSet<ID>,
 ) -> Result<(), Errors> {
-    log::trace!("In process_composition_relationship");
-
     let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
     let traversals: Option<Vec<TraversalTransformation>> = basis_graph.traversals;
 
@@ -614,8 +602,6 @@ fn process_composition_relationship(
         Arc::clone(&normalization_context),
         Arc::clone(&current_node),
     )? {
-        log::info!("Traversal found target network");
-
         let target_id = read_lock!(target_network).id.clone();
         if visited.contains(&target_id) {
             log::info!("Composition target is already being processed — skipping to prevent cycle");
@@ -642,8 +628,6 @@ fn process_network(
     contexts: &mut HashMap<ID, Arc<NormalContext>>,
     visited: &mut HashSet<ID>,
 ) -> Result<(), Errors> {
-    log::trace!("In process_network");
-
     visited.insert(read_lock!(current_node).id.clone());
 
     fn recurse(
@@ -660,8 +644,6 @@ fn process_network(
             Arc::clone(&normalization_context),
             Arc::clone(&current_node)
         )?;
-
-        log::info!("Obtained a normalized_data_node");
 
         let normalized_data_node = Arc::new(normalized_data_node);
 
@@ -721,8 +703,6 @@ fn process_network(
                    .transform(vec![Arc::clone(&basis_network)])?
                    .first()
                {
-                   log::info!("Found a canonical network");
-
                    process_canonical_network(
                        Arc::clone(&normalization_context),
                        Arc::clone(&normalized_graph_node),
@@ -761,8 +741,6 @@ fn process_node(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     node: Graph,
 ) -> Result<DataNode, Errors> {
-    log::trace!("In process_node");
-
     let context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context.as_ref().unwrap().contexts_lookup

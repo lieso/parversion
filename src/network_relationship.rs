@@ -27,8 +27,6 @@ impl NetworkRelationship {
         network_from: Arc<BasisNetwork>,
         network_to: Arc<BasisNetwork>,
     ) -> Result<(Traversal, String, (u64,)), Errors> {
-        log::trace!("In process_composition");
-
         let snippet = Self::create_network_snippet(
             Arc::clone(&normalization_context),
             Arc::clone(&network_from),

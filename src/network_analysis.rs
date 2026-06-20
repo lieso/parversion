@@ -141,8 +141,6 @@ async fn get_translation_network<P: Provider>(
     options: &Options,
     stage_context: &StageContext
 ) -> Result<Option<TranslationNetwork>, Errors> {
-    log::trace!("In get_translation_network");
-
     let (input_context, target_context) = context_pair;
 
     if !options.regenerate {
@@ -612,8 +610,6 @@ async fn get_basis_network<P: Provider>(
     _all_subgraph_hashes: Arc<Vec<String>>,
     lineage: Lineage,
 ) -> Result<BasisNetwork, Errors> {
-    log::trace!("In get_basis_network");
-
     stage_context.record_events("Network analysis", 0);
 
     let meta_context = {

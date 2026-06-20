@@ -25,7 +25,7 @@ mod network_relationships;
 mod document;
 mod translation;
 
-use node_analysis::{NodeAnalysis, LineageClassification};
+use node_analysis::{NodeAnalysis};
 use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
 use document::Document;
