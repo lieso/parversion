@@ -10,6 +10,16 @@ use crate::prelude::*;
 use crate::environment::get_env_variable;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TranslateNetworksResponseMetadata {
+    pub tokens: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TranslateNetworksResponse {
+    pub is_match: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TranslateNodesResponseMetadata {
     pub tokens: u64,
 }
@@ -29,6 +39,177 @@ pub struct TranslateNodesResponse {
 pub struct Translation;
 
 impl Translation {
+    pub async fn translate_networks(
+        user_prompt: &str
+    ) -> Result<(TranslateNetworksResponse, TranslateNetworksResponseMetadata), Errors> {
+        log::trace!("In translate_networks");
+
+        let system_prompt = r##"
+You are an expert data integration engineer specializing in JSON schema mapping and ETL transformations.
+
+Your task is to determine whether a Source network and a Target network represent the same semantic concept, based on their structural position and content.
+
+CONCEPTS:
+1. FIRST DOCUMENT (Source): The original data source.
+2. SECOND DOCUMENT (Target): The desired final data shape.
+3. SPATIAL CONTEXT: An incomplete fragment (a small zoomed-in neighborhood) of the original JSON document centered directly around the network being evaluated. This is provided to save tokens while giving you the actual values and immediate siblings to deduce semantic meaning. (Note: "_omitted": true implies data exists in the original document but was removed for brevity).
+4. POSITIONAL CONTEXT: The complete, absolute JSON path from the root of the original document down to the network being evaluated (e.g., "root -> entries -> author"). This provides the full structural lineage of the network.
+
+CRITICAL RULES:
+- Use the Positional Context to understand the full structural lineage of each network.
+- Use the Spatial Context to analyze the actual values and immediate siblings.
+- DO NOT match networks just because they share a similar name.
+- You MUST verify that both networks represent the same real-world semantic concept at the same structural role.
+- Example: A source network at "submissions -> item -> author" and a target network at "entries -> author" DO MATCH if both represent the author of a content item.
+- Example: A source network at "submissions -> metadata" and a target network at "entries -> author" DO NOT MATCH even if both contain a name field.
+
+OUTPUT:
+- Set is_match to true if the Source and Target networks represent the same semantic concept and structural role.
+- Set is_match to false otherwise.
+        "##;
+
+        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+        log::debug!("║                                                               ║");
+        log::debug!("║             TRANSLATE NETWORKS - LLM REQUEST                  ║");
+        log::debug!("║                                                               ║");
+        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+        log::debug!("");
+        log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+        log::debug!("{}", system_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+        log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+        log::debug!("{}", user_prompt);
+        log::debug!("└───────────────────────────────────────────────────────────────┘");
+        log::debug!("");
+
+        let client = Self::build_client();
+
+        let response_format = ResponseFormat::json_schema(
+            "network_mapping",
+            true,
+            json!({
+                "type": "object",
+                "properties": {
+                    "is_match": {
+                        "type": "boolean",
+                        "description": "True if the Source and Target networks represent the same semantic concept and structural role."
+                    }
+                },
+                "required": ["is_match"],
+                "additionalProperties": false
+            }),
+        );
+
+        let request = ChatCompletionRequest::builder()
+            .model("gpt-5-mini")
+            .messages(vec![
+                Message::new(Role::System, system_prompt),
+                Message::new(Role::User, user_prompt),
+            ])
+            .response_format(response_format)
+            .build()
+            .expect("Could not create llm request");
+
+        match client.send_chat_completion(&request).await {
+            Ok(response) => {
+                log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
+                log::debug!("{:?}", response);
+                log::debug!("└───────────────────────────────────────────────────────────────┘");
+                log::debug!("");
+
+                if let Some(content) = response.choices[0].content() {
+                    log::debug!(
+                        "┌─── LLM RESPONSE CONTENT ──────────────────────────────────────┐"
+                    );
+                    log::debug!("{}", content);
+                    log::debug!(
+                        "└───────────────────────────────────────────────────────────────┘"
+                    );
+                    log::debug!("");
+
+                    let translate_networks_response = {
+                        match serde_json::from_str::<TranslateNetworksResponse>(content) {
+                            Ok(parsed_response) => {
+                                log::debug!(
+                                    "┌─── PARSED RESPONSE ───────────────────────────────────────────┐"
+                                );
+                                log::debug!("{:#?}", parsed_response);
+                                log::debug!(
+                                    "└───────────────────────────────────────────────────────────────┘"
+                                );
+                                log::debug!("");
+                                log::debug!(
+                                    "╔═══════════════════════════════════════════════════════════════╗"
+                                );
+                                log::debug!(
+                                    "║                                                               ║"
+                                );
+                                log::debug!(
+                                    "║           TRANSLATE NETWORKS - REQUEST COMPLETE               ║"
+                                );
+                                log::debug!(
+                                    "║                                                               ║"
+                                );
+                                log::debug!(
+                                    "╚═══════════════════════════════════════════════════════════════╝"
+                                );
+
+                                Ok(parsed_response)
+                            }
+                            Err(e) => {
+                                log::error!(
+                                    "╔═══════════════════════════════════════════════════════════════╗"
+                                );
+                                log::error!(
+                                    "║                    PARSE ERROR                                ║"
+                                );
+                                log::error!(
+                                    "╚═══════════════════════════════════════════════════════════════╝"
+                                );
+                                log::error!("Failed to parse LLM response: {}", e);
+                                Err(Errors::UnexpectedError)
+                            }
+                        }
+                    }?;
+
+                    let metadata = {
+                        if let Some(usage) = response.usage {
+                            TranslateNetworksResponseMetadata {
+                                tokens: usage.total_tokens as u64,
+                            }
+                        } else {
+                            TranslateNetworksResponseMetadata {
+                                tokens: 0,
+                            }
+                        }
+                    };
+
+                    Ok((translate_networks_response, metadata))
+                } else {
+                    log::error!(
+                        "╔═══════════════════════════════════════════════════════════════╗"
+                    );
+                    log::error!(
+                        "║                    NO CONTENT ERROR                           ║"
+                    );
+                    log::error!(
+                        "╚═══════════════════════════════════════════════════════════════╝"
+                    );
+                    log::error!("No content in LLM response");
+                    Err(Errors::UnexpectedError)
+                }
+            }
+            Err(e) => {
+                log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                log::error!("║                    REQUEST ERROR                              ║");
+                log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                log::error!("Failed to get response from OpenRouter: {}", e);
+                Err(Errors::UnexpectedError)
+            }
+        }
+    }
+
     pub async fn translate_nodes(
         user_prompt: &str
     ) -> Result<(TranslateNodesResponse, TranslateNodesResponseMetadata), Errors> {

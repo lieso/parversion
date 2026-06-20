@@ -534,7 +534,9 @@ impl LLM {
             {}
         "##, input_context_string, target_context_string);
 
-        log::debug!("user_prompt: {}", user_prompt);
+        let (response, metadata) = Translation::translate_networks(
+            &user_prompt
+        ).await?;
 
         unimplemented!()
     }
