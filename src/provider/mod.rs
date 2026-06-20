@@ -10,6 +10,7 @@ use crate::basis_graph::BasisGraph;
 use crate::basis_field::BasisField;
 use crate::operation::Operation;
 use crate::translation_node::TranslationNode;
+use crate::translation_network::TranslationNetwork;
 use crate::prelude::*;
 
 #[cfg(feature = "yaml-provider")]
@@ -113,6 +114,16 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineages: (Lineage, Lineage),
         translation_node: Option<TranslationNode>
+    ) -> Result<(), Errors>;
+    async fn get_translation_network_by_lineages(
+        &self,
+        lineage_from: &Lineage,
+        lineage_to: &Lineage
+    ) -> Result<Option<Option<TranslationNetwork>>, Errors>;
+    async fn save_translation_network(
+        &self,
+        lineages: (Lineage, Lineage),
+        translation_network: Option<TranslationNetwork>
     ) -> Result<(), Errors>;
 }
 
@@ -259,6 +270,22 @@ impl Provider for VoidProvider {
         &self,
         _lineages: (Lineage, Lineage),
         _translation_node: Option<TranslationNode>
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_translation_network_by_lineages(
+        &self,
+        lineage_from: &Lineage,
+        lineage_to: &Lineage
+    ) -> Result<Option<Option<TranslationNetwork>>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_translation_network(
+        &self,
+        lineages: (Lineage, Lineage),
+        translation_network: Option<TranslationNetwork>
     ) -> Result<(), Errors> {
         Ok(())
     }

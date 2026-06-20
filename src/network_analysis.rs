@@ -144,6 +144,17 @@ async fn get_translation_network<P: Provider>(
 ) -> Result<Option<TranslationNetwork>, Errors> {
     log::trace!("In get_translation_network");
 
+    let (input_context, target_context) = context_pair;
+
+    if !options.regenerate {
+        if let Some(maybe_translation_network) = provider.get_translation_network_by_lineages(
+            &input_context.lineage,
+            &target_context.lineage,
+        ).await? {
+            return Ok(maybe_translation_network);
+        }
+    }
+
     unimplemented!()
 }
 
