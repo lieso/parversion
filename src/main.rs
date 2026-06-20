@@ -1,8 +1,6 @@
-mod ast;
 mod classification;
 mod basis_network;
 mod basis_node;
-mod bloom_filter;
 #[cfg(feature = "caching")]
 mod cache;
 mod config;
@@ -13,7 +11,6 @@ mod document_format;
 mod document_node;
 mod entrypoint;
 mod environment;
-mod function;
 mod graph_node;
 mod hash;
 mod id;

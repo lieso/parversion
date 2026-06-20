@@ -1,7 +1,6 @@
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::ast::program_to_functions;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::normalization_context::NormalizationContext;

@@ -9,7 +9,6 @@ use crate::basis_node::BasisNode;
 use crate::basis_graph::BasisGraph;
 use crate::context::Context;
 use crate::document::Document;
-use crate::function::Function;
 use crate::graph_node::Graph;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
@@ -24,7 +23,6 @@ pub struct NormalizationContext {
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<BasisGraph>,
     pub classification: Option<Arc<Classification>>,
-    pub functions: Option<Vec<Function>>,
     pub normal_contexts: Option<HashMap<ID, Arc<NormalContext>>>,
     pub normal_graph_root: Option<Graph>,
     pub context_groups: Option<HashMap<ID, Vec<Arc<Context>>>>,
@@ -42,7 +40,6 @@ impl NormalizationContext {
             basis_networks: None,
             basis_graph: None,
             classification: None,
-            functions: None,
             normal_contexts: None,
             normal_graph_root: None,
             context_groups: None,
@@ -129,10 +126,6 @@ impl NormalizationContext {
 
     pub fn update_basis_graph(&mut self, basis_graph: BasisGraph) {
         self.basis_graph = Some(basis_graph);
-    }
-
-    pub fn update_functions(&mut self, functions: Vec<Function>) {
-        self.functions = Some(functions);
     }
 
     pub fn update_context_groups(

@@ -77,15 +77,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         lineage: &Lineage,
         classification: Classification,
     ) -> Result<(), Errors>;
-    async fn get_operation_by_hash(
-        &self,
-        hash: &Hash
-    ) -> Result<Option<Operation>, Errors>;
-    async fn save_operation(
-        &self,
-        hash: &Hash,
-        operation: Operation
-    ) -> Result<(), Errors>;
     async fn get_basis_graph_by_hash(
         &self,
         hash: &Hash
@@ -204,14 +195,6 @@ impl Provider for VoidProvider {
         _lineage: &Lineage,
         _classification: Classification,
     ) -> Result<(), Errors> {
-        Ok(())
-    }
-
-    async fn get_operation_by_hash(&self, _hash: &Hash) -> Result<Option<Operation>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_operation(&self, _hash: &Hash, _operation: Operation) -> Result<(), Errors> {
         Ok(())
     }
 

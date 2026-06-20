@@ -276,52 +276,6 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_operation_by_hash(&self, hash: &Hash) -> Result<Option<Operation>, Errors> {
-        let yaml = self.load_data().await?;
-
-        let bloom_filter = yaml
-            .get("no_op")
-            .and_then(|data| {
-                let deserialized: Result<BloomFilter, _> = serde_yaml::from_value(data.clone());
-
-                if let Err(ref err) = deserialized {
-                    log::error!(
-                        "Deserialization error for operation bloom filter: {:?}",
-                        err
-                    );
-                }
-                deserialized.ok()
-            })
-            .unwrap_or_else(|| BloomFilter::new(100, 7));
-
-        if bloom_filter.contains(hash) {
-            log::info!("bloom filter: operation might be a no-op");
-        } else {
-            log::info!("bloom filter: operation definitely not no-op");
-
-            let operations: Vec<Operation> = yaml
-                .get("operations")
-                .and_then(|data| {
-                    let deserialized: Result<Vec<Operation>, _> =
-                        serde_yaml::from_value(data.clone());
-
-                    if let Err(ref err) = deserialized {
-                        log::error!("Deserialization error for operations: {:?}", err);
-                    }
-                    deserialized.ok()
-                })
-                .unwrap_or_else(Vec::new);
-
-            for operation in operations {
-                if &operation.hash == hash {
-                    return Ok(Some(operation));
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
     async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
         let yaml = self.load_data().await?;
 

@@ -1,8 +1,6 @@
-pub mod ast;
 pub mod classification;
 pub mod basis_network;
 pub mod basis_node;
-pub mod bloom_filter;
 #[cfg(feature = "caching")]
 pub mod cache;
 pub mod config;
@@ -13,7 +11,6 @@ pub mod document_format;
 pub mod document_node;
 pub mod entrypoint;
 pub mod environment;
-pub mod function;
 pub mod graph_node;
 pub mod hash;
 pub mod id;

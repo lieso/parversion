@@ -242,14 +242,6 @@ impl Provider for SqliteProvider {
         .map_err(|_| Errors::UnexpectedError)?
     }
 
-    async fn get_operation_by_hash(&self, _hash: &Hash) -> Result<Option<Operation>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_operation(&self, _hash: &Hash, _operation: Operation) -> Result<(), Errors> {
-        Ok(())
-    }
-
     async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
         let conn = self.connection.clone();
         let key = hash.to_string().ok_or(Errors::UnexpectedError)?;
