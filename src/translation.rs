@@ -23,44 +23,16 @@ pub async fn translate<P: Provider>(
     target: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
     log::trace!("In translate");
 
-    let normalization_context: Arc<RwLock<NormalizationContext>> = normalization::normalize(
+    let translation_context = init_translation_context(
         Arc::clone(&provider),
         source,
+        target,
         options,
         execution_context.clone(),
     ).await?;
-
-    let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
-
-    match target.document_type {
-        DocumentType::Html => {
-            unimplemented!()
-        }
-        DocumentType::Json => {
-            translate_json(
-                Arc::clone(&provider),
-                Arc::clone(&normalization_context),
-                Arc::clone(&translation_context),
-                target,
-                options,
-            )
-            .await?;
-        }
-        DocumentType::PlainText => {
-            unimplemented!()
-        }
-        DocumentType::JavaScript => {
-            unimplemented!()
-        }
-        DocumentType::Xml => {
-            unimplemented!()
-        }
-    }
-
-
 
     let stage = execution_context.enter_stage("Translating nodes");
 
@@ -96,35 +68,54 @@ pub async fn translate<P: Provider>(
 
     stage.finish();
 
-
-
-    do_something(Arc::clone(&translation_context))?;
-
-
-    unimplemented!();
-
-
-
-
-    Ok(normalization_context)
+    Ok(translation_context)
 }
 
+pub async fn init_translation_context<P: Provider>(
+    provider: Arc<P>,
+    source: Document,
+    target: Document,
+    options: &Options,
+    execution_context: Arc<ExecutionContext>,
+) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
+    log::trace!("In init_translation_context");
 
+    let normalization_context: Arc<RwLock<NormalizationContext>> = normalization::normalize(
+        Arc::clone(&provider),
+        source,
+        options,
+        execution_context.clone(),
+    ).await?;
 
+    let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
 
+    match target.document_type {
+        DocumentType::Html => {
+            unimplemented!()
+        }
+        DocumentType::Json => {
+            translate_json(
+                Arc::clone(&provider),
+                Arc::clone(&normalization_context),
+                Arc::clone(&translation_context),
+                target,
+                options,
+            )
+            .await?;
+        }
+        DocumentType::PlainText => {
+            unimplemented!()
+        }
+        DocumentType::JavaScript => {
+            unimplemented!()
+        }
+        DocumentType::Xml => {
+            unimplemented!()
+        }
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
+    Ok(translation_context)
+}
 
 pub async fn translate_json<P: Provider>(
     provider: Arc<P>,
@@ -163,35 +154,6 @@ pub async fn translate_json<P: Provider>(
     Ok(())
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 pub async fn translate_text_to_document<P: Provider>(
     provider: Arc<P>,
     source: (String, &Metadata),
@@ -202,7 +164,7 @@ pub async fn translate_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let normalization_context = translate_text_to_meta_context(
+    let translation_context = translate_text_to_translation_context(
         Arc::clone(&provider),
         source,
         target,
@@ -213,14 +175,14 @@ pub async fn translate_text_to_document<P: Provider>(
     unimplemented!()
 }
 
-pub async fn translate_text_to_meta_context<P: Provider>(
+pub async fn translate_text_to_translation_context<P: Provider>(
     provider: Arc<P>,
     source: (String, &Metadata),
     target: (String, &Metadata),
     options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
-    log::trace!("In translate_text_to_meta_context");
+) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
+    log::trace!("In translate_text_to_translation_context");
 
     let source_document = Document::from_string(source.0, options, source.1)?;
 
@@ -240,7 +202,7 @@ pub async fn translate_text_to_meta_context<P: Provider>(
         }
     };
 
-    let normalization_context = translate(
+    let translation_context = translate(
         Arc::clone(&provider),
         source_document,
         target_document,
@@ -248,7 +210,7 @@ pub async fn translate_text_to_meta_context<P: Provider>(
         execution_context.clone(),
     ).await?;
 
-    Ok(normalization_context)
+    Ok(translation_context)
 }
 
 pub async fn translate_text_to_package<P: Provider>(
@@ -275,6 +237,10 @@ pub async fn translate_text_to_package<P: Provider>(
         mutations: Vec::new(),
     })
 }
+
+
+
+
 
 
 
