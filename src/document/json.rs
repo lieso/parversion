@@ -174,7 +174,7 @@ impl Json {
                 };
 
                 if should_render_child {
-                    if network_name == next_network_name {
+                    if child_context.network_name.is_empty() {
                         let mut inner_result: Value = Value::Object(Map::new());
 
                         recurse(

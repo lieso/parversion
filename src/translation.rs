@@ -89,11 +89,6 @@ pub async fn translate<P: Provider>(
         )
         .await?;
 
-    for translation_network in &translation_networks {
-        log::debug!("-----------");
-        log::debug!("{:?}", translation_network);
-    }
-
     {
         let mut lock = write_lock!(translation_context);
         lock.update_translation_networks(translation_networks);
@@ -352,7 +347,7 @@ fn do_something(translation_context: Arc<RwLock<TranslationContext>>) -> Result<
         if let Some(translation_network) = translation_network {
             let transformation = &translation_network.transformation;
             
-            if transformation.image == "entries" {
+            if transformation.cardinality == "array" {
                 for child in &read_lock!(graph_node).children {
                     let mut inner_result: Value = Value::Object(Map::new());
 
