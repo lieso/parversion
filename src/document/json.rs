@@ -10,6 +10,8 @@ use crate::document::{DocumentMetadata};
 use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::data_node::DataNode;
 use crate::meta_context::MetaContext;
+use crate::translation_node::TranslationNode;
+use crate::translation_network::TranslationNetwork;
 
 pub struct Json {}
 
@@ -258,6 +260,132 @@ impl Json {
         let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
 
         Ok(data)
+    }
+
+    pub fn from_translation(
+        translation_context: Arc<RwLock<TranslationContext>>
+    ) -> Result<String, Errors> {
+        log::trace!("In from_translation");
+
+        let graph_root: Graph = {
+            let lock = read_lock!(translation_context);
+            let meta_context = lock.input_meta_context.as_ref().unwrap();
+            meta_context.graph_root.clone()
+        };
+
+        let mut result: Value = Value::Object(Map::new());
+
+        fn recurse(
+            translation_context: Arc<RwLock<TranslationContext>>,
+            graph_node: Graph,
+            result: &mut Value
+        ) {
+            let current_context = {
+                let lock = read_lock!(translation_context);
+                let meta_context = lock.input_meta_context.as_ref().unwrap();
+                meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap().clone()
+            };
+
+            let translation_node: Option<Arc<TranslationNode>> = {
+                let lock = read_lock!(translation_context);
+                lock.translation_nodes
+                    .as_ref()
+                    .unwrap()
+                    .values()
+                    .cloned()
+                    .find(|item| item.source_lineage == current_context.lineage)
+            };
+
+            if let Some(translation_node) = translation_node {
+                let data_node = &current_context.data_node;
+
+                let translated: Vec<DataNode> = translation_node
+                    .transformations
+                    .iter()
+                    .map(|transformation| transformation.transform(data_node.clone()).expect("Could not transform"))
+                    .collect();
+
+                for node in translated {
+                    for (key, value) in node.fields {
+                        let json_value = json!(value.trim().to_string());
+                        if let Value::Object(ref mut map) = result {
+                            map.insert(key.clone(), json_value);
+                        }
+                    }
+                }
+            }
+
+            let translation_network: Option<Arc<TranslationNetwork>> = {
+                let lock = read_lock!(translation_context);
+                lock.translation_networks
+                    .as_ref()
+                    .unwrap()
+                    .values()
+                    .cloned()
+                    .find(|item| item.source_lineage == current_context.lineage)
+            };
+
+            if let Some(translation_network) = translation_network {
+                let transformation = &translation_network.transformation;
+
+                if transformation.cardinality == "array" {
+                    for child in &read_lock!(graph_node).children {
+                        let mut inner_result: Value = Value::Object(Map::new());
+
+                        recurse(
+                            Arc::clone(&translation_context),
+                            Arc::clone(&child),
+                            &mut inner_result
+                        );
+
+                        if let Value::Object(ref mut map) = result {
+                            match map.entry(transformation.image.clone()) {
+                                serde_json::map::Entry::Vacant(entry) => {
+                                    entry.insert(json!(vec![inner_result]));
+                                }
+                                serde_json::map::Entry::Occupied(mut entry) => {
+                                    let existing = entry.get_mut();
+                                    if let Value::Array(ref mut arr) = existing {
+                                        arr.push(inner_result)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    let mut inner_result: Value = Value::Object(Map::new());
+
+                    for child in &read_lock!(graph_node).children {
+                        recurse(
+                            Arc::clone(&translation_context),
+                            Arc::clone(&child),
+                            &mut inner_result
+                        );
+                    }
+
+                    if let Value::Object(ref mut map) = result {
+                        map.insert(transformation.image.clone(), inner_result);
+                    }
+                }
+
+            } else {
+                for child in &read_lock!(graph_node).children {
+                    recurse(
+                        Arc::clone(&translation_context),
+                        Arc::clone(&child),
+                        result
+                    );
+                }
+            }
+        }
+
+        recurse(
+            Arc::clone(&translation_context),
+            Arc::clone(&graph_root),
+            &mut result
+        );
+
+        Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
     }
 
     pub fn from_normalized_graph(

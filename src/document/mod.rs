@@ -195,4 +195,32 @@ impl Document {
             DocumentType::Html => unimplemented!(),
         }
     }
+
+    pub fn from_translation(
+        translation_context: Arc<RwLock<TranslationContext>>,
+        document_format: &DocumentFormat
+    ) -> Result<Self, Errors> {
+        log::trace!("In from_translation");
+
+        match document_format.format_type {
+            DocumentType::Json => {
+                let data = Json::from_translation(Arc::clone(&translation_context))?;
+
+                let document = Document {
+                    document_type: DocumentType::Json,
+                    data,
+                    metadata: DocumentMetadata {
+                        origin: None,
+                        date: None,
+                    },
+                };
+
+                Ok(document)
+            }
+            DocumentType::PlainText => unimplemented!(),
+            DocumentType::JavaScript => unimplemented!(),
+            DocumentType::Xml => unimplemented!(),
+            DocumentType::Html => unimplemented!(),
+        }
+    }
 }
