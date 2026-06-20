@@ -510,6 +510,32 @@ impl LLM {
 
         tokio::time::sleep(Duration::from_millis(50)).await;
 
+        let input_context_string = {
+            let lock = read_lock!(translation_context);
+            let meta_context = lock.input_meta_context.as_ref().unwrap();
+            input_context.generate_context_string(
+                &meta_context
+            )?
+        };
+
+        let target_context_string = {
+            let lock = read_lock!(translation_context);
+            let meta_context = lock.target_meta_context.as_ref().unwrap();
+            target_context.generate_context_string(
+                &meta_context
+            )?
+        };
+
+        let user_prompt = format!(r##"
+            [FIRST DOCUMENT]
+            {}
+            
+            [SECOND DOCUMENT]
+            {}
+        "##, input_context_string, target_context_string);
+
+        log::debug!("user_prompt: {}", user_prompt);
+
         unimplemented!()
     }
 }

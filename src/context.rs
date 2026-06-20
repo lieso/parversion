@@ -57,6 +57,10 @@ impl Context {
                 }
             }
         });
+        if self.data_node.fields.is_empty() {
+            return Ok(context_string);
+        }
+
         let context_strings: Vec<String> = self.data_node.fields.keys().map(|key| {
             format!("{} -> {}", context_string, key)
         }).collect();
