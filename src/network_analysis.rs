@@ -22,6 +22,17 @@ use crate::transformation::{
 };
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::traversal::{get_original_document_condensed};
+use crate::translation_network::TranslationNetwork;
+
+pub async fn get_translation_networks<P: Provider>(
+    provider: Arc<P>,
+    translation_context: Arc<RwLock<TranslationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+) -> Result<HashMap<TranslationNetworkID, Arc<TranslationNetwork>>, Errors> {
+    log::trace!("In get_translation_networks");
+    unimplemented!()
+}
 
 pub async fn get_classification<P: Provider>(
     provider: Arc<P>,

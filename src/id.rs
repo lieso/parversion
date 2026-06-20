@@ -9,6 +9,7 @@ pub type DocumentNodeID = ID;
 pub type DataNodeID = ID;
 pub type NodeID = ID;
 pub type TranslationNodeID = ID;
+pub type TranslationNetworkID = ID;
 
 #[derive(Clone, Debug, Hash)]
 pub struct ID {

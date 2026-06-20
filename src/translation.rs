@@ -11,6 +11,7 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::normalization;
 use crate::node_analysis::{get_translation_nodes};
+use crate::network_analysis::{get_translation_networks};
 use crate::graph_node::Graph;
 use crate::translation_node::TranslationNode;
 use crate::data_node::DataNode;
@@ -62,7 +63,7 @@ pub async fn translate<P: Provider>(
 
     let stage = execution_context.enter_stage("Translating nodes");
 
-let translation_nodes = 
+    let translation_nodes = 
         get_translation_nodes(
             Arc::clone(&provider),
             Arc::clone(&translation_context),
@@ -74,6 +75,22 @@ let translation_nodes =
     {
         let mut lock = write_lock!(translation_context);
         lock.update_translation_nodes(translation_nodes);
+    }
+
+    let stage = execution_context.enter_stage("Translating networks");
+
+    let translation_networks =
+        get_translation_networks(
+            Arc::clone(&provider),
+            Arc::clone(&translation_context),
+            &options,
+            &stage,
+        )
+        .await?;
+
+    {
+        let mut lock = write_lock!(translation_context);
+        lock.update_translation_networks(translation_networks);
     }
 
     stage.finish();
@@ -131,6 +148,8 @@ pub async fn translate_json<P: Provider>(
             custom_delimiter: None,
         }
     )?;
+
+    log::debug!("normalized_document: {}", normalized_document.to_string());
 
     let normalized_meta_context = normalized_document.to_meta_context()?;
 

@@ -4,11 +4,13 @@ use std::sync::Arc;
 use crate::prelude::*;
 use crate::context::Context;
 use crate::translation_node::TranslationNode;
+use crate::translation_network::TranslationNetwork;
 
 pub struct TranslationContext {
     pub input_meta_context: Option<Arc<MetaContext>>,
     pub target_meta_context: Option<Arc<MetaContext>>,
     pub translation_nodes: Option<HashMap<ID, Arc<TranslationNode>>>,
+    pub translation_networks: Option<HashMap<ID, Arc<TranslationNetwork>>>,
 }
 
 impl TranslationContext {
@@ -17,6 +19,7 @@ impl TranslationContext {
             input_meta_context: None,
             target_meta_context: None,
             translation_nodes: None,
+            translation_networks: None,
         }
     }
 
@@ -37,8 +40,12 @@ impl TranslationContext {
         self.target_meta_context = Some(Arc::new(target_meta_context));
     }
 
-    pub fn update_translation_nodes(&mut self, nodes: HashMap<ID, Arc<TranslationNode>>) {
+    pub fn update_translation_nodes(&mut self, nodes: HashMap<TranslationNodeID, Arc<TranslationNode>>) {
         self.translation_nodes = Some(nodes);
+    }
+
+    pub fn update_translation_networks(&mut self, networks: HashMap<TranslationNetworkID, Arc<TranslationNetwork>>) {
+        self.translation_networks = Some(networks);
     }
 
     fn unique_contexts_from(maybe_meta_context: &Option<Arc<MetaContext>>) -> Result<Vec<Arc<Context>>, Errors> {

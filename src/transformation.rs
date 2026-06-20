@@ -23,6 +23,11 @@ pub enum Runtime {
 
 
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NetworkTranslationTransformation {
+    pub id: ID,
+    pub image: String,
+}
 
 
 
