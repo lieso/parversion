@@ -27,6 +27,7 @@ pub enum Runtime {
 pub struct NetworkTranslationTransformation {
     pub id: ID,
     pub image: String,
+    pub cardinality: String,
 }
 
 

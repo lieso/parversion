@@ -17,6 +17,8 @@ pub struct TranslateNetworksResponseMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TranslateNetworksResponse {
     pub is_match: bool,
+    pub source_cardinality: String,
+    pub target_cardinality: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -58,14 +60,25 @@ CONCEPTS:
 CRITICAL RULES:
 - Use the Positional Context to understand the full structural lineage of each network.
 - Use the Spatial Context to analyze the actual values and immediate siblings.
-- DO NOT match networks just because they share a similar name.
-- You MUST verify that both networks represent the same real-world semantic concept at the same structural role.
-- Example: A source network at "submissions -> item -> author" and a target network at "entries -> author" DO MATCH if both represent the author of a content item.
-- Example: A source network at "submissions -> metadata" and a target network at "entries -> author" DO NOT MATCH even if both contain a name field.
+- DO NOT match networks just because they share a similar name or relate to the same broad topic.
+- PLURALITY & CARDINALITY: You MUST verify that the data types match conceptually. A collection/array of items DOES NOT match a singular item or a nested properties object.
+- GRANULARITY & SCOPE: You MUST verify the hierarchical scope. A top-level container holding multiple attributes DOES NOT match a deeply nested sub-component, even if they share related data.
+- Example 1 (Match): A source network at "submissions -> item -> author" and a target network at "entries -> author" DO MATCH if both represent the author of a content item.
+- Example 2 (Mismatch - Scope): A source network at "submissions -> metadata" and a target network at "entries -> author" DO NOT MATCH even if both contain a name field.
+- Example 3 (Mismatch - Cardinality): A source network at "submissions -> item -> details" (a singular object) and a target network at "entries" (an array of items) DO NOT MATCH. The array maps to the parent array, not the nested item details.
 
-OUTPUT:
-- Set is_match to true if the Source and Target networks represent the same semantic concept and structural role.
-- Set is_match to false otherwise.
+OUTPUT FORMAT:
+Return a strictly formatted JSON object with the following keys:
+- "source_cardinality": Evaluate the Source network and output either "array", "object", or "primitive" (string/number/boolean).
+- "target_cardinality": Evaluate the Target network and output either "array", "object", or "primitive".
+- "is_match": Set to true ONLY if the Source and Target networks represent the exact same semantic concept, structural role, AND their cardinalities logically align. Set to false otherwise.
+
+Example Output:
+{
+  "source_cardinality": "object",
+  "target_cardinality": "array",
+  "is_match": false
+}
         "##;
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -94,9 +107,17 @@ OUTPUT:
                     "is_match": {
                         "type": "boolean",
                         "description": "True if the Source and Target networks represent the same semantic concept and structural role."
+                    },
+                    "source_cardinality": {
+                        "type": "string",
+                        "description": "The cardinality of FIRST DOCUMENT network."
+                    },
+                    "target_cardinality": {
+                        "type": "string",
+                        "description": "The cardinality of SECOND DOCUMENT network."
                     }
                 },
-                "required": ["is_match"],
+                "required": ["is_match", "source_cardinality", "target_cardinality"],
                 "additionalProperties": false
             }),
         );

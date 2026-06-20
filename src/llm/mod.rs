@@ -542,6 +542,7 @@ impl LLM {
             Some(NetworkTranslationTransformation {
                 id: ID::new(),
                 image: target_context.network_name.clone(),
+                cardinality: response.target_cardinality.clone(),
             })
         } else {
             None
