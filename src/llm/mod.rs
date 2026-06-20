@@ -538,6 +538,15 @@ impl LLM {
             &user_prompt
         ).await?;
 
-        unimplemented!()
+        let transformation = if response.is_match {
+            Some(NetworkTranslationTransformation {
+                id: ID::new(),
+                image: target_context.network_name.clone(),
+            })
+        } else {
+            None
+        };
+
+        Ok((transformation, (metadata.tokens,)))
     }
 }

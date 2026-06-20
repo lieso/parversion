@@ -96,12 +96,12 @@ pub async fn translate<P: Provider>(
     stage.finish();
 
 
+    unimplemented!();
 
     do_something(Arc::clone(&translation_context))?;
 
 
 
-    unimplemented!();
 
 
     Ok(normalization_context)
