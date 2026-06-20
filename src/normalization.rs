@@ -40,7 +40,7 @@ pub async fn normalize<P: Provider>(
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize");
 
-    let normalization_context = normalize_to_classification(
+    let normalization_context = init_normalization_context(
         Arc::clone(&provider),
         document,
         options,
@@ -48,6 +48,23 @@ pub async fn normalize<P: Provider>(
     )
     .await?;
 
+    let stage = execution_context.enter_stage("Document classification");
+
+    let classification =
+        get_classification(
+            Arc::clone(&provider),
+            normalization_context.clone(),
+            &options,
+            &stage,
+        )
+        .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_classification(classification);
+    }
+
+    stage.finish();
     let stage = execution_context.enter_stage("Field analysis");
 
     let basis_fields =
@@ -168,13 +185,13 @@ pub async fn normalize<P: Provider>(
     Ok(normalization_context)
 }
 
-pub async fn normalize_to_classification<P: Provider>(
+pub async fn init_normalization_context<P: Provider>(
     provider: Arc<P>,
     document: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
-    log::trace!("In normalize_to_classification");
+    log::trace!("In init_normalization_context");
 
     let stage = execution_context.enter_stage("Document preprocessing and classification");
 
@@ -197,14 +214,7 @@ pub async fn normalize_to_classification<P: Provider>(
             .await?;
         }
         DocumentType::Json => {
-            normalize_json(
-                Arc::clone(&provider),
-                document,
-                options,
-                normalization_context.clone(),
-                &stage,
-            )
-            .await?;
+            unimplemented!();
         }
         DocumentType::PlainText => {
             unimplemented!();
@@ -239,49 +249,7 @@ async fn normalize_html<P: Provider>(
         lock.update_meta_context(meta_context);
     }
 
-    log::info!("Getting classification");
-    let classification =
-        get_classification(
-            Arc::clone(&provider),
-            normalization_context.clone(),
-            &options,
-            stage,
-        )
-        .await?;
-
-    {
-        let mut lock = write_lock!(normalization_context);
-        lock.update_classification(classification);
-    }
-
     Ok(())
-}
-
-async fn normalize_json<P: Provider>(
-    _provider: Arc<P>,
-    _document: Document,
-    _options: &Options,
-    _meta_context: Arc<RwLock<NormalizationContext>>,
-    _stage: &StageContext,
-) -> Result<(), Errors> {
-    unimplemented!();
-}
-
-pub async fn normalize_document_to_classification<P: Provider>(
-    provider: Arc<P>,
-    document: Document,
-    _options: &Options,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
-    log::trace!("In normalize_document_to_classification");
-
-    normalize_to_classification(
-        Arc::clone(&provider),
-        document,
-        _options,
-        execution_context,
-    )
-    .await
 }
 
 pub async fn normalize_document<P: Provider>(
@@ -345,26 +313,6 @@ pub async fn normalize_text<P: Provider>(
     .await
 }
 
-pub async fn normalize_text_to_classification<P: Provider>(
-    provider: Arc<P>,
-    text: String,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
-    log::trace!("In normalize_text_to_classification");
-
-    let document = Document::from_string(text, _options, metadata)?;
-
-    normalize_to_classification(
-        Arc::clone(&provider),
-        document,
-        _options,
-        execution_context,
-    )
-    .await
-}
-
 pub async fn normalize_text_to_document<P: Provider>(
     provider: Arc<P>,
     text: String,
@@ -397,31 +345,6 @@ pub async fn normalize_file<P: Provider>(
     })?;
 
     normalize_text(
-        Arc::clone(&provider),
-        text,
-        _options,
-        metadata,
-        execution_context,
-    )
-    .await
-}
-
-pub async fn normalize_file_to_classification<P: Provider>(
-    provider: Arc<P>,
-    path: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
-    log::trace!("In normalize_file_to_classification");
-    log::debug!("file path: {}", path);
-
-    let text = get_file_as_text(path).map_err(|err| {
-        log::error!("Failed to get file as text: {:?}", err);
-        Errors::FileInputError
-    })?;
-
-    normalize_text_to_classification(
         Arc::clone(&provider),
         text,
         _options,
@@ -502,9 +425,6 @@ fn build_normalized_graph<P: Provider>(
     let mut contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
     let mut visited: HashSet<ID> = HashSet::new();
 
-
-
-
     let data_node = Arc::new(DataNode {
         id: ID::new(),
         hash: Hash::new(),
@@ -528,12 +448,6 @@ fn build_normalized_graph<P: Provider>(
         read_lock!(normalized).id.clone(),
         Arc::clone(&root_context)
     );
-
-
-
-
-
-
 
     let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
     let canonicalization: CanonicalizationTransformation = basis_graph.canonicalization;
@@ -618,10 +532,6 @@ fn process_canonical_network(
         match relationship.relationship_type {
             NetworkRelationshipType::Composition => {
                 if relationship.from == basis_network.id {
-
-
-
-
                     let normalized_data_node = Arc::new(DataNode {
                         id: ID::new(),
                         hash: Hash::new(),
@@ -652,11 +562,6 @@ fn process_canonical_network(
                         read_lock!(normalized_graph_node).id.clone(),
                         Arc::clone(&normal_context)
                     );
-
-
-
-
-
 
                     process_network(
                         Arc::clone(&normalization_context),
@@ -770,10 +675,6 @@ fn process_network(
 
         write_lock!(parent_normalized_node).children.push(Arc::clone(&normalized_graph_node));
 
-
-
-
-
         let normal_context = {
             let subgraph_hash: Hash = read_lock!(current_node).subgraph_hash.clone();
 
@@ -800,12 +701,6 @@ fn process_network(
                 })
             }
         };
-
-
-
-
-
-
 
         contexts.insert(
             normalized_data_node.id.clone(),
@@ -842,13 +737,13 @@ fn process_network(
                }
            }
 
-            recurse(
-                Arc::clone(&normalization_context),
-                Arc::clone(&child),
-                Arc::clone(&normalized_graph_node),
-                contexts,
-                visited,
-            )?;
+           recurse(
+               Arc::clone(&normalization_context),
+               Arc::clone(&child),
+               Arc::clone(&normalized_graph_node),
+               contexts,
+               visited,
+           )?;
         }
 
         Ok(())
