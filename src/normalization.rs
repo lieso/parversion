@@ -179,7 +179,6 @@ pub async fn normalize<P: Provider>(
         lock.update_normalized_graph(contexts, normalized_graph_root);
     }
 
-
     stage.finish();
 
     Ok(normalization_context)

@@ -164,7 +164,7 @@ pub async fn translate_text_to_document<P: Provider>(
 ) -> Result<Document, Errors> {
     log::trace!("In translate_text_to_document");
 
-    let translation_context = translate_text_to_translation_context(
+    let translation_context = translate_text(
         Arc::clone(&provider),
         source,
         target,
@@ -175,14 +175,14 @@ pub async fn translate_text_to_document<P: Provider>(
     unimplemented!()
 }
 
-pub async fn translate_text_to_translation_context<P: Provider>(
+pub async fn translate_text<P: Provider>(
     provider: Arc<P>,
     source: (String, &Metadata),
     target: (String, &Metadata),
     options: &Options,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
-    log::trace!("In translate_text_to_translation_context");
+    log::trace!("In translate_text");
 
     let source_document = Document::from_string(source.0, options, source.1)?;
 
