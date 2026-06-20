@@ -155,7 +155,34 @@ async fn get_translation_network<P: Provider>(
         }
     }
 
-    unimplemented!()
+    let (transformation, (tokens,)) = LLM::get_network_translation(
+        Arc::clone(&translation_context),
+        Arc::clone(&input_context),
+        Arc::clone(&target_context),
+    ).await?;
+
+    if let Some(transformation) = transformation {
+        let translation_network = TranslationNetwork {
+            id: ID::new(),
+            source_lineage: input_context.lineage.clone(),
+            target_lineage: target_context.lineage.clone(),
+            transformation: transformation.clone(),
+        };
+
+        provider.save_translation_network(
+            (input_context.lineage.clone(), target_context.lineage.clone()),
+            Some(translation_network.clone())
+        ).await?;
+
+        Ok(Some(translation_network))
+    } else {
+        provider.save_translation_network(
+            (input_context.lineage.clone(), target_context.lineage.clone()),
+            None
+        ).await?;
+
+        Ok(None)
+    }
 }
 
 pub async fn get_classification<P: Provider>(

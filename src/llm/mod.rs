@@ -13,7 +13,8 @@ use crate::transformation::{
     FieldMetadata,
     NetworkTransformation,
     NetworkMetadata,
-    FieldTranslationTransformation
+    FieldTranslationTransformation,
+    NetworkTranslationTransformation
 };
 use crate::context::Context;
 
@@ -495,5 +496,20 @@ impl LLM {
             .collect();
 
         Ok((transformations, (metadata.tokens,)))
+    }
+    
+    pub async fn get_network_translation(
+        translation_context: Arc<RwLock<TranslationContext>>,
+        input_context: Arc<Context>,
+        target_context: Arc<Context>,
+    ) -> Result<(
+        Option<NetworkTranslationTransformation>,
+        (u64,)
+    ), Errors> {
+        log::trace!("In get_network_translation");
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        unimplemented!()
     }
 }
