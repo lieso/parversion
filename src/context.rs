@@ -58,7 +58,17 @@ impl Context {
             }
         });
         if self.data_node.fields.is_empty() {
-            return Ok(context_string);
+            if self.network_name.is_empty() {
+                panic!("network name is empty");
+            } else {
+                if context_string.is_empty() {
+                    let positional_context = format!("{}", self.network_name);
+                    return Ok(positional_context);
+                } else {
+                    let positional_context = format!("{} -> {}", context_string, self.network_name);
+                    return Ok(positional_context);
+                }
+            }
         }
 
         let context_strings: Vec<String> = self.data_node.fields.keys().map(|key| {
