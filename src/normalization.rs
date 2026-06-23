@@ -356,7 +356,7 @@ async fn init_normalization_context<P: Provider>(
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In init_normalization_context");
 
-    let stage = execution_context.enter_stage("Document preprocessing and classification");
+    let stage = execution_context.enter_stage("Initializing");
 
     let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
 

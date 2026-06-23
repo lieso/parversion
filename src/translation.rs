@@ -50,6 +50,7 @@ pub async fn translate<P: Provider>(
         lock.update_translation_nodes(translation_nodes);
     }
 
+    stage.finish();
     let stage = execution_context.enter_stage("Translating networks");
 
     let translation_networks =

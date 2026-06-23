@@ -114,6 +114,7 @@ fn init_logging() {
 }
 
 fn setup() {
+    #[cfg(debug_assertions)]
     init_logging();
 
     let config = read_lock!(CONFIG);
