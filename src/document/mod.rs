@@ -186,6 +186,15 @@ impl Document {
     ) -> Result<Self, Errors> {
         log::trace!("In from_normalized_graph");
 
+        let classification = {
+            let lock = read_lock!(normalization_context);
+            lock.classification
+                .clone()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError("Classification not provided in meta context".to_string())
+                })?
+        };
+
         match document_format.format_type {
             DocumentType::Json => {
                 let data = Json::from_normalized_graph(Arc::clone(&normalization_context))?;
@@ -196,9 +205,9 @@ impl Document {
                     metadata: DocumentMetadata {
                         origin: None,
                         date: None,
-                        name: None,
-                        description: None,
-                        semantic_content_types: None,
+                        name: Some(classification.name.clone()),
+                        description: Some(classification.description.clone()),
+                        semantic_content_types: Some(classification.aliases.clone()),
                     },
                 };
 
