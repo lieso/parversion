@@ -106,7 +106,10 @@ pub async fn normalize<P: Provider>(
         lock.update_context_groups(context_groups, context_to_group);
     }
 
-    report_basis_groups(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+    #[cfg(debug_assertions)]
+    {
+        report_basis_groups(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+    }
 
     stage.finish();
     let stage = execution_context.enter_stage("Node analysis");
