@@ -54,7 +54,11 @@ pub async fn run() -> Result<(), Errors> {
 
     log::info!("Successfully processed document");
 
-    println!("{}", package.to_string());
+    if matches.get_flag("output-metadata") {
+        println!("{}", serde_json::to_string(&package.document.metadata).expect("Failed to serialize document metadata"));
+    } else {
+        println!("{}", package.to_string());
+    }
 
     let elapsed = start.elapsed();
     log::info!("Elapsed: {:.2?}", elapsed);
@@ -180,6 +184,13 @@ fn parse_arguments() -> clap::ArgMatches {
                 .long("regenerate")
                 .action(ArgAction::SetTrue)
                 .help("Regenerate inferences"),
+        )
+        .arg(
+            Arg::new("output-metadata")
+                .short('z')
+                .long("output-metadata")
+                .action(ArgAction::SetTrue)
+                .help("Output only document metadata"),
         )
         .get_matches()
 }
