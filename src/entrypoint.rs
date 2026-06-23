@@ -10,6 +10,7 @@ use std::time::Instant;
 use tokio::sync::mpsc;
 use std::fs;
 use std::str::FromStr;
+use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::config::CONFIG;
 use crate::document::{DocumentType, DocumentRole};
@@ -21,6 +22,7 @@ use crate::prelude::*;
 use crate::provider::sqlite::SqliteProvider;
 #[cfg(feature = "yaml-provider")]
 use crate::provider::yaml::YamlFileProvider;
+use crate::provider::VoidProvider;
 use crate::provider::{Provider};
 use crate::translation;
 
@@ -93,24 +95,14 @@ fn load_stdin() -> io::Result<String> {
 }
 
 fn init_logging() {
-    log::info!("Initializing logging...");
+    let filter = EnvFilter::new(format!("off,{}=trace", PROGRAM_NAME));
 
-    Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{date} [{level}] {file}:{line} - {message}",
-                date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                level = record.level(),
-                file = record.file().unwrap_or("unknown"),
-                line = record.line().unwrap_or(0),
-                message = message
-            ))
-        })
-        .level(LevelFilter::Off)
-        .level_for(PROGRAM_NAME, LevelFilter::Trace)
-        .chain(stdout())
-        .apply()
-        .expect("Could not initialize logging");
+    fmt()
+        .with_env_filter(filter)
+        .with_file(true)
+        .with_line_number(true)
+        .with_thread_ids(true)
+        .init();
 }
 
 fn setup() {

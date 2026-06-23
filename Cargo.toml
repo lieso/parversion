@@ -28,7 +28,6 @@ toml = "0.8.14"
 lazy_static = "1.5.0"
 futures = "0.3.30"
 dotenv = "0.15.0"
-fern = "0.7.0"
 async-trait = "0.1.83"
 quick-js = "0.4.1"
 serde_yaml = { version = "0.9.34", optional = true }
@@ -48,6 +47,8 @@ swc_atoms = "=9.0.0"
 openrouter-rs = "0.4.7"
 rand = { version = "0.10.1", features = ["thread_rng"]}
 async-recursion = "1.1.1"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 [lib]
 name = "parversion"
