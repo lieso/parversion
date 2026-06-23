@@ -231,6 +231,9 @@ fn process_element(
                     metadata: DocumentMetadata {
                         origin: None,
                         date: None,
+                        name: None,
+                        description: None,
+                        semantic_content_types: None,
                     },
                 };
                 extracted_docs.push(html_doc);
@@ -288,6 +291,9 @@ fn is_likely_html(value: &str) -> bool {
         metadata: DocumentMetadata {
             origin: None,
             date: None,
+            name: None,
+            description: None,
+            semantic_content_types: None,
         },
     };
 

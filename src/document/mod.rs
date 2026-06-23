@@ -46,6 +46,9 @@ impl FromStr for DocumentRole {
 pub struct DocumentMetadata {
     pub origin: Option<String>,
     pub date: Option<String>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub semantic_content_types: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -84,6 +87,9 @@ impl Document {
             metadata: DocumentMetadata {
                 origin: options.origin.clone(),
                 date: options.date.clone(),
+                name: None,
+                description: None,
+                semantic_content_types: None,
             },
             data: instance.clone(),
         };
@@ -110,6 +116,9 @@ impl Document {
             metadata: DocumentMetadata {
                 origin: options.origin.clone(),
                 date: options.date.clone(),
+                name: None,
+                description: None,
+                semantic_content_types: None,
             },
             data: value,
         };
@@ -156,6 +165,9 @@ impl Document {
                     metadata: DocumentMetadata {
                         origin: None,
                         date: None,
+                        name: None,
+                        description: None,
+                        semantic_content_types: None,
                     },
                 };
 
@@ -184,6 +196,9 @@ impl Document {
                     metadata: DocumentMetadata {
                         origin: None,
                         date: None,
+                        name: None,
+                        description: None,
+                        semantic_content_types: None,
                     },
                 };
 
@@ -212,6 +227,9 @@ impl Document {
                     metadata: DocumentMetadata {
                         origin: None,
                         date: None,
+                        name: None,
+                        description: None,
+                        semantic_content_types: None,
                     },
                 };
 
