@@ -1,6 +1,5 @@
 use atty::Stream;
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use fern::Dispatch;
 use log::LevelFilter;
 use std::env;
 use std::io::stdout;
