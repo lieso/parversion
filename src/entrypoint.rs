@@ -68,7 +68,7 @@ pub async fn run() -> Result<(), Errors> {
 }
 
 fn ensure_prerequisites() -> Result<(), Errors> {
-    let env_vars = &["OPENAI_API_KEY", "OPENROUTER_API_KEY"];
+    let env_vars = &["OPENROUTER_API_KEY"];
 
     for &var in env_vars {
         if env::var(var).is_err() {
