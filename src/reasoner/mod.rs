@@ -7,12 +7,18 @@ pub struct CompletionMetadata {
     pub output_tokens: u32,
 }
 
+pub enum Capability {
+    Fast,
+    Capable,
+}
+
 #[async_trait]
 pub trait Reasoner: Send + Sync + Sized + 'static {
     async fn complete(
         &self,
+        capability: Capability,
         system_prompt: &str,
         user_prompt: &str,
-        schema: Option<serde_json::Value>
+        schema: serde_json::Value
     ) -> Result<(String, CompletionMetadata), Errors>;
 }
