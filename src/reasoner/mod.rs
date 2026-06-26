@@ -2,6 +2,9 @@ use async_trait::async_trait;
 
 use crate::prelude::*;
 
+#[cfg(feature = "openrouter-reasoner")]
+pub mod openrouter;
+
 pub struct CompletionMetadata {
     pub input_tokens: u32,
     pub output_tokens: u32,

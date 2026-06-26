@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use openrouter_rs::{
     api::chat::*,
     types::{ResponseFormat, Role},
@@ -5,12 +6,15 @@ use openrouter_rs::{
 };
 
 use crate::prelude::*;
-use crate::reasoner::{Reasoner, CompletionMetadata};
+use crate::reasoner::{Reasoner, CompletionMetadata, Capability};
+use crate::environment::get_env_variable;
 
+#[cfg(feature = "openrouter-reasoner")]
 pub struct OpenRouterReasoner {
     client: OpenRouterClient,
 }
 
+#[cfg(feature = "openrouter-reasoner")]
 impl OpenRouterReasoner {
     pub fn new() -> Self {
         let api_key = get_env_variable("OPENROUTER_API_KEY");
@@ -23,6 +27,7 @@ impl OpenRouterReasoner {
 }
 
 #[async_trait]
+#[cfg(feature = "openrouter-reasoner")]
 impl Reasoner for OpenRouterReasoner {
     async fn complete(
         &self,
@@ -44,10 +49,10 @@ impl Reasoner for OpenRouterReasoner {
         let model = match capability {
             Capability::Fast => "gpt-5-mini",
             Capability::Capable => "gpt-5",
-        }
+        };
         
         let response_format = ResponseFormat::json_schema(
-            "whatdoIputhere?",
+            "structured_response",
             true,
             schema,
         );
@@ -62,7 +67,7 @@ impl Reasoner for OpenRouterReasoner {
             .build()
             .expect("Could not construct ChatCompletionRequest");
 
-        match client.send_chat_completion(&request).await {
+        match self.client.send_chat_completion(&request).await {
             Ok(response) => {
                 log::debug!("┌─── RAW LLM RESPONSE ──────────────────────────────────────────┐");
                 log::debug!("{:?}", response);
@@ -79,7 +84,16 @@ impl Reasoner for OpenRouterReasoner {
                     );
                     log::debug!("");
 
-                    return Ok(content);
+                    let metadata = if let Some(usage) = response.usage {
+                        CompletionMetadata {
+                            input_tokens: usage.prompt_tokens as u32,
+                            output_tokens: usage.completion_tokens as u32,
+                        }
+                    } else {
+                        CompletionMetadata { input_tokens: 0, output_tokens: 0 }
+                    };
+
+                    return Ok((content.to_string(), metadata));
                 } else {
                     log::error!(
                         "╔═══════════════════════════════════════════════════════════════╗"
@@ -102,7 +116,5 @@ impl Reasoner for OpenRouterReasoner {
                 Err(Errors::UnexpectedError)
             }
         }
-
-        todo!()
     }
 }
