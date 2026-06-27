@@ -24,4 +24,26 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         user_prompt: &str,
         schema: serde_json::Value
     ) -> Result<(String, CompletionMetadata), Errors>;
+
+    async fn execute<T: for<'de> serde::Deserialize<'de>>(
+        &self,
+        capability: Capability,
+        system_prompt: &str,
+        user_prompt: &str,
+        schema: serde_json::Value
+    ) -> Result<(T, CompletionMetadata), Errors> {
+        let (content, metadata) = self.complete(
+            capability,
+            system_prompt,
+            user_prompt,
+            schema
+        ).await?;
+
+        let parsed = serde_json::from_str::<T>(&content).map_err(|e| {
+            log::error!("Failed to parse reasoner response: {}", e);
+            Errors::UnexpectedError
+        })?;
+
+        Ok((parsed, metadata))
+    }
 }
