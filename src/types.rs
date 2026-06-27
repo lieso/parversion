@@ -21,6 +21,7 @@ pub enum Errors {
     FetchUrlError(String),
     FieldTransformationFieldNotFound,
     ContextTooLarge,
+    DeficientMetaContextError(String),
     DeficientNormalizationContextError(String),
     DeficientTranslationContextError(String),
     DocumentVersionNotFound,

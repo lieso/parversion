@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::classification::Classification;
 
 mod backend;
+mod classify;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -20,7 +21,7 @@ pub enum Capability {
 }
 
 pub struct ReasonerMetadata {
-    tokens: u32,
+    pub tokens: u32,
 }
 
 #[async_trait]
@@ -56,9 +57,9 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
     }
 
     async fn classify(
+        &self,
         meta_context: Arc<MetaContext>,
     ) -> Result<(Classification, ReasonerMetadata), Errors> {
-        log::trace!("In classify");
-        todo!()
+        Ok(classify::classify(self, meta_context).await?)
     }
 }
