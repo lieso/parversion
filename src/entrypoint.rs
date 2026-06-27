@@ -387,6 +387,7 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
     if let Some((translation, translation_metadata)) = translation {
         let translated_document = translation::translate_text_to_document(
             provider.clone(),
+            reasoner.clone(),
             (document, &metadata),
             (translation, &translation_metadata),
             &options,
@@ -402,6 +403,7 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
     } else {
         let normalized_document = normalization::normalize_text_to_document(
             provider.clone(),
+            reasoner.clone(),
             document,
             &options,
             &metadata,

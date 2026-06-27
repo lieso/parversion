@@ -23,8 +23,9 @@ use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::traversal::{get_original_document_condensed};
 use crate::translation_network::TranslationNetwork;
 
-pub async fn get_translation_networks<P: Provider>(
+pub async fn get_translation_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     translation_context: Arc<RwLock<TranslationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -90,6 +91,7 @@ pub async fn get_translation_networks<P: Provider>(
     for pair in context_pairs {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_translation_context = Arc::clone(&translation_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
@@ -99,6 +101,7 @@ pub async fn get_translation_networks<P: Provider>(
 
             let maybe_translation_network = get_translation_network(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_translation_context,
                 pair,
                 &cloned_options,
@@ -134,8 +137,9 @@ pub async fn get_translation_networks<P: Provider>(
     Ok(hashmap)
 }
 
-async fn get_translation_network<P: Provider>(
+async fn get_translation_network<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     translation_context: Arc<RwLock<TranslationContext>>,
     context_pair: (Arc<Context>, Arc<Context>),
     options: &Options,
@@ -182,8 +186,9 @@ async fn get_translation_network<P: Provider>(
     }
 }
 
-pub async fn get_classification<P: Provider>(
+pub async fn get_classification<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -233,8 +238,9 @@ pub async fn get_classification<P: Provider>(
     Ok(Arc::new(classification))
 }
 
-pub async fn get_network_relationships<P: Provider>(
+pub async fn get_network_relationships<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext
@@ -270,6 +276,7 @@ pub async fn get_network_relationships<P: Provider>(
 
     let basis_graph: BasisGraph = get_canonical_networks(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         Arc::clone(&normalization_context),
         options,
         stage_context,
@@ -288,6 +295,7 @@ pub async fn get_network_relationships<P: Provider>(
 
     let basis_graph: BasisGraph = get_relationship_typing(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         Arc::clone(&normalization_context),
         options,
         stage_context,
@@ -420,8 +428,9 @@ async fn get_traversal(
     }
 }
 
-pub async fn get_relationship_typing<P: Provider>(
+pub async fn get_relationship_typing<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -470,8 +479,9 @@ pub async fn get_relationship_typing<P: Provider>(
     }
 }
 
-pub async fn get_canonical_networks<P: Provider>(
+pub async fn get_canonical_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -517,8 +527,9 @@ pub async fn get_canonical_networks<P: Provider>(
     Ok(basis_graph)
 }
 
-pub async fn get_basis_networks<P: Provider>(
+pub async fn get_basis_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext
@@ -562,6 +573,7 @@ pub async fn get_basis_networks<P: Provider>(
     for (subgraph_hash, graphs) in unique_subgraphs {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
@@ -575,6 +587,7 @@ pub async fn get_basis_networks<P: Provider>(
 
             let basis_network = get_basis_network(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_meta_context,
                 subgraph_hash,
                 graphs,
@@ -599,8 +612,9 @@ pub async fn get_basis_networks<P: Provider>(
     Ok(hashmap_results)
 }
 
-async fn get_basis_network<P: Provider>(
+async fn get_basis_network<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     subgraph_hash: Hash,
     graphs: Vec<Graph>,

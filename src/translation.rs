@@ -17,8 +17,9 @@ use crate::translation_node::TranslationNode;
 use crate::translation_network::TranslationNetwork;
 use crate::data_node::DataNode;
 
-pub async fn translate<P: Provider>(
+pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     source: Document,
     target: Document,
     options: &Options,
@@ -28,6 +29,7 @@ pub async fn translate<P: Provider>(
 
     let translation_context = init_translation_context(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         source,
         target,
         options,
@@ -39,6 +41,7 @@ pub async fn translate<P: Provider>(
     let translation_nodes = 
         get_translation_nodes(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             Arc::clone(&translation_context),
             &options,
             &stage,
@@ -56,6 +59,7 @@ pub async fn translate<P: Provider>(
     let translation_networks =
         get_translation_networks(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             Arc::clone(&translation_context),
             &options,
             &stage,
@@ -72,8 +76,9 @@ pub async fn translate<P: Provider>(
     Ok(translation_context)
 }
 
-pub async fn translate_json<P: Provider>(
+pub async fn translate_json<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     translation_context: Arc<RwLock<TranslationContext>>,
     document: Document,
@@ -107,8 +112,9 @@ pub async fn translate_json<P: Provider>(
     Ok(())
 }
 
-pub async fn translate_text_to_document<P: Provider>(
+pub async fn translate_text_to_document<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     source: (String, &Metadata),
     target: (String, &Metadata),
     options: &Options,
@@ -119,6 +125,7 @@ pub async fn translate_text_to_document<P: Provider>(
 
     let translation_context = translate_text(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         source,
         target,
         options,
@@ -133,8 +140,9 @@ pub async fn translate_text_to_document<P: Provider>(
     Ok(translated_document)
 }
 
-pub async fn translate_text<P: Provider>(
+pub async fn translate_text<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     source: (String, &Metadata),
     target: (String, &Metadata),
     options: &Options,
@@ -152,6 +160,7 @@ pub async fn translate_text<P: Provider>(
             DocumentRole::Schema => {
                 Document::from_schema_string(
                     Arc::clone(&provider),
+                    Arc::clone(&reasoner),
                     target.0,
                     options,
                     target.1
@@ -162,6 +171,7 @@ pub async fn translate_text<P: Provider>(
 
     let translation_context = translate(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         source_document,
         target_document,
         options,
@@ -171,8 +181,9 @@ pub async fn translate_text<P: Provider>(
     Ok(translation_context)
 }
 
-pub async fn translate_text_to_package<P: Provider>(
+pub async fn translate_text_to_package<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     source: (String, &Metadata),
     target: (String, &Metadata),
     options: &Options,
@@ -183,6 +194,7 @@ pub async fn translate_text_to_package<P: Provider>(
 
     let translated_document = translate_text_to_document(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         source,
         target,
         options,
@@ -196,8 +208,9 @@ pub async fn translate_text_to_package<P: Provider>(
     })
 }
 
-async fn init_translation_context<P: Provider>(
+async fn init_translation_context<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     source: Document,
     target: Document,
     options: &Options,
@@ -207,6 +220,7 @@ async fn init_translation_context<P: Provider>(
 
     let normalization_context: Arc<RwLock<NormalizationContext>> = normalization::normalize(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         source,
         options,
         execution_context.clone(),
@@ -221,6 +235,7 @@ async fn init_translation_context<P: Provider>(
         DocumentType::Json => {
             translate_json(
                 Arc::clone(&provider),
+                Arc::clone(&reasoner),
                 Arc::clone(&normalization_context),
                 Arc::clone(&translation_context),
                 target,

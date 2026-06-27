@@ -30,8 +30,9 @@ use crate::data_node::DataNode;
 use crate::network_relationship::NetworkRelationshipType;
 use crate::classification::Classification;
 
-pub async fn normalize<P: Provider>(
+pub async fn normalize<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     document: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
@@ -40,6 +41,7 @@ pub async fn normalize<P: Provider>(
 
     let normalization_context = init_normalization_context(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         document,
         options,
         execution_context.clone(),
@@ -51,6 +53,7 @@ pub async fn normalize<P: Provider>(
     let classification =
         get_classification(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             normalization_context.clone(),
             &options,
             &stage,
@@ -68,6 +71,7 @@ pub async fn normalize<P: Provider>(
     let basis_fields =
         get_basis_fields(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             Arc::clone(&normalization_context),
             &options,
             &stage,
@@ -85,6 +89,7 @@ pub async fn normalize<P: Provider>(
     let basis_groups =
         get_basis_groups(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             Arc::clone(&normalization_context),
             &options,
             &stage,
@@ -98,6 +103,7 @@ pub async fn normalize<P: Provider>(
 
     let (context_groups, context_to_group) = get_context_groups(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         Arc::clone(&normalization_context),
     )?;
 
@@ -118,6 +124,7 @@ pub async fn normalize<P: Provider>(
     let basis_nodes =
         get_basis_nodes(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             normalization_context.clone(),
             &options,
             &stage,
@@ -136,6 +143,7 @@ pub async fn normalize<P: Provider>(
     let basis_networks =
         get_basis_networks(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             normalization_context.clone(),
             &options,
             &stage,
@@ -155,6 +163,7 @@ pub async fn normalize<P: Provider>(
     let basis_graph =
         get_network_relationships(
             Arc::clone(&provider),
+            Arc::clone(&reasoner),
             Arc::clone(&normalization_context),
             &options,
             &stage,
@@ -185,8 +194,9 @@ pub async fn normalize<P: Provider>(
     Ok(normalization_context)
 }
 
-async fn normalize_html<P: Provider>(
+async fn normalize_html<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     document: Document,
     options: &Options,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -205,8 +215,9 @@ async fn normalize_html<P: Provider>(
     Ok(())
 }
 
-pub async fn normalize_document<P: Provider>(
+pub async fn normalize_document<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     document: Document,
     _options: &Options,
     document_format: &DocumentFormat,
@@ -215,7 +226,13 @@ pub async fn normalize_document<P: Provider>(
     log::trace!("In normalize_document");
 
     let normalization_context =
-        normalize(Arc::clone(&provider), document, _options, execution_context).await?;
+        normalize(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            document,
+            _options,
+            execution_context
+        ).await?;
 
     let normalized_document = Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)?;
 
@@ -225,8 +242,9 @@ pub async fn normalize_document<P: Provider>(
     })
 }
 
-pub async fn normalize_document_to_string<P: Provider>(
+pub async fn normalize_document_to_string<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     document: Document,
     _options: &Options,
     document_format: &DocumentFormat,
@@ -236,6 +254,7 @@ pub async fn normalize_document_to_string<P: Provider>(
 
     let package = normalize_document(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         document,
         _options,
         document_format,
@@ -246,8 +265,9 @@ pub async fn normalize_document_to_string<P: Provider>(
     Ok(package.to_string())
 }
 
-pub async fn normalize_text<P: Provider>(
+pub async fn normalize_text<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     text: String,
     _options: &Options,
     metadata: &Metadata,
@@ -259,6 +279,7 @@ pub async fn normalize_text<P: Provider>(
 
     normalize(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         document,
         _options,
         execution_context,
@@ -266,8 +287,9 @@ pub async fn normalize_text<P: Provider>(
     .await
 }
 
-pub async fn normalize_text_to_document<P: Provider>(
+pub async fn normalize_text_to_document<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     text: String,
     _options: &Options,
     metadata: &Metadata,
@@ -277,13 +299,21 @@ pub async fn normalize_text_to_document<P: Provider>(
     log::trace!("In normalize_text_to_document");
 
     let normalization_context =
-        normalize_text(Arc::clone(&provider), text, _options, metadata, execution_context).await?;
+        normalize_text(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            text,
+            _options,
+            metadata,
+            execution_context
+        ).await?;
 
     Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
 }
 
-pub async fn normalize_file<P: Provider>(
+pub async fn normalize_file<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     path: &str,
     _options: &Options,
     metadata: &Metadata,
@@ -299,6 +329,7 @@ pub async fn normalize_file<P: Provider>(
 
     normalize_text(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         text,
         _options,
         metadata,
@@ -307,8 +338,9 @@ pub async fn normalize_file<P: Provider>(
     .await
 }
 
-pub async fn normalize_file_to_document<P: Provider>(
+pub async fn normalize_file_to_document<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     path: &str,
     _options: &Options,
     metadata: &Metadata,
@@ -319,13 +351,21 @@ pub async fn normalize_file_to_document<P: Provider>(
     log::debug!("file path: {}", path);
 
     let normalization_context =
-        normalize_file(Arc::clone(&provider), path, _options, metadata, execution_context).await?;
+        normalize_file(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            path,
+            _options,
+            metadata,
+            execution_context
+        ).await?;
 
     Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
 }
 
-pub async fn normalize_file_to_string<P: Provider>(
+pub async fn normalize_file_to_string<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     path: &str,
     _options: &Options,
     metadata: &Metadata,
@@ -337,6 +377,7 @@ pub async fn normalize_file_to_string<P: Provider>(
 
     let document = normalize_file_to_document(
         Arc::clone(&provider),
+        Arc::clone(&reasoner),
         path,
         _options,
         metadata,
@@ -348,8 +389,9 @@ pub async fn normalize_file_to_string<P: Provider>(
     Ok(document.to_string())
 }
 
-async fn init_normalization_context<P: Provider>(
+async fn init_normalization_context<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     document: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
@@ -369,6 +411,7 @@ async fn init_normalization_context<P: Provider>(
         DocumentType::Html => {
             normalize_html(
                 Arc::clone(&provider),
+                Arc::clone(&reasoner),
                 document,
                 options,
                 normalization_context.clone(),

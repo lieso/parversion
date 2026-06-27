@@ -17,8 +17,9 @@ use crate::provider::Provider;
 use crate::context::Context;
 use crate::translation_node::TranslationNode;
 
-pub async fn get_translation_nodes<P: Provider>(
+pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     translation_context: Arc<RwLock<TranslationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -83,6 +84,7 @@ pub async fn get_translation_nodes<P: Provider>(
     for pair in context_pairs {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_translation_context = Arc::clone(&translation_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
@@ -92,6 +94,7 @@ pub async fn get_translation_nodes<P: Provider>(
 
             let maybe_translation_node = get_translation_node(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_translation_context,
                 pair,
                 &cloned_options,
@@ -127,8 +130,9 @@ pub async fn get_translation_nodes<P: Provider>(
     Ok(hashmap)
 }
 
-async fn get_translation_node<P: Provider>(
+async fn get_translation_node<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     translation_context: Arc<RwLock<TranslationContext>>,
     context_pair: (Arc<Context>, Arc<Context>),
     options: &Options,
@@ -175,8 +179,9 @@ async fn get_translation_node<P: Provider>(
     }
 }
 
-pub async fn get_basis_fields<P: Provider>(
+pub async fn get_basis_fields<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -245,6 +250,7 @@ pub async fn get_basis_fields<P: Provider>(
     for (field, contexts_in_group) in contexts_by_field {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
@@ -255,6 +261,7 @@ pub async fn get_basis_fields<P: Provider>(
 
             get_basis_field(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_meta_context,
                 cloned_acyclic_subgraph_hash,
                 field,
@@ -302,8 +309,9 @@ pub async fn get_basis_fields<P: Provider>(
     Ok(field_map)
 }
 
-async fn get_basis_field<P: Provider>(
+async fn get_basis_field<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_subgraph_hash: Hash,
     field: String,
@@ -337,8 +345,9 @@ async fn get_basis_field<P: Provider>(
     }
 }
 
-pub fn get_context_groups<P: Provider>(
+pub fn get_context_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(
     HashMap<ID, Vec<Arc<Context>>>,
@@ -428,8 +437,9 @@ pub fn get_context_groups<P: Provider>(
     Ok((context_groups, context_to_group))
 }
 
-pub async fn get_basis_groups<P: Provider>(
+pub async fn get_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -458,6 +468,7 @@ pub async fn get_basis_groups<P: Provider>(
     for (acyclic_lineage, contexts_in_group) in acyclic_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
@@ -467,6 +478,7 @@ pub async fn get_basis_groups<P: Provider>(
 
             get_acyclic_basis_groups(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_meta_context,
                 acyclic_lineage,
                 contexts_in_group,
@@ -495,8 +507,9 @@ pub async fn get_basis_groups<P: Provider>(
     Ok(basis_groups)
 }
 
-async fn get_acyclic_basis_groups<P: Provider>(
+async fn get_acyclic_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_lineage: Lineage,
     contexts_in_group: Vec<Arc<Context>>,
@@ -565,6 +578,7 @@ async fn get_acyclic_basis_groups<P: Provider>(
     for (lineage, contexts_in_subgroup) in cyclic_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_options = options.clone();
@@ -575,6 +589,7 @@ async fn get_acyclic_basis_groups<P: Provider>(
 
             get_cyclic_basis_groups(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_meta_context,
                 cloned_acyclic_lineage,
                 lineage,
@@ -599,8 +614,9 @@ async fn get_acyclic_basis_groups<P: Provider>(
     Ok(flattened)
 }
 
-async fn get_cyclic_basis_groups<P: Provider>(
+async fn get_cyclic_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_lineage: Lineage,
     lineage: Lineage,
@@ -695,6 +711,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
     for (indexed_lineage, contexts_in_subgroup) in indexed_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_lineage = lineage.clone();
@@ -706,6 +723,7 @@ async fn get_cyclic_basis_groups<P: Provider>(
 
             get_indexed_basis_groups(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_meta_context,
                 cloned_acyclic_lineage,
                 cloned_lineage,
@@ -733,8 +751,9 @@ async fn get_cyclic_basis_groups<P: Provider>(
 }
 
 #[async_recursion]
-async fn get_indexed_basis_groups<P: Provider>(
+async fn get_indexed_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     acyclic_lineage: Lineage,
     lineage: Lineage,
@@ -829,6 +848,7 @@ async fn get_indexed_basis_groups<P: Provider>(
     for (next_indexed_lineage, contexts_in_subgroup) in indexed_contexts {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_acyclic_lineage = acyclic_lineage.clone();
         let cloned_lineage = lineage.clone();
@@ -840,6 +860,7 @@ async fn get_indexed_basis_groups<P: Provider>(
 
             get_indexed_basis_groups(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_meta_context,
                 cloned_acyclic_lineage,
                 cloned_lineage,
@@ -866,8 +887,9 @@ async fn get_indexed_basis_groups<P: Provider>(
     Ok(flattened)
 }
 
-pub async fn get_basis_nodes<P: Provider>(
+pub async fn get_basis_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
@@ -904,6 +926,7 @@ pub async fn get_basis_nodes<P: Provider>(
 
         let permit = semaphore.clone().acquire_owned().await.unwrap();
         let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_meta_context = Arc::clone(&normalization_context);
         let cloned_options = options.clone();
         let cloned_stage_context = stage_context.clone();
@@ -913,6 +936,7 @@ pub async fn get_basis_nodes<P: Provider>(
 
             let basis_node = get_basis_node(
                 cloned_provider,
+                cloned_reasoner,
                 cloned_meta_context,
                 group,
                 &cloned_options,
@@ -934,8 +958,9 @@ pub async fn get_basis_nodes<P: Provider>(
     Ok(hashmap_results)
 }
 
-async fn get_basis_node<P: Provider>(
+async fn get_basis_node<P: Provider, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
     options: &Options,

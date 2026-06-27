@@ -59,8 +59,9 @@ pub struct Document {
 }
 
 impl Document {
-    pub async fn from_schema_string<P: Provider>(
+    pub async fn from_schema_string<P: Provider, R: Reasoner>(
         provider: Arc<P>,
+        reasoner: Arc<R>,
         value: String,
         options: &Options,
         metadata: &Metadata
