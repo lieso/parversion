@@ -1,9 +1,13 @@
 use async_trait::async_trait;
+use std::sync::{Arc};
 
 use crate::prelude::*;
+use crate::classification::Classification;
+
+mod backend;
 
 #[cfg(feature = "openrouter-reasoner")]
-pub mod openrouter;
+pub use backend::openrouter;
 
 pub struct CompletionMetadata {
     pub input_tokens: u32,
@@ -13,6 +17,10 @@ pub struct CompletionMetadata {
 pub enum Capability {
     Fast,
     Capable,
+}
+
+pub struct ReasonerMetadata {
+    tokens: u32,
 }
 
 #[async_trait]
@@ -45,5 +53,12 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         })?;
 
         Ok((parsed, metadata))
+    }
+
+    async fn classify(
+        meta_context: Arc<MetaContext>,
+    ) -> Result<(Classification, ReasonerMetadata), Errors> {
+        log::trace!("In classify");
+        todo!()
     }
 }
