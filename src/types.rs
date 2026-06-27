@@ -34,6 +34,7 @@ pub enum Errors {
     UnexpectedParameter(String),
     TooManyTranslationDocuments,
     InvalidRole(String),
+    ReasonerNotConfigured,
 }
 
 impl From<JoinError> for Errors {

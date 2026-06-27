@@ -17,13 +17,17 @@ use crate::document_format;
 use crate::normalization;
 use crate::package::Package;
 use crate::prelude::*;
+use crate::provider::VoidProvider;
+use crate::provider::{Provider};
+use crate::translation;
+
 #[cfg(feature = "sqlite-provider")]
 use crate::provider::sqlite::SqliteProvider;
 #[cfg(feature = "yaml-provider")]
 use crate::provider::yaml::YamlFileProvider;
-use crate::provider::VoidProvider;
-use crate::provider::{Provider};
-use crate::translation;
+
+#[cfg(feature = "openrouter-reasoner")]
+use crate::reasoner::openrouter::OpenRouterReasoner;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROGRAM_NAME: &str = "parversion";
@@ -39,6 +43,7 @@ pub async fn run() -> Result<(), Errors> {
 
     let execution_context = init_execution_context();
     let provider = init_provider().await?;
+    let reasoner = init_reasoner().await?;
     let options = get_options(&matches)?;
     let documents: Vec<(String, Metadata)> = get_documents(&matches).await?;
     let translation: Option<(String, Metadata)> = get_translation(&matches).await?;
@@ -46,6 +51,7 @@ pub async fn run() -> Result<(), Errors> {
 
     let package = determine_documents(
         provider,
+        reasoner,
         documents,
         translation,
         options,
@@ -361,8 +367,9 @@ fn parse_document_type(s: &str) -> Result<DocumentType, Errors> {
     }
 }
 
-async fn determine_documents<P: Provider + ?Sized>(
+async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
     provider: Arc<P>,
+    reasoner: Arc<R>,
     documents: Vec<(String, Metadata)>,
     translation: Option<(String, Metadata)>,
     options: Options,
@@ -423,8 +430,21 @@ fn init_execution_context() -> Arc<ExecutionContext> {
     execution_context
 }
 
+async fn init_reasoner() -> Result<Arc<impl Reasoner>, Errors> {
+    log::info!("Initializing Reasoner...");
+
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "openrouter-reasoner")] {
+            log::info!("Using OpenRouter reasoner");
+            Ok(Arc::new(OpenRouterReasoner::new()))
+        } else {
+            Err(Errors::ReasonerNotConfigured)
+        }
+    }
+}
+
 async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
-    log::info!("Initializing data provider...");
+    log::info!("Initializing Provider...");
 
     cfg_if::cfg_if! {
          if #[cfg(feature = "yaml-provider")] {
