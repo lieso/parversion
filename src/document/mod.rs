@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet};
 use std::str::FromStr;
+use std::fmt;
 
 mod json;
 mod xml;
@@ -22,6 +23,18 @@ pub enum DocumentType {
     JavaScript,
     Xml,
     Html,
+}
+
+impl fmt::Display for DocumentType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            DocumentType::Json => write!(f, "Json"),
+            DocumentType::PlainText => write!(f, "PlainText"),
+            DocumentType::JavaScript => write!(f, "JavaScript"),
+            DocumentType::Xml => write!(f, "Xml"),
+            DocumentType::Html => write!(f, "Html"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
