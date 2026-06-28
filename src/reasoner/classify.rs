@@ -54,14 +54,34 @@ pub async fn classify<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, CompletionMetadata) = reasoner.execute::<ClassificationResponse>(
+    let (result, metadata) = reasoner.execute::<ClassificationResponse>(
         capability,
         &system_prompt,
         &user_prompt,
         schema,
     ).await?;
 
-    todo!()
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens
+    };
+
+    let classification = Classification {
+        id: ID::new(),
+        name: result.category.clone(),
+        aliases: result.one_word_aliases
+            .iter()
+            .chain(
+                &result.two_word_aliases
+            )
+            .cloned()
+            .collect(),
+        structure: result.structure.clone(),
+        description: result.description.clone(),
+        lineage: read_lock!(meta_context.graph_root).lineage.clone(),
+        acyclic_subgraph_hash: read_lock!(meta_context.graph_root).acyclic_subgraph_hash(),
+    };
+
+    Ok((classification, reasoner_metadata))
 }
 
 async fn get_system_prompt<R: Reasoner>(reasoner: &R, meta_context: Arc<MetaContext>) -> Result<String, Errors> {
