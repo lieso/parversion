@@ -85,21 +85,12 @@ pub async fn classify<R: Reasoner>(
 }
 
 async fn get_system_prompt<R: Reasoner>(reasoner: &R, meta_context: Arc<MetaContext>) -> Result<String, Errors> {
-    let document_type = {
-        let first_context = meta_context.contexts
-            .values()
-            .next()
-            .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Did not expect MetaContext to have zero contexts.".to_string())
-            })?;
-        let document_node = read_lock!(first_context.document_node);
-        document_node.get_document_type().to_string().to_lowercase()
-    };
-
     let subgraph_hash = {
         let lock = read_lock!(meta_context.graph_root);
         lock.subgraph_hash.clone().to_string().unwrap()
     };
+
+    let document_type = meta_context.document_type.to_string().to_lowercase();
 
     let paths_to_try: Vec<String> = vec![
         format!("{}/{}", document_type, subgraph_hash),

@@ -120,6 +120,7 @@ impl Html {
             contexts,
             graph_root,
             contexts_lookup,
+            document_type: DocumentType::Html,
         })
     }
 

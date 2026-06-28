@@ -12,6 +12,7 @@ pub struct MetaContext {
     pub contexts: HashMap<ContextID, Arc<Context>>,
     pub graph_root: Graph,
     pub contexts_lookup: HashMap<ID, Arc<Context>>,
+    pub document_type: DocumentType,
 }
 
 impl MetaContext {
@@ -28,19 +29,10 @@ impl MetaContext {
             &max_lineages
         );
 
-        let first_context = self.contexts
-            .values()
-            .next()
-            .ok_or_else(|| {
-                Errors::DeficientMetaContextError("Did not expect MetaContext to have zero contexts.".to_string())
-            })?;
-        let document_node = read_lock!(first_context.document_node);
-        let document_type = document_node.get_document_type();
-
         let partial_document = Document::from_meta_context(
             self,
             &DocumentFormat {
-                format_type: document_type,
+                format_type: self.document_type.clone(),
                 encoding: Some(String::from("UTF-8")),
                 indent: None,
                 line_ending: None,
