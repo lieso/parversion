@@ -9,7 +9,6 @@ use std::time::Instant;
 use tokio::sync::mpsc;
 use std::fs;
 use std::str::FromStr;
-use std::path::PathBuf;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::config::CONFIG;
@@ -436,9 +435,8 @@ fn init_execution_context() -> Arc<ExecutionContext> {
 async fn init_reasoner() -> Result<Arc<impl Reasoner>, Errors> {
     log::info!("Initializing Reasoner...");
 
-    let prompts_location = PathBuf::from(&read_lock!(CONFIG).reasoner.prompts_location);
-
-    log::info!("Location of prompts: {}", prompts_location.display());
+    let prompts_location = read_lock!(CONFIG).reasoner.prompts_location.clone();
+    log::info!("Location of prompts: {}", prompts_location);
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "openrouter-reasoner")] {

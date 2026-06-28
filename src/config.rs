@@ -43,6 +43,7 @@ pub struct Config {
     pub llm: LlmConfig,
     #[serde(default)]
     pub dev: DevConfig,
+    #[serde(default)]
     pub reasoner: ReasonerConfig,
 }
 
@@ -64,7 +65,7 @@ fn get_default_prompts_location() -> String {
     format!("file://{}/prompts", current_dir)
 }
 
-impl Config {
+impl Default for Config {
     fn default() -> Self {
         let config = Config {
             llm: LlmConfig {
@@ -77,7 +78,9 @@ impl Config {
 
         config
     }
+}
 
+impl Config {
     fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let config_contents = std::fs::read_to_string(path)?;
         let config: Config = toml::from_str(&config_contents)?;
