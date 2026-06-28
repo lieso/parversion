@@ -60,6 +60,8 @@ impl PromptRegistry {
             let file_type = entry.file_type().map_err(io_err)?;
             let name = entry.file_name().to_string_lossy().into_owned();
 
+            log::debug!("name: {}", name);
+
             if file_type.is_dir() {
                 let child = Self::load_directory(&entry.path(), &name)?;
                 prompt_node.children.insert(name, child);
