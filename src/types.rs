@@ -37,6 +37,7 @@ pub enum Errors {
     InvalidRole(String),
     ReasonerNotConfigured,
     PromptRegistryError(String),
+    UnavailableSystemPrompt(String),
 }
 
 impl From<JoinError> for Errors {
