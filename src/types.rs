@@ -36,6 +36,7 @@ pub enum Errors {
     TooManyTranslationDocuments,
     InvalidRole(String),
     ReasonerNotConfigured,
+    PromptRegistryError(String),
 }
 
 impl From<JoinError> for Errors {

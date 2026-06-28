@@ -20,6 +20,7 @@ use crate::prelude::*;
 use crate::provider::VoidProvider;
 use crate::provider::{Provider};
 use crate::translation;
+use crate::prompt_registry::PromptRegistry;
 
 #[cfg(feature = "sqlite-provider")]
 use crate::provider::sqlite::SqliteProvider;
@@ -438,10 +439,12 @@ async fn init_reasoner() -> Result<Arc<impl Reasoner>, Errors> {
     let prompts_location = read_lock!(CONFIG).reasoner.prompts_location.clone();
     log::info!("Location of prompts: {}", prompts_location);
 
+    let prompt_registry = PromptRegistry::load(prompts_location)?;
+
     cfg_if::cfg_if! {
         if #[cfg(feature = "openrouter-reasoner")] {
             log::info!("Using OpenRouter reasoner");
-            Ok(Arc::new(OpenRouterReasoner::new()))
+            Ok(Arc::new(OpenRouterReasoner::new(prompt_registry)))
         } else {
             Err(Errors::ReasonerNotConfigured)
         }

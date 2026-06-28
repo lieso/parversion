@@ -3,6 +3,7 @@ use std::sync::{Arc};
 
 use crate::prelude::*;
 use crate::classification::Classification;
+use crate::prompt_registry::PromptRegistry;
 
 mod backend;
 mod classify;
@@ -26,6 +27,8 @@ pub struct ReasonerMetadata {
 
 #[async_trait]
 pub trait Reasoner: Send + Sync + Sized + 'static {
+    fn prompts(&self) -> &PromptRegistry;
+
     async fn complete(
         &self,
         capability: Capability,

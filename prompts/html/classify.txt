@@ -1,0 +1,7 @@
+Your task is to analyze a html document that has been potentially greatly abbreviated, extrapolate from this minimized version, and provide the following information about the original website the document was derived from:
+
+1. (description): A short paragraph describing this web page.
+2. (structure): A detailed description on how the HTML of the page is structured and the way content is organized from a technical perspective.
+3. (category): Use one to two words in snake case to categorize this type of website. Emphasize in your categorization the type of user interface it is, and not so much the categorization of its content.
+4. (one_word_aliases): Provide ten categories, using one word, that best fit this type of website or user interface.
+4. (two_word_aliases): Provide an additional ten categories, using two words in snake case, that best fit this type of website or user interface.

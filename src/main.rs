@@ -49,6 +49,7 @@ mod translation_node;
 mod meta_context;
 mod translation_network;
 mod reasoner;
+mod prompt_registry;
 
 use crate::entrypoint::run;
 

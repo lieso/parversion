@@ -8,27 +8,31 @@ use openrouter_rs::{
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, CompletionMetadata, Capability};
 use crate::environment::get_env_variable;
+use crate::prompt_registry::PromptRegistry;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub struct OpenRouterReasoner {
     client: OpenRouterClient,
+    prompts: PromptRegistry
 }
 
 #[cfg(feature = "openrouter-reasoner")]
 impl OpenRouterReasoner {
-    pub fn new() -> Self {
+    pub fn new(prompts: PromptRegistry) -> Self {
         let api_key = get_env_variable("OPENROUTER_API_KEY");
         let client = OpenRouterClient::builder()
             .api_key(api_key)
             .build()
             .expect("Could not build OpenRouter client");
-        OpenRouterReasoner { client }
+        OpenRouterReasoner { client, prompts }
     }
 }
 
 #[async_trait]
 #[cfg(feature = "openrouter-reasoner")]
 impl Reasoner for OpenRouterReasoner {
+    fn prompts(&self) -> &PromptRegistry { &self.prompts }
+
     async fn complete(
         &self,
         capability: Capability,
