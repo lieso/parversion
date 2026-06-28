@@ -1,52 +1,35 @@
 use std::sync::Arc;
-use serde_json::json;
+use schemars::JsonSchema;
+use serde::Deserialize;
 
 use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata, Capability};
+use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::classification::Classification;
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ClassificationResponse {
+    /// Description of document
+    pub description: String,
+    /// Technical description of document
+    pub structure: String,
+    /// Categorization of document
+    pub category: String,
+    /// Array of one-word category aliases
+    pub one_word_aliases: Vec<String>,
+    /// Array of two-word category aliases
+    pub two_word_aliases: Vec<String>,
+}
 
 pub async fn classify<R: Reasoner>(
     reasoner: &R,
     meta_context: Arc<MetaContext>
 ) -> Result<(Classification, ReasonerMetadata), Errors> {
+    log::trace!("In classify");
 
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&meta_context)).await?;
     let user_prompt = meta_context.generate_context_string()?;
-    let schema = json!({
-        "type": "object",
-        "properties": {
-            "description": {
-                "type": "string",
-                "description": "description of web page"
-            },
-            "structure": {
-                "type": "string",
-                "description": "technical description of web page"
-            },
-            "category": {
-                "type": "string",
-                "description": "categorization of web page"
-            },
-            "one_word_aliases": {
-                "type": "array",
-                "description": "array of category aliases",
-                "items": {
-                    "type": "string",
-                    "description": "an alias of the main category"
-                }
-            },
-            "two_word_aliases": {
-                "type": "array",
-                "description": "array of category aliases",
-                "items": {
-                    "type": "string",
-                    "description": "an alias of the main category"
-                }
-            }
-        },
-        "required": ["description", "structure", "category", "one_word_aliases", "two_word_aliases"],
-        "additionalproperties": false
-    });
+    let schema = serde_json::to_value(schemars::schema_for!(ClassificationResponse))
+        .expect("Failed to serialise ClassificationResponse schema");
     let capability = Capability::Fast;
 
     log::debug!("");
@@ -70,6 +53,13 @@ pub async fn classify<R: Reasoner>(
     log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
+
+    let (result, CompletionMetadata) = reasoner.execute::<ClassificationResponse>(
+        capability,
+        &system_prompt,
+        &user_prompt,
+        schema,
+    ).await?;
 
     todo!()
 }
