@@ -175,7 +175,7 @@ impl Document {
                 DocumentType::PlainText => unimplemented!(),
                 DocumentType::JavaScript => unimplemented!(),
                 DocumentType::Xml => unimplemented!(),
-                DocumentType::Html => unimplemented!(),
+                DocumentType::Html => Html::from_meta_context(meta_context, render_ids)?,
             }
         };
 

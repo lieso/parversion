@@ -1,6 +1,6 @@
 use ego_tree::NodeRef;
 use scraper::{Html as ScraperHtml, Node as ScraperNode};
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::sync::{Arc, RwLock};
 use xmltree::Element;
@@ -10,7 +10,7 @@ use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::meta_context::MetaContext;
 use crate::document_node::{DocumentNode, DocumentNodeData};
-use crate::graph_node::GraphNode;
+use crate::graph_node::{Graph, GraphNode};
 use crate::hash::Hash;
 use crate::document::{Document, DocumentType, DocumentMetadata};
 
@@ -122,6 +122,61 @@ impl Html {
             contexts_lookup,
             document_type: DocumentType::Html,
         })
+    }
+
+    pub fn from_meta_context(
+        meta_context: &MetaContext,
+        render_ids: Option<&HashSet<GraphNodeID>>,
+    ) -> Result<String, Errors> {
+        let graph_root = meta_context.graph_root.clone();
+
+        let mut result: String = String::new();
+
+        fn recurse(
+            meta_context: &MetaContext,
+            render_ids: Option<&HashSet<GraphNodeID>>,
+            graph_node: Graph,
+            result: &mut String,
+        ) {
+            let current_id = read_lock!(graph_node).id.clone();
+            let current_context = meta_context.contexts_lookup.get(&current_id).unwrap();
+            let document_node = &current_context.document_node;
+            let children = read_lock!(graph_node).children.clone();
+
+            let should_render = if let Some(render_ids) = render_ids {
+                render_ids.contains(&current_id)
+            } else {
+                true
+            };
+
+            if should_render {
+                let (a, _b) = read_lock!(document_node).to_string_components();
+                result.push_str(&a);
+            }
+
+            for child in children {
+                recurse(
+                    meta_context,
+                    render_ids.clone(),
+                    Arc::clone(&child),
+                    result,
+                );
+            }
+
+            if should_render {
+                let (_a, b) = read_lock!(document_node).to_string_components();
+                result.push_str(b.as_deref().unwrap_or(""));
+            }
+        }
+
+        recurse(
+            meta_context,
+            render_ids.clone(),
+            Arc::clone(&graph_root),
+            &mut result
+        );
+
+        Ok(result)
     }
 
     fn get_document_node(data: String) -> Result<DocumentNode, Errors> {
