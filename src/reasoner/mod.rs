@@ -16,6 +16,7 @@ pub struct CompletionMetadata {
     pub output_tokens: u32,
 }
 
+#[derive(Debug)]
 pub enum Capability {
     Fast,
     Capable,

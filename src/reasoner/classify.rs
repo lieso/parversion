@@ -1,7 +1,8 @@
 use std::sync::Arc;
+use serde_json::json;
 
 use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata};
+use crate::reasoner::{Reasoner, ReasonerMetadata, Capability};
 use crate::classification::Classification;
 
 pub async fn classify<R: Reasoner>(
@@ -9,10 +10,66 @@ pub async fn classify<R: Reasoner>(
     meta_context: Arc<MetaContext>
 ) -> Result<(Classification, ReasonerMetadata), Errors> {
 
-    let system_prompt = get_system_prompt(reasoner, meta_context).await?;
+    let system_prompt = get_system_prompt(reasoner, Arc::clone(&meta_context)).await?;
     let user_prompt = meta_context.generate_context_string()?;
+    let schema = json!({
+        "type": "object",
+        "properties": {
+            "description": {
+                "type": "string",
+                "description": "description of web page"
+            },
+            "structure": {
+                "type": "string",
+                "description": "technical description of web page"
+            },
+            "category": {
+                "type": "string",
+                "description": "categorization of web page"
+            },
+            "one_word_aliases": {
+                "type": "array",
+                "description": "array of category aliases",
+                "items": {
+                    "type": "string",
+                    "description": "an alias of the main category"
+                }
+            },
+            "two_word_aliases": {
+                "type": "array",
+                "description": "array of category aliases",
+                "items": {
+                    "type": "string",
+                    "description": "an alias of the main category"
+                }
+            }
+        },
+        "required": ["description", "structure", "category", "one_word_aliases", "two_word_aliases"],
+        "additionalproperties": false
+    });
+    let capability = Capability::Fast;
 
-
+    log::debug!("");
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║                   CLASSIFY DOCUMENT                          ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("");
+    log::debug!("  Capability : {:?}", capability);
+    log::debug!("");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
 
     todo!()
 }
