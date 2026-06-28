@@ -197,17 +197,11 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
 
     stage_context.record_events("Document classification", 0);
 
-    let original_document = get_original_document_condensed(Arc::clone(&normalization_context))?;
-    let graph_root = {
+    let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .as_ref()
-            .ok_or(Errors::DeficientNormalizationContextError("Graph root not provided in normalization context".to_string()))?
-            .graph_root
-            .clone()
+        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
     };
-    let lineage = read_lock!(graph_root).lineage.clone();
-    let acyclic_subgraph_hash: Hash = read_lock!(graph_root).acyclic_subgraph_hash();
+    let lineage = read_lock!(meta_context.graph_root).lineage.clone();
 
     if !options.regenerate {
         if let Some(classification) = provider.get_classification_by_lineage(&lineage).await? {
@@ -217,23 +211,15 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
         };
     }
 
-    let (name, description, structure, aliases, tokens) = LLM::categorize(original_document).await?;
-
-    let classification = Classification {
-        id: ID::new(),
-        name,
-        aliases,
-        description,
-        structure,
-        lineage: lineage.clone(),
-        acyclic_subgraph_hash: acyclic_subgraph_hash.clone(),
-    };
+    let (classification, metadata) = reasoner.classify(
+        Arc::clone(&meta_context)
+    ).await?;
 
     provider
         .save_classification(&lineage, classification.clone())
         .await?;
 
-    stage_context.record_events("Document classification", tokens);
+    stage_context.record_events("Document classification", metadata.tokens.into());
 
     Ok(Arc::new(classification))
 }
