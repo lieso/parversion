@@ -18,7 +18,6 @@ use crate::transformation::{
 };
 use crate::context::Context;
 
-mod categorization;
 mod node_analysis;
 mod network_analysis;
 mod network_relationships;
@@ -180,47 +179,6 @@ impl LLM {
         log::debug!("eliminated networks: {:?}", redundancy_response.eliminated);
 
         Ok((redundancy_response.canonical, (metadata.tokens,)))
-    }
-
-    pub async fn categorize(document: String) -> Result<
-        (
-            String, // name
-            String, // description
-            String, // structure
-            Vec<String>, // aliases
-            u64, // tokens
-        ),
-        Errors
-    > {
-        log::trace!("In categorize");
-
-        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-        log::debug!("║                                                               ║");
-        log::debug!("║                  CATEGORIZE GRAPH START                       ║");
-        log::debug!("║                                                               ║");
-        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-
-        tokio::time::sleep(Duration::from_millis(50)).await;
-
-        let (categorization_response, metadata) = categorization::Categorization::categorize_graph(
-            &document
-        ).await?;
-
-        let result = (
-            categorization_response.category,
-            categorization_response.description,
-            categorization_response.structure,
-            categorization_response.one_word_aliases
-                .iter()
-                .chain(
-                    &categorization_response.two_word_aliases
-                )
-                .cloned()
-                .collect(),
-            metadata.tokens
-        );
-
-        Ok(result)
     }
 
     pub async fn get_network_transformation(

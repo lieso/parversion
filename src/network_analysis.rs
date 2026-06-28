@@ -20,7 +20,6 @@ use crate::transformation::{
     TraversalTransformation
 };
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
-use crate::traversal::{get_original_document_condensed};
 use crate::translation_network::TranslationNetwork;
 
 pub async fn get_translation_networks<P: Provider, R: Reasoner>(
