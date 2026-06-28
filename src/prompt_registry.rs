@@ -3,8 +3,13 @@ use std::collections::HashMap;
 
 use crate::prelude::*;
 
+pub enum PromptNode {
+    Leaf(String),
+    Branch(HashMap<String, PromptNode>),
+}
+
 pub struct PromptRegistry {
-    tree: HashMap<String, HashMap<String, String>>,
+    root: HashMap<String, PromptNode>,
 }
 
 impl PromptRegistry {
@@ -26,32 +31,49 @@ impl PromptRegistry {
     }
 
     fn load_from_filesystem(path: &str) -> Result<Self, Errors> {
-        let root = Path::new(path);
-        let mut tree: HashMap<String, HashMap<String, String>> = HashMap::new();
+        let root = Self::load_directory(Path::new(path))?;
+        Ok(PromptRegistry { root })
+    }
 
-        for entry in std::fs::read_dir(root).map_err(|e| {
-            Errors::PromptRegistryError(format!("Could not read prompts directory '{}': {}", path, e))
+    fn load_directory(dir: &Path) -> Result<HashMap<String, PromptNode>, Errors> {
+        let mut nodes = HashMap::new();
+
+        for entry in std::fs::read_dir(dir).map_err(|e| {
+            Errors::PromptRegistryError(format!("Could not read directory '{}': {}", dir.display(), e))
         })? {
             let entry = entry.map_err(io_err)?;
-            if !entry.file_type().map_err(io_err)?.is_dir() { continue; }
+            let file_type = entry.file_type().map_err(io_err)?;
+            let name = entry.file_name().to_string_lossy().into_owned();
 
-            let dir_name = entry.file_name().to_string_lossy().into_owned();
-            let mut operations: HashMap<String, String> = HashMap::new();
-
-            for file in std::fs::read_dir(entry.path()).map_err(io_err)? {
-                let file = file.map_err(io_err)?;
-                let file_path = file.path();
+            if file_type.is_dir() {
+                let children = Self::load_directory(&entry.path())?;
+                nodes.insert(name, PromptNode::Branch(children));
+            } else if file_type.is_file() {
+                let file_path = entry.path();
                 if file_path.extension().and_then(|e| e.to_str()) != Some("txt") { continue; }
-
-                let operation = file_path.file_stem().unwrap().to_string_lossy().into_owned();
+                let stem = file_path.file_stem().unwrap().to_string_lossy().into_owned();
                 let content = std::fs::read_to_string(&file_path).map_err(io_err)?;
-                operations.insert(operation, content);
+                nodes.insert(stem, PromptNode::Leaf(content));
             }
-
-            tree.insert(dir_name, operations);
         }
 
-        Ok(PromptRegistry { tree })
+        Ok(nodes)
+    }
+
+    pub fn get(&self, path: &str, operation: &str) -> Option<&str> {
+        let mut current = &self.root;
+
+        for segment in path.split('/') {
+            match current.get(segment)? {
+                PromptNode::Branch(children) => current = children,
+                PromptNode::Leaf(_) => return None,
+            }
+        }
+
+        match current.get(operation)? {
+            PromptNode::Leaf(content) => Some(content.as_str()),
+            PromptNode::Branch(_) => None,
+        }
     }
 }
 
