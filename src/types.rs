@@ -38,6 +38,7 @@ pub enum Errors {
     ReasonerNotConfigured,
     PromptRegistryError(String),
     UnavailableSystemPrompt(String),
+    InsufficientBackendQuota(String),
 }
 
 impl From<JoinError> for Errors {

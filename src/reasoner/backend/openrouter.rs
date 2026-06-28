@@ -4,6 +4,8 @@ use openrouter_rs::{
     types::{ResponseFormat, Role},
     OpenRouterClient,
 };
+use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
+use reqwest::StatusCode;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, CompletionMetadata, Capability};
@@ -102,11 +104,19 @@ impl Reasoner for OpenRouterReasoner {
                     Err(Errors::UnexpectedError)
                 }
             },
-            Err(e) => {
+            Err(error) => {
                 log::error!("╔═══════════════════════════════════════════════════════════════╗");
                 log::error!("║                    REQUEST ERROR                              ║");
                 log::error!("╚═══════════════════════════════════════════════════════════════╝");
-                log::error!("Failed to get response from OpenRouter: {}", e);
+                log::error!("Failed to get response from OpenRouter: {}", error);
+
+                match error {
+                    OpenRouterError::Api(ref api_error) if api_error.status == 402 => {
+                        return Err(Errors::InsufficientBackendQuota(error.to_string()));
+                    }
+                    _ => {}
+                }
+
                 Err(Errors::UnexpectedError)
             }
         }
