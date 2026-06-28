@@ -40,16 +40,6 @@ impl Reasoner for OpenRouterReasoner {
         user_prompt: &str,
         schema: serde_json::Value,
     ) -> Result<(String, CompletionMetadata), Errors> {
-        log::debug!("");
-        log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
-        log::debug!("{}", system_prompt);
-        log::debug!("└───────────────────────────────────────────────────────────────┘");
-        log::debug!("");
-        log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
-        log::debug!("{}", user_prompt);
-        log::debug!("└───────────────────────────────────────────────────────────────┘");
-        log::debug!("");
-
         let model = match capability {
             Capability::Fast => "gpt-5-mini",
             Capability::Capable => "gpt-5",
