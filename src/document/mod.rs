@@ -169,29 +169,29 @@ impl Document {
     ) -> Result<Self, Errors> {
         log::trace!("In from_meta_context");
 
-        match document_format.format_type {
-            DocumentType::Json => {
-                let data = Json::from_meta_context(meta_context, render_ids)?;
-
-                let document = Document {
-                    document_type: DocumentType::Json,
-                    data,
-                    metadata: DocumentMetadata {
-                        origin: None,
-                        date: None,
-                        name: None,
-                        description: None,
-                        semantic_content_types: None,
-                    },
-                };
-
-                Ok(document)
+        let data = {
+            match document_format.format_type {
+                DocumentType::Json => Json::from_meta_context(meta_context, render_ids)?,
+                DocumentType::PlainText => unimplemented!(),
+                DocumentType::JavaScript => unimplemented!(),
+                DocumentType::Xml => unimplemented!(),
+                DocumentType::Html => unimplemented!(),
             }
-            DocumentType::PlainText => unimplemented!(),
-            DocumentType::JavaScript => unimplemented!(),
-            DocumentType::Xml => unimplemented!(),
-            DocumentType::Html => unimplemented!(),
-        }
+        };
+
+        let document = Document {
+            document_type: document_format.format_type.clone(),
+            data,
+            metadata: DocumentMetadata {
+                origin: None,
+                date: None,
+                name: None,
+                description: None,
+                semantic_content_types: None,
+            },
+        };
+
+        Ok(document)
     }
 
     pub fn from_normalized_graph(
