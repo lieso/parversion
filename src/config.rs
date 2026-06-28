@@ -16,6 +16,20 @@ pub struct DevConfig {
     pub debug_dir: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReasonerConfig {
+    #[serde(default = "get_default_prompts_location")]
+    pub prompts_location: String,
+}
+
+impl Default for ReasonerConfig {
+    fn default() -> Self {
+        ReasonerConfig {
+            prompts_location: get_default_prompts_location(),
+        }
+    }
+}
+
 impl Default for DevConfig {
     fn default() -> Self {
         DevConfig {
@@ -29,6 +43,7 @@ pub struct Config {
     pub llm: LlmConfig,
     #[serde(default)]
     pub dev: DevConfig,
+    pub reasoner: ReasonerConfig,
 }
 
 fn get_default_debug_dir() -> String {
@@ -39,6 +54,16 @@ fn get_default_debug_dir() -> String {
         .to_string()
 }
 
+fn get_default_prompts_location() -> String {
+    let current_dir = env::current_dir()
+        .expect("Could not get current working directory")
+        .to_str()
+        .unwrap()
+        .to_string();
+
+    format!("file://{}/prompts", current_dir)
+}
+
 impl Config {
     fn default() -> Self {
         let config = Config {
@@ -47,6 +72,7 @@ impl Config {
                 example_snippet_count: 3,
             },
             dev: DevConfig::default(),
+            reasoner: ReasonerConfig::default(),
         };
 
         config
