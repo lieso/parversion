@@ -98,6 +98,7 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R, meta_context: Arc<MetaCont
     ];
 
     for path in paths_to_try {
+        log::trace!("Searching for prompt with path: {}", path);
         if let Some(system_prompt) = reasoner.prompts().get(&path, "classify").await? {
             return Ok(system_prompt);
         }
