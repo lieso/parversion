@@ -18,6 +18,10 @@ pub struct CompletionMetadata {
     pub output_tokens: u32,
 }
 
+pub struct EmbeddingMetadata {
+    pub input_tokens: u32,
+}
+
 #[derive(Debug)]
 pub enum Capability {
     Fast,
@@ -61,6 +65,11 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
 
         Ok((parsed, metadata))
     }
+
+    async fn embed(
+        &self,
+        inputs: Vec<String>
+    ) -> Result<(Vec<Vec<f32>>, EmbeddingMetadata), Errors>;
 
     async fn classify(
         &self,

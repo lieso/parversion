@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use openrouter_rs::{
     api::chat::*,
+    api::embeddings::*,
     types::{ResponseFormat, Role},
     OpenRouterClient,
 };
@@ -8,7 +9,7 @@ use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
 use reqwest::StatusCode;
 
 use crate::prelude::*;
-use crate::reasoner::{Reasoner, CompletionMetadata, Capability};
+use crate::reasoner::{Reasoner, CompletionMetadata, Capability, EmbeddingMetadata};
 use crate::environment::get_env_variable;
 use crate::prompt_registry::PromptRegistry;
 
@@ -120,5 +121,37 @@ impl Reasoner for OpenRouterReasoner {
                 Err(Errors::UnexpectedError)
             }
         }
+    }
+
+    async fn embed(
+        &self,
+        inputs: Vec<String>
+    ) -> Result<(Vec<Vec<f32>>, EmbeddingMetadata), Errors> {
+        let request = EmbeddingRequest::new("openai/text-embedding-3-small", inputs);
+
+        let response = self.client.models().create_embedding(&request).await
+            .map_err(|e| {
+                log::error!("Embedding request failed: {}", e);
+                Errors::UnexpectedError
+            })?;
+
+        let mut data = response.data;
+        data.sort_by_key(|d| d.index.unwrap_or(0));
+
+        let vectors = data.into_iter()
+            .map(|d| match d.embedding {
+                EmbeddingVector::Float(v) => Ok(v.into_iter().map(|x| x as f32).collect()),
+                _ => {
+                    log::error!("Unexpected embedding format");
+                    Err(Errors::UnexpectedError)
+                }
+            })
+        .collect::<Result<Vec<Vec<f32>>, Errors>>()?;
+
+        let metadata = EmbeddingMetadata {
+            input_tokens: response.usage.map(|u| u.prompt_tokens).unwrap_or(0),
+        };
+
+        Ok((vectors, metadata))
     }
 }
