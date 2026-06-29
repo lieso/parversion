@@ -1,12 +1,14 @@
 use async_trait::async_trait;
-use std::sync::{Arc};
+use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::classification::Classification;
 use crate::prompt_registry::PromptRegistry;
+use crate::basis_field::BasisField;
 
 mod backend;
 mod classify;
+mod basis_field;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -65,5 +67,14 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         meta_context: Arc<MetaContext>,
     ) -> Result<(Classification, ReasonerMetadata), Errors> {
         Ok(classify::classify(self, meta_context).await?)
+    }
+
+    async fn basis_field(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        group: Vec<Arc<Context>>,
+        candidate: String
+    ) -> Result<(Option<BasisField>, ReasonerMetadata), Errors> {
+        Ok(basis_field::basis_field(self, normalization_context, group, candidate).await?)
     }
 }
