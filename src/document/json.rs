@@ -115,11 +115,17 @@ impl Json {
             Vec::new(),
         );
 
+        let acyclic_subgraph_hash = {
+            let lock = read_lock!(graph_root);
+            lock.acyclic_subgraph_hash()
+        };
+
         Ok(MetaContext {
             contexts,
             graph_root,
             contexts_lookup,
             document_type: DocumentType::Json,
+            acyclic_subgraph_hash,
         })
     }
 

@@ -13,6 +13,7 @@ pub struct MetaContext {
     pub graph_root: Graph,
     pub contexts_lookup: HashMap<ID, Arc<Context>>,
     pub document_type: DocumentType,
+    pub acyclic_subgraph_hash: Hash,
 }
 
 impl MetaContext {
