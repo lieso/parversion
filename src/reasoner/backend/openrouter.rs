@@ -146,7 +146,7 @@ impl Reasoner for OpenRouterReasoner {
                     Err(Errors::UnexpectedError)
                 }
             })
-        .collect::<Result<Vec<Vec<f32>>, Errors>>()?;
+            .collect::<Result<Vec<Vec<f32>>, Errors>>()?;
 
         let metadata = EmbeddingMetadata {
             input_tokens: response.usage.map(|u| u.prompt_tokens).unwrap_or(0),
