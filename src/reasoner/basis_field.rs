@@ -29,11 +29,61 @@ pub async fn basis_field<R: Reasoner>(
         reasoner,
         Arc::clone(&normalization_context),
         group,
-        candidate
+        candidate.clone()
+    ).await?;
+    let schema = serde_json::to_value(schemars::schema_for!(BasisFieldResponse))
+        .expect("Failed to serialise BasisFieldResponse schema");
+    let capability = Capability::Fast;
+
+    log::debug!("");
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║                   BASIS FIELD                                 ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("");
+    log::debug!("  Capability : {:?}", capability);
+    log::debug!("");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+
+    let (result, metadata) = reasoner.execute::<BasisFieldResponse>(
+        capability,
+        &system_prompt,
+        &user_prompt,
+        schema
     ).await?;
 
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens
+    };
 
-    unimplemented!()
+    if result.is_meaningful {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().unwrap()
+        };
+
+        let basis_field = BasisField {
+            id: ID::new(),
+            acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
+            name: candidate.clone()
+        };
+
+        Ok((Some(basis_field), reasoner_metadata))
+    } else {
+        Ok((None, reasoner_metadata))
+    }
 }
 
 async fn get_user_prompt<R: Reasoner>(

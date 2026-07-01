@@ -35,7 +35,7 @@ pub async fn classify<R: Reasoner>(
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
     log::debug!("║                                                               ║");
-    log::debug!("║                   CLASSIFY DOCUMENT                          ║");
+    log::debug!("║                   CLASSIFY DOCUMENT                           ║");
     log::debug!("║                                                               ║");
     log::debug!("╚═══════════════════════════════════════════════════════════════╝");
     log::debug!("");
