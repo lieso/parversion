@@ -25,8 +25,23 @@ pub async fn basis_field<R: Reasoner>(
         reasoner,
         Arc::clone(&normalization_context)
     ).await?;
+    let user_prompt = get_user_prompt(
+        reasoner,
+        Arc::clone(&normalization_context),
+        group,
+        candidate
+    ).await?;
 
 
+    unimplemented!()
+}
+
+async fn get_user_prompt<R: Reasoner>(
+    reasoner: &R,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    group: Vec<Arc<Context>>,
+    candidate: String
+) -> Result<String, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context.clone().unwrap()
@@ -36,12 +51,16 @@ pub async fn basis_field<R: Reasoner>(
         .map(|context| context.generate_context_string(&meta_context))
         .collect::<Result<Vec<String>, Errors>>()?;
     let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
-    let sample = most_different(context_strings, &embeddings);
+    let samples = most_different(context_strings, &embeddings);
+    let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
+    Ok(format!(r##"
+[Attribute]
+{}
 
-
-
-    unimplemented!()
+[Snippets]
+{}
+"##, candidate, merged_samples))
 }
 
 fn most_different(candidates: Vec<String>, embeddings: &[Vec<f32>]) -> Vec<String> {
