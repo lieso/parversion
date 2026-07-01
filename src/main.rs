@@ -50,6 +50,7 @@ mod meta_context;
 mod translation_network;
 mod reasoner;
 mod prompt_registry;
+mod field_analysis;
 
 use crate::entrypoint::run;
 

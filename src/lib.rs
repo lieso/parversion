@@ -50,3 +50,4 @@ pub mod meta_context;
 pub mod translation_network;
 pub mod reasoner;
 pub mod prompt_registry;
+pub mod field_analysis;
