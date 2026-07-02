@@ -55,7 +55,7 @@ pub async fn classify<R: Reasoner>(
     log::debug!("");
 
     let (result, metadata) = reasoner.execute::<ClassificationResponse>(
-        capability,
+        &capability,
         &system_prompt,
         &user_prompt,
         schema,

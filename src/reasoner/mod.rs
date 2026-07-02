@@ -38,7 +38,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
 
     async fn complete(
         &self,
-        capability: Capability,
+        capability: &Capability,
         system_prompt: &str,
         user_prompt: &str,
         schema: serde_json::Value
@@ -46,24 +46,41 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
 
     async fn execute<T: for<'de> serde::Deserialize<'de>>(
         &self,
-        capability: Capability,
+        capability: &Capability,
         system_prompt: &str,
         user_prompt: &str,
         schema: serde_json::Value
     ) -> Result<(T, CompletionMetadata), Errors> {
-        let (content, metadata) = self.complete(
-            capability,
-            system_prompt,
-            user_prompt,
-            schema
-        ).await?;
+        let mut backoff = std::time::Duration::from_millis(100);
+        let max_backoff = std::time::Duration::from_secs(30);
+        let max_retries = 5;
 
-        let parsed = serde_json::from_str::<T>(&content).map_err(|e| {
-            log::error!("Failed to parse reasoner response: {}", e);
-            Errors::UnexpectedError
-        })?;
+        for attempt in 0..=max_retries {
+            match self.complete(
+                capability,
+                system_prompt,
+                user_prompt,
+                schema.clone()
+            ).await {
+                Ok((content, metadata)) => {
+                    let parsed = serde_json::from_str::<T>(&content).map_err(|e| {
+                        log::error!("Failed to parse reasoner response: {}", e);
+                        Errors::UnexpectedError
+                    })?;
 
-        Ok((parsed, metadata))
+                    return Ok((parsed, metadata));
+                }
+                Err(e) if is_retryable(&e) => {
+                    log::warn!("Retryable error on attempt {}, backing off: {:?}", attempt + 1, e);
+                    let jitter = std::time::Duration::from_millis(rand::random::<u64>() % 100);
+                    tokio::time::sleep(backoff + jitter).await;
+                    backoff = (backoff * 2).min(max_backoff);
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        
+        unreachable!()
     }
 
     async fn embed(
@@ -86,4 +103,8 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
     ) -> Result<(Option<BasisField>, ReasonerMetadata), Errors> {
         Ok(basis_field::basis_field(self, normalization_context, group, candidate).await?)
     }
+}
+
+fn is_retryable(error: &Errors) -> bool {
+    unimplemented!()
 }

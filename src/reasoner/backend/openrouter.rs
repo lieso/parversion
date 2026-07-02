@@ -38,7 +38,7 @@ impl Reasoner for OpenRouterReasoner {
 
     async fn complete(
         &self,
-        capability: Capability,
+        capability: &Capability,
         system_prompt: &str,
         user_prompt: &str,
         schema: serde_json::Value,

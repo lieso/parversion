@@ -58,7 +58,7 @@ pub async fn basis_field<R: Reasoner>(
     log::debug!("");
 
     let (result, metadata) = reasoner.execute::<BasisFieldResponse>(
-        capability,
+        &capability,
         &system_prompt,
         &user_prompt,
         schema
