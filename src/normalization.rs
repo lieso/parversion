@@ -9,8 +9,8 @@ use crate::node_analysis::{
     get_basis_nodes,
     get_basis_groups,
     get_context_groups,
-    get_basis_fields
 };
+use crate::field_analysis::get_basis_fields;
 use crate::reports::report_basis_groups;
 use crate::package::Package;
 use crate::prelude::*;
