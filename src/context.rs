@@ -85,12 +85,10 @@ impl Context {
             &mut neighbourhood
         );
 
-        let document_type = read_lock!(self.document_node).get_document_type();
-
         let partial_document = Document::from_meta_context(
             meta_context,
             &DocumentFormat {
-                format_type: document_type,
+                format_type: meta_context.document_type.clone(),
                 encoding: Some(String::from("UTF-8")),
                 indent: None,
                 line_ending: None,
