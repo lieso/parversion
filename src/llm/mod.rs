@@ -345,47 +345,6 @@ impl LLM {
         Ok((data.match_result, (metadata.tokens,)))
     }
 
-    pub async fn infer_basis_field(
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        field: String,
-        group: Vec<Arc<Context>>,
-    ) -> Result<(
-        bool, // is basis field
-        (u64,)
-    ), Errors> {
-        log::trace!("In infer_basis_field");
-
-        tokio::time::sleep(Duration::from_millis(50)).await;
-
-        let sample_size = std::cmp::min(20, group.len());
-
-        let sampled_contexts: Vec<Arc<Context>> = {
-            let mut rng = rand::rng();
-            let mut shuffled = group.clone();
-            shuffled.shuffle(&mut rng);
-            shuffled.into_iter().take(sample_size).collect()
-        };
-
-        let snippets: Vec<String> = sampled_contexts
-            .iter()
-            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&normalization_context)))
-            .collect();
-
-        let merged_snippets = snippets.join("\n\n---SNIPPET SEPARATOR---\n\n");
-
-        let user_prompt = format!(r##"
-[Attribute]
-{}
-
-[Snippets]
-{}
-"##, field, merged_snippets);
-
-        let (data, metadata) = NodeAnalysis::infer_basis_field(&user_prompt).await?;
-
-        Ok((data, (metadata.tokens,)))
-    }
-    
     pub async fn get_node_translation(
         translation_context: Arc<RwLock<TranslationContext>>,
         input_context: Arc<Context>,
