@@ -110,8 +110,20 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         group: Vec<Arc<Context>>,
+        acyclic_lineage: Lineage,
+        lineage: Option<Lineage>,
+        indexed_lineage: Option<Lineage>,
     ) -> Result<(Option<BasisGroup>, ReasonerMetadata), Errors> {
-        Ok(basis_group::basis_group(self, normalization_context, group).await?)
+        Ok(
+            basis_group::basis_group(
+                self,
+                normalization_context,
+                group,
+                acyclic_lineage,
+                lineage,
+                indexed_lineage,
+            ).await?
+        )
     }
 }
 

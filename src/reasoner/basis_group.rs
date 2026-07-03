@@ -16,6 +16,9 @@ pub async fn basis_group<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
+    acyclic_lineage: Lineage,
+    lineage: Option<Lineage>,
+    indexed_lineage: Option<Lineage>,
 ) -> Result<(Option<BasisGroup>, ReasonerMetadata), Errors> {
     log::trace!("In basis_group");
 
@@ -54,7 +57,34 @@ pub async fn basis_group<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    unimplemented!()
+    let (result, metadata) = reasoner.execute::<BasisGroupResponse>(
+        &capability,
+        &system_prompt,
+        &user_prompt,
+        schema
+    ).await?;
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens
+    };
+
+    if result.is_match {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().unwrap()
+        };
+
+        let basis_group = BasisGroup {
+            id: ID::new(),
+            acyclic_lineage,
+            lineage,
+            indexed_lineage,
+        };
+
+        Ok((Some(basis_group), reasoner_metadata))
+    } else {
+        Ok((None, reasoner_metadata))
+    }
 }
 
 async fn get_user_prompt<R: Reasoner>(
