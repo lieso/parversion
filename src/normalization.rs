@@ -11,7 +11,10 @@ use crate::node_analysis::{
     get_context_groups,
 };
 use crate::field_analysis::get_basis_fields;
-use crate::reports::report_basis_groups;
+use crate::reports::{
+    report_basis_groups,
+    report_basis_fields
+};
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -81,6 +84,11 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     {
         let mut lock = write_lock!(normalization_context);
         lock.update_basis_fields(basis_fields);
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_fields(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
