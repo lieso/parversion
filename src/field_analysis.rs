@@ -47,6 +47,10 @@ pub async fn get_basis_fields<P: Provider, R: Reasoner>(
     let mut contexts_by_field: HashMap<String, Vec<Arc<Context>>> = HashMap::new();
     for context in contexts {
         for field_name in context.data_node.fields.keys() {
+            if field_name == "text" {
+                continue;
+            }
+
             contexts_by_field
                 .entry(field_name.clone())
                 .or_insert_with(Vec::new)
