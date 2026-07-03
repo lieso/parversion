@@ -51,6 +51,7 @@ mod translation_network;
 mod reasoner;
 mod prompt_registry;
 mod field_analysis;
+mod group_analysis;
 
 use crate::entrypoint::run;
 
