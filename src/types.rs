@@ -39,6 +39,9 @@ pub enum Errors {
     PromptRegistryError(String),
     UnavailableSystemPrompt(String),
     InsufficientBackendQuota(String),
+    RateLimitError(String),
+    TransientBackendError(String),
+    RequestTimeout(String),
 }
 
 impl From<JoinError> for Errors {

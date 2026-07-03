@@ -6,7 +6,7 @@ use openrouter_rs::{
     OpenRouterClient,
 };
 use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
-use reqwest::StatusCode;
+use http::StatusCode;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, CompletionMetadata, Capability, EmbeddingMetadata};
@@ -112,13 +112,16 @@ impl Reasoner for OpenRouterReasoner {
                 log::error!("Failed to get response from OpenRouter: {}", error);
 
                 match error {
-                    OpenRouterError::Api(ref api_error) if api_error.status == 402 => {
-                        return Err(Errors::InsufficientBackendQuota(error.to_string()));
+                    OpenRouterError::Api(ref api_error) => {
+                        match api_error.status {
+                            StatusCode::PAYMENT_REQUIRED => Err(Errors::InsufficientBackendQuota(error.to_string())),
+                            StatusCode::TOO_MANY_REQUESTS => Err(Errors::RateLimitError(error.to_string())),
+                            StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => Err(Errors::TransientBackendError(error.to_string())),
+                            _ => Err(Errors::UnexpectedError),
+                        }
                     }
-                    _ => {}
+                    _ => Err(Errors::UnexpectedError),
                 }
-
-                Err(Errors::UnexpectedError)
             }
         }
     }

@@ -106,5 +106,9 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
 }
 
 fn is_retryable(error: &Errors) -> bool {
-    unimplemented!()
+    matches!(error,
+        Errors::RateLimitError(_)
+        | Errors::TransientBackendError(_)
+        | Errors::RequestTimeout(_)
+    )
 }
