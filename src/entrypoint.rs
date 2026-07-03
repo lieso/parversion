@@ -108,6 +108,7 @@ fn init_logging() {
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
+        .with_ansi(true)
         .init();
 }
 

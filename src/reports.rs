@@ -5,6 +5,10 @@ use crate::node_analysis::get_context_groups;
 use crate::prelude::*;
 use crate::provider::Provider;
 
+const CYAN: &str = "\x1b[36m";
+const MAGENTA: &str = "\x1b[35m";
+const RESET: &str = "\x1b[0m";
+
 pub async fn report_basis_fields<P: Provider>(
     provider: Arc<P>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -31,8 +35,8 @@ pub async fn report_basis_fields<P: Provider>(
             .clone()
     };
 
-    log::info!("=== Basis Field Report ({} fields) ===", basis_fields.len());
-    log::info!("Total contexts analyzed: {}", meta_context.contexts.len());
+    println!("{}=== Basis Field Report ({} fields) ==={}", CYAN, basis_fields.len(), RESET);
+    println!("{}Total contexts analyzed: {}{}", CYAN, meta_context.contexts.len(), RESET);
 
     for field in &basis_fields {
         let contexts_with_field: usize = meta_context
@@ -47,16 +51,16 @@ pub async fn report_basis_fields<P: Provider>(
             (contexts_with_field as f64 / meta_context.contexts.len() as f64) * 100.0
         };
 
-        log::info!("-----------------------------------------------------------------------------------------------------");
-        log::info!("--- Field [{}] ---", field.name);
-        log::info!("  id: {}", field.id.to_string());
-        log::info!("  contexts with field: {} / {} ({:.1}%)", contexts_with_field, meta_context.contexts.len(), percentage);
-        log::info!("  subgraph_hash: {}", field.acyclic_subgraph_hash);
-        log::info!("-----------------------------------------------------------------------------------------------------");
+        println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
+        println!("{}--- Field [{}] ---{}", CYAN, field.name, RESET);
+        println!("{}  id: {}{}", CYAN, field.id.to_string(), RESET);
+        println!("{}  contexts with field: {} / {} ({:.1}%){}", CYAN, contexts_with_field, meta_context.contexts.len(), percentage, RESET);
+        println!("{}  subgraph_hash: {}{}", CYAN, field.acyclic_subgraph_hash, RESET);
+        println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
     }
 
-    log::info!("\n");
-    log::info!("=== End Basis Field Report ===");
+    println!();
+    println!("{}=== End Basis Field Report ==={}", CYAN, RESET);
 
     Ok(())
 }
@@ -85,7 +89,7 @@ pub async fn report_basis_groups<P: Provider>(
             .collect::<Vec<_>>()
     };
 
-    log::info!("=== Basis Group Report ({} groups) ===", basis_groups.len());
+    println!("{}=== Basis Group Report ({} groups) ==={}", MAGENTA, basis_groups.len(), RESET);
 
     for group in &basis_groups {
         let acyclic = group.acyclic_lineage.to_string();
@@ -102,10 +106,10 @@ pub async fn report_basis_groups<P: Provider>(
 
         let contexts = context_groups.get(&group.id).map(|v| v.as_slice()).unwrap_or(&[]);
 
-        log::info!("-----------------------------------------------------------------------------------------------------");
-        log::info!("--- Group [{}] ---", lineage_desc);
-        log::info!("  total contexts: {}", contexts.len());
-        log::info!("-----------------------------------------------------------------------------------------------------");
+        println!("{}{}{}", MAGENTA, "-----------------------------------------------------------------------------------------------------", RESET);
+        println!("{}--- Group [{}] ---{}", MAGENTA, lineage_desc, RESET);
+        println!("{}  total contexts: {}{}", MAGENTA, contexts.len(), RESET);
+        println!("{}{}{}", MAGENTA, "-----------------------------------------------------------------------------------------------------", RESET);
 
         for (i, context) in contexts.iter().take(10).enumerate() {
             let fields: Vec<String> = context
@@ -114,13 +118,13 @@ pub async fn report_basis_groups<P: Provider>(
                 .iter()
                 .map(|(k, v)| format!("{}={:?}", k, v))
                 .collect();
-            log::info!("  [{}] {}", i + 1, fields.join(", "));
+            println!("{}  [{}] {}{}", MAGENTA, i + 1, fields.join(", "), RESET);
         }
 
-        log::info!("\n");
+        println!();
     }
 
-    log::info!("=== End Basis Group Report ===");
+    println!("{}=== End Basis Group Report ==={}", MAGENTA, RESET);
 
     Ok(())
 }
