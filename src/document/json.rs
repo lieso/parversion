@@ -54,10 +54,16 @@ impl Json {
                 parents.clone(),
             )));
 
+            let indexed_lineages = {
+                let lock = read_lock!(graph_node);
+                lock.get_all_indexed_lineages()
+            };
+
             let context = Arc::new(Context {
                 id: ID::new(),
                 acyclic_lineage: data_node.lineage.acyclic(),
                 lineage: data_node.lineage.clone(),
+                indexed_lineages,
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
