@@ -306,45 +306,6 @@ impl LLM {
         Ok((field_transformations, (tokens,)))
     }
 
-    pub async fn infer_group_match(
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        group: Vec<Arc<Context>>,
-        max_sample_size: usize,
-    ) -> Result<(
-        bool, // match
-        (u64,)
-    ), Errors> {
-        log::trace!("In infer_group_match");
-
-        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-        log::debug!("║                                                               ║");
-        log::debug!("║                  INFER GROUP MATCH START                      ║");
-        log::debug!("║                                                               ║");
-        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-        log::debug!("");
-
-        tokio::time::sleep(Duration::from_millis(50)).await;
-
-        let sample_size = std::cmp::min(max_sample_size, group.len());
-
-        let sampled_contexts: Vec<Arc<Context>> = {
-            let mut rng = rand::rng();
-            let mut shuffled = group.clone();
-            shuffled.shuffle(&mut rng);
-            shuffled.into_iter().take(sample_size).collect()
-        };
-
-        // TODO: a snippet points to an element, what if node has multiple attributes?
-        let snippets: Vec<String> = sampled_contexts
-            .iter()
-            .map(|context: &Arc<Context>| context.generate_snippet(Arc::clone(&normalization_context)))
-            .collect();
-
-        let (data, metadata) = NodeAnalysis::infer_snippets_match(snippets).await?;
-
-        Ok((data.match_result, (metadata.tokens,)))
-    }
-
     pub async fn get_node_translation(
         translation_context: Arc<RwLock<TranslationContext>>,
         input_context: Arc<Context>,

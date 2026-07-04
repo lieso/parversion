@@ -8,10 +8,10 @@ use crate::normalization_context::NormalizationContext;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
 use crate::node_analysis::{
     get_basis_nodes,
-    get_basis_groups,
     get_context_groups,
 };
 use crate::field_analysis::get_basis_fields;
+use crate::group_analysis::get_basis_groups;
 use crate::reports::{
     report_basis_groups,
     report_basis_fields
