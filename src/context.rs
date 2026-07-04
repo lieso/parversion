@@ -111,8 +111,12 @@ impl Context {
 
 impl Context {
     pub fn get_indexed_lineage(&self, depth: usize) -> Option<Lineage> {
-        let graph_node = read_lock!(self.graph_node);
-        graph_node.get_indexed_lineage_at_depth(depth)
+        if let Some(lineage) = self.indexed_lineages.get(&depth) {
+            Some(lineage.clone())
+        } else {
+            let graph_node = read_lock!(self.graph_node);
+            graph_node.get_indexed_lineage_at_depth(depth)
+        }
     }
 
     pub fn generate_json_snippet(
