@@ -9,7 +9,7 @@ use crate::json_node::JsonNode;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::basis_group::BasisGroup;
-use crate::document::Document;
+use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 
 pub type ContextID = ID;
@@ -43,6 +43,43 @@ impl Context {
     }
 
     fn generate_positional_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+        match meta_context.document_type {
+            DocumentType::Json => self.generate_positional_context_json(meta_context),
+            DocumentType::Html => self.generate_positional_context_html(meta_context),
+            _ => unimplemented!()
+        }
+    }
+
+    fn generate_positional_context_html(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+        let root_to_target = get_path_to_target(Arc::clone(&self.graph_node));
+        let path = root_to_target.iter().fold(String::new(), |acc, graph| {
+            let current_context = meta_context.contexts_lookup.get(&read_lock!(graph).id).unwrap();
+            if acc.is_empty() {
+                format!("{}", current_context.network_name)
+            } else {
+                format!("{} -> {}", acc, current_context.network_name)
+            }
+        });
+
+        let xpath = path.split(" -> ").collect::<Vec<_>>().join("/");
+        let xpath = format!("/{}", xpath);
+
+        if self.data_node.fields.is_empty() {
+            return Ok(xpath);
+        }
+
+        let is_text_node = self.data_node.fields.contains_key("text");
+        if is_text_node {
+            return Ok(format!("{}/text()", xpath));
+        }
+
+        let field_names: Vec<String> = self.data_node.fields.keys().cloned().collect();
+        let attributes = field_names.iter().map(|k| format!("@{}", k)).collect::<Vec<_>>().join(" and ");
+
+        Ok(format!("{}[{}]", xpath, attributes))
+    }
+
+    fn generate_positional_context_json(&self, meta_context: &MetaContext) -> Result<String, Errors> {
         let root_to_target = get_path_to_target(Arc::clone(&self.graph_node));
         let context_string = root_to_target.iter().fold(String::new(), |acc, graph| {
             let current_context = meta_context.contexts_lookup.get(&read_lock!(graph).id).unwrap();
