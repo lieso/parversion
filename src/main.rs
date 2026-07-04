@@ -55,9 +55,18 @@ mod group_analysis;
 
 use crate::entrypoint::run;
 
-#[tokio::main]
-async fn main() {
-    if let Err(e) = run().await {
+fn build_runtime() -> tokio::runtime::Runtime {
+    let mut builder = if std::env::var("SINGLE_THREAD").is_ok() {
+        tokio::runtime::Builder::new_current_thread()
+    } else {
+        tokio::runtime::Builder::new_multi_thread()
+    };
+    builder.enable_all().build().unwrap()
+}
+
+fn main() {
+    let runtime = build_runtime();
+    if let Err(e) = runtime.block_on(run()) {
         println!("Error occurred: {:?}", e);
         std::process::exit(1);
     }
