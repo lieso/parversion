@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_field::BasisField;
+use crate::basis_field::{BasisField, BasisFieldMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisFieldResponse {
@@ -77,7 +77,10 @@ pub async fn basis_field<R: Reasoner>(
         let basis_field = BasisField {
             id: ID::new(),
             acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
-            name: candidate.clone()
+            name: candidate.clone(),
+            metadata: BasisFieldMetadata {
+                prompt_hash: Some(metadata.prompt_hash),
+            }
         };
 
         Ok((Some(basis_field), reasoner_metadata))

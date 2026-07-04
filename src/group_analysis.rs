@@ -6,7 +6,7 @@ use async_recursion::async_recursion;
 
 use crate::prelude::*;
 use crate::basis_field::BasisField;
-use crate::basis_group::BasisGroup;
+use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 
 pub async fn get_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -98,6 +98,9 @@ async fn get_acyclic_basis_groups<P: Provider, R: Reasoner>(
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: None,
             indexed_lineage: None,
+            metadata: BasisGroupMetadata {
+                prompt_hash: None,
+            }
         })
     } else {
         let (maybe_basis_group, metadata) = reasoner.basis_group(
@@ -196,6 +199,9 @@ async fn get_cyclic_basis_groups<P: Provider, R: Reasoner>(
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: Some(lineage.clone()),
             indexed_lineage: None,
+            metadata: BasisGroupMetadata {
+                prompt_hash: None,
+            }
         })
     } else {
         let (maybe_basis_group, metadata) = reasoner.basis_group(
@@ -302,6 +308,9 @@ async fn get_indexed_basis_groups<P: Provider, R: Reasoner>(
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: Some(lineage.clone()),
             indexed_lineage: Some(indexed_lineage.clone()),
+            metadata: BasisGroupMetadata {
+                prompt_hash: None,
+            }
         })
     } else {
         let (maybe_basis_group, metadata) = reasoner.basis_group(

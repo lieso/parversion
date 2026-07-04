@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_group::BasisGroup;
+use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisGroupResponse {
@@ -81,6 +81,9 @@ pub async fn basis_group<R: Reasoner>(
             acyclic_lineage,
             lineage,
             indexed_lineage,
+            metadata: BasisGroupMetadata {
+                prompt_hash: Some(metadata.prompt_hash),
+            }
         };
 
         Ok((Some(basis_group), reasoner_metadata))

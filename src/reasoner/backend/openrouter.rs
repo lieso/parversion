@@ -87,22 +87,20 @@ impl Reasoner for OpenRouterReasoner {
                     );
                     log::debug!("");
 
-                    let reasoning = response.choices[0].message.reasoning.as_deref();
-
                     #[cfg(debug_assertions)]
-                    write_debug_log(system_prompt, user_prompt, content, reasoning, &prompt_hash);
+                    write_debug_log(system_prompt, user_prompt, &response, &prompt_hash);
 
                     let metadata = if let Some(usage) = response.usage {
                         CompletionMetadata {
                             input_tokens: usage.prompt_tokens as u32,
                             output_tokens: usage.completion_tokens as u32,
-                            prompt_hash: Some(prompt_hash),
+                            prompt_hash: prompt_hash,
                         }
                     } else {
                         CompletionMetadata {
                             input_tokens: 0,
                             output_tokens: 0,
-                            prompt_hash: Some(prompt_hash),
+                            prompt_hash: prompt_hash,
                         }
                     };
 
@@ -176,7 +174,7 @@ impl Reasoner for OpenRouterReasoner {
 }
 
 #[cfg(debug_assertions)]
-fn write_debug_log(system_prompt: &str, user_prompt: &str, response: &str, reasoning: Option<&str>, hash: &Hash) {
+fn write_debug_log<T: std::fmt::Debug>(system_prompt: &str, user_prompt: &str, response: &T, hash: &Hash) {
     use std::fs;
 
     let debug_dir = {
@@ -186,22 +184,12 @@ fn write_debug_log(system_prompt: &str, user_prompt: &str, response: &str, reaso
 
     let file_path = debug_dir.join(format!("{}.txt", hash));
 
-    let content = if let Some(reasoning_text) = reasoning {
-        format!(
-            "=== SYSTEM PROMPT ===\n{}\n\n=== USER PROMPT ===\n{}\n\n=== REASONING ===\n{}\n\n=== RESPONSE ===\n{}",
-            system_prompt,
-            user_prompt,
-            reasoning_text,
-            response
-        )
-    } else {
-        format!(
-            "=== SYSTEM PROMPT ===\n{}\n\n=== USER PROMPT ===\n{}\n\n=== RESPONSE ===\n{}",
-            system_prompt,
-            user_prompt,
-            response
-        )
-    };
+    let content = format!(
+        "=== SYSTEM PROMPT ===\n{}\n\n=== USER PROMPT ===\n{}\n\n=== LLM RESPONSE ===\n{:#?}",
+        system_prompt,
+        user_prompt,
+        response
+    );
 
     if let Err(e) = fs::write(&file_path, content) {
         log::warn!("Failed to write debug log to {:?}: {}", file_path, e);

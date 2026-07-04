@@ -4,8 +4,14 @@ use crate::prelude::*;
 use crate::transformation::BasisFieldTransformation;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BasisFieldMetadata {
+    pub prompt_hash: Option<Hash>
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisField {
     pub id: ID,
     pub acyclic_subgraph_hash: Hash,
-    pub name: String
+    pub name: String,
+    pub metadata: BasisFieldMetadata,
 }

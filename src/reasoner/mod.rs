@@ -19,7 +19,7 @@ pub use backend::openrouter;
 pub struct CompletionMetadata {
     pub input_tokens: u32,
     pub output_tokens: u32,
-    pub prompt_hash: Option<Hash>,
+    pub prompt_hash: Hash,
 }
 
 pub struct EmbeddingMetadata {

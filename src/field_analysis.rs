@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use std::collections::{HashMap};
 
 use crate::prelude::*;
-use crate::basis_field::BasisField;
+use crate::basis_field::{BasisField, BasisFieldMetadata};
 
 pub async fn get_basis_fields<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -101,7 +101,10 @@ pub async fn get_basis_fields<P: Provider, R: Reasoner>(
     basis_fields.push(BasisField {
         id: ID::new(),
         acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
-        name: "text".to_string()
+        name: "text".to_string(),
+        metadata: BasisFieldMetadata {
+            prompt_hash: None,
+        }
     });
 
     provider.save_basis_fields(
