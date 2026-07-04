@@ -6,6 +6,7 @@ use crate::classification::Classification;
 use crate::prompt_registry::PromptRegistry;
 use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
+use crate::hash::Hash;
 
 mod backend;
 mod classify;
@@ -18,6 +19,7 @@ pub use backend::openrouter;
 pub struct CompletionMetadata {
     pub input_tokens: u32,
     pub output_tokens: u32,
+    pub prompt_hash: Option<Hash>,
 }
 
 pub struct EmbeddingMetadata {

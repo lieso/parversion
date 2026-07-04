@@ -7,11 +7,14 @@ use openrouter_rs::{
 };
 use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
 use http::StatusCode;
+use std::path::PathBuf;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, CompletionMetadata, Capability, EmbeddingMetadata};
 use crate::environment::get_env_variable;
 use crate::prompt_registry::PromptRegistry;
+use crate::config::CONFIG;
+use crate::hash::Hash;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub struct OpenRouterReasoner {
@@ -43,11 +46,14 @@ impl Reasoner for OpenRouterReasoner {
         user_prompt: &str,
         schema: serde_json::Value,
     ) -> Result<(String, CompletionMetadata), Errors> {
+        let combined_prompt = format!("{}{}", system_prompt, user_prompt);
+        let prompt_hash = Hash::from_str(&combined_prompt);
+
         let model = match capability {
             Capability::Fast => "gpt-5-mini",
             Capability::Capable => "gpt-5",
         };
-        
+
         let response_format = ResponseFormat::json_schema(
             "structured_response",
             true,
@@ -81,13 +87,23 @@ impl Reasoner for OpenRouterReasoner {
                     );
                     log::debug!("");
 
+                    let reasoning = response.choices[0].message.reasoning.as_deref();
+
+                    #[cfg(debug_assertions)]
+                    write_debug_log(system_prompt, user_prompt, content, reasoning, &prompt_hash);
+
                     let metadata = if let Some(usage) = response.usage {
                         CompletionMetadata {
                             input_tokens: usage.prompt_tokens as u32,
                             output_tokens: usage.completion_tokens as u32,
+                            prompt_hash: Some(prompt_hash),
                         }
                     } else {
-                        CompletionMetadata { input_tokens: 0, output_tokens: 0 }
+                        CompletionMetadata {
+                            input_tokens: 0,
+                            output_tokens: 0,
+                            prompt_hash: Some(prompt_hash),
+                        }
                     };
 
                     return Ok((content.to_string(), metadata));
@@ -156,5 +172,38 @@ impl Reasoner for OpenRouterReasoner {
         };
 
         Ok((vectors, metadata))
+    }
+}
+
+#[cfg(debug_assertions)]
+fn write_debug_log(system_prompt: &str, user_prompt: &str, response: &str, reasoning: Option<&str>, hash: &Hash) {
+    use std::fs;
+
+    let debug_dir = {
+        let config = CONFIG.read().unwrap();
+        PathBuf::from(&config.dev.debug_dir)
+    };
+
+    let file_path = debug_dir.join(format!("{}.txt", hash));
+
+    let content = if let Some(reasoning_text) = reasoning {
+        format!(
+            "=== SYSTEM PROMPT ===\n{}\n\n=== USER PROMPT ===\n{}\n\n=== REASONING ===\n{}\n\n=== RESPONSE ===\n{}",
+            system_prompt,
+            user_prompt,
+            reasoning_text,
+            response
+        )
+    } else {
+        format!(
+            "=== SYSTEM PROMPT ===\n{}\n\n=== USER PROMPT ===\n{}\n\n=== RESPONSE ===\n{}",
+            system_prompt,
+            user_prompt,
+            response
+        )
+    };
+
+    if let Err(e) = fs::write(&file_path, content) {
+        log::warn!("Failed to write debug log to {:?}: {}", file_path, e);
     }
 }
