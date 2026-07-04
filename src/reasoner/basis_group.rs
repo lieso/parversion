@@ -141,7 +141,7 @@ fn most_different(candidates: Vec<String>, embeddings: &[Vec<f32>]) -> Vec<Strin
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap();
 
-        if dist < threshold {
+        if dist < threshold && selected.len() >= min_samples {
             break;
         }
 
