@@ -347,7 +347,6 @@ impl GraphNode {
             panic!("We found more than one graph matching provided xpath expression");
         }
 
-
         Ok(current.first().cloned())
     }
     

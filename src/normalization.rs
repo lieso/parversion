@@ -44,6 +44,8 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     log::trace!("In normalize");
 
     let start = Instant::now();
+    let stage = execution_context.enter_stage("Initialization");
+
     let normalization_context = init_normalization_context(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
@@ -53,9 +55,11 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     )
     .await?;
 
+    stage.finish();
     let elapsed = start.elapsed();
     log::info!("init_normalization_context: {:.2?}", elapsed);
 
+    let start = Instant::now();
     let stage = execution_context.enter_stage("Document classification");
 
     let classification =
@@ -74,6 +78,10 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     stage.finish();
+    let elapsed = start.elapsed();
+    log::info!("get_classification: {:.2?}", elapsed);
+
+    let start = Instant::now();
     let stage = execution_context.enter_stage("Field analysis");
 
     let basis_fields =
@@ -91,12 +99,17 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         lock.update_basis_fields(basis_fields);
     }
 
+    let elapsed = start.elapsed();
+    log::info!("get_basis_fields: {:.2?}", elapsed);
+
     #[cfg(debug_assertions)]
     {
         report_basis_fields(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
+
+    let start = Instant::now();
     let stage = execution_context.enter_stage("Group analysis");
 
     let basis_groups =
@@ -125,12 +138,17 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         lock.update_context_groups(context_groups, context_to_group);
     }
 
+    let elapsed = start.elapsed();
+    log::info!("get_basis_groups: {:.2?}", elapsed);
+
     #[cfg(debug_assertions)]
     {
         report_basis_groups(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
+
+    let start = Instant::now();
     let stage = execution_context.enter_stage("Node analysis");
 
     log::info!("Getting basis nodes");
@@ -149,7 +167,12 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         lock.update_basis_nodes(basis_nodes);
     }
 
+    let elapsed = start.elapsed();
+    log::info!("get_basis_nodes: {:.2?}", elapsed);
+
     stage.finish();
+
+    let start = Instant::now();
     let stage = execution_context.enter_stage("Network analysis");
 
     log::info!("Generating basis networks");
@@ -168,7 +191,12 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         lock.update_basis_networks(basis_networks);
     }
 
+    let elapsed = start.elapsed();
+    log::info!("get_basis_networks: {:.2?}", elapsed);
+
     stage.finish();
+
+    let start = Instant::now();
     let stage = execution_context.enter_stage("Network relationships");
 
     log::info!("Generating network relationships");
@@ -188,7 +216,12 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         lock.update_basis_graph(basis_graph);
     }
 
+    let elapsed = start.elapsed();
+    log::info!("get_network_relationships: {:.2?}", elapsed);
+
     stage.finish();
+
+    let start = Instant::now();
     let stage = execution_context.enter_stage("Building normalized graph");
 
     let (contexts, normalized_graph_root) = build_normalized_graph(
@@ -201,6 +234,9 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         let mut lock = write_lock!(normalization_context);
         lock.update_normalized_graph(contexts, normalized_graph_root);
     }
+
+    let elapsed = start.elapsed();
+    log::info!("buld_normalized_graph: {:.2?}", elapsed);
 
     stage.finish();
 
