@@ -22,6 +22,8 @@ pub async fn basis_group<R: Reasoner>(
 ) -> Result<(Option<BasisGroup>, ReasonerMetadata), Errors> {
     log::trace!("In basis_group");
 
+    assert!(group.len() > 1);
+
     let system_prompt = get_system_prompt(
         reasoner,
         Arc::clone(&normalization_context)
