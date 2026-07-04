@@ -56,7 +56,7 @@ pub async fn report_basis_fields<P: Provider>(
         println!("{}  id: {}{}", CYAN, field.id.to_string(), RESET);
         println!("{}  contexts with field: {} / {} ({:.1}%){}", CYAN, contexts_with_field, meta_context.contexts.len(), percentage, RESET);
         println!("{}  subgraph_hash: {}{}", CYAN, field.acyclic_subgraph_hash, RESET);
-        println!("{}  prompt_hash: {:?}{}", CYAN, field.metadata.prompt_hash, RESET);
+        println!("{}  prompts: {:?}{}", CYAN, field.metadata.prompts, RESET);
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
     }
 
@@ -110,7 +110,7 @@ pub async fn report_basis_groups<P: Provider>(
         println!("{}{}{}", MAGENTA, "-----------------------------------------------------------------------------------------------------", RESET);
         println!("{}--- Group [{}] ---{}", MAGENTA, lineage_desc, RESET);
         println!("{}  total contexts: {}{}", MAGENTA, contexts.len(), RESET);
-        println!("{}  prompt hash: {:?}{}", MAGENTA, group.metadata.prompt_hash, RESET);
+        println!("{}  prompts: {:?}{}", MAGENTA, group.metadata.prompts, RESET);
         println!("{}{}{}", MAGENTA, "-----------------------------------------------------------------------------------------------------", RESET);
 
         for (i, context) in contexts.iter().take(10).enumerate() {

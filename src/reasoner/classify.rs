@@ -62,7 +62,8 @@ pub async fn classify<R: Reasoner>(
     ).await?;
 
     let reasoner_metadata = ReasonerMetadata {
-        tokens: metadata.input_tokens + metadata.output_tokens
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
     };
 
     let classification = Classification {

@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisGroupMetadata {
-    pub prompt_hash: Option<Hash>,
+    pub prompts: Vec<Hash>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

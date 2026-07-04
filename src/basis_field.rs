@@ -5,7 +5,7 @@ use crate::transformation::BasisFieldTransformation;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisFieldMetadata {
-    pub prompt_hash: Option<Hash>
+    pub prompts: Vec<Hash>
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

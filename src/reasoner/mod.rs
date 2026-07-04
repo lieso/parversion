@@ -34,6 +34,7 @@ pub enum Capability {
 
 pub struct ReasonerMetadata {
     pub tokens: u32,
+    pub prompt_hash: Hash,
 }
 
 #[async_trait]

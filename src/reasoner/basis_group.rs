@@ -67,7 +67,8 @@ pub async fn basis_group<R: Reasoner>(
     ).await?;
 
     let reasoner_metadata = ReasonerMetadata {
-        tokens: metadata.input_tokens + metadata.output_tokens
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash,
     };
 
     if result.is_match {
@@ -82,7 +83,7 @@ pub async fn basis_group<R: Reasoner>(
             lineage,
             indexed_lineage,
             metadata: BasisGroupMetadata {
-                prompt_hash: Some(metadata.prompt_hash),
+                prompts: vec![reasoner_metadata.prompt_hash.clone()]
             }
         };
 

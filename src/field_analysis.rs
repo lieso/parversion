@@ -103,7 +103,7 @@ pub async fn get_basis_fields<P: Provider, R: Reasoner>(
         acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
         name: "text".to_string(),
         metadata: BasisFieldMetadata {
-            prompt_hash: None,
+            prompts: Vec::new()
         }
     });
 

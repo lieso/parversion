@@ -65,7 +65,8 @@ pub async fn basis_field<R: Reasoner>(
     ).await?;
 
     let reasoner_metadata = ReasonerMetadata {
-        tokens: metadata.input_tokens + metadata.output_tokens
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
     };
 
     if result.is_meaningful {
@@ -79,7 +80,7 @@ pub async fn basis_field<R: Reasoner>(
             acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
             name: candidate.clone(),
             metadata: BasisFieldMetadata {
-                prompt_hash: Some(metadata.prompt_hash),
+                prompts: vec![metadata.prompt_hash.clone()]
             }
         };
 
