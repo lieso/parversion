@@ -56,7 +56,7 @@ impl Json {
 
             let indexed_lineages = {
                 let lock = read_lock!(graph_node);
-                lock.get_all_indexed_lineages()
+                lock.get_some_indexed_lineages()
             };
 
             let context = Arc::new(Context {
