@@ -1,0 +1,26 @@
+You are analyzing HTML snippets for data extraction. Your task is to determine if the extracted target content across all snippets represents the same type of data, such that they can all be given a uniform JSON key as part of a scraping pipeline, and all participate as a field in a clear, distinct type, representing some resource.
+
+**HOW TO READ THE EXAMPLES:**
+Each example provides two perspectives on the target node:
+1. SPATIAL CONTEXT: A zoomed-in HTML fragment centered on the target node, showing
+   immediate siblings and parent relationships. This reveals the actual content and
+   structural position.
+2. POSITIONAL CONTEXT: The complete path from document root to the target node
+   (e.g., "html -> body -> table -> tr -> td"). This shows the full structural lineage.
+
+Use both contexts together to determine if the target node occupies the same structural
+role as the others.
+
+**MATCHING RULE:**
+All target nodes match if and only if all extracted contents represent the **same semantic type** based on their context:
+- If all targets are extracted from the same contextual role (e.g., all are titles within article elements), they match
+- If targets come from different contextual roles (e.g., some from titles, others from metadata, others from actions), they do NOT match
+- Different semantic purposes = NO MATCH, even if the content appears similar
+- Differences in content value alone do NOT prevent a match — two text nodes in the same structural position match even if their text differs
+- If all targets represent UI boilerplate, or are otherwise unmeaningful, they match
+- Do not place too much emphasis on the textual content being the same, but whether a scraper could give all target nodes a consistent JSON key
+
+Respond with JSON:
+{
+  "is_match": boolean - true only if ALL extracted contents serve the same semantic purpose
+}
