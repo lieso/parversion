@@ -223,11 +223,201 @@ async fn get_cyclic_basis_groups<P: Provider, R: Reasoner>(
 
     log::info!("Contexts with cyclic lineage: {} have been inferred to not match. Proceeding to recursively subgroup by indexed lineage", lineage.to_string());
 
-    let mut next_depth = 0;
-    let mut indexed_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
-    let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
+    let (indexed_contexts, singular_contexts, depth) = collect_indexed_subgroups(
+        candidate_group.clone(),
+        0
+    );
 
-    unimplemented!()
+    if singular_contexts.len() == candidate_group.len() {
+        unimplemented!();
+    }
+
+    let mut handles = Vec::new();
+
+    for (indexed_lineage, candidate_subgroup) in indexed_contexts {
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
+        let cloned_normalization_context = Arc::clone(&normalization_context);
+        let cloned_stage_context = stage_context.clone();
+        let cloned_options = options.clone();
+        let cloned_acyclic_lineage = acyclic_lineage.clone();
+        let cloned_lineage = lineage.clone();
+
+        let handle = task::spawn(async move {
+            get_indexed_basis_groups(
+                cloned_provider,
+                cloned_reasoner,
+                cloned_normalization_context,
+                cloned_acyclic_lineage,
+                cloned_lineage,
+                indexed_lineage.clone(),
+                candidate_subgroup,
+                depth,
+                cloned_options,
+                cloned_stage_context
+            )
+            .await
+        });
+        handles.push(handle);
+    }
+
+    let results: Vec<Result<Vec<BasisGroup>, Errors>> = try_join_all(handles).await?;
+
+    let flattened: Vec<BasisGroup> = results
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+    Ok(flattened)
+}
+
+#[async_recursion]
+async fn get_indexed_basis_groups<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    acyclic_lineage: Lineage,
+    lineage: Lineage,
+    indexed_lineage: Lineage,
+    candidate_group: Vec<Arc<Context>>,
+    depth: usize,
+    options: Options,
+    stage_context: StageContext,
+) -> Result<Vec<BasisGroup>, Errors> {
+    stage_context.record_events("Group analysis", 0);
+
+    if !options.regenerate {
+        let cached = provider
+            .get_basis_groups_by_indexed_lineage(&acyclic_lineage, &lineage, &indexed_lineage).await?;
+        if !cached.is_empty() {
+            return Ok(cached);
+        }
+    }
+
+    let maybe_basis_group: Option<BasisGroup> = if candidate_group.len() == 1 {
+        Some(BasisGroup {
+            id: ID::new(),
+            acyclic_lineage: acyclic_lineage.clone(),
+            lineage: Some(lineage.clone()),
+            indexed_lineage: Some(indexed_lineage.clone()),
+        })
+    } else {
+        let (maybe_basis_group, metadata) = reasoner.basis_group(
+            Arc::clone(&normalization_context),
+            candidate_group.clone(),
+            acyclic_lineage.clone(),
+            Some(lineage.clone()),
+            Some(indexed_lineage.clone())
+        ).await?;
+
+        stage_context.record_events("Group analysis", metadata.tokens.into());
+
+        maybe_basis_group
+    };
+
+    if let Some(basis_group) = maybe_basis_group {
+        provider.save_basis_group(
+            &acyclic_lineage,
+            Some(&lineage),
+            Some(&indexed_lineage),
+            basis_group.clone()
+        ).await?;
+        return Ok(vec![basis_group]);
+    }
+
+    log::info!("Contexts with indexed lineage: {} have been inferred to not match. Proceeding to increase depth", indexed_lineage.to_string());
+
+    let (indexed_contexts, singular_contexts, next_depth) = collect_indexed_subgroups(
+        candidate_group.clone(),
+        depth + 1,
+    );
+
+    if singular_contexts.len() == candidate_group.len() {
+        unimplemented!();
+    }
+
+    let mut handles = Vec::new();
+
+    for (next_indexed_lineage, candidate_subgroup) in indexed_contexts {
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
+        let cloned_normalization_context = Arc::clone(&normalization_context);
+        let cloned_acyclic_lineage = acyclic_lineage.clone();
+        let cloned_lineage = lineage.clone();
+        let cloned_options = options.clone();
+        let cloned_stage_context = stage_context.clone();
+
+        let handle = task::spawn(async move {
+            get_indexed_basis_groups(
+                cloned_provider,
+                cloned_reasoner,
+                cloned_normalization_context,
+                cloned_acyclic_lineage,
+                cloned_lineage,
+                next_indexed_lineage,
+                candidate_subgroup,
+                next_depth,
+                cloned_options,
+                cloned_stage_context,
+            )
+            .await
+        });
+        handles.push(handle);
+    }
+    
+    let results: Vec<Result<Vec<BasisGroup>, Errors>> = try_join_all(handles).await?;
+
+    let flattened: Vec<BasisGroup> = results
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+    Ok(flattened)
+}
+
+fn collect_indexed_subgroups(
+    candidate_group: Vec<Arc<Context>>,
+    start_depth: usize
+) -> (
+    HashMap<Lineage, Vec<Arc<Context>>>, 
+    Vec<Arc<Context>>, // singular contexts
+    usize // depth
+) {
+    let mut next_depth = start_depth;
+    let mut indexed_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
+    let mut singular_contexts: Vec<Arc<Context>> = Vec::new();
+
+    loop {
+        indexed_contexts.clear();
+        singular_contexts.clear();
+
+        for context in &candidate_group {
+            if let Some(indexed_lineage) = context.get_indexed_lineage(next_depth) {
+                indexed_contexts
+                    .entry(indexed_lineage.clone())
+                    .or_insert_with(Vec::new)
+                    .push(context.clone());
+            } else {
+                singular_contexts.push(context.clone());
+            }
+        }
+
+        if indexed_contexts.len() > 1 {
+            break;
+        }
+
+        if singular_contexts.len() == candidate_group.len() {
+            break;
+        }
+
+        next_depth += 1;
+    }
+
+    (indexed_contexts, singular_contexts, next_depth)
 }
 
 fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext>>) -> Result<Vec<Arc<Context>>, Errors> {
