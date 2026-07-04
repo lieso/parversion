@@ -243,6 +243,7 @@ pub fn get_context_groups<P: Provider, R: Reasoner>(
                             let is_match = new_il == *il;
                             indexed_lineages.insert(new_il);
                             if is_match {
+                                log::info!("next_depth: {}", next_depth);
                                 found = true;
                                 break;
                             }

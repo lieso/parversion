@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::sync::{Arc, RwLock};
 use xmltree::Element;
+use rayon::prelude::*;
 
 use crate::prelude::*;
 use crate::context::Context;
@@ -26,14 +27,14 @@ impl Html {
         let document_root = Self::get_document_node(data)?;
         let document_root = Arc::new(RwLock::new(document_root.clone()));
 
-        let mut contexts: HashMap<ContextID, Arc<Context>> = HashMap::new();
-        let mut contexts_lookup: HashMap<ID, Arc<Context>> = HashMap::new();
+        let contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
+        let contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
 
         fn recurse(
             document_node: Arc<RwLock<DocumentNode>>,
             parent_lineage: &Lineage,
-            contexts: &mut HashMap<ContextID, Arc<Context>>,
-            contexts_lookup: &mut HashMap<ID, Arc<Context>>,
+            contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>>,
+            contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>>,
             parents: Vec<Arc<RwLock<GraphNode>>>,
         ) -> Arc<RwLock<GraphNode>> {
             let (hash, lineage, fields, description, network_name) = {
@@ -71,21 +72,28 @@ impl Html {
                 network_name,
             });
 
-            contexts.insert(context.id.clone(), Arc::clone(&context));
-            contexts_lookup.insert(data_node.id.clone(), Arc::clone(&context));
-            contexts_lookup.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
-            contexts_lookup.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
+            {
+                let mut lock = write_lock!(contexts);
+                lock.insert(context.id.clone(), Arc::clone(&context));
+            }
+
+            { 
+                let mut lock = write_lock!(contexts_lookup);
+                lock.insert(data_node.id.clone(), Arc::clone(&context));
+                lock.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
+                lock.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
+            }
 
             {
                 let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
                     .get_children()
-                    .into_iter()
+                    .into_par_iter()
                     .map(|child| {
                         recurse(
                             Arc::new(RwLock::new(child)),
                             &data_node.lineage,
-                            contexts,
-                            contexts_lookup,
+                            Arc::clone(&contexts),
+                            Arc::clone(&contexts_lookup),
                             vec![Arc::clone(&graph_node)],
                         )
                     })
@@ -117,8 +125,8 @@ impl Html {
         let graph_root = recurse(
             Arc::clone(&document_root),
             &initial_lineage,
-            &mut contexts,
-            &mut contexts_lookup,
+            contexts.clone(),
+            contexts_lookup.clone(),
             Vec::new(),
         );
 
@@ -126,6 +134,9 @@ impl Html {
             let lock = read_lock!(graph_root);
             lock.acyclic_subgraph_hash()
         };
+
+        let contexts = read_lock!(contexts).clone();
+        let contexts_lookup = read_lock!(contexts_lookup).clone();
 
         Ok(MetaContext {
             contexts,

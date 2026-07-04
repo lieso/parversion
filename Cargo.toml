@@ -51,6 +51,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 schemars = "1.2.1"
 http = "1.4.2"
+rayon = "1.12.0"
 
 [lib]
 name = "parversion"

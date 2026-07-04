@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::time::Instant;
 
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
@@ -42,6 +43,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In normalize");
 
+    let start = Instant::now();
     let normalization_context = init_normalization_context(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
@@ -50,6 +52,9 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         execution_context.clone(),
     )
     .await?;
+
+    let elapsed = start.elapsed();
+    log::info!("init_normalization_context: {:.2?}", elapsed);
 
     let stage = execution_context.enter_stage("Document classification");
 
