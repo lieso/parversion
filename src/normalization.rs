@@ -11,7 +11,7 @@ use crate::node_analysis::{
     get_context_groups,
 };
 use crate::field_analysis::get_basis_fields;
-use crate::group_analysis::get_basis_groups;
+use crate::group_analysis::generate_basis_groups;
 use crate::reports::{
     report_basis_groups,
     report_basis_fields
@@ -113,7 +113,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let stage = execution_context.enter_stage("Group analysis");
 
     let basis_groups =
-        get_basis_groups(
+        generate_basis_groups(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
             Arc::clone(&normalization_context),
@@ -139,7 +139,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     let elapsed = start.elapsed();
-    log::info!("get_basis_groups: {:.2?}", elapsed);
+    log::info!("generate_basis_groups: {:.2?}", elapsed);
 
     #[cfg(debug_assertions)]
     {

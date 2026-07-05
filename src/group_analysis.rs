@@ -8,14 +8,14 @@ use crate::prelude::*;
 use crate::basis_field::BasisField;
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 
-pub async fn get_basis_groups<P: Provider, R: Reasoner>(
+pub async fn generate_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisGroup>>, Errors> {
-    log::trace!("In get_basis_groups");
+    log::trace!("In generate_basis_groups");
 
     let non_empty_contexts = get_non_empty_contexts(Arc::clone(&normalization_context))?;
     log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
@@ -39,7 +39,7 @@ pub async fn get_basis_groups<P: Provider, R: Reasoner>(
         let cloned_options = options.clone();
 
         let handle = task::spawn(async move {
-            get_acyclic_basis_groups(
+            generate_acyclic_basis_groups(
                 cloned_provider,
                 cloned_reasoner,
                 cloned_normalization_context,
@@ -71,7 +71,7 @@ pub async fn get_basis_groups<P: Provider, R: Reasoner>(
     Ok(basis_groups)
 }
 
-async fn get_acyclic_basis_groups<P: Provider, R: Reasoner>(
+async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -143,7 +143,7 @@ async fn get_acyclic_basis_groups<P: Provider, R: Reasoner>(
         let cloned_acyclic_lineage = acyclic_lineage.clone();
 
         let handle = task::spawn(async move {
-            get_cyclic_basis_groups(
+            generate_cyclic_basis_groups(
                 cloned_provider,
                 cloned_reasoner,
                 cloned_normalization_context,
@@ -175,7 +175,7 @@ async fn get_acyclic_basis_groups<P: Provider, R: Reasoner>(
     Ok(flattened)
 }
 
-async fn get_cyclic_basis_groups<P: Provider, R: Reasoner>(
+async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -239,7 +239,7 @@ async fn get_cyclic_basis_groups<P: Provider, R: Reasoner>(
     );
 
     if singular_contexts.len() == candidate_group.len() {
-        unimplemented!();
+        //unimplemented!();
     }
 
     let mut handles = Vec::new();
@@ -254,7 +254,7 @@ async fn get_cyclic_basis_groups<P: Provider, R: Reasoner>(
         let cloned_lineage = lineage.clone();
 
         let handle = task::spawn(async move {
-            get_indexed_basis_groups(
+            generate_indexed_basis_groups(
                 cloned_provider,
                 cloned_reasoner,
                 cloned_normalization_context,
@@ -288,7 +288,7 @@ async fn get_cyclic_basis_groups<P: Provider, R: Reasoner>(
 }
 
 #[async_recursion]
-async fn get_indexed_basis_groups<P: Provider, R: Reasoner>(
+async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -352,7 +352,7 @@ async fn get_indexed_basis_groups<P: Provider, R: Reasoner>(
     );
 
     if singular_contexts.len() == candidate_group.len() {
-        unimplemented!();
+        //unimplemented!();
     }
 
     let mut handles = Vec::new();
@@ -367,7 +367,7 @@ async fn get_indexed_basis_groups<P: Provider, R: Reasoner>(
         let cloned_stage_context = stage_context.clone();
 
         let handle = task::spawn(async move {
-            get_indexed_basis_groups(
+            generate_indexed_basis_groups(
                 cloned_provider,
                 cloned_reasoner,
                 cloned_normalization_context,
