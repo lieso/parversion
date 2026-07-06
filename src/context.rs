@@ -19,7 +19,7 @@ pub struct Context {
     pub id: ContextID,
     pub lineage: Lineage,
     pub acyclic_lineage: Lineage,
-    pub indexed_lineages: HashMap<usize, Lineage>,
+    pub indexed_lineages: Arc<RwLock<HashMap<usize, Lineage>>>,
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
@@ -148,11 +148,20 @@ impl Context {
 
 impl Context {
     pub fn get_indexed_lineage(&self, depth: usize) -> Option<Lineage> {
-        if let Some(lineage) = self.indexed_lineages.get(&depth) {
-            Some(lineage.clone())
+        {
+            let cache = read_lock!(self.indexed_lineages);
+            if let Some(lineage) = cache.get(&depth) {
+                return Some(lineage.clone());
+            }
+        }
+
+        let graph_node = read_lock!(self.graph_node);
+        if let Some(lineage) = graph_node.get_indexed_lineage_at_depth(depth) {
+            let mut cache = write_lock!(self.indexed_lineages);
+            cache.insert(depth, lineage.clone());
+            Some(lineage)
         } else {
-            let graph_node = read_lock!(self.graph_node);
-            graph_node.get_indexed_lineage_at_depth(depth)
+            None
         }
     }
 

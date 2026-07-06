@@ -379,38 +379,4 @@ impl GraphNode {
 
         Some(lineage)
     }
-
-    pub fn get_some_indexed_lineages(&self) -> HashMap<usize, Lineage> {
-        let mut ancestors = Vec::new();
-
-        ancestors.push((self.id.clone(), self.hash.clone(), self.index_in_parent()));
-
-        let mut remaining_parents = self.parents.clone();
-        while !remaining_parents.is_empty() {
-            let parent = read_lock!(remaining_parents[0]).clone();
-            ancestors.push((parent.id.clone(), parent.hash.clone(), parent.index_in_parent()));
-            remaining_parents = parent.parents.clone();
-        }
-
-        let mut result = HashMap::new();
-
-        // ***********  Only going up to depth 3 *************
-
-        for target_depth in 0..std::cmp::min(ancestors.len(), 3) {
-            let mut lineage = Lineage::new();
-
-            for (depth, (_, hash, index)) in ancestors.iter().enumerate() {
-                if depth == target_depth {
-                    if let Some(idx) = index {
-                        lineage = lineage.with_hash(Hash::from_str(&idx.to_string()));
-                    }
-                }
-                lineage = lineage.with_hash(hash.clone());
-            }
-
-            result.insert(target_depth, lineage);
-        }
-
-        result
-    }
 }

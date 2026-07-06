@@ -56,10 +56,7 @@ impl Html {
                 parents.clone(),
             )));
 
-            let indexed_lineages = {
-                let lock = read_lock!(graph_node);
-                lock.get_some_indexed_lineages()
-            };
+            let indexed_lineages = Arc::new(RwLock::new(HashMap::new()));
 
             let context = Arc::new(Context {
                 id: ID::new(),
