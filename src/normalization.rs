@@ -9,7 +9,7 @@ use crate::network_analysis::{get_classification, get_basis_networks, get_networ
 use crate::node_analysis::{
     get_basis_nodes,
 };
-use crate::field_analysis::get_basis_fields;
+use crate::field_analysis::generate_basis_fields;
 use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
 use crate::reports::{
     report_basis_groups,
@@ -84,7 +84,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let stage = execution_context.enter_stage("Field analysis");
 
     let basis_fields =
-        get_basis_fields(
+        generate_basis_fields(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
             Arc::clone(&normalization_context),
@@ -99,7 +99,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     let elapsed = start.elapsed();
-    log::info!("get_basis_fields: {:.2?}", elapsed);
+    log::info!("generate_basis_fields: {:.2?}", elapsed);
 
     #[cfg(debug_assertions)]
     {
