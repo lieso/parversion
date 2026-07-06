@@ -1,7 +1,6 @@
 use std::sync::{Arc, RwLock};
 
 use crate::normalization_context::NormalizationContext;
-use crate::node_analysis::get_context_groups;
 use crate::prelude::*;
 use crate::provider::Provider;
 

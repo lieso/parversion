@@ -3,10 +3,87 @@ use std::sync::{Arc, RwLock};
 use std::collections::{HashMap};
 use tokio::task;
 use async_recursion::async_recursion;
+use rayon::prelude::*;
 
 use crate::prelude::*;
 use crate::basis_field::BasisField;
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
+
+pub fn resolve_context_groups(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<(
+    HashMap<ID, Vec<Arc<Context>>>,
+    HashMap<ID, Arc<BasisGroup>>
+), Errors> {
+    log::trace!("In resolve_context_groups");
+
+    let non_empty_contexts = get_non_empty_contexts(Arc::clone(&normalization_context))?;
+    log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
+
+    let basis_groups = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_groups
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Basis groups not provided in normalization context".to_string())
+            })?
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    let mut basis_group_lookup: HashMap<(Lineage, Option<Lineage>, Option<Lineage>), Arc<BasisGroup>> = HashMap::new();
+
+    for group in basis_groups {
+        let key = (
+            group.acyclic_lineage.clone(),
+            group.lineage.clone(),
+            group.indexed_lineage.clone()
+        );
+
+        basis_group_lookup.insert(key, group.clone());
+    }
+
+    let mut context_groups: Arc<RwLock<HashMap<BasisGroupID, Vec<Arc<Context>>>>> = Arc::new(RwLock::new(HashMap::new()));
+    let mut context_to_group: Arc<RwLock<HashMap<ContextID, Arc<BasisGroup>>>> = Arc::new(RwLock::new(HashMap::new()));
+
+    non_empty_contexts.par_iter().for_each(|context| {
+        if let Some(basis_group) = basis_group_lookup.get(
+            &(context.acyclic_lineage.clone(), None, None)
+        ) {
+            write_lock!(context_groups).entry(basis_group.id.clone()).or_default().push(context.clone());
+            write_lock!(context_to_group).insert(context.id.clone(), basis_group.clone());
+        } else if let Some(basis_group) = basis_group_lookup.get(
+            &(context.acyclic_lineage.clone(), Some(context.lineage.clone()), None)
+        ) {
+            write_lock!(context_groups).entry(basis_group.id.clone()).or_default().push(context.clone());
+            write_lock!(context_to_group).insert(context.id.clone(), basis_group.clone());
+        } else {
+            let mut depth = 0;
+
+            loop {
+                let Some(indexed_lineage) = context.get_indexed_lineage(depth) else {
+                    break;
+                };
+
+                if let Some(basis_group) = basis_group_lookup.get(
+                    &(context.acyclic_lineage.clone(), Some(context.lineage.clone()), Some(indexed_lineage))
+                ) {
+                    write_lock!(context_groups).entry(basis_group.id.clone()).or_default().push(context.clone());
+                    write_lock!(context_to_group).insert(context.id.clone(), basis_group.clone());
+                    break;
+                } else {
+                    depth = depth + 1;
+                }
+            }
+        }
+    });
+
+    let context_groups = read_lock!(context_groups).clone();
+    let context_to_group = read_lock!(context_to_group).clone();
+
+    Ok((context_groups, context_to_group))
+}
 
 pub async fn generate_basis_groups<P: Provider, R: Reasoner>(
     provider: Arc<P>,

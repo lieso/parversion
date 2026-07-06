@@ -8,10 +8,9 @@ use crate::normalization_context::NormalizationContext;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
 use crate::node_analysis::{
     get_basis_nodes,
-    get_context_groups,
 };
 use crate::field_analysis::get_basis_fields;
-use crate::group_analysis::generate_basis_groups;
+use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
 use crate::reports::{
     report_basis_groups,
     report_basis_fields
@@ -127,10 +126,8 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         lock.update_basis_groups(basis_groups);
     }
 
-    let (context_groups, context_to_group) = get_context_groups(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        Arc::clone(&normalization_context),
+    let (context_groups, context_to_group) = resolve_context_groups(
+        Arc::clone(&normalization_context)
     )?;
 
     {
