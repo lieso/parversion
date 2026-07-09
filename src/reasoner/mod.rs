@@ -128,6 +128,21 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
             ).await?
         )
     }
+
+    async fn basis_node(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_group: Arc<BasisGroup>
+        context_group: Vec<Arc<Context>>,
+    ) -> Result<(Option<BasisNode>, ReasonerMetadata), Errors> {
+        Ok(
+            basis_node::basis_node(
+                self,
+                normalization_context,
+                group,
+            ).await?
+        )
+    }
 }
 
 fn is_retryable(error: &Errors) -> bool {
