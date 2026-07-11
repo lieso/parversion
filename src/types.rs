@@ -42,6 +42,7 @@ pub enum Errors {
     RateLimitError(String),
     TransientBackendError(String),
     RequestTimeout(String),
+    EmbeddingError(String),
 }
 
 impl From<JoinError> for Errors {

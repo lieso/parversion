@@ -157,31 +157,80 @@ impl Reasoner for OpenRouterReasoner {
         &self,
         inputs: Vec<String>
     ) -> Result<(Vec<Vec<f32>>, EmbeddingMetadata), Errors> {
+        let input_count = inputs.len();
         let request = EmbeddingRequest::new("openai/text-embedding-3-small", inputs);
 
         let response = self.client.models().create_embedding(&request).await
             .map_err(|e| {
-                log::error!("Embedding request failed: {}", e);
-                Errors::UnexpectedError
+                log::error!("╔═══════════════════════════════════════════════════════════════╗");
+                log::error!("║              EMBEDDING REQUEST ERROR                         ║");
+                log::error!("╚═══════════════════════════════════════════════════════════════╝");
+                log::error!("Embedding request failed for {} inputs", input_count);
+
+                match e {
+                    OpenRouterError::Api(ref api_error) => {
+                        log::error!("Status: {:?}", api_error.status);
+                        log::error!("Error: {:?}", api_error);
+
+                        match api_error.status {
+                            StatusCode::PAYMENT_REQUIRED => Errors::InsufficientBackendQuota(e.to_string()),
+                            StatusCode::TOO_MANY_REQUESTS => Errors::RateLimitError(e.to_string()),
+                            StatusCode::BAD_REQUEST => Errors::EmbeddingError(format!(
+                                    "Embedding API 400 Bad Request: {:?}",
+                                    api_error 
+                            )),
+                            StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => {
+                                Errors::TransientBackendError(e.to_string())
+                            }
+                            _ => Errors::UnexpectedError,
+                        }
+                    }
+                    _ => {
+                        log::error!("Non-API error: {}", e);
+                        Errors::UnexpectedError
+                    }
+                }
             })?;
 
-        let mut data = response.data;
-        data.sort_by_key(|d| d.index.unwrap_or(0));
+        let data = response.data;
 
-        let vectors = data.into_iter()
-            .map(|d| match d.embedding {
-                EmbeddingVector::Float(v) => Ok(v.into_iter().map(|x| x as f32).collect()),
+        if data.len() != input_count {
+            log::error!("Embedding response count mismatch: expected {}, got {}", input_count, data.len());
+            return Err(Errors::EmbeddingError(format!(
+                        "Embedding response count ({}) doesn't match input count ({})",
+                        data.len(),
+                        input_count
+            )));
+        }
+
+        let mut sorted_data = data;
+        sorted_data.sort_by_key(|d| d.index.unwrap_or(0));
+
+        let vectors: Result<Vec<Vec<f32>>, Errors> = sorted_data.into_iter()
+            .enumerate()
+            .map(|(idx, d)| match d.embedding {
+                EmbeddingVector::Float(v) => {
+                    let floats: Vec<f32> = v.into_iter().map(|x| x as f32).collect();
+                    log::debug!("Embedding {}: {} dimensions", idx, floats.len());
+                    Ok(floats)
+                }
                 _ => {
-                    log::error!("Unexpected embedding format");
-                    Err(Errors::UnexpectedError)
+                    log::error!("Unexpected embedding format at index {}", idx);
+                    Err(Errors::EmbeddingError(format!(
+                                "Unexpected embedding format at index {}: expected Float vector",
+                                idx
+                    )))
                 }
             })
-            .collect::<Result<Vec<Vec<f32>>, Errors>>()?;
+        .collect();
+
+        let vectors = vectors?;
 
         let metadata = EmbeddingMetadata {
             input_tokens: response.usage.map(|u| u.prompt_tokens).unwrap_or(0),
         };
 
+        log::debug!("Embedding succeeded: {} vectors, {} tokens", vectors.len(), metadata.input_tokens);
         Ok((vectors, metadata))
     }
 }
