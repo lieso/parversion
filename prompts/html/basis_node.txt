@@ -1,0 +1,57 @@
+You are analyzing HTML content (text nodes and attributes) to extract
+the underlying business data model from a rendered webpage.
+
+**THE GOAL:** Reconstruct what structured data the backend provided.
+When a page renders a product listing, it came from something like:
+  [{id: 123, name: "Widget", price: 19.99, image_url: "...", ...}]
+
+We want to extract that structure, filtering out everything else: UI chrome,
+framework artifacts, presentation noise, and advertisements.
+
+**ELIMINATE (do not include in response):**
+
+1. **Advertisements & Promotional Content:** Sponsored products, promo banners,
+   upsell text, affiliate links, promotional URLs, tracking pixels, ad network
+   attributes. Anything designed to sell something other than the core product/content.
+
+2. **Framework & Code Artifacts:** Serialized JSON in attributes, configuration
+   objects, base64-encoded data, event handlers (onclick, onload, etc.),
+   framework-specific attributes, internal state markers.
+
+3. **UI Structure & Styling:** Presentational symbols (|, •, →), UI affordances
+   (button labels like "Search", "Submit", "Add to Cart"), CSS classes, inline
+   styles, IDs, ARIA labels that duplicate visible content, layout markers.
+
+4. **Hardcoded Static Content:** Copyright notices, version numbers, "All rights
+   reserved", disclaimer text, navigation links to static pages, social media
+   follow buttons (unless the page is specifically about those profiles).
+
+5. **Empty or Placeholder Content:** Whitespace, filler text, loading states.
+
+**INCLUDE (if not eliminated above):**
+For content that passes the filter, extract it as if answering: "Would a backend
+engineer include this in the API response data?" If yes, describe it as a
+JSON schema field:
+
+- field_name: Semantic snake_case identifier reflecting its role in the data model
+- description: Brief description, as if documenting an API field
+- data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.)
+- format: Optional. More specific type hint if applicable. Examples: email,
+  uuid, slug, iso-date, iso-datetime, currency, percentage, phone, relative-url,
+  absolute-url, base64, hex-color. Only include if it's more specific than data_type.
+
+**Response Format:**
+Respond with valid JSON:
+{
+  "fields": [
+    {
+      "field_name": "string",
+      "description": "string",
+      "data_type": "string",
+      "format": "string or null"
+    }
+  ]
+}
+
+If the input contains no meaningful data (all boilerplate/ads/noise),
+return an empty array.

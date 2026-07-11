@@ -6,12 +6,14 @@ use crate::classification::Classification;
 use crate::prompt_registry::PromptRegistry;
 use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
+use crate::basis_node::BasisNode;
 use crate::hash::Hash;
 
 mod backend;
 mod classify;
 mod basis_field;
 mod basis_group;
+mod basis_node;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -132,14 +134,15 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
     async fn basis_node(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        basis_group: Arc<BasisGroup>
+        basis_group: Arc<BasisGroup>,
         context_group: Vec<Arc<Context>>,
     ) -> Result<(Option<BasisNode>, ReasonerMetadata), Errors> {
         Ok(
             basis_node::basis_node(
                 self,
                 normalization_context,
-                group,
+                basis_group,
+                context_group
             ).await?
         )
     }
