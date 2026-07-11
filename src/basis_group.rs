@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct BasisGroupMetadata {
     pub prompts: Vec<Hash>,
 }
@@ -13,6 +13,7 @@ pub struct BasisGroup {
     pub acyclic_lineage: Lineage,
     pub lineage: Option<Lineage>,
     pub indexed_lineage: Option<Lineage>,
+    #[serde(default)]
     pub metadata: BasisGroupMetadata,
 }
 
