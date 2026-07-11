@@ -34,7 +34,7 @@ mixed (some boilerplate, some not), describe the dominant semantic role.
 
    EXAMPLES - BOILERPLATE:
    - ATTRIBUTE=href: Links to external vendor promotions or signup pages
-   - TEXT: "Limited time offer!"marketing copy)
+   - TEXT: "Limited time offer!" marketing copy)
 
 2. **Framework & Code Artifacts:ibutes, configuration
    objects, base64-encoded data, event handlers (onclick, onload, etc.),
@@ -69,12 +69,11 @@ EXAMPLES - MEANINGFUL:
   user-generated content that ch
 
 For meaningful fields, describe
+- source_field: The original field from [FIELDS TO CONSIDER] that was analyzed (e.g., "TEXT", "ATTRIBUTE=href")
 - field_name: Semantic snake_case identifier reflecting its role in the data model
 - description: Brief description field
 - data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.)
-- format: Optional. More specifi Examples: email,
-  uuid, slug, iso-date, iso-datetime, currency, percentage, phone, relative-url,
-  absolute-url, base64, hex-coloecific than data_type.
+- format: Optional. More specific type hint if applicable.
 
 **Response Format:**
 Respond with valid JSON. Return one entry per meaningful field identified:
@@ -82,6 +81,7 @@ Respond with valid JSON. Return one entry per meaningful field identified:
 {
   "fields": [
     {
+      "source_field": "TEXT",
       "field_name": "string",
       "description": "string",
       "data_type": "string",
@@ -90,7 +90,7 @@ Respond with valid JSON. Return one entry per meaningful field identified:
   ]
 }
 
-If all evaluated fields are boileturn an empty array:
+If all evaluated fields are boilerplate respond with an empty array:
 
 {
   "fields": []

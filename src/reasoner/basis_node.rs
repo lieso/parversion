@@ -7,9 +7,15 @@ use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata
 use crate::basis_node::{BasisNode, BasisNodeMetadata};
 use crate::basis_group::BasisGroup;
 use crate::data_node::DataNodeFields;
+use crate::transformation::{
+    FieldMetadata,
+    FieldTransformation
+};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisNodeResponseItem {
+    /// The original field being analyzed (e.g., "TEXT", "ATTRIBUTE=href")
+    pub source_field: String,
     /// Semantic snake_case identifier reflecting the field's role in the data model
     pub field_name: String,
     /// Brief description of what this data represents, as if documenting an API field
@@ -81,8 +87,40 @@ pub async fn basis_node<R: Reasoner>(
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompt_hash: metadata.prompt_hash.clone(),
     };
-    
-    unimplemented!()
+
+    let transformations: Vec<FieldTransformation> = result.fields.iter().map(|response_field| {
+        log::debug!("Field: {} (source: {})", response_field.field_name, response_field.source_field);
+
+        let field = {
+            if response_field.source_field == "TEXT" {
+                "text".to_string()
+            } else if let Some(attr_name) = response_field.source_field.strip_prefix("ATTRIBUTE=") {
+                attr_name.to_string()
+            }
+        };
+
+        FieldTransformation {
+            id: ID::new(),
+            description: response_field.description.clone(),
+            field,
+            image: response_field.field_name.clone(),
+            meta: FieldMetadata {
+                data_type: response_field.data_type.clone(),
+                format: response_field.format.clone(),
+            }
+        }
+    }).collect();
+
+    let basis_node = BasisNode {
+        id: ID::new(),
+        lineage: basis_group.get_basis_lineage(),
+        transformations,
+        metadata: BasisNodeMetadata {
+            prompts: vec![reasoner_metadata.prompt_hash.clone()]
+        }
+    };
+
+    Ok((basis_node, reasoner_metadata))
 }
 
 async fn get_user_prompt<R: Reasoner>(
@@ -92,7 +130,12 @@ async fn get_user_prompt<R: Reasoner>(
 ) -> Result<String, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().unwrap()
+        lock.meta_context
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+            })?
+            .clone()
     };
 
     let basis_fields = {

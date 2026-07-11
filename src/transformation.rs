@@ -89,6 +89,7 @@ pub struct BasisFieldTransformation {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldMetadata {
     pub data_type: String,
+    pub format: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

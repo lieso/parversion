@@ -11,9 +11,7 @@ pub struct BasisNodeMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNode {
     pub id: ID,
-    pub hash: Hash,
     pub lineage: BasisLineage,
-    pub description: String,
     pub transformations: Vec<FieldTransformation>,
     pub metadata: BasisNodeMetadata,
 }
