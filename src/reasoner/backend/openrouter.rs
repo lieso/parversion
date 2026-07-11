@@ -54,6 +54,10 @@ impl Reasoner for OpenRouterReasoner {
             Capability::Capable => "gpt-5",
         };
 
+        // Clone and fix the schema - additionalProperties causes problems
+        let mut schema = schema.clone();
+        ensure_valid_json_schema(&mut schema);
+
         let response_format = ResponseFormat::json_schema(
             "structured_response",
             true,
@@ -202,5 +206,49 @@ fn write_debug_log<T: std::fmt::Debug>(system_prompt: &str, user_prompt: &str, r
 
     if let Err(e) = fs::write(&file_path, content) {
         log::warn!("Failed to write debug log to {:?}: {}", file_path, e);
+    }
+}
+
+fn ensure_valid_json_schema(schema: &mut serde_json::Value) {
+    match schema {
+        serde_json::Value::Object(obj) => {
+            // Add additionalProperties: false
+            if obj.get("type").map(|t| t.as_str()) == Some(Some("object")) {
+                if !obj.contains_key("additionalProperties") {
+                    obj.insert("additionalProperties".to_string(), serde_json::json!(false));
+                }
+
+                // Ensure ALL properties are in required array
+                if let Some(serde_json::Value::Object(props)) = obj.get("properties") {
+                    let prop_keys: Vec<String> = props.keys().cloned().collect();
+                    let required = obj.entry("required".to_string())
+                        .or_insert_with(|| serde_json::json!([]));
+
+                    if let serde_json::Value::Array(required_arr) = required {
+                        for key in prop_keys {
+                            if !required_arr.iter().any(|v| v.as_str() == Some(&key)) {
+                                required_arr.push(serde_json::json!(key));
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Recursively process nested objects
+            if let Some(serde_json::Value::Object(props)) = obj.get_mut("properties") {
+                for (_, prop_schema) in props.iter_mut() {
+                    ensure_valid_json_schema(prop_schema);
+                }
+            }
+            if let Some(serde_json::Value::Object(defs)) = obj.get_mut("$defs") {
+                for (_, def_schema) in defs.iter_mut() {
+                    ensure_valid_json_schema(def_schema);
+                }
+            }
+            if let Some(items_schema) = obj.get_mut("items") {
+                ensure_valid_json_schema(items_schema);
+            }
+        }
+        _ => {}
     }
 }
