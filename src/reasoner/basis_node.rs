@@ -70,17 +70,17 @@ pub async fn basis_node<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    //let (result, metadata) = reasoner.execute::<BasisNodeResponse>(
-    //    &capability,
-    //    &system_prompt,
-    //    &user_prompt,
-    //    schema
-    //).await?;
+    let (result, metadata) = reasoner.execute::<BasisNodeResponse>(
+        &capability,
+        &system_prompt,
+        &user_prompt,
+        schema
+    ).await?;
 
-    //let reasoner_metadata = ReasonerMetadata {
-    //    tokens: metadata.input_tokens + metadata.output_tokens,
-    //    prompt_hash: metadata.prompt_hash.clone(),
-    //};
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
+    };
     
     unimplemented!()
 }

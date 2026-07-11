@@ -128,6 +128,15 @@ impl Reasoner for OpenRouterReasoner {
                 match error {
                     OpenRouterError::Api(ref api_error) => {
                         match api_error.status {
+                            StatusCode::BAD_REQUEST => {
+                                log::error!("┌─── 400 BAD REQUEST DETAILS ──────────────────────────────────┐");
+                                log::error!("Model: {}", model);
+                                log::error!("System prompt length: {} chars", system_prompt.len());
+                                log::error!("User prompt length: {} chars", user_prompt.len());
+                                log::error!("Raw error: {:?}", api_error);
+                                log::error!("└───────────────────────────────────────────────────────────────┘");
+                                Err(Errors::UnexpectedError)
+                            },
                             StatusCode::PAYMENT_REQUIRED => Err(Errors::InsufficientBackendQuota(error.to_string())),
                             StatusCode::TOO_MANY_REQUESTS => Err(Errors::RateLimitError(error.to_string())),
                             StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => Err(Errors::TransientBackendError(error.to_string())),
