@@ -18,13 +18,11 @@ use crate::transformation::{
 };
 use crate::context::Context;
 
-mod node_analysis;
 mod network_analysis;
 mod network_relationships;
 mod document;
 mod translation;
 
-use node_analysis::{NodeAnalysis};
 use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
 use document::Document;
@@ -223,87 +221,6 @@ impl LLM {
         };
 
         Ok((network_transformation, (meta.tokens)))
-    }
-
-    pub async fn get_node_transformations(
-        group: Vec<Arc<Context>>,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-    ) -> Result<(
-        Vec<FieldTransformation>,
-        (u64,)
-    ), Errors> {
-        log::trace!("In get_node_transformations");
-
-        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-        log::debug!("║                                                               ║");
-        log::debug!("║                  NODE TRANSFORMATION START                    ║");
-        log::debug!("║                                                               ║");
-        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-        log::debug!("");
-
-        tokio::time::sleep(Duration::from_millis(50)).await;
-
-        let first = group.first().unwrap();
-        let fields = first.data_node.fields.clone();
-
-        let example_snippet_count = read_lock!(CONFIG).llm.example_snippet_count;
-        let snippets: Vec<String> = group
-            .iter()
-            .take(example_snippet_count)
-            .map(|c| c.generate_snippet(Arc::clone(&normalization_context)))
-            .collect();
-
-        let mut field_transformations = Vec::new();
-        let mut tokens: u64 = 0;
-
-        for (field, value) in fields.into_iter() {
-
-            let basis_fields: Vec<Arc<BasisField>> = {
-                let lock = read_lock!(normalization_context);
-                lock.basis_fields
-                    .as_ref()
-                    .ok_or_else(|| {
-                        Errors::DeficientNormalizationContextError("Contexts not provided in meta context".to_string())
-                    })?
-                    .values()
-                    .cloned()
-                    .collect::<Vec<_>>()
-            };
-
-            let is_basis_field = basis_fields.iter().find(|item| {
-                item.name == field
-            }).is_some();
-
-            if !is_basis_field {
-                continue;
-            }
-
-
-
-            let result = NodeAnalysis::get_node_transformation(
-                &field,
-                &value,
-                snippets.clone(),
-            ).await?;
-
-            if let Some(field_inference_response) = result.data {
-                let transformation = FieldTransformation {
-                    id: ID::new(),
-                    description: field_inference_response.description,
-                    field: field.to_string(),
-                    image: field_inference_response.field_name,
-                    meta: FieldMetadata {
-                        data_type: field_inference_response.data_type,
-                    }
-                };
-
-                field_transformations.push(transformation);
-            }
-
-            tokens += result.metadata.tokens;
-        }
-
-        Ok((field_transformations, (tokens,)))
     }
 
     pub async fn get_node_translation(
