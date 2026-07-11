@@ -24,6 +24,8 @@ pub async fn basis_group<R: Reasoner>(
 
     assert!(group.len() > 1);
 
+    let hash = group[0].data_node.hash.clone();
+
     let system_prompt = get_system_prompt(
         reasoner,
         Arc::clone(&normalization_context)
@@ -79,6 +81,7 @@ pub async fn basis_group<R: Reasoner>(
 
         let basis_group = BasisGroup {
             id: ID::new(),
+            hash,
             acyclic_lineage,
             lineage,
             indexed_lineage,

@@ -96,6 +96,8 @@ pub async fn basis_node<R: Reasoner>(
                 "text".to_string()
             } else if let Some(attr_name) = response_field.source_field.strip_prefix("ATTRIBUTE=") {
                 attr_name.to_string()
+            } else {
+                panic!("TODO: parse responses from llm better");
             }
         };
 
