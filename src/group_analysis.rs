@@ -12,8 +12,8 @@ use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 pub fn resolve_context_groups(
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(
-    HashMap<ID, Vec<Arc<Context>>>,
-    HashMap<ID, Arc<BasisGroup>>
+    HashMap<BasisGroupID, Vec<Arc<Context>>>,
+    HashMap<ContextID, Arc<BasisGroup>>
 ), Errors> {
     log::trace!("In resolve_context_groups");
 

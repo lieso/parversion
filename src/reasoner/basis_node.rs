@@ -31,7 +31,7 @@ pub async fn basis_node<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     basis_group: Arc<BasisGroup>,
     context_group: Vec<Arc<Context>>,
-) -> Result<(Option<BasisNode>, ReasonerMetadata), Errors> {
+) -> Result<(BasisNode, ReasonerMetadata), Errors> {
     log::trace!("In basis_node");
 
     let system_prompt = get_system_prompt(

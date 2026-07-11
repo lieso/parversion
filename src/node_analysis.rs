@@ -16,6 +16,7 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::context::Context;
 use crate::translation_node::TranslationNode;
+use crate::group_analysis::resolve_context_groups;
 
 pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -179,14 +180,14 @@ async fn get_translation_node<P: Provider, R: Reasoner>(
     }
 }
 
-pub async fn get_basis_nodes<P: Provider, R: Reasoner>(
+pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
-    log::trace!("In get_basis_nodes");
+    log::trace!("In generate_basis_nodes");
 
     let basis_groups = {
         let lock = read_lock!(normalization_context);
@@ -196,49 +197,37 @@ pub async fn get_basis_nodes<P: Provider, R: Reasoner>(
                 Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
             })?
     };
-    let context_groups = {
-        let lock = read_lock!(normalization_context);
-        lock.context_groups
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Context groups not provided in meta context".to_string())
-            })?
-    };
-    let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
-    let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    let (context_groups, _context_to_group) = resolve_context_groups(
+        Arc::clone(&normalization_context)
+    )?;
+
+    log::info!("Number of groups: {}", context_groups.len());
+
     let mut handles = Vec::new();
 
-    log::info!("Number of context groups: {}", context_groups.len());
-
-    for (basis_group_id, group) in context_groups {
-        stage_context.record_events("Node analysis", 0);
-
-        let basis_group = basis_groups.get(&basis_group_id).unwrap();
-        let basis_lineage = basis_group.get_basis_lineage();
-
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
+    for (basis_group_id, context_group) in context_groups {
+        let basis_group = basis_groups.get(&basis_group_id).unwrap().clone();
         let cloned_provider = Arc::clone(&provider);
         let cloned_reasoner = Arc::clone(&reasoner);
-        let cloned_meta_context = Arc::clone(&normalization_context);
-        let cloned_options = options.clone();
+        let cloned_normalization_context = Arc::clone(&normalization_context);
         let cloned_stage_context = stage_context.clone();
+        let cloned_options = options.clone();
 
         let handle = task::spawn(async move {
-            let _permit = permit;
-
-            let basis_node = get_basis_node(
+            let basis_node = generate_basis_node(
                 cloned_provider,
                 cloned_reasoner,
-                cloned_meta_context,
-                group,
+                cloned_normalization_context,
+                basis_group.clone(),
+                context_group,
                 &cloned_options,
                 &cloned_stage_context,
-                basis_lineage,
             )
             .await?;
 
             Ok((basis_node.id.clone(), Arc::new(basis_node)))
         });
+
         handles.push(handle);
     }
 
@@ -250,51 +239,38 @@ pub async fn get_basis_nodes<P: Provider, R: Reasoner>(
     Ok(hashmap_results)
 }
 
-async fn get_basis_node<P: Provider, R: Reasoner>(
+async fn generate_basis_node<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    group: Vec<Arc<Context>>,
+    basis_group: Arc<BasisGroup>,
+    context_group: Vec<Arc<Context>>,
     options: &Options,
     stage_context: &StageContext,
-    basis_lineage: Lineage,
 ) -> Result<BasisNode, Errors> {
-    let first = group.first().unwrap();
+    log::trace!("In generate_basis_node");
 
-    if first.data_node.fields.is_empty() {
-        return Err(Errors::InsufficientPrerequisites(
-            "get_basis_node called with empty fields group".to_string(),
-        ));
-    }
+    stage_context.record_events("Node analysis", 0);
 
-    let data_node = &first.data_node;
-    let hash = data_node.hash.clone();
-    let description = data_node.description.clone();
+    let basis_lineage: BasisLineage = basis_group.get_basis_lineage();
 
     if !options.regenerate {
         if let Some(basis_node) = provider.get_basis_node_by_lineage(&basis_lineage).await? {
             return Ok(basis_node);
-        };
+        }
     }
 
-    let (field_transformations, (tokens,)) = LLM::get_node_transformations(
-        group,
+    let (basis_node, metadata) = reasoner.basis_node(
         Arc::clone(&normalization_context),
+        basis_group,
+        context_group,
     ).await?;
 
-    let basis_node = BasisNode {
-        id: ID::new(),
-        hash,
-        description,
-        lineage: basis_lineage.clone(),
-        transformations: field_transformations,
-    };
+    stage_context.record_events("Node analysis", metadata.tokens.into());
 
     provider
         .save_basis_node(&basis_lineage, basis_node.clone())
         .await?;
-
-    stage_context.record_events("Node analysis", tokens);
-
+    
     Ok(basis_node)
 }

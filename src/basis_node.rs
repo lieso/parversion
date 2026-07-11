@@ -12,7 +12,7 @@ pub struct BasisNodeMetadata {
 pub struct BasisNode {
     pub id: ID,
     pub hash: Hash,
-    pub lineage: Lineage,
+    pub lineage: BasisLineage,
     pub description: String,
     pub transformations: Vec<FieldTransformation>,
     pub metadata: BasisNodeMetadata,

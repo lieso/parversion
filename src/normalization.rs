@@ -6,9 +6,7 @@ use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::normalization_context::NormalizationContext;
 use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
-use crate::node_analysis::{
-    get_basis_nodes,
-};
+use crate::node_analysis::{generate_basis_nodes};
 use crate::field_analysis::generate_basis_fields;
 use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
 use crate::reports::{
@@ -150,7 +148,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     log::info!("Getting basis nodes");
     let basis_nodes =
-        get_basis_nodes(
+        generate_basis_nodes(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
             normalization_context.clone(),
@@ -165,7 +163,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     let elapsed = start.elapsed();
-    log::info!("get_basis_nodes: {:.2?}", elapsed);
+    log::info!("generate_basis_nodes: {:.2?}", elapsed);
 
     stage.finish();
 

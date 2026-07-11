@@ -17,7 +17,7 @@ pub struct BasisGroup {
 }
 
 impl BasisGroup {
-    pub fn get_basis_lineage(&self) -> Lineage {
+    pub fn get_basis_lineage(&self) -> BasisLineage {
         let mut hashes: Vec<Hash> = vec![self.acyclic_lineage.identity_hash.clone()];
 
         if let Some(lineage) = &self.lineage {

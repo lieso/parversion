@@ -136,7 +136,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         basis_group: Arc<BasisGroup>,
         context_group: Vec<Arc<Context>>,
-    ) -> Result<(Option<BasisNode>, ReasonerMetadata), Errors> {
+    ) -> Result<(BasisNode, ReasonerMetadata), Errors> {
         Ok(
             basis_node::basis_node(
                 self,

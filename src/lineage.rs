@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::hash::Hash;
 
+pub type BasisLineage = Lineage;
+
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct Lineage {
     source_hashes: Vec<Hash>,
