@@ -68,12 +68,14 @@ EXAMPLES - MEANINGFUL:
 - TEXT: Product name, price, description, publication date, author name, or
   user-generated content that ch
 
-For meaningful fields, describe
+For meaningful fields, provide exactly one mapping per source field:
 - source_field: The original field from [FIELDS TO CONSIDER] that was analyzed (e.g., "TEXT", "ATTRIBUTE=href")
 - field_name: Semantic snake_case identifier reflecting its role in the data model
-- description: Brief description field
+- description: Brief description of what this field represents
 - data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.)
 - format: Optional. More specific type hint if applicable.
+
+**Important:** Each source field should map to exactly one output field_name. Do not provide multiple mappings for the same source field.
 
 **Response Format:**
 Respond with valid JSON. Return one entry per meaningful field identified:
