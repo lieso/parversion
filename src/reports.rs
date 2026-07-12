@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 
+use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -135,6 +136,20 @@ pub async fn report_basis_nodes<P: Provider>(
     provider: Arc<P>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
+    let (context_groups, _context_to_group) = resolve_context_groups(
+        Arc::clone(&normalization_context)
+    )?;
+
+    let basis_groups = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_groups
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Basis groups not provided in normalization context".to_string())
+            })?
+            .clone()
+    };
+
     let basis_nodes = {
         let lock = read_lock!(normalization_context);
         lock.basis_nodes
@@ -142,23 +157,63 @@ pub async fn report_basis_nodes<P: Provider>(
             .ok_or_else(|| {
                 Errors::DeficientNormalizationContextError("Basis nodes not provided in normalization context".to_string())
             })?
-            .values()
-            .cloned()
-            .collect::<Vec<_>>()
+            .clone()
     };
 
-    println!("{}=== Basis Node Report ({} nodes) ==={}", GREEN, basis_nodes.len(), RESET);
+    let mut covered_nodes = std::collections::HashSet::new();
 
-    for node in &basis_nodes {
+    println!("{}=== Basis Node Report ==={}", GREEN, RESET);
+
+    for (group_id, contexts) in &context_groups {
+        let basis_group = basis_groups.get(group_id).ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(format!("Basis group not found for id {}", group_id.to_string()))
+        })?;
+
+        let basis_lineage = basis_group.get_basis_lineage();
+
+        let basis_node = basis_nodes
+            .values()
+            .find(|node| node.lineage == basis_lineage)
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(format!("Basis node not found for lineage {}", basis_lineage.to_string()))
+            })?;
+
+        if covered_nodes.contains(&basis_node.id) {
+            continue;
+        }
+        covered_nodes.insert(basis_node.id.clone());
+
         println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
-        println!("{}--- Node [{}] ---{}", GREEN, node.id.to_string(), RESET);
-        println!("{}  lineage: {}{}", GREEN, node.lineage.to_string(), RESET);
-        println!("{}  transformations: {} count{}", GREEN, node.transformations.len(), RESET);
-        println!("{}  prompts: {:?}{}", GREEN, node.metadata.prompts, RESET);
+        println!("{}--- Node [{}] ---{}", GREEN, basis_node.id.to_string(), RESET);
+        println!("{}  lineage: {}{}", GREEN, basis_node.lineage.to_string(), RESET);
+        println!("{}  transformations: {} count{}", GREEN, basis_node.transformations.len(), RESET);
+        println!("{}  prompts: {:?}{}", GREEN, basis_node.metadata.prompts, RESET);
         println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
 
-        for (i, transformation) in node.transformations.iter().enumerate() {
-            println!("{}  [{}] {:?}{}", GREEN, i + 1, transformation, RESET);
+        let sample_contexts: Vec<_> = contexts.iter().take(3).collect();
+
+        for (ctx_idx, context) in sample_contexts.iter().enumerate() {
+            println!("{}  [Context {}]{}", GREEN, ctx_idx + 1, RESET);
+            println!("{}    Before: {:?}{}", GREEN, context.data_node.fields, RESET);
+
+            let mut current_data_node = Arc::clone(&context.data_node);
+
+            for (txn_idx, transformation) in basis_node.transformations.iter().enumerate() {
+                println!("{}    [Transformation {}] {}{}", GREEN, txn_idx + 1, transformation.description, RESET);
+                println!("{}      field: {}, image: {}{}", GREEN, transformation.field, transformation.image, RESET);
+
+                match transformation.transform(Arc::clone(&current_data_node)) {
+                    Ok(transformed) => {
+                        current_data_node = Arc::new(transformed);
+                        println!("{}      After: {:?}{}", GREEN, current_data_node.fields, RESET);
+                    }
+                    Err(e) => {
+                        println!("{}      Error: {:?}{}", GREEN, e, RESET);
+                    }
+                }
+            }
+
+            println!();
         }
 
         println!();
