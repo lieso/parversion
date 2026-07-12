@@ -188,7 +188,7 @@ async fn get_user_prompt<R: Reasoner>(
     let samples = most_different(context_strings, &embeddings);
     let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-    Ok(format!(r##""
+    Ok(format!(r##"
 [FIELDS TO CONSIDER]
 {}
 
