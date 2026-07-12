@@ -196,16 +196,13 @@ pub async fn report_basis_nodes<P: Provider>(
             println!("{}  [Context {}]{}", GREEN, ctx_idx + 1, RESET);
             println!("{}    Before: {:?}{}", GREEN, context.data_node.fields, RESET);
 
-            let mut current_data_node = Arc::clone(&context.data_node);
-
             for (txn_idx, transformation) in basis_node.transformations.iter().enumerate() {
                 println!("{}    [Transformation {}] {}{}", GREEN, txn_idx + 1, transformation.description, RESET);
                 println!("{}      field: {}, image: {}{}", GREEN, transformation.field, transformation.image, RESET);
 
-                match transformation.transform(Arc::clone(&current_data_node)) {
+                match transformation.transform(Arc::clone(&context.data_node)) {
                     Ok(transformed) => {
-                        current_data_node = Arc::new(transformed);
-                        println!("{}      After: {:?}{}", GREEN, current_data_node.fields, RESET);
+                        println!("{}      After: {:?}{}", GREEN, transformed.fields, RESET);
                     }
                     Err(e) => {
                         println!("{}      Error: {:?}{}", GREEN, e, RESET);
