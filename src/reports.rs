@@ -6,6 +6,7 @@ use crate::provider::Provider;
 
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
+const GREEN: &str = "\x1b[32m";
 const RESET: &str = "\x1b[0m";
 
 pub async fn report_basis_fields<P: Provider>(
@@ -126,6 +127,44 @@ pub async fn report_basis_groups<P: Provider>(
     }
 
     println!("{}=== End Basis Group Report ==={}", MAGENTA, RESET);
+
+    Ok(())
+}
+
+pub async fn report_basis_nodes<P: Provider>(
+    provider: Arc<P>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<(), Errors> {
+    let basis_nodes = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_nodes
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Basis nodes not provided in normalization context".to_string())
+            })?
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    println!("{}=== Basis Node Report ({} nodes) ==={}", GREEN, basis_nodes.len(), RESET);
+
+    for node in &basis_nodes {
+        println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
+        println!("{}--- Node [{}] ---{}", GREEN, node.id.to_string(), RESET);
+        println!("{}  lineage: {}{}", GREEN, node.lineage.to_string(), RESET);
+        println!("{}  transformations: {} count{}", GREEN, node.transformations.len(), RESET);
+        println!("{}  prompts: {:?}{}", GREEN, node.metadata.prompts, RESET);
+        println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
+
+        for (i, transformation) in node.transformations.iter().enumerate() {
+            println!("{}  [{}] {:?}{}", GREEN, i + 1, transformation, RESET);
+        }
+
+        println!();
+    }
+
+    println!("{}=== End Basis Node Report ==={}", GREEN, RESET);
 
     Ok(())
 }
