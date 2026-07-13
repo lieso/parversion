@@ -49,7 +49,6 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         Arc::clone(&reasoner),
         document,
         options,
-        execution_context.clone(),
     )
     .await?;
 
@@ -250,7 +249,6 @@ async fn normalize_html<P: Provider, R: Reasoner>(
     document: Document,
     options: &Options,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    stage: &StageContext,
 ) -> Result<(), Errors> {
     let mut document = document;
 
@@ -444,11 +442,8 @@ async fn init_normalization_context<P: Provider, R: Reasoner>(
     reasoner: Arc<R>,
     document: Document,
     options: &Options,
-    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     log::trace!("In init_normalization_context");
-
-    let stage = execution_context.enter_stage("Initializing");
 
     let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
 
@@ -465,7 +460,6 @@ async fn init_normalization_context<P: Provider, R: Reasoner>(
                 document,
                 options,
                 normalization_context.clone(),
-                &stage,
             )
             .await?;
         }
@@ -482,8 +476,6 @@ async fn init_normalization_context<P: Provider, R: Reasoner>(
             unimplemented!();
         }
     }
-
-    stage.finish();
 
     Ok(normalization_context)
 }
