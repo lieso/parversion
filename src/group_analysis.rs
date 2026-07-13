@@ -562,7 +562,5 @@ fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext
         })
         .collect();
 
-    log::info!("Number of non-empty contexts: {}", non_empty_contexts.len());
-
     Ok(non_empty_contexts)
 }

@@ -248,8 +248,6 @@ async fn generate_basis_node<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<BasisNode, Errors> {
-    log::trace!("In generate_basis_node");
-
     stage_context.record_events("Node analysis", 0);
 
     let basis_lineage: BasisLineage = basis_group.get_basis_lineage();
