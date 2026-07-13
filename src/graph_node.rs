@@ -303,6 +303,9 @@ impl GraphNode {
 
                 Ok(filtered)
             }
+            XPathPredicate::AttributePresence(_) => {
+                unimplemented!()
+            }
         }
     }
 
@@ -380,5 +383,83 @@ impl GraphNode {
         }
 
         Ok(current.first().cloned())
+    }
+
+    pub fn to_xpath(
+        &self,
+        meta_context: &MetaContext
+    ) -> Result<XPath, Errors> {
+        let ancestors = {
+            let mut ancestors: Vec<Graph> = Vec::new();
+            let mut current_parents = self.parents.clone();
+
+            while !current_parents.is_empty() {
+                let parent = current_parents[0].clone();
+                ancestors.push(parent.clone());
+                current_parents = read_lock!(parent).parents.clone();
+            }
+
+            ancestors.reverse();
+            ancestors
+        };
+
+        let segments: Vec<XPathSegment> = ancestors.iter().map(|graph| {
+            let lock = read_lock!(graph);
+            let context = meta_context.contexts_lookup.get(&lock.id).unwrap();
+            let document_node = read_lock!(context.document_node);
+            
+            let predicate = {
+                if lock.parents.len() > 0 {
+                    let position = lock.index_in_parent().unwrap();
+
+                    if position > 0 {
+                        Some(XPathPredicate::Position(position + 1))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
+            XPathSegment {
+                axis: XPathAxis::Child,
+                node_test: document_node.get_element_name(),
+                predicate,
+            }
+        }).collect();
+
+        let final_context = meta_context.contexts_lookup.get(&self.id).unwrap();
+
+        let final_segment = {
+            if final_context.data_node.fields.contains_key("text") {
+                XPathSegment {
+                    axis: XPathAxis::Child,
+                    node_test: "text()".to_string(),
+                    predicate: None,
+                }
+            } else {
+                let document_node = read_lock!(final_context.document_node);
+                let attributes: Vec<String> = final_context.data_node.fields.keys().cloned().collect();
+
+                XPathSegment {
+                    axis: XPathAxis::Child,
+                    node_test: document_node.get_element_name(),
+                    predicate: Some(XPathPredicate::AttributePresence(attributes)),
+                }
+            }
+        };
+
+        let segments = segments
+            .iter()
+            .cloned()
+            .chain(std::iter::once(final_segment))
+            .collect();
+
+        let xpath = XPath {
+            segments,
+        };
+
+        Ok(xpath)
     }
 }

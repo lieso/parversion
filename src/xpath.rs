@@ -30,6 +30,7 @@ pub enum XPathAxis {
 pub enum XPathPredicate {
     Position(usize),
     Attribute { name: String, value: String },
+    AttributePresence(Vec<String>),
 }
 
 impl XPath {
@@ -164,6 +165,12 @@ impl XPathPredicate {
         match self {
             XPathPredicate::Position(n) => n.to_string(),
             XPathPredicate::Attribute { name, value } => format!("@{}='{}'", name, value),
+            XPathPredicate::AttributePresence(attrs) => {
+                attrs.iter()
+                    .map(|attr| format!("@{}", attr))
+                    .collect::<Vec<_>>()
+                    .join(" and ")
+            }
         }
     }
 }
