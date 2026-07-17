@@ -21,6 +21,84 @@ use crate::transformation::{
 };
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::translation_network::TranslationNetwork;
+use crate::group_analysis::{resolve_context_groups};
+use crate::basis_node::BasisNode;
+
+pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    option: &Options,
+    stage_context: &StageContext,
+) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
+    log::trace!("In generate_basis_networks");
+
+    let candidate_networks = get_candidate_networks(Arc::clone(&normalization_context))?;
+
+    log::info!("Number of candidate networks: {}", candidate_networks.len());
+
+    unimplemented!()
+}
+
+fn get_candidate_networks(
+    normalization_context: Arc<RwLock<NormalizationContext>>
+) -> Result<HashMap<Hash, Vec<Graph>>, Errors> {
+    let mut candidate_networks: HashMap<Hash, Vec<Graph>> = HashMap::new();
+
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+    };
+
+    let (context_groups, context_to_group) = resolve_context_groups(
+        Arc::clone(&normalization_context)
+    )?;
+
+    let mut queue = VecDeque::new();
+    queue.push_back(Arc::clone(&meta_context.graph_root));
+
+    while let Some(current) = queue.pop_front() {
+        let lock = read_lock!(current);
+        let children = lock.children.clone();
+
+        let mut transformation_count: usize = 0;
+
+        for child in children {
+            if transformation_count < 2 {
+                let context = meta_context.contexts_lookup
+                    .get(&read_lock!(child).id)
+                    .cloned()
+                    .unwrap();
+
+                if let Some(basis_group) = context_to_group.get(&context.id).cloned() {
+                    let basis_lineage = basis_group.get_basis_lineage();
+
+                    let basis_node: Arc<BasisNode> = {
+                        let lock = read_lock!(normalization_context);
+                        lock.get_basis_node_by_lineage(&basis_lineage)
+                            .expect("Could not get basis node by lineage")
+                            .unwrap()
+                    };
+
+                    transformation_count = transformation_count + basis_node.transformations.len();
+                }
+            }
+
+            queue.push_back(Arc::clone(&child));
+        }
+
+        if transformation_count > 1 {
+            let subgraph_hash = lock.subgraph_hash.clone();
+
+            candidate_networks
+                .entry(subgraph_hash)
+                .or_insert_with(Vec::new)
+                .push(current.clone());
+        }
+    }
+
+    Ok(candidate_networks)
+}
 
 pub async fn get_translation_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,

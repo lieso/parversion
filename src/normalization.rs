@@ -5,10 +5,15 @@ use std::time::Instant;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::normalization_context::NormalizationContext;
-use crate::network_analysis::{get_classification, get_basis_networks, get_network_relationships};
-use crate::node_analysis::{generate_basis_nodes};
 use crate::field_analysis::generate_basis_fields;
 use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
+use crate::node_analysis::{generate_basis_nodes};
+use crate::network_analysis::{
+    get_classification,
+    get_basis_networks,
+    get_network_relationships,
+    generate_basis_networks
+};
 use crate::reports::{
     report_basis_groups,
     report_basis_fields,
@@ -177,7 +182,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     log::info!("Generating basis networks");
     let basis_networks =
-        get_basis_networks(
+        generate_basis_networks(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
             normalization_context.clone(),
