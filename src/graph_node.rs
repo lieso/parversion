@@ -142,7 +142,6 @@ impl GraphNode {
 
             Ok(Some(basis_node))
         } else {
-            log::info!("If this log statement never displays, remove Option from return type");
             Ok(None)
         }
     }
