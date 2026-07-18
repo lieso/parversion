@@ -1,5 +1,16 @@
 pub use crate::hash::Hash;
-pub use crate::id::{ID, NodeID, ContextID, GraphNodeID, DocumentNodeID, DataNodeID, TranslationNodeID, TranslationNetworkID, BasisGroupID};
+pub use crate::id::{
+    ID,
+    NodeID,
+    ContextID,
+    GraphNodeID,
+    DocumentNodeID,
+    DataNodeID,
+    TranslationNodeID,
+    TranslationNetworkID,
+    BasisGroupID,
+    BasisNodeID
+};
 pub use crate::lineage::{BasisLineage, Lineage};
 pub use crate::macros::*;
 pub use crate::normalization_context::NormalizationContext;

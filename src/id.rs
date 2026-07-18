@@ -11,6 +11,7 @@ pub type NodeID = ID;
 pub type TranslationNodeID = ID;
 pub type TranslationNetworkID = ID;
 pub type BasisGroupID = ID;
+pub type BasisNodeID = ID;
 
 #[derive(Clone, Debug, Hash)]
 pub struct ID {

@@ -42,60 +42,64 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
 fn get_candidate_networks(
     normalization_context: Arc<RwLock<NormalizationContext>>
-) -> Result<HashMap<Hash, Vec<Graph>>, Errors> {
-    let mut candidate_networks: HashMap<Hash, Vec<Graph>> = HashMap::new();
-
-    let meta_context = {
+) -> Result<HashMap<Hash, (HashSet<BasisLineage>, Vec<Graph>)>, Errors> {
+    let graph_root = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context.clone()
+            .ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+            .graph_root.clone()
     };
 
-    let (context_groups, context_to_group) = resolve_context_groups(
-        Arc::clone(&normalization_context)
-    )?;
+    let mut candidate_networks: HashMap<Hash, (HashSet<BasisLineage>, Vec<Graph>)> = HashMap::new();
 
-    let mut queue = VecDeque::new();
-    queue.push_back(Arc::clone(&meta_context.graph_root));
+    fn recurse(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        candidate_networks: &mut HashMap<Hash, (HashSet<BasisLineage>, Vec<Graph>)>,
+        graph: Graph,
+    ) -> Result<HashSet<BasisLineage>, Errors> {
+        let children = read_lock!(graph).children.clone();
+        let mut set: HashSet<BasisLineage> = HashSet::new();
 
-    while let Some(current) = queue.pop_front() {
-        let lock = read_lock!(current);
-        let children = lock.children.clone();
+        for child in &children {
+            let child_set = recurse(
+                Arc::clone(&normalization_context),
+                candidate_networks,
+                Arc::clone(&child),
+            )?;
 
-        let mut transformation_count: usize = 0;
-
-        for child in children {
-            if transformation_count < 2 {
-                let context = meta_context.contexts_lookup
-                    .get(&read_lock!(child).id)
-                    .cloned()
-                    .unwrap();
-
-                if let Some(basis_group) = context_to_group.get(&context.id).cloned() {
-                    let basis_lineage = basis_group.get_basis_lineage();
-
-                    let basis_node: Arc<BasisNode> = {
-                        let lock = read_lock!(normalization_context);
-                        lock.get_basis_node_by_lineage(&basis_lineage)
-                            .expect("Could not get basis node by lineage")
-                            .unwrap()
-                    };
-
-                    transformation_count = transformation_count + basis_node.transformations.len();
-                }
-            }
-
-            queue.push_back(Arc::clone(&child));
+            set.extend(child_set.iter().cloned());
         }
 
-        if transformation_count > 1 {
-            let subgraph_hash = lock.subgraph_hash.clone();
+        if let Some(basis_node) = read_lock!(graph).resolve_basis_node(Arc::clone(&normalization_context))? {
+            set.insert(basis_node.lineage.clone());
+        }
 
+        let is_new_candidate = !set.is_empty()
+            && children.len() > 1;
+
+        if is_new_candidate {
+            let basis_lineages: Hash = {
+                let items: Vec<BasisLineage> = set.iter().cloned().collect();
+                let mut hash = Hash::from_items(items);
+                hash.sort();
+                hash.finalize();
+                hash
+            };
             candidate_networks
-                .entry(subgraph_hash)
-                .or_insert_with(Vec::new)
-                .push(current.clone());
+                .entry(basis_lineages)
+                .or_insert_with(|| (set.clone(), Vec::new()))
+                .1
+                .push(graph.clone());
         }
+
+        Ok(set)
     }
+
+    recurse(
+        Arc::clone(&normalization_context),
+        &mut candidate_networks,
+        Arc::clone(&graph_root),
+    )?;
 
     Ok(candidate_networks)
 }

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 use crate::hash::Hash;
 
@@ -84,4 +85,10 @@ fn derive_identity(source_hashes: Vec<Hash>) -> Hash {
     identity_hash.finalize();
 
     identity_hash
+}
+
+impl fmt::Display for Lineage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.identity_hash.to_string().unwrap())
+    }
 }
