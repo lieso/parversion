@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use crate::data_node::DataNode;
 use crate::prelude::*;
 use crate::xpath::{XPath, XPathAxis, XPathSegment, XPathPredicate};
+use crate::basis_node::BasisNode;
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -109,6 +110,41 @@ impl GraphNode {
         }
 
         Some(lineage)
+    }
+
+    pub fn resolve_basis_node(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>
+    ) -> Result<Option<Arc<BasisNode>>, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        };
+
+        let context_to_group = {
+            let lock = read_lock!(normalization_context);
+            lock.context_to_group.clone().ok_or(Errors::DeficientNormalizationContextError("'context_to_group' not provided in normalization context".to_string()))?
+        };
+
+        let context = meta_context.contexts_lookup
+            .get(&self.id)
+            .cloned()
+            .unwrap();
+
+        if let Some(basis_group) = context_to_group.get(&context.id).cloned() {
+            let basis_lineage = basis_group.get_basis_lineage();
+            let basis_node: Arc<BasisNode> = {
+                let lock = read_lock!(normalization_context);
+                lock.get_basis_node_by_lineage(&basis_lineage)
+                    .expect("Could not get basis node by lineage")
+                    .expect("basis group resolved but no basis node exists for its lineage")
+            };
+
+            Ok(Some(basis_node))
+        } else {
+            log::info!("If this log statement never displays, remove Option from return type");
+            Ok(None)
+        }
     }
 }
 
