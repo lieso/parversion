@@ -28,21 +28,81 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    option: &Options,
+    options: &Options,
     stage_context: &StageContext,
 ) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
     log::trace!("In generate_basis_networks");
 
     let candidate_networks = get_candidate_networks(Arc::clone(&normalization_context))?;
-
     log::info!("Number of candidate networks: {}", candidate_networks.len());
+
+    let mut handles = Vec::new();
+
+    for (basis_lineages_hash, (_basis_lineages, candidates)) in candidate_networks {
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
+        let cloned_normalization_context = Arc::clone(&normalization_context);
+        let cloned_stage_context = stage_context.clone();
+        let cloned_options = options.clone();
+
+        let handle = task::spawn(async move {
+            let basis_network = generate_basis_network(
+                cloned_provider,
+                cloned_reasoner,
+                cloned_normalization_context,
+                &cloned_options,
+                &cloned_stage_context,
+                basis_lineages_hash,
+                candidates,
+            )
+            .await?;
+
+            Ok((basis_network.id.clone(), Arc::new(basis_network)))
+        });
+
+        handles.push(handle);
+    }
+
+    let results: Vec<Result<(ID, Arc<BasisNetwork>), Errors>> = try_join_all(handles).await?;
 
     unimplemented!()
 }
 
+async fn generate_basis_network<R: Reasoner, P: Provider>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+    basis_lineages_hash: Hash,
+    candidates: Vec<Arc<Context>>
+) -> Result<BasisNetwork, Errors> {
+    stage_context.record_events("Network analysis", 0);
+
+    if !options.regenerate {
+        //if let Some(basis_network) = provider.get_basis_network_by_lineage(
+    }
+    
+    unimplemented!()
+
+    //let (basis_network, metadata) = reasoner.basis_network(
+    //    Arc::clone(&normalization_context),
+    //    basis_lineages_hash,
+    //    candidates
+    //).await?;
+
+    //stage_context.record_events("Network analysis", metadata.tokens.into());
+
+    ////provider
+    ////    .save_basis_network(&basis_lineages_hash, basis_network.clone())
+    ////    .await?;
+
+    //Ok(basis_network)
+}
+
 fn get_candidate_networks(
     normalization_context: Arc<RwLock<NormalizationContext>>
-) -> Result<HashMap<Hash, (HashSet<BasisLineage>, Vec<Graph>)>, Errors> {
+) -> Result<HashMap<Hash, (HashSet<BasisLineage>, Vec<Arc<Context>>)>, Errors> {
     let graph_root = {
         let lock = read_lock!(normalization_context);
         lock.meta_context.clone()
@@ -50,11 +110,11 @@ fn get_candidate_networks(
             .graph_root.clone()
     };
 
-    let mut candidate_networks: HashMap<Hash, (HashSet<BasisLineage>, Vec<Graph>)> = HashMap::new();
+    let mut candidate_networks: HashMap<Hash, (HashSet<BasisLineage>, Vec<Arc<Context>>)> = HashMap::new();
 
     fn recurse(
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        candidate_networks: &mut HashMap<Hash, (HashSet<BasisLineage>, Vec<Graph>)>,
+        candidate_networks: &mut HashMap<Hash, (HashSet<BasisLineage>, Vec<Arc<Context>>)>,
         graph: Graph,
     ) -> Result<HashSet<BasisLineage>, Errors> {
         let children = read_lock!(graph).children.clone();
@@ -85,11 +145,24 @@ fn get_candidate_networks(
                 hash.finalize();
                 hash
             };
+
+            let context = {
+                let meta_context = {
+                    let lock = read_lock!(normalization_context);
+                    lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+                };
+
+                meta_context.contexts_lookup
+                    .get(&read_lock!(graph).id)
+                    .cloned()
+                    .unwrap()
+            };
+
             candidate_networks
                 .entry(basis_lineages)
                 .or_insert_with(|| (set.clone(), Vec::new()))
                 .1
-                .push(graph.clone());
+                .push(context.clone());
         }
 
         Ok(set)
