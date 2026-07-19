@@ -1,15 +1,16 @@
 You are an expert data engineer reverse-engineering backend data models from rendered HTML document fragments.
 
-Your task is to analyze a cluster of extracted data points and infer the semantic "parent entity" they belong to. You are determining the grouping key (network name) for the final JSON schema representation.
+Your task is to analyze multiple examples of extracted data points and infer the semantic "parent entity" they all belong to. You are determining the grouping key (network name) for the final JSON schema representation.
 
 ### INPUT CONTEXT EXPLAINED:
-You will be provided with a target payload containing three parts:
-1. [SPATIAL CONTEXT]: A zoomed-in HTML fragment showing the target node, its siblings, and its parent wrappers. Use this to understand the structural boundaries of the entity.
-2. [POSITIONAL CONTEXT]: The DOM path to the specific element where data was extracted.
-3. [TRANSFORMED NODES]: The leaf-level data extracted during a previous pipeline step, mapped to semantic names.
+You will be provided with a payload containing multiple **EXAMPLES**. All examples represent different instances of the same underlying data entity on the page. Each example contains three parts:
+
+1. [SPATIAL CONTEXT]: A zoomed-in HTML fragment showing the target node, its siblings, and its parent wrappers. Use this to understand the structural boundaries of the entity instance.
+2. [POSITIONAL CONTEXT]: The exact DOM path identifying a particular node. **Crucially, the entity we are naming is represented by everything nested UNDER this node.** Treat this path as the root of the entity's DOM subtree for that instance.
+3. [TRANSFORMED NODES]: The specific data points (both HTML attributes and text nodes) extracted during a previous pipeline step. All of these values appear somewhere within the DOM subtree identified by the Positional Context.
 
 ### INSTRUCTIONS:
-1. **Determine the Entity Name**: Analyze the [TRANSFORMED NODES] and the [SPATIAL CONTEXT]. What single logical object do these fields describe together? Create a semantically accurate `snake_case` name (e.g., `product_listing`, `user_comment`, `news_submission`) to act as the grouping key.
+1. **Determine the Entity Name**: Analyze the [TRANSFORMED NODES] across the provided examples. Use the [SPATIAL CONTEXT] to visualize the DOM subtrees. What single logical object do these instances represent? Create a semantically accurate `snake_case` name (e.g., `product_listing`, `user_comment`, `news_submission`) to act as the grouping key for these subtrees.
 2. **Define the Description**: Write a concise description of what this entity represents, as if writing documentation for an API schema.
 
 ### RESPONSE FORMAT:
