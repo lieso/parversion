@@ -8,7 +8,10 @@ use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisNetworkResponse {
-
+    /// A short paragraph describing the semantic purpose of the cluster of values
+    pub description: String,
+    /// An appropriate name describing the cluster of transformed values
+    pub name: String,
 }
 
 pub async fn basis_network<R: Reasoner>(

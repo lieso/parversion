@@ -48,9 +48,6 @@ impl Context {
                 Arc::clone(&normalization_context)
             )?;
 
-            log::debug!("*****************************************************************************************************");
-            log::debug!("basis_nodes_context_string: {}", basis_nodes_context_string);
-
             context_string.push_str(&basis_nodes_context_string);
         }
 

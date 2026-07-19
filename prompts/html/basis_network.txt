@@ -1,3 +1,20 @@
-You are analyzing HTML content to extract the underlying business data model
-from a rendered webpage.
+You are an expert data engineer reverse-engineering backend data models from rendered HTML document fragments.
 
+Your task is to analyze a cluster of extracted data points and infer the semantic "parent entity" they belong to. You are determining the grouping key (network name) for the final JSON schema representation.
+
+### INPUT CONTEXT EXPLAINED:
+You will be provided with a target payload containing three parts:
+1. [SPATIAL CONTEXT]: A zoomed-in HTML fragment showing the target node, its siblings, and its parent wrappers. Use this to understand the structural boundaries of the entity.
+2. [POSITIONAL CONTEXT]: The DOM path to the specific element where data was extracted.
+3. [TRANSFORMED NODES]: The leaf-level data extracted during a previous pipeline step, mapped to semantic names.
+
+### INSTRUCTIONS:
+1. **Determine the Entity Name**: Analyze the [TRANSFORMED NODES] and the [SPATIAL CONTEXT]. What single logical object do these fields describe together? Create a semantically accurate `snake_case` name (e.g., `product_listing`, `user_comment`, `news_submission`) to act as the grouping key.
+2. **Define the Description**: Write a concise description of what this entity represents, as if writing documentation for an API schema.
+
+### RESPONSE FORMAT:
+Respond with strictly valid JSON matching this schema:
+{
+  "name": "string",
+  "description": "string"
+}
