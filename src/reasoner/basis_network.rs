@@ -6,7 +6,7 @@ use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, Debug)]
 pub struct BasisNetworkResponse {
     /// A short paragraph describing the semantic purpose of the cluster of values
     pub description: String,
@@ -57,7 +57,36 @@ pub async fn basis_network<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    unimplemented!()
+    let (result, metadata) = reasoner.execute::<BasisNetworkResponse>(
+        &capability,
+        &system_prompt,
+        &user_prompt,
+        schema
+    ).await?;
+
+    log::debug!("result: {:?}", result);
+    unimplemented!();
+
+    //let reasoner_metadata = ReasonerMetadata {
+    //    tokens: metadata.input_tokens + metadata.output_tokens,
+    //    prompt_hash: metadata.prompt_hash.clone(),
+    //};
+
+    //let transformation = NetworkTransformation {
+    //    id: ID::new(),
+    //    description: result.description.clone(),
+    //    image: result.name.clone(),
+    //};
+
+    //let basis_network = BasisNetwork {
+    //    id: ID::new(),
+    //    basis_lineages_hash: basis_lineages_hash.clone(),
+    //    metadata: BasisNetworkMetadata {
+    //        prompts: vec![reasoner_metadata.prompt_hash.clone()]
+    //    }
+    //};
+
+    //Ok((basis_network, reasoner_metadata))
 }
 
 async fn get_user_prompt<R: Reasoner>(
