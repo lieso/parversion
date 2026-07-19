@@ -129,7 +129,9 @@ fn get_candidate_networks(
         }
 
         if let Some(basis_node) = read_lock!(graph).resolve_basis_node(Arc::clone(&normalization_context))? {
-            set.insert(basis_node.lineage.clone());
+            if !basis_node.transformations.is_empty() {
+                set.insert(basis_node.lineage.clone());
+            }
         }
 
         let is_new_candidate = !set.is_empty()
