@@ -18,12 +18,10 @@ use crate::transformation::{
 };
 use crate::context::Context;
 
-mod network_analysis;
 mod network_relationships;
 mod document;
 mod translation;
 
-use network_analysis::NetworkAnalysis;
 use network_relationships::NetworkRelationships;
 use document::Document;
 use translation::Translation;
@@ -177,50 +175,6 @@ impl LLM {
         log::debug!("eliminated networks: {:?}", redundancy_response.eliminated);
 
         Ok((redundancy_response.canonical, (metadata.tokens,)))
-    }
-
-    pub async fn get_network_transformation(
-        subgraph_hash: &str,
-        json_examples: &[String],
-        document_summary: &str
-    ) -> Result<(
-        NetworkTransformation,
-        u64 
-    ), Errors> {
-        log::trace!("In get_network_transformation");
-
-        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-        log::debug!("║                                                               ║");
-        log::debug!("║                  NETWORK TRANSFORMATION START                 ║");
-        log::debug!("║                                                               ║");
-        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-        log::debug!("");
-
-        tokio::time::sleep(Duration::from_millis(50)).await;
-
-        let result = NetworkAnalysis::get_network_transformation(
-            json_examples,
-            document_summary
-        ).await?;
-
-        let inference = result.data.unwrap();
-        let meta = result.metadata;
-
-        let network_transformation = NetworkTransformation {
-            id: ID::new(),
-            description: inference.description.clone(),
-            subgraph_hash: subgraph_hash.to_string(),
-            image: inference.name.to_string(),
-            meta: NetworkMetadata {
-                fields: inference.fields.clone(),
-                cardinality: inference.cardinality.clone(),
-                field_types: inference.field_types.clone(),
-                context: inference.context.clone(),
-                structure: inference.structure.clone(),
-            }
-        };
-
-        Ok((network_transformation, (meta.tokens)))
     }
 
     pub async fn get_node_translation(

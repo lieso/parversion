@@ -10,7 +10,6 @@ use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
 use crate::node_analysis::{generate_basis_nodes};
 use crate::network_analysis::{
     get_classification,
-    get_basis_networks,
     get_network_relationships,
     generate_basis_networks
 };
