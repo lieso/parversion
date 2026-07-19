@@ -4,10 +4,16 @@ use crate::prelude::*;
 use crate::transformation::NetworkTransformation;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BasisNetworkMetadata {
+    pub prompts: Vec<Hash>
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetwork {
     pub id: ID,
     pub description: String,
     pub subgraph_hash: Hash,
     pub lineage: Lineage,
     pub transformation: NetworkTransformation,
+    pub metadata: BasisNetworkMetadata,
 }

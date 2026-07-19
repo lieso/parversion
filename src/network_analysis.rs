@@ -5,7 +5,7 @@ use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::classification::Classification;
-use crate::basis_network::BasisNetwork;
+use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
 use crate::basis_graph::BasisGraph;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
@@ -75,29 +75,27 @@ async fn generate_basis_network<R: Reasoner, P: Provider>(
     options: &Options,
     stage_context: &StageContext,
     basis_lineages_hash: Hash,
-    candidates: Vec<Arc<Context>>
+    context_group: Vec<Arc<Context>>
 ) -> Result<BasisNetwork, Errors> {
     stage_context.record_events("Network analysis", 0);
 
     if !options.regenerate {
         //if let Some(basis_network) = provider.get_basis_network_by_lineage(
     }
-    
-    unimplemented!()
 
-    //let (basis_network, metadata) = reasoner.basis_network(
-    //    Arc::clone(&normalization_context),
-    //    basis_lineages_hash,
-    //    candidates
-    //).await?;
+    let (basis_network, metadata) = reasoner.basis_network(
+        Arc::clone(&normalization_context),
+        basis_lineages_hash,
+        context_group
+    ).await?;
 
-    //stage_context.record_events("Network analysis", metadata.tokens.into());
+    stage_context.record_events("Network analysis", metadata.tokens.into());
 
-    ////provider
-    ////    .save_basis_network(&basis_lineages_hash, basis_network.clone())
-    ////    .await?;
+    //provider
+    //    .save_basis_network(&basis_lineages_hash, basis_network.clone())
+    //    .await?;
 
-    //Ok(basis_network)
+    Ok(basis_network)
 }
 
 fn get_candidate_networks(
@@ -820,6 +818,9 @@ async fn get_basis_network<P: Provider, R: Reasoner>(
         subgraph_hash: subgraph_hash.clone(),
         lineage: lineage.clone(),
         transformation: network_transformation,
+        metadata: BasisNetworkMetadata {
+            prompts: Vec::new(),
+        }
     };
 
     provider

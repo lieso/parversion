@@ -2,18 +2,20 @@ use async_trait::async_trait;
 use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
+use crate::hash::Hash;
 use crate::classification::Classification;
 use crate::prompt_registry::PromptRegistry;
 use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
-use crate::hash::Hash;
+use crate::basis_network::BasisNetwork;
 
 mod backend;
 mod classify;
 mod basis_field;
 mod basis_group;
 mod basis_node;
+mod basis_network;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -142,6 +144,22 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
                 self,
                 normalization_context,
                 basis_group,
+                context_group
+            ).await?
+        )
+    }
+
+    async fn basis_network(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_lineages_hash: Hash,
+        context_group: Vec<Arc<Context>>,
+    ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
+        Ok(
+            basis_network::basis_network(
+                self,
+                normalization_context,
+                basis_lineages_hash,
                 context_group
             ).await?
         )
