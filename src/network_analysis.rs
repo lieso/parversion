@@ -65,7 +65,10 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     let results: Vec<Result<(ID, Arc<BasisNetwork>), Errors>> = try_join_all(handles).await?;
 
-    unimplemented!()
+    let hashmap_results: HashMap<ID, Arc<BasisNetwork>> =
+        results.into_iter().collect::<Result<_, _>>()?;
+
+    Ok(hashmap_results)
 }
 
 async fn generate_basis_network<R: Reasoner, P: Provider>(
