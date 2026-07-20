@@ -46,10 +46,8 @@ impl SqliteProvider {
                  data         TEXT NOT NULL
              );
              CREATE TABLE IF NOT EXISTS basis_networks (
-                 lineage_hash   TEXT NOT NULL,
-                 subgraph_hash  TEXT NOT NULL,
-                 data           TEXT NOT NULL,
-                 PRIMARY KEY (lineage_hash, subgraph_hash)
+                 basis_lineages TEXT NOT NULL PRIMARY KEY,
+                 data           TEXT NOT NULL
              );
              CREATE TABLE IF NOT EXISTS basis_graphs (
                  hash TEXT PRIMARY KEY,
@@ -148,22 +146,42 @@ impl Provider for SqliteProvider {
         .map_err(|_| Errors::UnexpectedError)?
     }
 
+    async fn get_basis_network_by_basis_lineages(
+        &self,
+        basis_lineages: &Hash,
+    ) -> Result<Option<BasisNetwork>, Errors> {
+        let conn = self.connection.clone();
+        let key = basis_lineages.to_string().unwrap();
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM basis_networks WHERE basis_lineages = ?1",
+                params![key],
+                |row| row.get::<_, String>(0),
+            ) {
+                Ok(data) => deserialize(data).map(Some),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError)?
+    }
+
     async fn save_basis_network(
         &self,
-        lineage: &Lineage,
-        subgraph_hash: &Hash,
         basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
-        let lineage_key = lineage.to_string();
-        let subgraph_key = subgraph_hash.to_string().ok_or(Errors::UnexpectedError)?;
+        let key = basis_network.basis_lineages.to_string().ok_or(Errors::UnexpectedError)?;
         let data = serialize(&basis_network)?;
 
         task::spawn_blocking(move || {
             let conn = conn.lock().map_err(|_| lock_err())?;
             conn.execute(
-                "INSERT OR REPLACE INTO basis_networks (lineage_hash, subgraph_hash, data) VALUES (?1, ?2, ?3)",
-                params![lineage_key, subgraph_key, data],
+                "INSERT OR REPLACE INTO basis_networks (basis_lineages, data) VALUES (?1, ?2)",
+                params![key, data],
             )
             .map_err(|e| db_err(e))?;
             Ok(())

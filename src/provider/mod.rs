@@ -55,12 +55,17 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineage: &Lineage,
     ) -> Result<Option<BasisNode>, Errors>;
-    async fn save_basis_node(&self, lineage: &Lineage, basis_node: BasisNode)
-        -> Result<(), Errors>;
-    async fn save_basis_network(
+    async fn save_basis_node(
         &self,
         lineage: &Lineage,
-        subgraph_hash: &Hash,
+        basis_node: BasisNode
+    ) -> Result<(), Errors>;
+    async fn get_basis_network_by_basis_lineages(
+        &self,
+        basis_lineages: &Hash
+    ) -> Result<Option<BasisNetwork>, Errors>;
+    async fn save_basis_network(
+        &self,
         basis_network: BasisNetwork,
     ) -> Result<(), Errors>;
     async fn get_classification_by_lineage(
@@ -161,10 +166,15 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
+    async fn get_basis_network_by_basis_lineages(
+        &self,
+        _basis_lineages: &Hash
+    ) -> Result<Option<BasisNetwork>, Errors> {
+        Ok(None)
+    }
+
     async fn save_basis_network(
         &self,
-        _lineage: &Lineage,
-        _subgraph_hash: &Hash,
         _basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
         Ok(())

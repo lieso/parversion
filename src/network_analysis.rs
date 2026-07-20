@@ -80,7 +80,9 @@ async fn generate_basis_network<R: Reasoner, P: Provider>(
     stage_context.record_events("Network analysis", 0);
 
     if !options.regenerate {
-        //if let Some(basis_network) = provider.get_basis_network_by_lineage(
+        if let Some(basis_network) = provider.get_basis_network_by_basis_lineages(&basis_lineages_hash).await? {
+            return Ok(basis_network);
+        }
     }
 
     let (basis_network, metadata) = reasoner.basis_network(
@@ -91,9 +93,9 @@ async fn generate_basis_network<R: Reasoner, P: Provider>(
 
     stage_context.record_events("Network analysis", metadata.tokens.into());
 
-    //provider
-    //    .save_basis_network(&basis_lineages_hash, basis_network.clone())
-    //    .await?;
+    provider
+        .save_basis_network(basis_network.clone())
+        .await?;
 
     Ok(basis_network)
 }
