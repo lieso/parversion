@@ -16,7 +16,8 @@ use crate::network_analysis::{
 use crate::reports::{
     report_basis_groups,
     report_basis_fields,
-    report_basis_nodes
+    report_basis_nodes,
+    report_basis_networks
 };
 use crate::package::Package;
 use crate::prelude::*;
@@ -197,6 +198,11 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     let elapsed = start.elapsed();
     log::info!("get_basis_networks: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_networks(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+    }
 
     stage.finish();
 

@@ -8,6 +8,7 @@ use crate::provider::Provider;
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
 const GREEN: &str = "\x1b[32m";
+const YELLOW: &str = "\x1b[33m";
 const RESET: &str = "\x1b[0m";
 
 pub async fn report_basis_fields<P: Provider>(
@@ -217,6 +218,40 @@ pub async fn report_basis_nodes<P: Provider>(
     }
 
     println!("{}=== End Basis Node Report ==={}", GREEN, RESET);
+
+    Ok(())
+}
+
+pub async fn report_basis_networks<P: Provider>(
+    provider: Arc<P>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<(), Errors> {
+    let basis_networks = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_networks
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Basis networks not provided in normalization context".to_string())
+            })?
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    println!("{}=== Basis Network Report ({} networks) ==={}", YELLOW, basis_networks.len(), RESET);
+
+    for network in &basis_networks {
+        println!("{}{}{}", YELLOW, "-----------------------------------------------------------------------------------------------------", RESET);
+        println!("{}--- Network [{}] ---{}", YELLOW, network.id.to_string(), RESET);
+        println!("{}  basis_lineages: {}{}", YELLOW, network.basis_lineages, RESET);
+        println!("{}  transformation: {}{}", YELLOW, network.transformation.description, RESET);
+        println!("{}  image: {}{}", YELLOW, network.transformation.image, RESET);
+        println!("{}  prompts: {:?}{}", YELLOW, network.metadata.prompts, RESET);
+        println!("{}{}{}", YELLOW, "-----------------------------------------------------------------------------------------------------", RESET);
+    }
+
+    println!();
+    println!("{}=== End Basis Network Report ==={}", YELLOW, RESET);
 
     Ok(())
 }
