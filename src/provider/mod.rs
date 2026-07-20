@@ -57,11 +57,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
     ) -> Result<Option<BasisNode>, Errors>;
     async fn save_basis_node(&self, lineage: &Lineage, basis_node: BasisNode)
         -> Result<(), Errors>;
-    async fn get_basis_network_by_lineage_and_subgraph_hash(
-        &self,
-        lineage: &Lineage,
-        subgraph_hash: &Hash,
-    ) -> Result<Option<BasisNetwork>, Errors>;
     async fn save_basis_network(
         &self,
         lineage: &Lineage,
@@ -164,14 +159,6 @@ impl Provider for VoidProvider {
         _basis_node: BasisNode,
     ) -> Result<(), Errors> {
         Ok(())
-    }
-
-    async fn get_basis_network_by_lineage_and_subgraph_hash(
-        &self,
-        _lineage: &Lineage,
-        _subgraph_hash: &Hash,
-    ) -> Result<Option<BasisNetwork>, Errors> {
-        Ok(None)
     }
 
     async fn save_basis_network(

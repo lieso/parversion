@@ -56,22 +56,6 @@ impl NormalizationContext {
         self.document_versions.get(&version).cloned()
     }
 
-    // TODO: LINEAGE!
-    pub fn get_basis_network_by_lineage_and_subgraph_hash(
-        &self,
-        subgraph_hash: &Hash,
-    ) -> Result<Option<Arc<BasisNetwork>>, Errors> {
-        let basis_networks = self.basis_networks.as_ref().unwrap();
-
-        for basis_network in basis_networks.values() {
-            if basis_network.subgraph_hash == *subgraph_hash {
-                return Ok(Some(Arc::clone(&basis_network)));
-            }
-        }
-
-        Ok(None)
-    }
-
     pub fn get_basis_node_by_lineage(
         &self,
         lineage: &Lineage,

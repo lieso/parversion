@@ -386,133 +386,134 @@ pub async fn get_network_relationships<P: Provider, R: Reasoner>(
     stage_context: &StageContext
 ) -> Result<BasisGraph, Errors> {
     log::trace!("In get_network_relationships");
+    unimplemented!()
 
-    let complex_networks: Vec<Arc<BasisNetwork>> = collect_complex_unique_subgraphs(Arc::clone(&normalization_context))
-        .into_iter()
-        .filter_map(|(subgraph_hash, _)| {
-            let meta_context_lock = read_lock!(normalization_context);
-            meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)
-                .ok()
-                .flatten()
-        })
-        .collect();
+    //let complex_networks: Vec<Arc<BasisNetwork>> = collect_complex_unique_subgraphs(Arc::clone(&normalization_context))
+    //    .into_iter()
+    //    .filter_map(|(subgraph_hash, _)| {
+    //        let meta_context_lock = read_lock!(normalization_context);
+    //        meta_context_lock.get_basis_network_by_lineage_and_subgraph_hash(&subgraph_hash)
+    //            .ok()
+    //            .flatten()
+    //    })
+    //    .collect();
 
-    log::debug!("Complex networks found: {}", complex_networks.len());
+    //log::debug!("Complex networks found: {}", complex_networks.len());
 
-    let mut graph_hash = Hash::from_items(
-        complex_networks
-        .iter()
-        .map(|network| { network.subgraph_hash.to_string().unwrap() })
-        .collect()
-    );
-    graph_hash.sort();
-    graph_hash.finalize();
+    //let mut graph_hash = Hash::from_items(
+    //    complex_networks
+    //    .iter()
+    //    .map(|network| { network.subgraph_hash.to_string().unwrap() })
+    //    .collect()
+    //);
+    //graph_hash.sort();
+    //graph_hash.finalize();
 
-    log::info!("graph hash: {}", graph_hash);
+    //log::info!("graph hash: {}", graph_hash);
 
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // STAGE 1: CANONICALIZE NETWORKS
-    // ═════════════════════════════════════════════════════════════════════════════════
+    //// ═════════════════════════════════════════════════════════════════════════════════
+    //// STAGE 1: CANONICALIZE NETWORKS
+    //// ═════════════════════════════════════════════════════════════════════════════════
 
-    let basis_graph: BasisGraph = get_canonical_networks(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        Arc::clone(&normalization_context),
-        options,
-        stage_context,
-        &graph_hash,
-        complex_networks.clone(),
-    ).await?;
-    let canonical_networks: Vec<Arc<BasisNetwork>> = basis_graph.canonicalization.transform(complex_networks)?;
+    //let basis_graph: BasisGraph = get_canonical_networks(
+    //    Arc::clone(&provider),
+    //    Arc::clone(&reasoner),
+    //    Arc::clone(&normalization_context),
+    //    options,
+    //    stage_context,
+    //    &graph_hash,
+    //    complex_networks.clone(),
+    //).await?;
+    //let canonical_networks: Vec<Arc<BasisNetwork>> = basis_graph.canonicalization.transform(complex_networks)?;
 
-    if canonical_networks.is_empty() {
-        panic!("Canonical networks not found?");
-    }
+    //if canonical_networks.is_empty() {
+    //    panic!("Canonical networks not found?");
+    //}
 
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // STAGE 2: IDENTIFY RELATIONSHIP TYPES
-    // ═════════════════════════════════════════════════════════════════════════════════
+    //// ═════════════════════════════════════════════════════════════════════════════════
+    //// STAGE 2: IDENTIFY RELATIONSHIP TYPES
+    //// ═════════════════════════════════════════════════════════════════════════════════
 
-    let basis_graph: BasisGraph = get_relationship_typing(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        Arc::clone(&normalization_context),
-        options,
-        stage_context,
-        &graph_hash,
-        canonical_networks.clone(),
-    ).await?;
+    //let basis_graph: BasisGraph = get_relationship_typing(
+    //    Arc::clone(&provider),
+    //    Arc::clone(&reasoner),
+    //    Arc::clone(&normalization_context),
+    //    options,
+    //    stage_context,
+    //    &graph_hash,
+    //    canonical_networks.clone(),
+    //).await?;
 
-    let relationships: Vec<ResolvedRelationshipTransformation> = basis_graph
-        .relationships
-        .unwrap_or_default()
-        .iter()
-        .map(|rel_transform| rel_transform.transform(&canonical_networks))
-        .collect::<Result<Vec<_>, _>>()?;
+    //let relationships: Vec<ResolvedRelationshipTransformation> = basis_graph
+    //    .relationships
+    //    .unwrap_or_default()
+    //    .iter()
+    //    .map(|rel_transform| rel_transform.transform(&canonical_networks))
+    //    .collect::<Result<Vec<_>, _>>()?;
 
-    if relationships.is_empty() {
-        //panic!("No relationships?");
-    }
+    //if relationships.is_empty() {
+    //    //panic!("No relationships?");
+    //}
 
-    // ═════════════════════════════════════════════════════════════════════════════════
-    // STAGE 3: PROCESS RELATIONSHIP TRAVERSALS
-    // ═════════════════════════════════════════════════════════════════════════════════
+    //// ═════════════════════════════════════════════════════════════════════════════════
+    //// STAGE 3: PROCESS RELATIONSHIP TRAVERSALS
+    //// ═════════════════════════════════════════════════════════════════════════════════
 
-    let max_concurrency = {
-        let config_lock = read_lock!(CONFIG);
-        config_lock.llm.max_concurrency
-    };
+    //let max_concurrency = {
+    //    let config_lock = read_lock!(CONFIG);
+    //    config_lock.llm.max_concurrency
+    //};
 
-    let existing_relationship_ids: HashSet<ID> = if !options.regenerate {
-        provider.get_basis_graph_by_hash(&graph_hash).await?
-            .and_then(|bg| bg.traversals)
-            .map(|ts| ts.into_iter().map(|t| t.relationship_id).collect())
-            .unwrap_or_default()
-    } else {
-        HashSet::new()
-    };
+    //let existing_relationship_ids: HashSet<ID> = if !options.regenerate {
+    //    provider.get_basis_graph_by_hash(&graph_hash).await?
+    //        .and_then(|bg| bg.traversals)
+    //        .map(|ts| ts.into_iter().map(|t| t.relationship_id).collect())
+    //        .unwrap_or_default()
+    //} else {
+    //    HashSet::new()
+    //};
 
-    let semaphore = Arc::new(Semaphore::new(max_concurrency));
-    let mut handles = Vec::new();
+    //let semaphore = Arc::new(Semaphore::new(max_concurrency));
+    //let mut handles = Vec::new();
 
-    for resolved_relationship in relationships {
-        if existing_relationship_ids.contains(&resolved_relationship.id) {
-            log::info!("TraversalTransformation already exists for this relationship");
-            continue;
-        }
+    //for resolved_relationship in relationships {
+    //    if existing_relationship_ids.contains(&resolved_relationship.id) {
+    //        log::info!("TraversalTransformation already exists for this relationship");
+    //        continue;
+    //    }
 
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
-        let cloned_meta_context = Arc::clone(&normalization_context);
-        let cloned_stage_context = stage_context.clone();
+    //    let permit = semaphore.clone().acquire_owned().await.unwrap();
+    //    let cloned_meta_context = Arc::clone(&normalization_context);
+    //    let cloned_stage_context = stage_context.clone();
 
-        let handle = task::spawn(async move {
-            let _permit = permit;
+    //    let handle = task::spawn(async move {
+    //        let _permit = permit;
 
-            get_traversal(
-                cloned_meta_context,
-                resolved_relationship,
-                &cloned_stage_context,
-            ).await
-        });
-        handles.push(handle);
-    }
+    //        get_traversal(
+    //            cloned_meta_context,
+    //            resolved_relationship,
+    //            &cloned_stage_context,
+    //        ).await
+    //    });
+    //    handles.push(handle);
+    //}
 
-    let new_traversals: Vec<TraversalTransformation> = try_join_all(handles).await?
-        .into_iter()
-        .collect::<Result<Vec<_>, Errors>>()?
-        .into_iter()
-        .flatten()
-        .collect();
+    //let new_traversals: Vec<TraversalTransformation> = try_join_all(handles).await?
+    //    .into_iter()
+    //    .collect::<Result<Vec<_>, Errors>>()?
+    //    .into_iter()
+    //    .flatten()
+    //    .collect();
 
-    if !new_traversals.is_empty() {
-        let mut basis_graph = provider.get_basis_graph_by_hash(&graph_hash).await?
-            .ok_or(Errors::UnexpectedError)?;
-        basis_graph.traversals.get_or_insert_with(Vec::new).extend(new_traversals);
-        provider.save_basis_graph(&graph_hash, basis_graph).await?;
-    }
+    //if !new_traversals.is_empty() {
+    //    let mut basis_graph = provider.get_basis_graph_by_hash(&graph_hash).await?
+    //        .ok_or(Errors::UnexpectedError)?;
+    //    basis_graph.traversals.get_or_insert_with(Vec::new).extend(new_traversals);
+    //    provider.save_basis_graph(&graph_hash, basis_graph).await?;
+    //}
 
-    provider.get_basis_graph_by_hash(&graph_hash).await?
-        .ok_or(Errors::UnexpectedError)
+    //provider.get_basis_graph_by_hash(&graph_hash).await?
+    //    .ok_or(Errors::UnexpectedError)
 }
 
 async fn get_traversal(
@@ -630,41 +631,42 @@ pub async fn get_canonical_networks<P: Provider, R: Reasoner>(
 ) -> Result<BasisGraph, Errors> {
     log::trace!("In get_canonical_networks");
 
-    stage_context.record_events("Finding canonical networks", 0);
+    unimplemented!()
+    //stage_context.record_events("Finding canonical networks", 0);
 
-    if !options.regenerate {
-        if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
-            return Ok(basis_graph);
-        }
-    }
+    //if !options.regenerate {
+    //    if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
+    //        return Ok(basis_graph);
+    //    }
+    //}
 
-    let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
-        Arc::clone(&normalization_context),
-        complex_networks
-    ).await?;
-    let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
+    //let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
+    //    Arc::clone(&normalization_context),
+    //    complex_networks
+    //).await?;
+    //let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
 
-    stage_context.record_events("Finding canonical networks", tokens);
+    //stage_context.record_events("Finding canonical networks", tokens);
 
-    let basis_graph = BasisGraph {
-        id: ID::new(),
-        hash: graph_hash.clone(),
-        canonicalization: CanonicalizationTransformation {
-            id: ID::new(),
-            canonical_networks: canonical_networks
-                .iter()
-                .map(|network| {
-                    network.subgraph_hash.to_string().unwrap()
-                })
-                .collect()
-        },
-        relationships: None,
-        traversals: None,
-    };
+    //let basis_graph = BasisGraph {
+    //    id: ID::new(),
+    //    hash: graph_hash.clone(),
+    //    canonicalization: CanonicalizationTransformation {
+    //        id: ID::new(),
+    //        canonical_networks: canonical_networks
+    //            .iter()
+    //            .map(|network| {
+    //                network.subgraph_hash.to_string().unwrap()
+    //            })
+    //            .collect()
+    //    },
+    //    relationships: None,
+    //    traversals: None,
+    //};
 
-    provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
-    
-    Ok(basis_graph)
+    //provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
+    //
+    //Ok(basis_graph)
 }
 
 fn collect_complex_unique_subgraphs(normalization_context: Arc<RwLock<NormalizationContext>>) -> HashMap<Hash, Vec<Graph>> {

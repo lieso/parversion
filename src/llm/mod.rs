@@ -12,7 +12,6 @@ use crate::transformation::{
     FieldTransformation,
     FieldMetadata,
     NetworkTransformation,
-    NetworkMetadata,
     FieldTranslationTransformation,
     NetworkTranslationTransformation
 };

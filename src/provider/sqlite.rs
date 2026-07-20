@@ -148,31 +148,6 @@ impl Provider for SqliteProvider {
         .map_err(|_| Errors::UnexpectedError)?
     }
 
-    async fn get_basis_network_by_lineage_and_subgraph_hash(
-        &self,
-        lineage: &Lineage,
-        subgraph_hash: &Hash,
-    ) -> Result<Option<BasisNetwork>, Errors> {
-        let conn = self.connection.clone();
-        let lineage_key = lineage.to_string();
-        let subgraph_key = subgraph_hash.to_string().ok_or(Errors::UnexpectedError)?;
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-            match conn.query_row(
-                "SELECT data FROM basis_networks WHERE lineage_hash = ?1 AND subgraph_hash = ?2",
-                params![lineage_key, subgraph_key],
-                |row| row.get::<_, String>(0),
-            ) {
-                Ok(data) => deserialize(data).map(Some),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(db_err(e)),
-            }
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError)?
-    }
-
     async fn save_basis_network(
         &self,
         lineage: &Lineage,

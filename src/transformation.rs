@@ -123,21 +123,10 @@ impl FieldTransformation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NetworkMetadata {
-    pub fields: Vec<String>,
-    pub cardinality: String,
-    pub field_types: Vec<String>,
-    pub context: String,
-    pub structure: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NetworkTransformation {
     pub id: ID,
     pub description: String,
-    pub subgraph_hash: String,
     pub image: String,
-    pub meta: NetworkMetadata,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -151,14 +140,15 @@ impl CanonicalizationTransformation {
         &self,
         networks: Vec<Arc<BasisNetwork>>
     ) -> Result<Vec<Arc<BasisNetwork>>, Errors> {
-        Ok(
-            networks
-                .into_iter()
-                .filter(|network| {
-                    self.canonical_networks.contains(&network.subgraph_hash.to_string().unwrap())
-                })
-                .collect()
-        )
+        unimplemented!()
+        //Ok(
+        //    networks
+        //        .into_iter()
+        //        .filter(|network| {
+        //            self.canonical_networks.contains(&network.subgraph_hash.to_string().unwrap())
+        //        })
+        //        .collect()
+        //)
     }
 }
 

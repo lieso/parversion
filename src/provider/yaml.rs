@@ -152,33 +152,6 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_basis_network_by_lineage_and_subgraph_hash(
-        &self,
-        lineage: &Lineage,
-        subgraph_hash: &Hash,
-    ) -> Result<Option<BasisNetwork>, Errors> {
-        let yaml = self.load_data().await?;
-
-        let basis_networks: Vec<BasisNetwork> = yaml
-            .get("basis_networks")
-            .and_then(|bn| {
-                let deserialized: Result<Vec<BasisNetwork>, _> = serde_yaml::from_value(bn.clone());
-                if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for basis_networks: {:?}", err);
-                }
-                deserialized.ok()
-            })
-            .unwrap_or_else(Vec::new);
-
-        for basis_network in basis_networks {
-            if &basis_network.lineage == lineage && &basis_network.subgraph_hash == subgraph_hash {
-                return Ok(Some(basis_network));
-            }
-        }
-
-        Ok(None)
-    }
-
     async fn save_basis_network(
         &self,
         lineage: &Lineage,
