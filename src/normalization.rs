@@ -10,9 +10,9 @@ use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
 use crate::node_analysis::{generate_basis_nodes};
 use crate::network_analysis::{
     get_classification,
-    get_network_relationships,
     generate_basis_networks
 };
+use crate::graph_analysis::{generate_basis_graph};
 use crate::reports::{
     report_basis_groups,
     report_basis_fields,
@@ -209,10 +209,9 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Network relationships");
 
-    log::info!("Generating network relationships");
-
+    log::info!("Generating basis graph");
     let basis_graph =
-        get_network_relationships(
+        generate_basis_graph(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
             Arc::clone(&normalization_context),
