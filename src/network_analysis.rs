@@ -121,6 +121,7 @@ fn get_candidate_networks(
         graph: Graph,
     ) -> Result<HashSet<BasisLineage>, Errors> {
         let children = read_lock!(graph).children.clone();
+
         let mut set: HashSet<BasisLineage> = HashSet::new();
 
         for child in &children {
@@ -133,16 +134,16 @@ fn get_candidate_networks(
             set.extend(child_set.iter().cloned());
         }
 
+        let mut transformation_count: usize = set.len();
+
         if let Some(basis_node) = read_lock!(graph).resolve_basis_node(Arc::clone(&normalization_context))? {
             if !basis_node.transformations.is_empty() {
                 set.insert(basis_node.lineage.clone());
+                transformation_count += basis_node.transformations.len();
             }
         }
 
-        let is_new_candidate = !set.is_empty()
-            && children.len() > 1;
-
-        if is_new_candidate {
+        if transformation_count > 1 {
             let basis_lineages: Hash = {
                 let items: Vec<BasisLineage> = set.iter().cloned().collect();
                 let mut hash = Hash::from_items(items);
@@ -168,6 +169,8 @@ fn get_candidate_networks(
                 .or_insert_with(|| (set.clone(), Vec::new()))
                 .1
                 .push(context.clone());
+
+            return Ok(HashSet::new());
         }
 
         Ok(set)
