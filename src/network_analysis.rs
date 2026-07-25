@@ -13,13 +13,12 @@ use crate::llm::LLM;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::transformation::{
-    CanonicalizationTransformation,
-    RelationshipTransformation,
-    ResolvedRelationshipTransformation,
-    TraversalTransformation
-};
-use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
+//use crate::transformation::{
+//    CanonicalizationTransformation,
+//    RelationshipTransformation,
+//    ResolvedRelationshipTransformation,
+//    TraversalTransformation
+//};
 use crate::translation_network::TranslationNetwork;
 use crate::group_analysis::{resolve_context_groups};
 use crate::basis_node::BasisNode;
@@ -524,158 +523,158 @@ pub async fn get_network_relationships<P: Provider, R: Reasoner>(
     //    .ok_or(Errors::UnexpectedError)
 }
 
-async fn get_traversal(
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    resolved_relationship: ResolvedRelationshipTransformation,
-    stage_context: &StageContext,
-) -> Result<Option<TraversalTransformation>, Errors> {
-    log::trace!("In get_traversal");
+//async fn get_traversal(
+//    normalization_context: Arc<RwLock<NormalizationContext>>,
+//    resolved_relationship: ResolvedRelationshipTransformation,
+//    stage_context: &StageContext,
+//) -> Result<Option<TraversalTransformation>, Errors> {
+//    log::trace!("In get_traversal");
+//
+//    match resolved_relationship.relationship_type {
+//        NetworkRelationshipType::Composition => {
+//            stage_context.record_events("Composition linking", 0);
+//
+//            let (traversal, name, (tokens,)) = NetworkRelationship::process_composition(
+//                Arc::clone(&normalization_context),
+//                Arc::clone(&resolved_relationship.from),
+//                Arc::clone(&resolved_relationship.to),
+//            ).await?;
+//
+//            stage_context.record_events("Composition linking", tokens);
+//
+//            Ok(Some(TraversalTransformation {
+//                id: ID::new(),
+//                relationship_id: resolved_relationship.id.clone(),
+//                traversal,
+//                name,
+//                description: String::new(),
+//            }))
+//        }
+//        NetworkRelationshipType::ParentChild => {
+//            stage_context.record_events("Parent-child linking", 0);
+//
+//            let (traversal, (tokens,)) = NetworkRelationship::process_parent_child(
+//                Arc::clone(&normalization_context),
+//                Arc::clone(&resolved_relationship.from),
+//                Arc::clone(&resolved_relationship.to),
+//            ).await?;
+//
+//            stage_context.record_events("Parent-child linking", tokens);
+//
+//            Ok(Some(TraversalTransformation {
+//                id: ID::new(),
+//                relationship_id: resolved_relationship.id.clone(),
+//                traversal,
+//                name: String::new(),
+//                description: String::new(),
+//            }))
+//        }
+//        _ => {
+//            log::warn!("Ignoring relationship type: {:?}", resolved_relationship.relationship_type);
+//            Ok(None)
+//        }
+//    }
+//}
 
-    match resolved_relationship.relationship_type {
-        NetworkRelationshipType::Composition => {
-            stage_context.record_events("Composition linking", 0);
+//pub async fn get_relationship_typing<P: Provider, R: Reasoner>(
+//    provider: Arc<P>,
+//    reasoner: Arc<R>,
+//    normalization_context: Arc<RwLock<NormalizationContext>>,
+//    options: &Options,
+//    stage_context: &StageContext,
+//    graph_hash: &Hash,
+//    canonical_networks: Vec<Arc<BasisNetwork>>
+//) -> Result<BasisGraph, Errors> {
+//    log::trace!("In get_relationship_typing");
+//
+//    stage_context.record_events("Relationship typing", 0);
+//
+//    if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
+//        if !options.regenerate {
+//            if basis_graph.relationships.is_some() {
+//                return Ok(basis_graph);
+//            }
+//        }
+//
+//        let (typed_relationships, (tokens,)) = NetworkRelationship::get_relationship_typing(
+//            Arc::clone(&normalization_context),
+//            canonical_networks.clone()
+//        ).await?;
+//
+//        let mut basis_graph = basis_graph;
+//        basis_graph.relationships = Some(
+//            typed_relationships.into_iter()
+//                .map(|(from, to, rel_type)| {
+//                    RelationshipTransformation {
+//                        id: ID::new(),
+//                        from: from.id.clone(),
+//                        to: to.id.clone(),
+//                        relationship_type: rel_type,
+//                        description: String::new(),
+//                    }
+//                })
+//                .collect()
+//        );
+//
+//        stage_context.record_events("Relationship typing", tokens);
+//
+//        provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
+//
+//        Ok(basis_graph)
+//    } else {
+//        log::error!("Trying to obtain relationship typing among canonical networks, but canonical networks were not found.");
+//        Err(Errors::UnexpectedError)
+//    }
+//}
 
-            let (traversal, name, (tokens,)) = NetworkRelationship::process_composition(
-                Arc::clone(&normalization_context),
-                Arc::clone(&resolved_relationship.from),
-                Arc::clone(&resolved_relationship.to),
-            ).await?;
-
-            stage_context.record_events("Composition linking", tokens);
-
-            Ok(Some(TraversalTransformation {
-                id: ID::new(),
-                relationship_id: resolved_relationship.id.clone(),
-                traversal,
-                name,
-                description: String::new(),
-            }))
-        }
-        NetworkRelationshipType::ParentChild => {
-            stage_context.record_events("Parent-child linking", 0);
-
-            let (traversal, (tokens,)) = NetworkRelationship::process_parent_child(
-                Arc::clone(&normalization_context),
-                Arc::clone(&resolved_relationship.from),
-                Arc::clone(&resolved_relationship.to),
-            ).await?;
-
-            stage_context.record_events("Parent-child linking", tokens);
-
-            Ok(Some(TraversalTransformation {
-                id: ID::new(),
-                relationship_id: resolved_relationship.id.clone(),
-                traversal,
-                name: String::new(),
-                description: String::new(),
-            }))
-        }
-        _ => {
-            log::warn!("Ignoring relationship type: {:?}", resolved_relationship.relationship_type);
-            Ok(None)
-        }
-    }
-}
-
-pub async fn get_relationship_typing<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    options: &Options,
-    stage_context: &StageContext,
-    graph_hash: &Hash,
-    canonical_networks: Vec<Arc<BasisNetwork>>
-) -> Result<BasisGraph, Errors> {
-    log::trace!("In get_relationship_typing");
-
-    stage_context.record_events("Relationship typing", 0);
-
-    if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
-        if !options.regenerate {
-            if basis_graph.relationships.is_some() {
-                return Ok(basis_graph);
-            }
-        }
-
-        let (typed_relationships, (tokens,)) = NetworkRelationship::get_relationship_typing(
-            Arc::clone(&normalization_context),
-            canonical_networks.clone()
-        ).await?;
-
-        let mut basis_graph = basis_graph;
-        basis_graph.relationships = Some(
-            typed_relationships.into_iter()
-                .map(|(from, to, rel_type)| {
-                    RelationshipTransformation {
-                        id: ID::new(),
-                        from: from.id.clone(),
-                        to: to.id.clone(),
-                        relationship_type: rel_type,
-                        description: String::new(),
-                    }
-                })
-                .collect()
-        );
-
-        stage_context.record_events("Relationship typing", tokens);
-
-        provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
-
-        Ok(basis_graph)
-    } else {
-        log::error!("Trying to obtain relationship typing among canonical networks, but canonical networks were not found.");
-        Err(Errors::UnexpectedError)
-    }
-}
-
-pub async fn get_canonical_networks<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    options: &Options,
-    stage_context: &StageContext,
-    graph_hash: &Hash,
-    complex_networks: Vec<Arc<BasisNetwork>>
-) -> Result<BasisGraph, Errors> {
-    log::trace!("In get_canonical_networks");
-
-    unimplemented!()
-    //stage_context.record_events("Finding canonical networks", 0);
-
-    //if !options.regenerate {
-    //    if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
-    //        return Ok(basis_graph);
-    //    }
-    //}
-
-    //let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
-    //    Arc::clone(&normalization_context),
-    //    complex_networks
-    //).await?;
-    //let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
-
-    //stage_context.record_events("Finding canonical networks", tokens);
-
-    //let basis_graph = BasisGraph {
-    //    id: ID::new(),
-    //    hash: graph_hash.clone(),
-    //    canonicalization: CanonicalizationTransformation {
-    //        id: ID::new(),
-    //        canonical_networks: canonical_networks
-    //            .iter()
-    //            .map(|network| {
-    //                network.subgraph_hash.to_string().unwrap()
-    //            })
-    //            .collect()
-    //    },
-    //    relationships: None,
-    //    traversals: None,
-    //};
-
-    //provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
-    //
-    //Ok(basis_graph)
-}
+//pub async fn get_canonical_networks<P: Provider, R: Reasoner>(
+//    provider: Arc<P>,
+//    reasoner: Arc<R>,
+//    normalization_context: Arc<RwLock<NormalizationContext>>,
+//    options: &Options,
+//    stage_context: &StageContext,
+//    graph_hash: &Hash,
+//    complex_networks: Vec<Arc<BasisNetwork>>
+//) -> Result<BasisGraph, Errors> {
+//    log::trace!("In get_canonical_networks");
+//
+//    unimplemented!()
+//    //stage_context.record_events("Finding canonical networks", 0);
+//
+//    //if !options.regenerate {
+//    //    if let Some(basis_graph) = provider.get_basis_graph_by_hash(graph_hash).await? {
+//    //        return Ok(basis_graph);
+//    //    }
+//    //}
+//
+//    //let (canonical_networks, (tokens,)) = NetworkRelationship::get_canonical_networks(
+//    //    Arc::clone(&normalization_context),
+//    //    complex_networks
+//    //).await?;
+//    //let canonical_networks: Vec<Arc<BasisNetwork>> = canonical_networks.into_iter().map(Arc::new).collect();
+//
+//    //stage_context.record_events("Finding canonical networks", tokens);
+//
+//    //let basis_graph = BasisGraph {
+//    //    id: ID::new(),
+//    //    hash: graph_hash.clone(),
+//    //    canonicalization: CanonicalizationTransformation {
+//    //        id: ID::new(),
+//    //        canonical_networks: canonical_networks
+//    //            .iter()
+//    //            .map(|network| {
+//    //                network.subgraph_hash.to_string().unwrap()
+//    //            })
+//    //            .collect()
+//    //    },
+//    //    relationships: None,
+//    //    traversals: None,
+//    //};
+//
+//    //provider.save_basis_graph(graph_hash, basis_graph.clone()).await?;
+//    //
+//    //Ok(basis_graph)
+//}
 
 fn collect_complex_unique_subgraphs(normalization_context: Arc<RwLock<NormalizationContext>>) -> HashMap<Hash, Vec<Graph>> {
     let meta_context = {

@@ -22,11 +22,6 @@ use crate::reports::{
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::transformation::{
-    CanonicalizationTransformation,
-    RelationshipTransformation,
-    TraversalTransformation,
-};
 use crate::graph_node::Graph;
 use crate::graph_node::GraphNode;
 use crate::basis_network::BasisNetwork;
@@ -34,7 +29,6 @@ use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::normal_context::NormalContext;
 use crate::data_node::DataNode;
-use crate::network_relationship::NetworkRelationshipType;
 use crate::classification::Classification;
 
 pub async fn normalize<P: Provider, R: Reasoner>(
@@ -679,47 +673,47 @@ fn process_canonical_network(
     //Ok(())
 }
 
-fn process_composition_relationship(
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    normalized_parent_node: Graph,
-    current_node: Graph,
-    relationship: &RelationshipTransformation,
-    contexts: &mut HashMap<ID, Arc<NormalContext>>,
-    visited: &mut HashSet<ID>,
-) -> Result<(), Errors> {
-    let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
-    let traversals: Option<Vec<TraversalTransformation>> = basis_graph.traversals;
-
-    let Some(traversals) = traversals else {
-        panic!("Processing composition relationship, but no traversals available on basis graph");
-    };
-
-    let Some(traversal) = traversals.iter().find(|item| item.relationship_id == relationship.id) else {
-        panic!("Processing composition relationship, but no traversal is available for this relationship");
-    };
-
-    if let Some(target_network) = traversal.transform(
-        Arc::clone(&normalization_context),
-        Arc::clone(&current_node),
-    )? {
-        let target_id = read_lock!(target_network).id.clone();
-        if visited.contains(&target_id) {
-            log::info!("Composition target is already being processed — skipping to prevent cycle");
-        } else {
-            process_network(
-                Arc::clone(&normalization_context),
-                Arc::clone(&normalized_parent_node),
-                Arc::clone(&target_network),
-                contexts,
-                visited,
-            )?;
-        }
-    } else {
-        log::warn!("Traversal could not be applied to find target network");
-    }
-
-    Ok(())
-}
+//fn process_composition_relationship(
+//    normalization_context: Arc<RwLock<NormalizationContext>>,
+//    normalized_parent_node: Graph,
+//    current_node: Graph,
+//    relationship: &RelationshipTransformation,
+//    contexts: &mut HashMap<ID, Arc<NormalContext>>,
+//    visited: &mut HashSet<ID>,
+//) -> Result<(), Errors> {
+//    let basis_graph: BasisGraph = read_lock!(normalization_context).basis_graph.clone().unwrap();
+//    let traversals: Option<Vec<TraversalTransformation>> = basis_graph.traversals;
+//
+//    let Some(traversals) = traversals else {
+//        panic!("Processing composition relationship, but no traversals available on basis graph");
+//    };
+//
+//    let Some(traversal) = traversals.iter().find(|item| item.relationship_id == relationship.id) else {
+//        panic!("Processing composition relationship, but no traversal is available for this relationship");
+//    };
+//
+//    if let Some(target_network) = traversal.transform(
+//        Arc::clone(&normalization_context),
+//        Arc::clone(&current_node),
+//    )? {
+//        let target_id = read_lock!(target_network).id.clone();
+//        if visited.contains(&target_id) {
+//            log::info!("Composition target is already being processed — skipping to prevent cycle");
+//        } else {
+//            process_network(
+//                Arc::clone(&normalization_context),
+//                Arc::clone(&normalized_parent_node),
+//                Arc::clone(&target_network),
+//                contexts,
+//                visited,
+//            )?;
+//        }
+//    } else {
+//        log::warn!("Traversal could not be applied to find target network");
+//    }
+//
+//    Ok(())
+//}
 
 fn process_network(
     normalization_context: Arc<RwLock<NormalizationContext>>,

@@ -36,7 +36,6 @@ mod types;
 #[allow(dead_code)]
 mod utility;
 mod execution_context;
-mod network_relationship;
 mod basis_graph;
 mod xpath;
 mod traversal;

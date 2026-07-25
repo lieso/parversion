@@ -36,7 +36,6 @@ pub mod types;
 #[allow(dead_code)]
 pub mod utility;
 pub mod execution_context;
-pub mod network_relationship;
 pub mod basis_graph;
 pub mod xpath;
 pub mod traversal;
