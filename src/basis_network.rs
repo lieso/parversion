@@ -87,8 +87,8 @@ impl BasisNetwork {
        
         Ok(NormalContext {
             id: ID::new(),
-            network_name: self.transformation.image.clone(),
-            network_description: self.transformation.description.clone(),
+            network_name: Some(self.transformation.image.clone()),
+            network_description: Some(self.transformation.description.clone()),
             data_node: Arc::new(DataNode::from_data_nodes(data_nodes)),
             graph_node: graph_node.clone(),
         })

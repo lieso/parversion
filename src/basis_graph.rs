@@ -52,6 +52,7 @@ impl NetworkRelationship {
                         )
                     })
                     .collect();
+                let normalized = normalized?;
 
                 unimplemented!()
             }
