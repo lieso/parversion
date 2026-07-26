@@ -54,6 +54,13 @@ impl NetworkRelationship {
                     .collect();
                 let normalized = normalized?;
 
+                //let normal_context = NormalContext {
+                //    id: ID::new(),
+                //    network_name: None,
+                //    network_description: None,
+                //    data_node: Arc::new(DataNode::new()),
+                //};
+
                 unimplemented!()
             }
             NetworkRelationship::Node { left, right, transformation } => {

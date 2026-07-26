@@ -52,3 +52,4 @@ pub mod prompt_registry;
 pub mod field_analysis;
 pub mod group_analysis;
 pub mod graph_analysis;
+pub mod normal_meta_context;

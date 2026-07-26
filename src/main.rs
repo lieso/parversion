@@ -52,6 +52,7 @@ mod prompt_registry;
 mod field_analysis;
 mod group_analysis;
 mod graph_analysis;
+mod normal_meta_context;
 
 use crate::entrypoint::run;
 
