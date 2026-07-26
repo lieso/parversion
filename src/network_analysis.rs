@@ -24,8 +24,9 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<(
-        HashMap<BasisNetworkID, Arc<BasisNetwork>>,
-        HashMap<BasisNetworkID, Vec<Arc<Context>>>,
+    HashMap<BasisNetworkID, Arc<BasisNetwork>>,
+    HashMap<BasisNetworkID, Vec<Arc<Context>>>,
+    HashMap<ContextID, Arc<BasisNetwork>>
 ), Errors> {
     log::trace!("In generate_basis_networks");
 
@@ -75,7 +76,17 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         .map(|(id, _basis_network, contexts)| (id, contexts))
         .collect();
 
-    Ok((basis_networks, network_contexts))
+    let context_networks: HashMap<ContextID, Arc<BasisNetwork>> = results
+        .clone()
+        .into_iter()
+        .flat_map(|(_id, basis_network, contexts)| {
+            contexts
+                .into_iter()
+                .map(move |context| (context.id.clone(), basis_network.clone()))
+        })
+        .collect();
+
+    Ok((basis_networks, network_contexts, context_networks))
 }
 
 async fn generate_basis_network<R: Reasoner, P: Provider>(
