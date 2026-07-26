@@ -24,14 +24,14 @@ impl BasisNetwork {
     pub fn apply(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        context: Arc<Context>
+        context: Arc<Context>,
+        parent: Graph
     ) -> Result<NormalContext, Errors> {
-
         let start_node = context.graph_node.clone();
 
         fn recurse(
             normalization_context: Arc<RwLock<NormalizationContext>>,
-            current: Graph
+            current: Graph,
         ) -> Result<Vec<DataNode>, Errors> {
             let children = read_lock!(current).children.clone();
 
@@ -75,22 +75,20 @@ impl BasisNetwork {
             Arc::clone(&start_node)
         )?;
 
-        let graph_node = Arc::new(RwLock::new(GraphNode {
-            id: ID::new(),
-            parents: Vec::new(),
-            description: String::new(),
-            hash: Hash::new(),
-            subgraph_hash: Hash::new(),
-            lineage: Lineage::new(),
-            children: Vec::new(),
-        }));
+        let combined_data_node = Arc::new(DataNode::from_data_nodes(data_nodes));
+
+        let graph_node = Arc::new(RwLock::new(
+            GraphNode::from_data_node(Arc::clone(&combined_data_node), vec![Arc::clone(&parent)])
+        ));
+
+        write_lock!(parent).children.push(Arc::clone(&graph_node));
        
         Ok(NormalContext {
             id: ID::new(),
             network_name: Some(self.transformation.image.clone()),
             network_description: Some(self.transformation.description.clone()),
-            data_node: Arc::new(DataNode::from_data_nodes(data_nodes)),
-            graph_node: graph_node.clone(),
+            data_node: combined_data_node,
+            graph_node,
         })
     }
 }
