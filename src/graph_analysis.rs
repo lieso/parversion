@@ -87,5 +87,12 @@ async fn generate_relationship<P: Provider, R: Reasoner>(
     left: Arc<NetworkRelationship>,
     right: Arc<NetworkRelationship>,
 ) -> Result<Arc<NetworkRelationship>, Errors> {
+
+    reasoner.network_relationship(
+        Arc::clone(&normalization_context),
+        left.clone(),
+        right.clone()
+    ).await?;
+
     unimplemented!()
 }

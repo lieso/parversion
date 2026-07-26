@@ -9,7 +9,8 @@ pub use crate::id::{
     TranslationNodeID,
     TranslationNetworkID,
     BasisGroupID,
-    BasisNodeID
+    BasisNodeID,
+    BasisNetworkID,
 };
 pub use crate::lineage::{BasisLineage, Lineage};
 pub use crate::macros::*;

@@ -175,7 +175,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let stage = execution_context.enter_stage("Network analysis");
 
     log::info!("Generating basis networks");
-    let basis_networks =
+    let (basis_networks, network_contexts) =
         generate_basis_networks(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
@@ -187,7 +187,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     {
         let mut lock = write_lock!(normalization_context);
-        lock.update_basis_networks(basis_networks);
+        lock.update_basis_networks(basis_networks, network_contexts);
     }
 
     let elapsed = start.elapsed();

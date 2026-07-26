@@ -13,12 +13,6 @@ use crate::llm::LLM;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-//use crate::transformation::{
-//    CanonicalizationTransformation,
-//    RelationshipTransformation,
-//    ResolvedRelationshipTransformation,
-//    TraversalTransformation
-//};
 use crate::translation_network::TranslationNetwork;
 use crate::group_analysis::{resolve_context_groups};
 use crate::basis_node::BasisNode;
@@ -29,7 +23,10 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<HashMap<ID, Arc<BasisNetwork>>, Errors> {
+) -> Result<(
+        HashMap<BasisNetworkID, Arc<BasisNetwork>>,
+        HashMap<BasisNetworkID, Vec<Arc<Context>>>,
+), Errors> {
     log::trace!("In generate_basis_networks");
 
     let candidate_networks = get_candidate_networks(Arc::clone(&normalization_context))?;
@@ -52,22 +49,33 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 &cloned_options,
                 &cloned_stage_context,
                 basis_lineages_hash,
-                candidates,
+                candidates.clone(),
             )
             .await?;
 
-            Ok((basis_network.id.clone(), Arc::new(basis_network)))
+            Ok((basis_network.id.clone(), Arc::new(basis_network), candidates.clone()))
         });
 
         handles.push(handle);
     }
 
-    let results: Vec<Result<(ID, Arc<BasisNetwork>), Errors>> = try_join_all(handles).await?;
+    let results: Vec<(ID, Arc<BasisNetwork>, Vec<Arc<Context>>)> = try_join_all(handles).await?
+        .into_iter()
+        .collect::<Result<Vec<_>, Errors>>()?;
 
-    let hashmap_results: HashMap<ID, Arc<BasisNetwork>> =
-        results.into_iter().collect::<Result<_, _>>()?;
+    let basis_networks: HashMap<ID, Arc<BasisNetwork>> = results
+        .clone()
+        .into_iter()
+        .map(|(id, basis_network, _contexts)| (id, basis_network))
+        .collect();
 
-    Ok(hashmap_results)
+    let network_contexts: HashMap<BasisNetworkID, Vec<Arc<Context>>> = results
+        .clone()
+        .into_iter()
+        .map(|(id, _basis_network, contexts)| (id, contexts))
+        .collect();
+
+    Ok((basis_networks, network_contexts))
 }
 
 async fn generate_basis_network<R: Reasoner, P: Provider>(
