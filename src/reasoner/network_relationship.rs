@@ -6,6 +6,8 @@ use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::basis_graph::NetworkRelationship;
 use crate::transformation::RelationshipTransformation;
+use crate::document::{Document, DocumentType};
+use crate::document_format::DocumentFormat;
 
 pub async fn network_relationship<R: Reasoner>(
     reasoner: &R,
@@ -34,10 +36,26 @@ async fn get_user_prompt<R: Reasoner>(
 
 
 
-    let left_graph = left.apply(
+    let left_normal_meta_context = left.apply(
         Arc::clone(&normalization_context),
     )?;
 
+
+    let left_document = Document::from_normal_meta_context(
+        &left_normal_meta_context,
+        &DocumentFormat {
+            format_type: DocumentType::Json,
+            encoding: Some(String::from("UTF-8")),
+            indent: None,
+            line_ending: None,
+            headers: None,
+            wrap_text: None,
+            exclude_nulls: None,
+            custom_delimiter: None,
+        },
+    )?;
+
+    log::debug!("doc: {}", left_document.to_string());
 
 
     unimplemented!()

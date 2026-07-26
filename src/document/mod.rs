@@ -12,6 +12,7 @@ use crate::prelude::*;
 use crate::document_format::DocumentFormat;
 use crate::provider::Provider;
 use crate::llm::LLM;
+use crate::normal_meta_context::NormalMetaContext;
 
 use json::Json;
 use html::Html;
@@ -176,6 +177,35 @@ impl Document {
                 DocumentType::JavaScript => unimplemented!(),
                 DocumentType::Xml => unimplemented!(),
                 DocumentType::Html => Html::from_meta_context(meta_context, render_ids)?,
+            }
+        };
+
+        let document = Document {
+            document_type: document_format.format_type.clone(),
+            data,
+            metadata: DocumentMetadata {
+                origin: None,
+                date: None,
+                name: None,
+                description: None,
+                semantic_content_types: None,
+            },
+        };
+
+        Ok(document)
+    }
+
+    pub fn from_normal_meta_context(
+        normal_meta_context: &NormalMetaContext,
+        document_format: &DocumentFormat,
+    ) -> Result<Self, Errors> {
+        let data = {
+            match document_format.format_type {
+                DocumentType::Json => Json::from_normal_meta_context(normal_meta_context)?,
+                DocumentType::PlainText => unimplemented!(),
+                DocumentType::JavaScript => unimplemented!(),
+                DocumentType::Xml => unimplemented!(),
+                DocumentType::Html => unimplemented!(),
             }
         };
 

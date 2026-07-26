@@ -12,6 +12,8 @@ use crate::data_node::DataNode;
 use crate::meta_context::MetaContext;
 use crate::translation_node::TranslationNode;
 use crate::translation_network::TranslationNetwork;
+use crate::normal_context::NormalContext;
+use crate::normal_meta_context::NormalMetaContext;
 
 pub struct Json {}
 
@@ -130,6 +132,78 @@ impl Json {
             document_type: DocumentType::Json,
             acyclic_subgraph_hash,
         })
+    }
+
+    pub fn from_normal_meta_context(
+        normal_meta_context: &NormalMetaContext,
+    ) -> Result<String, Errors> {
+        let graph_root = normal_meta_context.graph_root.clone();
+
+        let mut result: Value = Value::Object(Map::new());
+
+        fn recurse(
+            normal_meta_context: &NormalMetaContext,
+            graph_node: Graph,
+            result: &mut Value
+        ) {
+            let context = normal_meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap();
+            let data_node = &context.data_node;
+            let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
+            for json_node in json_nodes {
+                let json = json_node.json;
+                let value = json!(json.value.trim().to_string());
+                if let Value::Object(ref mut map) = result {
+                    map.insert(json.key, value);
+                }
+            }
+
+            for child in &read_lock!(graph_node).children {
+                let child_context = normal_meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap();
+
+                if let Some(network_name) = &child_context.network_name {
+                    let mut inner_result: Value = Value::Object(Map::new());
+
+                    recurse(
+                        normal_meta_context,
+                        Arc::clone(&child),
+                        &mut inner_result,
+                    );
+
+                    let inner_result_value = inner_result.clone();
+
+                    if let Value::Object(ref mut map) = result {
+                        if let Some(existing_object) = map.get_mut(network_name) {
+                            if let Value::Array(ref mut arr) = existing_object {
+                                arr.push(inner_result_value.clone());
+                            } else {
+                                *existing_object = json!(vec![
+                                    existing_object.clone(),
+                                    inner_result_value.clone()
+                                ]);
+                            }
+                        } else {
+                            map.insert(network_name.to_string(), inner_result_value);
+                        }
+                    }
+                } else {
+                    recurse(
+                        normal_meta_context,
+                        Arc::clone(&child),
+                        result
+                    );
+                }
+            }
+        }
+
+        recurse(
+            normal_meta_context,
+            Arc::clone(&graph_root),
+            &mut result
+        );
+
+        let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
+
+        Ok(data)
     }
 
     pub fn from_meta_context(
