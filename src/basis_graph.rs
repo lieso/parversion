@@ -5,6 +5,7 @@ use crate::prelude::*;
 use crate::transformation::{RelationshipTransformation};
 use crate::basis_network::BasisNetwork;
 use crate::graph_node::Graph;
+use crate::normal_context::NormalContext;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisGraph {
@@ -42,7 +43,7 @@ impl NetworkRelationship {
                         .clone()
                 };
 
-                let networks: Result<Vec<Graph>, Errors> = contexts
+                let normalized: Result<Vec<NormalContext>, Errors> = contexts
                     .iter()
                     .map(|context| {
                         basis_network.apply(
@@ -51,7 +52,6 @@ impl NetworkRelationship {
                         )
                     })
                     .collect();
-                let networks = networks?;
 
                 unimplemented!()
             }

@@ -1,6 +1,8 @@
+use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+use crate::data_node::DataNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct BasisGroupMetadata {
@@ -19,6 +21,25 @@ pub struct BasisGroup {
 }
 
 impl BasisGroup {
+    pub fn apply(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        context: Arc<Context>
+    ) -> Result<Option<DataNode>, Errors> {
+        let basis_lineage = self.get_basis_lineage();
+
+        let basis_node = {
+            let lock = read_lock!(normalization_context);
+            lock.get_basis_node_by_lineage(&basis_lineage)
+                .expect("Could not get basis node by lineage")
+                .unwrap()
+        };
+
+        Ok(basis_node.apply(
+            Arc::clone(&context)
+        )?)
+    }
+
     pub fn get_basis_lineage(&self) -> BasisLineage {
         let mut hashes: Vec<Hash> = vec![self.acyclic_lineage.identity_hash.clone()];
 
