@@ -55,8 +55,28 @@ async fn get_user_prompt<R: Reasoner>(
         },
     )?;
 
-    log::debug!("doc: {}", left_document.to_string());
+    log::debug!("left: {}", left_document.to_string());
 
+    let right_normal_meta_context = right.apply(
+        Arc::clone(&normalization_context),
+    )?;
+
+
+    let right_document = Document::from_normal_meta_context(
+        &right_normal_meta_context,
+        &DocumentFormat {
+            format_type: DocumentType::Json,
+            encoding: Some(String::from("UTF-8")),
+            indent: None,
+            line_ending: None,
+            headers: None,
+            wrap_text: None,
+            exclude_nulls: None,
+            custom_delimiter: None,
+        },
+    )?;
+
+    log::debug!("right: {}", right_document.to_string());
 
     unimplemented!()
 }

@@ -31,27 +31,45 @@ impl BasisNetwork {
 
         fn recurse(
             normalization_context: Arc<RwLock<NormalizationContext>>,
+            current_network: &BasisNetwork,
             current: Graph,
         ) -> Result<Vec<DataNode>, Errors> {
+            let contexts = {
+                let lock = read_lock!(normalization_context);
+                lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+            };
+            let context = contexts.get(&read_lock!(current).id).unwrap();
+
+            let context_to_network = {
+                let lock = read_lock!(normalization_context);
+                lock.context_basis_networks.clone().unwrap()
+            };
+
+            if let Some(basis_network) = context_to_network.get(&context.id) {
+                if basis_network.id != current_network.id {
+                    log::info!("Detected network boundary");
+                    return Ok(Vec::new());
+                }
+            }
+
             let children = read_lock!(current).children.clone();
 
             let data_nodes: Vec<DataNode> = children
                 .iter()
-                .map(|child| recurse(Arc::clone(&normalization_context), Arc::clone(&child)))
+                .map(|child| recurse(
+                    Arc::clone(&normalization_context),
+                    current_network,
+                    Arc::clone(&child),
+                ))
                 .collect::<Result<Vec<Vec<DataNode>>, Errors>>()?
                 .into_iter()
                 .flatten()
                 .collect();
 
-            let contexts = {
-                let lock = read_lock!(normalization_context);
-                lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
-            };
             let context_to_group = {
                 let lock = read_lock!(normalization_context);
                 lock.context_to_group.clone().unwrap()
             };
-            let context = contexts.get(&read_lock!(current).id).unwrap();
 
             if let Some(basis_group) = context_to_group.get(&context.id).cloned() {
                 if let Some(data_node) = basis_group.apply(
@@ -72,7 +90,8 @@ impl BasisNetwork {
 
         let data_nodes = recurse(
             Arc::clone(&normalization_context),
-            Arc::clone(&start_node)
+            &self,
+            Arc::clone(&start_node),
         )?;
 
         let combined_data_node = Arc::new(DataNode::from_data_nodes(data_nodes));
