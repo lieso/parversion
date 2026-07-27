@@ -28,6 +28,21 @@ pub enum NetworkRelationship {
 }
 
 impl NetworkRelationship {
+    pub fn collect_basis_networks(
+        &self,
+        networks: &mut Vec<Arc<BasisNetwork>>
+    ) {
+        match self {
+            NetworkRelationship::Leaf(basis_network) => {
+                networks.push(Arc::clone(basis_network));
+            }
+            NetworkRelationship::Node { left, right, .. } => {
+                left.collect_basis_networks(networks);
+                right.collect_basis_networks(networks);
+            }
+        }
+    }
+
     pub fn apply(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>

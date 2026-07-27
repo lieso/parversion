@@ -1,6 +1,8 @@
 use std::sync::{Arc, RwLock};
 use schemars::JsonSchema;
 use serde::Deserialize;
+use tokio::time::sleep;
+use std::time::Duration;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
@@ -8,6 +10,7 @@ use crate::basis_graph::NetworkRelationship;
 use crate::transformation::RelationshipTransformation;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
+use crate::basis_network::BasisNetwork;
 
 pub async fn network_relationship<R: Reasoner>(
     reasoner: &R,
@@ -24,6 +27,12 @@ pub async fn network_relationship<R: Reasoner>(
         right.clone()
     ).await?;
 
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+
+    sleep(Duration::from_secs(2)).await;
+
     unimplemented!()
 }
 
@@ -33,14 +42,9 @@ async fn get_user_prompt<R: Reasoner>(
     left: Arc<NetworkRelationship>,
     right: Arc<NetworkRelationship>,
 ) -> Result<String, Errors> {
-
-
-
     let left_normal_meta_context = left.apply(
         Arc::clone(&normalization_context),
     )?;
-
-
     let left_document = Document::from_normal_meta_context(
         &left_normal_meta_context,
         &DocumentFormat {
@@ -55,13 +59,9 @@ async fn get_user_prompt<R: Reasoner>(
         },
     )?;
 
-    log::debug!("left: {}", left_document.to_string());
-
     let right_normal_meta_context = right.apply(
         Arc::clone(&normalization_context),
     )?;
-
-
     let right_document = Document::from_normal_meta_context(
         &right_normal_meta_context,
         &DocumentFormat {
@@ -76,7 +76,100 @@ async fn get_user_prompt<R: Reasoner>(
         },
     )?;
 
-    log::debug!("right: {}", right_document.to_string());
+    let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
+    left.collect_basis_networks(&mut basis_networks);
+    right.collect_basis_networks(&mut basis_networks);
 
-    unimplemented!()
+    let basis_network_contexts = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_network_contexts.as_ref().unwrap().clone()
+    };
+
+    let contexts: Vec<Arc<Context>> = basis_networks
+        .iter()
+        .flat_map(|basis_network| {
+            basis_network_contexts.get(&basis_network.id).unwrap().clone()
+        })
+        .collect();
+
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+            })?
+            .clone()
+    };
+
+    let context_strings: Vec<String> = contexts
+        .iter()
+        .map(|context| context.generate_context_string(&meta_context))
+        .collect::<Result<Vec<String>, Errors>>()?;
+    let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
+    let samples = most_different(context_strings, &embeddings);
+    let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
+
+    Ok(format!(r##"
+[SOURCE DOCUMENT EXAMPLES]
+{}
+
+[LEFT TARGET DOCUMENT]
+{}
+
+[RIGHT TARGET DOCUMENT]
+{}
+"##, merged_samples, left_document.to_string(), right_document.to_string()))
+}
+
+fn most_different(candidates: Vec<String>, embeddings: &[Vec<f32>]) -> Vec<String> {
+    let n = candidates.len();
+
+    // *************************
+    let min_samples = 5;
+    let threshold = 0.2;
+    let max_samples = 10;
+    // *************************
+
+    if n < min_samples {
+        return candidates;
+    }
+
+    let mut selected = vec![0usize];
+    let mut min_dists: Vec<f32> = embeddings.iter()
+        .map(|e| cosine_distance(e, &embeddings[0]))
+        .collect();
+    min_dists[0] = 0.0;
+    
+    loop {
+        let (next, &dist) = min_dists.iter()
+            .enumerate()
+            .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap();
+
+        if dist < threshold && selected.len() >= min_samples {
+            break;
+        }
+
+        selected.push(next);
+
+        if selected.len() >= max_samples {
+            break;
+        }
+
+        for (i, d) in min_dists.iter_mut().enumerate() {
+            let new_d = cosine_distance(&embeddings[i], &embeddings[next]);
+            if new_d < *d {
+                *d = new_d;
+            }
+        }
+        min_dists[next] = 0.0;
+    }
+
+    selected.iter().map(|index| candidates[*index].clone()).collect()
+}
+
+fn cosine_distance(a: &[f32], b: &[f32]) -> f32 {
+    let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    1.0 - dot
 }
