@@ -235,8 +235,8 @@ fn traverse_structural_envelope(
     neighbourhood: &mut HashSet<GraphNodeID>,
 ) {
     // ******************************************
-    let max_neighbours = 30;
-    let max_children = 5;
+    let max_neighbours = 40;
+    let max_children = 7;
     // ******************************************
     
     let mut queue: VecDeque<Graph> = VecDeque::new();
@@ -255,28 +255,28 @@ fn traverse_structural_envelope(
             return;
         }
 
-        // Center the children around the target node,
-        // only if one of these children is the target_node
-        let children = lock.children.clone();
+        //// Center the children around the target node,
+        //// only if one of these children is the target_node
+        //let children = lock.children.clone();
 
-        let children_to_enqueue = if children.iter().any(|child| {
-            read_lock!(child).id == read_lock!(target_node).id
-        }) {
-            let target_node_position = children.iter().position(|child| {
-                read_lock!(child).id == read_lock!(target_node).id
-            }).unwrap();
+        //let children_to_enqueue = if children.iter().any(|child| {
+        //    read_lock!(child).id == read_lock!(target_node).id
+        //}) {
+        //    let target_node_position = children.iter().position(|child| {
+        //        read_lock!(child).id == read_lock!(target_node).id
+        //    }).unwrap();
 
-            let half = max_children / 2;
-            let start = target_node_position.saturating_sub(half);
-            let end = (start + max_children).min(children.len());
+        //    let half = max_children / 2;
+        //    let start = target_node_position.saturating_sub(half);
+        //    let end = (start + max_children).min(children.len());
 
-            &children[start..end]
-        } else {
-            &children[..max_children.min(children.len())]
-        };
+        //    &children[start..end]
+        //} else {
+        //    &children[..max_children.min(children.len())]
+        //};
 
-        for child in children_to_enqueue.iter() {
-            queue.push_back(Arc::clone(child));
+        for child in &lock.children {
+            queue.push_back(Arc::clone(&child));
         }
 
         for parent in lock.parents.iter() {
