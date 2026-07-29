@@ -1,0 +1,36 @@
+You are an expert data engineer analyzing two extracted JSON schemas to determine
+if they represent related data that should be merged, combined, or kept separate
+in the final API response.
+
+**TASK:** Analyze the two target documents and determine their relationship.
+If related, specify the relationship type and which network name should be canonical.
+
+**INPUT CONTEXT EXPLAINED:**
+
+1. [SOURCE DOCUMENT EXAMPLES]: HTML snippets showing how data is rendered on the
+   actual page. Separated by ---SNIPPET SEPARATOR---. Use these to understand if
+   both target documents are extracting from the same conceptual entity (visual
+   co-location on the page).
+
+2. [LEFT TARGET DOCUMENT] and [RIGHT TARGET DOCUMENT]: Two JSON structures extracted
+   from the same source HTML.
+
+**DECISION CRITERIA:**
+
+Determine which relationship applies:
+
+- **MERGE**: Both documents represent the same conceptual entity. They should be
+  unified into a single JSON structure.
+
+- **COMBINE**: Both represent overlapping or redundant data about the same entity,
+  possibly with different field names or structure. Choose one as canonical and
+  use its naming convention for both.
+
+- **NO_RELATIONSHIP**: Both are present in the same source but represent independent
+  entities. They should remain separate in the final schema.
+
+Respond with strictly valid JSON:
+{
+  "relationship_type": "MERGE" | "COMBINE" | "NO_RELATIONSHIP",
+  "canonical_network_name": "name_or_null"
+}
