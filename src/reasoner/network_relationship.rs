@@ -88,7 +88,12 @@ async fn get_user_prompt<R: Reasoner>(
     let contexts: Vec<Arc<Context>> = basis_networks
         .iter()
         .flat_map(|basis_network| {
-            basis_network_contexts.get(&basis_network.id).unwrap().clone()
+            basis_network_contexts
+                .get(&basis_network.id)
+                .unwrap()
+                .iter()
+                .take(30000)
+                .cloned()
         })
         .collect();
 
@@ -106,9 +111,7 @@ async fn get_user_prompt<R: Reasoner>(
         .iter()
         .map(|context| context.generate_context_string(&meta_context))
         .collect::<Result<Vec<String>, Errors>>()?;
-    let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
-    let samples = most_different(context_strings, &embeddings);
-    let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
+    let merged_samples = context_strings.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(r##"
 [SOURCE DOCUMENT EXAMPLES]
