@@ -31,6 +31,60 @@ impl Context {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>
     ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                })?
+                .clone()
+        };
+
+
+
+
+
+        let current_network = {
+            let lock = read_lock!(normalization_context);
+            let context_basis_networks = lock.context_basis_networks.as_ref().unwrap().clone();
+            context_basis_networks.get(&self.id).unwrap().clone()
+        };
+        let context_to_network = {
+            let lock = read_lock!(normalization_context);
+            lock.context_basis_networks.clone().unwrap()
+        };
+
+        let mut relevant_contexts: Vec<Arc<Context>> = Vec::new();
+
+        let mut queue: VecDeque<Graph> = VecDeque::new();
+        queue.push_back(Arc::clone(&self.graph_node));
+
+        while let Some(node) = queue.pop_front() {
+            let context = meta_context.contexts_lookup
+                .get(&read_lock!(node).id)
+                .cloned()
+                .unwrap();
+
+            if let Some(basis_network) = context_to_network.get(&context.id) {
+                if basis_network.id != current_network.id {
+                    continue;
+                }
+            }
+
+            relevant_contexts.push(context.clone());
+
+            for child in &read_lock!(node).children {
+                queue.push_back(Arc::clone(&child));
+            }
+        }
+
+
+
+
+        let mut context_string = self.generate_context_string(&meta_context, relevant_contexts)?;
+
+
         unimplemented!()
     }
 
@@ -48,7 +102,7 @@ impl Context {
                 .clone()
         };
 
-        let mut context_string = self.generate_context_string(&meta_context)?;
+        let mut context_string = self.generate_context_string(&meta_context, Vec::new())?;
 
         if read_lock!(normalization_context).basis_nodes.is_some() {
             let basis_nodes_context_string = self.generate_basis_nodes_context(
@@ -61,7 +115,7 @@ impl Context {
         Ok(context_string)
     }
 
-    pub fn generate_context_string(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+    pub fn generate_context_string(&self, meta_context: &MetaContext, relevant_contexts: Vec<Arc<Context>>) -> Result<String, Errors> {
         let spatial_context: String = self.generate_spatial_context(meta_context)?;
         let positional_context: String = self.generate_positional_context(meta_context)?;
 

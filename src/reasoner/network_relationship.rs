@@ -109,7 +109,7 @@ async fn get_user_prompt<R: Reasoner>(
 
     let context_strings: Vec<String> = contexts
         .iter()
-        .map(|context| context.generate_context_string(&meta_context))
+        .map(|context| context.generate_context_string_network_relationship(Arc::clone(&normalization_context)))
         .collect::<Result<Vec<String>, Errors>>()?;
     let merged_samples = context_strings.join("\n\n---SNIPPET SEPARATOR---\n\n");
 

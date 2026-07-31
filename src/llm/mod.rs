@@ -59,7 +59,8 @@ impl LLM {
             let lock = read_lock!(translation_context);
             let meta_context = lock.input_meta_context.as_ref().unwrap();
             input_context.generate_context_string(
-                &meta_context
+                &meta_context,
+                Vec::new()
             )?
         };
 
@@ -67,7 +68,8 @@ impl LLM {
             let lock = read_lock!(translation_context);
             let meta_context = lock.target_meta_context.as_ref().unwrap();
             target_context.generate_context_string(
-                &meta_context
+                &meta_context,
+                Vec::new()
             )?
         };
 
@@ -115,7 +117,8 @@ impl LLM {
             let lock = read_lock!(translation_context);
             let meta_context = lock.input_meta_context.as_ref().unwrap();
             input_context.generate_context_string(
-                &meta_context
+                &meta_context,
+                Vec::new()
             )?
         };
 
@@ -123,7 +126,8 @@ impl LLM {
             let lock = read_lock!(translation_context);
             let meta_context = lock.target_meta_context.as_ref().unwrap();
             target_context.generate_context_string(
-                &meta_context
+                &meta_context,
+                Vec::new()
             )?
         };
 
