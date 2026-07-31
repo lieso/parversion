@@ -79,13 +79,9 @@ impl Context {
             }
         }
 
-
-
-
         let mut context_string = self.generate_context_string(&meta_context, relevant_contexts)?;
 
-
-        unimplemented!()
+        Ok(context_string)
     }
 
     pub fn generate_context_string_basis_network(
@@ -116,7 +112,7 @@ impl Context {
     }
 
     pub fn generate_context_string(&self, meta_context: &MetaContext, relevant_contexts: Vec<Arc<Context>>) -> Result<String, Errors> {
-        let spatial_context: String = self.generate_spatial_context(meta_context)?;
+        let spatial_context: String = self.generate_spatial_context(meta_context, relevant_contexts)?;
         let positional_context: String = self.generate_positional_context(meta_context)?;
 
         let result = format!(r##"
@@ -183,12 +179,18 @@ if current_context.network_name.is_empty() {
         Ok(context_strings.join("\n"))
     }
 
-    fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+    fn generate_spatial_context(&self, meta_context: &MetaContext, relevant_contexts: Vec<Arc<Context>>) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
 
         self.traverse_structural_envelope(
             &mut neighbourhood
         );
+
+        for context in relevant_contexts {
+            context.traverse_structural_envelope(
+                &mut neighbourhood
+            );
+        }
 
         let partial_document = Document::from_meta_context(
             meta_context,
