@@ -41,10 +41,6 @@ impl Context {
                 .clone()
         };
 
-
-
-
-
         let current_network = {
             let lock = read_lock!(normalization_context);
             let context_basis_networks = lock.context_basis_networks.as_ref().unwrap().clone();
@@ -79,7 +75,12 @@ impl Context {
             }
         }
 
-        let mut context_string = self.generate_context_string(&meta_context, relevant_contexts)?;
+        let spatial_context: String = self.generate_spatial_context(&meta_context, relevant_contexts)?;
+
+        let context_string = format!(r##"
+[SPATIAL CONTEXT]
+{}
+"##, spatial_context);
 
         Ok(context_string)
     }
