@@ -95,7 +95,7 @@ async fn get_user_prompt<R: Reasoner>(
 ) -> Result<String, Errors> {
     let context_strings: Vec<String> = context_group
         .iter()
-        .map(|context| context.generate_context_string_normalization(
+        .map(|context| context.generate_context_string_basis_network(
             Arc::clone(&normalization_context)
         ))
         .collect::<Result<Vec<String>, Errors>>()?;

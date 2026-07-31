@@ -27,7 +27,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn generate_context_string_normalization(
+    pub fn generate_context_string_basis_network(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>
     ) -> Result<String, Errors> {
