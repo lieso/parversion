@@ -27,6 +27,13 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn generate_context_string_network_relationship(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>
+    ) -> Result<String, Errors> {
+        unimplemented!()
+    }
+
     pub fn generate_context_string_basis_network(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>
@@ -125,8 +132,7 @@ if current_context.network_name.is_empty() {
     fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
 
-        traverse_structural_envelope(
-            Arc::clone(&self.graph_node),
+        self.traverse_structural_envelope(
             &mut neighbourhood
         );
 
@@ -228,62 +234,65 @@ impl Context {
             None
         }
     }
-}
 
-fn traverse_structural_envelope(
-    target_node: Graph,
-    neighbourhood: &mut HashSet<GraphNodeID>,
-) {
-    // ******************************************
-    let max_neighbours = 40;
-    let max_children = 7;
-    // ******************************************
-    
-    let mut queue: VecDeque<Graph> = VecDeque::new();
-    queue.push_back(Arc::clone(&target_node));
+    fn traverse_structural_envelope(
+        &self,
+        neighbourhood: &mut HashSet<GraphNodeID>,
+    ) {
+        let target_node = &self.graph_node;
 
-    while let Some(node) = queue.pop_front() {
-        let lock = read_lock!(node);
+        // ******************************************
+        let max_neighbours = 40;
+        let max_children = 7;
+        // ******************************************
+        
+        let mut queue: VecDeque<Graph> = VecDeque::new();
+        queue.push_back(Arc::clone(&target_node));
 
-        if neighbourhood.contains(&lock.id) {
-            continue;
-        }
+        while let Some(node) = queue.pop_front() {
+            let lock = read_lock!(node);
 
-        neighbourhood.insert(lock.id.clone());
+            if neighbourhood.contains(&lock.id) {
+                continue;
+            }
 
-        if neighbourhood.len() > max_neighbours {
-            return;
-        }
+            neighbourhood.insert(lock.id.clone());
 
-        //// Center the children around the target node,
-        //// only if one of these children is the target_node
-        //let children = lock.children.clone();
+            if neighbourhood.len() > max_neighbours {
+                return;
+            }
 
-        //let children_to_enqueue = if children.iter().any(|child| {
-        //    read_lock!(child).id == read_lock!(target_node).id
-        //}) {
-        //    let target_node_position = children.iter().position(|child| {
-        //        read_lock!(child).id == read_lock!(target_node).id
-        //    }).unwrap();
+            //// Center the children around the target node,
+            //// only if one of these children is the target_node
+            //let children = lock.children.clone();
 
-        //    let half = max_children / 2;
-        //    let start = target_node_position.saturating_sub(half);
-        //    let end = (start + max_children).min(children.len());
+            //let children_to_enqueue = if children.iter().any(|child| {
+            //    read_lock!(child).id == read_lock!(target_node).id
+            //}) {
+            //    let target_node_position = children.iter().position(|child| {
+            //        read_lock!(child).id == read_lock!(target_node).id
+            //    }).unwrap();
 
-        //    &children[start..end]
-        //} else {
-        //    &children[..max_children.min(children.len())]
-        //};
+            //    let half = max_children / 2;
+            //    let start = target_node_position.saturating_sub(half);
+            //    let end = (start + max_children).min(children.len());
 
-        for child in &lock.children {
-            queue.push_back(Arc::clone(&child));
-        }
+            //    &children[start..end]
+            //} else {
+            //    &children[..max_children.min(children.len())]
+            //};
 
-        for parent in lock.parents.iter() {
-            queue.push_back(Arc::clone(parent));
+            for child in &lock.children {
+                queue.push_back(Arc::clone(&child));
+            }
+
+            for parent in lock.parents.iter() {
+                queue.push_back(Arc::clone(parent));
+            }
         }
     }
 }
+
 
 fn get_path_to_target(target_node: Graph) -> Vec<Graph> {
     let mut ancestors: Vec<Graph> = Vec::new();
