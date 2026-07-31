@@ -120,7 +120,7 @@ impl Reasoner for OpenRouterReasoner {
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError)
+                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
                 }
             },
             Err(error) => {
@@ -139,15 +139,15 @@ impl Reasoner for OpenRouterReasoner {
                                 log::error!("User prompt length: {} chars", user_prompt.len());
                                 log::error!("Raw error: {:?}", api_error);
                                 log::error!("└───────────────────────────────────────────────────────────────┘");
-                                Err(Errors::UnexpectedError)
+                                Err(Errors::UnexpectedError("400 Bad Request from OpenRouter".to_string()))
                             },
                             StatusCode::PAYMENT_REQUIRED => Err(Errors::InsufficientBackendQuota(error.to_string())),
                             StatusCode::TOO_MANY_REQUESTS => Err(Errors::RateLimitError(error.to_string())),
                             StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => Err(Errors::TransientBackendError(error.to_string())),
-                            _ => Err(Errors::UnexpectedError),
+                            _ => Err(Errors::UnexpectedError(format!("Unexpected OpenRouter error: {}", api_error.status))),
                         }
                     }
-                    _ => Err(Errors::UnexpectedError),
+                    _ => Err(Errors::UnexpectedError(format!("OpenRouter error: {}", error))),
                 }
             }
         }
@@ -182,12 +182,12 @@ impl Reasoner for OpenRouterReasoner {
                             StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => {
                                 Errors::TransientBackendError(e.to_string())
                             }
-                            _ => Errors::UnexpectedError,
+                            _ => Errors::UnexpectedError(format!("Unexpected embedding API error: {}", api_error.status)),
                         }
                     }
                     _ => {
                         log::error!("Non-API error: {}", e);
-                        Errors::UnexpectedError
+                        Errors::UnexpectedError(format!("Embedding API error: {}", e))
                     }
                 }
             })?;

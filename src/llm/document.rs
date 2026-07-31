@@ -134,7 +134,7 @@ Your task is to convert a schema to an instance of that schema with several exam
                                     "╚═══════════════════════════════════════════════════════════════╝"
                                 );
                                 log::error!("Failed to parse LLM response: {}", e);
-                                Err(Errors::UnexpectedError)
+                                Err(Errors::UnexpectedError("Failed to parse LLM response".to_string()))
 
                             }
                         }
@@ -164,7 +164,7 @@ Your task is to convert a schema to an instance of that schema with several exam
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError)
+                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
 
                 }
             }
@@ -173,7 +173,7 @@ Your task is to convert a schema to an instance of that schema with several exam
                 log::error!("║                    REQUEST ERROR                              ║");
                 log::error!("╚═══════════════════════════════════════════════════════════════╝");
                 log::error!("Failed to get response from OpenRouter: {}", e);
-                Err(Errors::UnexpectedError)
+                Err(Errors::UnexpectedError("Failed to get response from OpenRouter".to_string()))
             }
         }
     }

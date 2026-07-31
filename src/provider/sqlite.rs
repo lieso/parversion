@@ -121,7 +121,7 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_basis_node(
@@ -143,7 +143,7 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_network_by_basis_lineages(
@@ -166,7 +166,7 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_basis_network(
@@ -174,7 +174,7 @@ impl Provider for SqliteProvider {
         basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
-        let key = basis_network.basis_lineages.to_string().ok_or(Errors::UnexpectedError)?;
+        let key = basis_network.basis_lineages.to_string().ok_or(Errors::UnexpectedError("Database operation failed".to_string()))?;
         let data = serialize(&basis_network)?;
 
         task::spawn_blocking(move || {
@@ -187,7 +187,7 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_classification_by_lineage(
@@ -210,7 +210,7 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_classification(
@@ -232,12 +232,12 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
         let conn = self.connection.clone();
-        let key = hash.to_string().ok_or(Errors::UnexpectedError)?;
+        let key = hash.to_string().ok_or(Errors::UnexpectedError("Database operation failed".to_string()))?;
 
         task::spawn_blocking(move || {
             let conn = conn.lock().map_err(|_| lock_err())?;
@@ -252,12 +252,12 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_basis_graph(&self, hash: &Hash, basis_graph: BasisGraph) -> Result<(), Errors> {
         let conn = self.connection.clone();
-        let key = hash.to_string().ok_or(Errors::UnexpectedError)?;
+        let key = hash.to_string().ok_or(Errors::UnexpectedError("Database operation failed".to_string()))?;
         let data = serialize(&basis_graph)?;
 
         task::spawn_blocking(move || {
@@ -270,7 +270,7 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_groups_by_acyclic_lineage(
@@ -295,7 +295,7 @@ impl Provider for SqliteProvider {
             rows.into_iter().map(deserialize).collect()
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_groups_by_lineage(
@@ -327,7 +327,7 @@ impl Provider for SqliteProvider {
             rows.into_iter().map(deserialize).collect()
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_groups_by_indexed_lineage(
@@ -363,7 +363,7 @@ impl Provider for SqliteProvider {
             rows.into_iter().map(deserialize).collect()
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_basis_group(
@@ -399,7 +399,7 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_fields_by_acyclic_subgraph_hash(
@@ -423,7 +423,7 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_basis_fields(
@@ -448,7 +448,7 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
 		async fn save_schema_instance_document(
@@ -473,7 +473,7 @@ impl Provider for SqliteProvider {
 								Ok(())
 				})
 				.await
-						.map_err(|_| Errors::UnexpectedError)?
+						.map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
 		}
 
 		async fn get_instance_document_by_schema_hash(
@@ -500,7 +500,7 @@ impl Provider for SqliteProvider {
         }
       })
       .await
-      .map_err(|_| Errors::UnexpectedError)?
+      .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_translation_node_by_lineages(
@@ -526,7 +526,7 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_translation_node(
@@ -552,7 +552,7 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_translation_network_by_lineages(
@@ -578,7 +578,7 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_translation_network(
@@ -604,6 +604,6 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError)?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 }

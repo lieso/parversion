@@ -68,7 +68,8 @@ fn build_runtime() -> tokio::runtime::Runtime {
 fn main() {
     let runtime = build_runtime();
     if let Err(e) = runtime.block_on(run()) {
-        println!("Error occurred: {:?}", e);
+        eprintln!("Error occurred: {:?}", e);
+        log::error!("Fatal error: {:?}", e);
         std::process::exit(1);
     }
     std::process::exit(0);

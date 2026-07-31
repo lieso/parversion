@@ -73,7 +73,9 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
         items = next_items;
     }
 
-    let relationships = items.into_iter().next().ok_or(Errors::UnexpectedError);
+    let relationships = items.into_iter().next().ok_or_else(|| {
+        Errors::UnexpectedError("Failed to generate basis graph: no items remaining after analysis".to_string())
+    });
 
     unimplemented!()
 }

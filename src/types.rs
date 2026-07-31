@@ -15,7 +15,7 @@ pub enum Errors {
     DocumentNotProvided,
     UnexpectedDocumentType,
     DocumentTypeNotProvided,
-    UnexpectedError,
+    UnexpectedError(String),
     XmlParseError,
     PathConversionError,
     FetchUrlError(String),
@@ -43,10 +43,11 @@ pub enum Errors {
     TransientBackendError(String),
     RequestTimeout(String),
     EmbeddingError(String),
+    TaskJoinError(String),
 }
 
 impl From<JoinError> for Errors {
-    fn from(_: JoinError) -> Self {
-        Errors::UnexpectedError
+    fn from(e: JoinError) -> Self {
+        Errors::TaskJoinError(e.to_string())
     }
 }

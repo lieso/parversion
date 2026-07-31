@@ -77,7 +77,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
                 Ok((content, metadata)) => {
                     let parsed = serde_json::from_str::<T>(&content).map_err(|e| {
                         log::error!("Failed to parse reasoner response: {}", e);
-                        Errors::UnexpectedError
+                        Errors::UnexpectedError("Failed to parse reasoner response".to_string())
                     })?;
 
                     return Ok((parsed, metadata));

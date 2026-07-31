@@ -1,5 +1,4 @@
-use tokio::task;
-use futures::future::try_join_all;
+use tokio::task::{self, JoinError};
 use std::sync::{Arc, RwLock};
 use std::collections::{HashMap};
 
@@ -85,14 +84,22 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
         handles.push(handle);
     }
 
-    let results: Vec<Result<Option<BasisField>, Errors>> = try_join_all(handles).await?;
+    let results: Vec<Result<Result<Option<BasisField>, Errors>, JoinError>> = futures::future::join_all(handles).await;
 
     let mut basis_fields: Vec<BasisField> = results.into_iter()
-        .filter_map(|res| {
+        .enumerate()
+        .filter_map(|(idx, res)| {
             match res {
-                Ok(Some(basis_field)) => Some(Ok(basis_field)),
-                Ok(None) => None,
-                Err(e) => Some(Err(e)),
+                Ok(Ok(Some(basis_field))) => Some(Ok(basis_field)),
+                Ok(Ok(None)) => None,
+                Ok(Err(e)) => {
+                    log::error!("Field analysis task {} failed: {:?}", idx, e);
+                    Some(Err(e))
+                },
+                Err(join_err) => {
+                    log::error!("Field analysis task {} panicked or was cancelled: {}", idx, join_err);
+                    Some(Err(Errors::TaskJoinError(format!("Field analysis task {} failed: {}", idx, join_err))))
+                }
             }
         })
         .collect::<Result<Vec<BasisField>, Errors>>()?;

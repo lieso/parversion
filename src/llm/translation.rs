@@ -189,7 +189,7 @@ Example Output:
                                     "╚═══════════════════════════════════════════════════════════════╝"
                                 );
                                 log::error!("Failed to parse LLM response: {}", e);
-                                Err(Errors::UnexpectedError)
+                                Err(Errors::UnexpectedError("Failed to parse LLM response".to_string()))
                             }
                         }
                     }?;
@@ -218,7 +218,7 @@ Example Output:
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError)
+                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
                 }
             }
             Err(e) => {
@@ -226,7 +226,7 @@ Example Output:
                 log::error!("║                    REQUEST ERROR                              ║");
                 log::error!("╚═══════════════════════════════════════════════════════════════╝");
                 log::error!("Failed to get response from OpenRouter: {}", e);
-                Err(Errors::UnexpectedError)
+                Err(Errors::UnexpectedError("Failed to get response from OpenRouter".to_string()))
             }
         }
     }
@@ -390,7 +390,7 @@ If the values are already in the exact same format and type, `transform_code` sh
                                     "╚═══════════════════════════════════════════════════════════════╝"
                                 );
                                 log::error!("Failed to parse LLM response: {}", e);
-                                Err(Errors::UnexpectedError)
+                                Err(Errors::UnexpectedError("Failed to parse LLM response".to_string()))
                             }
                         }
                     }?;
@@ -419,7 +419,7 @@ If the values are already in the exact same format and type, `transform_code` sh
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError)
+                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
                 }
             }
             Err(e) => {
@@ -427,7 +427,7 @@ If the values are already in the exact same format and type, `transform_code` sh
                 log::error!("║                    REQUEST ERROR                              ║");
                 log::error!("╚═══════════════════════════════════════════════════════════════╝");
                 log::error!("Failed to get response from OpenRouter: {}", e);
-                Err(Errors::UnexpectedError)
+                Err(Errors::UnexpectedError("Failed to get response from OpenRouter".to_string()))
             }
         }
     }

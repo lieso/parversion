@@ -79,10 +79,10 @@ impl YamlFileProvider {
     }
 
     async fn save_data(&self, yaml: &serde_yaml::Value) -> Result<(), Errors> {
-        let new_yaml_str = serde_yaml::to_string(yaml).map_err(|_| Errors::UnexpectedError)?;
+        let new_yaml_str = serde_yaml::to_string(yaml).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
         async_fs::write(&self.file_path, new_yaml_str)
             .await
-            .map_err(|_| Errors::UnexpectedError)?;
+            .map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
         let mut cache = self.cache.write().await;
         *cache = Some(yaml.clone());
         Ok(())
@@ -126,7 +126,7 @@ impl Provider for YamlFileProvider {
         let mut yaml = self.load_data().await?;
 
         let serialized_basis_node =
-            serde_yaml::to_value(&basis_node).map_err(|_| Errors::UnexpectedError)?;
+            serde_yaml::to_value(&basis_node).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
 
         if let Some(basis_nodes) = yaml.get_mut("basis_nodes") {
             let sequence = basis_nodes.as_sequence_mut().ok_or_else(|| {
@@ -161,7 +161,7 @@ impl Provider for YamlFileProvider {
         let mut yaml = self.load_data().await?;
 
         let serialized_basis_network =
-            serde_yaml::to_value(&basis_network).map_err(|_| Errors::UnexpectedError)?;
+            serde_yaml::to_value(&basis_network).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
 
         if let Some(basis_networks) = yaml.get_mut("basis_networks") {
             let sequence = basis_networks.as_sequence_mut().ok_or_else(|| {
@@ -223,7 +223,7 @@ impl Provider for YamlFileProvider {
         let mut yaml = self.load_data().await?;
 
         let serialized_classification =
-            serde_yaml::to_value(&classification).map_err(|_| Errors::UnexpectedError)?;
+            serde_yaml::to_value(&classification).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
 
         if let Some(classifications) = yaml.get_mut("classifications") {
             let sequence = classifications.as_sequence_mut().ok_or_else(|| {
@@ -280,7 +280,7 @@ impl Provider for YamlFileProvider {
         let mut yaml = self.load_data().await?;
 
         let serialized_basis_graph =
-            serde_yaml::to_value(&basis_graph).map_err(|_| Errors::UnexpectedError)?;
+            serde_yaml::to_value(&basis_graph).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
 
         if let Some(basis_graphs) = yaml.get_mut("basis_graphs") {
             let sequence = basis_graphs.as_sequence_mut().ok_or_else(|| {
@@ -327,14 +327,14 @@ impl Provider for YamlFileProvider {
             bloom_filter.add(hash);
 
             let serialized_bloom_filter =
-                serde_yaml::to_value(bloom_filter).map_err(|_| Errors::UnexpectedError)?;
+                serde_yaml::to_value(bloom_filter).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
             yaml["no_op"] = serialized_bloom_filter;
 
             return self.save_data(&yaml).await;
         }
 
         let serialized_operation =
-            serde_yaml::to_value(&operation).map_err(|_| Errors::UnexpectedError)?;
+            serde_yaml::to_value(&operation).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
 
         if let Some(operations) = yaml.get_mut("operations") {
             operations
@@ -440,7 +440,7 @@ impl Provider for YamlFileProvider {
         let mut yaml = self.load_data().await?;
 
         let serialized_basis_group =
-            serde_yaml::to_value(&basis_group).map_err(|_| Errors::UnexpectedError)?;
+            serde_yaml::to_value(&basis_group).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
 
         if let Some(basis_groups) = yaml.get_mut("basis_groups") {
             let sequence = basis_groups.as_sequence_mut().ok_or_else(|| {
@@ -500,7 +500,7 @@ impl Provider for YamlFileProvider {
 
         let serialized_basis_fields: Vec<serde_yaml::Value> = basis_fields
             .into_iter()
-            .map(|field| serde_yaml::to_value(&field).map_err(|_| Errors::UnexpectedError))
+            .map(|field| serde_yaml::to_value(&field).map_err(|_| Errors::UnexpectedError("Serialization error".to_string())))
             .collect::<Result<_, _>>()?;
 
         if let Some(existing_basis_fields) = yaml.get_mut("basis_fields") {
