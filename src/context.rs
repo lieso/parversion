@@ -27,6 +27,45 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn generate_context_string_basis_group(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>
+    ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                })?
+                .clone()
+        };
+
+        let spatial_context: String = self.generate_spatial_context(&meta_context, Vec::new())?;
+        let positional_context: String = self.generate_positional_context(&meta_context)?;
+
+
+        let fields_context: String = self.data_node
+            .fields
+            .iter()
+            .fold(String::new(), |acc, (field, value)| {
+                format!("{}\nFIELD: {}, VALUE: {}", acc, field, value)
+            });
+
+
+        let result = format!(r##"
+[SPATIAL CONTEXT]
+{}
+
+[POSITIONAL CONTEXT]
+{}
+
+[EXTRACTED FIELDS]{}
+"##, spatial_context, positional_context, fields_context);
+
+        Ok(result)
+    }
+
     pub fn generate_context_string_network_relationship(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>

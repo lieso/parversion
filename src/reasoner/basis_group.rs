@@ -107,7 +107,9 @@ async fn get_user_prompt<R: Reasoner>(
     };
     let context_strings: Vec<String> = group
         .iter()
-        .map(|context| context.generate_context_string(&meta_context, Vec::new()))
+        .map(|context| context.generate_context_string_basis_group(
+            Arc::clone(&normalization_context)
+        ))
         .collect::<Result<Vec<String>, Errors>>()?;
     let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = most_different(context_strings, &embeddings);
