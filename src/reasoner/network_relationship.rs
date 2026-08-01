@@ -23,7 +23,12 @@ pub enum RelationshipType {
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct NetworkRelationshipResponse {
     pub relationship_type: RelationshipType,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub canonical_network_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub left_network: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub right_network: Option<String>,
 }
 
 pub async fn network_relationship<R: Reasoner>(

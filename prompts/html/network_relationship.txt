@@ -1,36 +1,61 @@
-You are an expert data engineer analyzing two extracted JSON schemas to determine
-if they represent related data that should be merged, combined, or kept separate
-in the final API response.
+You are an expert data engineer analyzing two extracted JSON schemas to find a
+network embedded in the left document and a network embedded in the right document
+that should be merged, combined, or kept separate in the final API response.
 
-**TASK:** Analyze the two target documents and determine their relationship.
-If related, specify the relationship type and which network name should be canonical.
+**TASK:** Each target document contains one or more networks (top-level keys with
+their child values). Examine the networks embedded within the left document and
+the networks embedded within the right document to find a pair, one from each side,
+that are related. If you find such a pair, specify the relationship type, which
+network (key) from each document is involved, and what the resulting network name
+should be.
 
 **INPUT CONTEXT EXPLAINED:**
 
 1. [SOURCE DOCUMENT EXAMPLES]: HTML snippets showing how data is rendered on the
-   actual page. Separated by ---SNIPPET SEPARATOR---. Use these to understand if
-   both target documents are extracting from the same conceptual entity (visual
-   co-location on the page).
+   actual page. Separated by ---SNIPPET SEPARATOR---. Use these to understand what
+   each network represents and whether a network from the left document and a
+   network from the right document describe the same conceptual entity (e.g. visual
+   co-location on the page). Correlate the keys and values in the target documents
+   with the actual HTML to understand what each network represents.
 
 2. [LEFT TARGET DOCUMENT] and [RIGHT TARGET DOCUMENT]: Two JSON structures extracted
-   from the same source HTML.
+   from the same source HTML, each potentially containing multiple networks. Compare
+   the networks in these documents to the source HTML to determine if any network
+   from the left document and any network from the right document extract
+   overlapping or complementary information.
+
+**NOTE ON CORRESPONDENCE:** There is not necessarily a one-to-one correspondence
+between networks. One side may contain a single network while the other contains
+many repeated instances of a network (e.g. an array of similar objects). In that
+case, use the source document examples to determine whether the single network on
+one side corresponds conceptually to the repeated network structure on the other
+side, even though only one of those repeated instances actually matches by value.
+It is enough that the two networks share the same underlying structure/entity type;
+report the network (key) name that holds the repeated instances, not an index into
+the array.
 
 **DECISION CRITERIA:**
 
 Determine which relationship applies:
 
-- **MERGE**: Both documents represent the same conceptual entity. They should be
-  unified into a single JSON structure.
+- **MERGE**: A network in the left document and a network in the right document
+  represent the same conceptual entity. They should be unified into a single JSON
+  structure. Specify which network (key) from the left document and which from the
+  right should be merged, along with the canonical name for the resulting merged
+  network.
 
-- **COMBINE**: Both represent overlapping or redundant data about the same entity,
-  possibly with different field names or structure. Choose one as canonical and
-  use its naming convention for both.
+- **COMBINE**: A network in the left document and a network in the right document
+  represent overlapping or redundant data about the same entity, possibly with
+  different field names or structure. Specify which network from each document to
+  combine and the canonical name for the result.
 
-- **NO_RELATIONSHIP**: Both are present in the same source but represent independent
-  entities. They should remain separate in the final schema.
+- **NO_RELATIONSHIP**: No network in the left document is related to any network
+  in the right document. They should remain separate in the final schema.
 
 Respond with strictly valid JSON:
 {
   "relationship_type": "MERGE" | "COMBINE" | "NO_RELATIONSHIP",
-  "canonical_network_name": "name_or_null"
+  "canonical_network_name": "name_or_null",
+  "left_network": "network_key_or_null",
+  "right_network": "network_key_or_null"
 }
