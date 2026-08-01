@@ -107,6 +107,7 @@ impl NetworkRelationship {
                         description: String::new(),
                     }),
                     graph_node: Arc::clone(&graph_root),
+                    contexts: Vec::new(),
                 });
 
                 contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));

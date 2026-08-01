@@ -108,6 +108,7 @@ impl BasisNetwork {
             network_description: Some(self.transformation.description.clone()),
             data_node: combined_data_node,
             graph_node,
+            contexts: vec![context.clone()]
         })
     }
 }
