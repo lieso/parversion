@@ -27,6 +27,7 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
         .into_values()
         .map(NetworkRelationship::Leaf)
         .map(Arc::new)
+        .take(2)
         .collect();
 
     while items.len() > 1 {
