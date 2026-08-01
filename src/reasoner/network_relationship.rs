@@ -12,6 +12,20 @@ use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::basis_network::BasisNetwork;
 
+#[derive(Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum RelationshipType {
+    Merge,
+    Combine,
+    NoRelationship,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
+pub struct NetworkRelationshipResponse {
+    pub relationship_type: RelationshipType,
+    pub canonical_network_name: Option<String>,
+}
+
 pub async fn network_relationship<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -20,20 +34,71 @@ pub async fn network_relationship<R: Reasoner>(
 ) -> Result<(RelationshipTransformation, ReasonerMetadata), Errors> {
     log::trace!("In network_relationship");
 
+    let system_prompt = get_system_prompt(
+        reasoner,
+        Arc::clone(&normalization_context),
+    ).await?;
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&normalization_context),
         left.clone(),
         right.clone()
     ).await?;
+    let schema = serde_json::to_value(schemars::schema_for!(NetworkRelationshipResponse))
+        .expect("Failed to serialize NetworkRelationshipResponse schema");
+    let capability = Capability::Fast;
 
+    log::debug!("");
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║                   NETWORK RELATIONSHIP                        ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("");
+    log::debug!("  Capability : {:?}", capability);
+    log::debug!("");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
     log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
     log::debug!("{}", user_prompt);
     log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
 
     sleep(Duration::from_secs(2)).await;
 
     unimplemented!()
+}
+
+async fn get_system_prompt<R: Reasoner>(
+    reasoner: &R,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<String, Errors> {
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+    };
+
+    let document_type = meta_context.document_type.to_string().to_lowercase();
+
+    let paths_to_try: Vec<String> = vec![
+        format!("{}/{}", document_type, meta_context.acyclic_subgraph_hash.clone()),
+        format!("{}", document_type)
+    ];
+
+    for path in paths_to_try {
+        log::trace!("Searching for prompt with path: {}", path);
+        if let Some(system_prompt) = reasoner.prompts().get(&path, "network_relationship").await? {
+            return Ok(system_prompt);
+        }
+    }
+
+    Err(Errors::UnavailableSystemPrompt("Expected a network_relationship.txt system prompt in prompts directory".to_string()))
 }
 
 async fn get_user_prompt<R: Reasoner>(
