@@ -70,8 +70,58 @@ pub async fn network_relationship<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    sleep(Duration::from_secs(2)).await;
+    let (result, metadata) = reasoner.execute::<NetworkRelationshipResponse>(
+        &capability,
+        &system_prompt,
+        &user_prompt,
+        schema
+    ).await?;
 
+    match result.relationship_type {
+        RelationshipType::Merge => {
+            network_relationship_merge(
+                reasoner,
+                Arc::clone(&normalization_context),
+                left.clone(),
+                right.clone()
+            ).await
+        }
+        RelationshipType::Combine => {
+            unimplemented!()
+        }
+        RelationshipType::NoRelationship => {
+            unimplemented!()
+        }
+    }
+}
+
+async fn network_relationship_merge<R: Reasoner>(
+    reasoner: &R,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    left: Arc<NetworkRelationship>,
+    right: Arc<NetworkRelationship>
+) -> Result<(RelationshipTransformation, ReasonerMetadata), Errors> {
+
+    let user_prompt = get_user_prompt_merge(
+        reasoner,
+        Arc::clone(&normalization_context),
+        left.clone(),
+        right.clone()
+    ).await?;
+
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+
+    unimplemented!()
+}
+
+async fn get_user_prompt_merge<R: Reasoner>(
+    reasoner: &R,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    left: Arc<NetworkRelationship>,
+    right: Arc<NetworkRelationship>,
+) -> Result<String, Errors> {
     unimplemented!()
 }
 
