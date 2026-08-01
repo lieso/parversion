@@ -30,43 +30,46 @@ mixed (some boilerplate, some not), describe the dominant semantic role.
 
 1. **Advertisements & Promotional Content:** Sponsored products, promo banners,
    upsell text, affiliate links, promotional URLs, tracking pixels, ad network
-   attributes. Anything designedhan the core product/content.
+   attributes. Anything designed for marketing rather than the core product/content.
 
    EXAMPLES - BOILERPLATE:
    - ATTRIBUTE=href: Links to external vendor promotions or signup pages
-   - TEXT: "Limited time offer!" marketing copy)
+   - TEXT: "Limited time offer!" (marketing copy)
 
-2. **Framework & Code Artifacts:ibutes, configuration
+2. **Framework & Code Artifacts:** Data attributes, configuration
    objects, base64-encoded data, event handlers (onclick, onload, etc.),
-   framework-specific attributes
+   framework-specific attributes.
 
-3. **UI Structure & Styling:** P•, →), UI affordances
+3. **UI Structure & Styling:** Punctuation (|, •, →), UI affordances
    (button labels like "Search", "Submit", "Add to Cart"), CSS classes, inline
-   styles, IDs, ARIA labels that, layout markers.
+   styles, IDs, ARIA labels that act as layout markers. Action links that trigger
+   UI state changes (e.g., "hide", "upvote", "delete", "reply") are boilerplate,
+   EVEN IF their URLs contain valid entity IDs.
 
    EXAMPLES - BOILERPLATE:
    - TEXT: "Submit", "Search", "Next page" (button labels)
-   - TEXT: "|", "•", "→" (separa
+   - TEXT: "|", "•", "→" (separators)
+   - ATTRIBUTE=href: "?sort=desc", "hide?id=123", "reply?id=123" (UI actions/affordances)
 
-4. **Hardcoded Static Content:**n numbers, "All rights
+4. **Hardcoded Static Content:** Version numbers, "All rights
    reserved", disclaimer text, navigation links to static pages, social media
-   follow buttons (unless the pahose profiles).
+   follow buttons (unless the page is those profiles).
 
    EXAMPLES - BOILERPLATE:
    - TEXT: "© 2024 Company Inc.", "Privacy Policy", "Terms of Service"
-   - ATTRIBUTE=href: Generic conlp pages
+   - ATTRIBUTE=href: Generic contact/help pages
 
-5. **Empty or Placeholder Contenxt, loading states.
+5. **Empty or Placeholder Content:** Empty text, loading states, placeholder text.
 
-**INCLUSION CRITERIA (include in
+**INCLUSION CRITERIA (include in response):**
 A field is meaningful if it would be stored in the backend's API response data.
-Ask: "Would a backend engineer i
+Ask: "Would a backend engineer include this specific field in the database or JSON response?"
 
 EXAMPLES - MEANINGFUL:
 - ATTRIBUTE=href: Product URLs, article links, user profile links that vary
   per item shown on the page
 - TEXT: Product name, price, description, publication date, author name, or
-  user-generated content that ch
+  user-generated content that changes per item.
 
 For meaningful fields, provide exactly one mapping per source field:
 - source_field: The original field from [FIELDS TO CONSIDER] that was analyzed (e.g., "TEXT", "ATTRIBUTE=href")
