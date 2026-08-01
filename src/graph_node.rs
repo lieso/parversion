@@ -45,6 +45,28 @@ impl GraphNode {
         })
     }
 
+    pub fn index_in_parent_by_type(&self, meta_context: &MetaContext) -> Option<usize> {
+        self.parents.first().and_then(|parent| {
+            let parent_lock = read_lock!(parent);
+            let self_context = meta_context.contexts_lookup.get(&self.id)?;
+            let self_element_name = read_lock!(self_context.document_node).get_element_name();
+
+            let same_type_siblings: Vec<_> = parent_lock.children.iter()
+                .filter(|child| {
+                    let child_lock = read_lock!(child);
+                    if let Some(child_context) = meta_context.contexts_lookup.get(&child_lock.id) {
+                        let child_element_name = read_lock!(child_context.document_node).get_element_name();
+                        child_element_name == self_element_name
+                    } else {
+                        false
+                    }
+                })
+                .collect();
+
+            same_type_siblings.iter().position(|child| read_lock!(child).id == self.id)
+        })
+    }
+
     pub fn subgraph_hash(&self) -> Hash {
         let mut combined_hash = Hash::new();
 
@@ -442,10 +464,10 @@ impl GraphNode {
             let lock = read_lock!(graph);
             let context = meta_context.contexts_lookup.get(&lock.id).unwrap();
             let document_node = read_lock!(context.document_node);
-            
+
             let predicate = {
                 if lock.parents.len() > 0 {
-                    let position = lock.index_in_parent().unwrap();
+                    let position = lock.index_in_parent_by_type(meta_context).unwrap();
 
                     if position > 0 {
                         Some(XPathPredicate::Position(position + 1))
@@ -467,6 +489,19 @@ impl GraphNode {
         let final_context = meta_context.contexts_lookup.get(&self.id).unwrap();
 
         let final_segment = {
+            let position = {
+                if self.parents.len() > 0 {
+                    let pos = self.index_in_parent_by_type(meta_context).unwrap();
+                    if pos > 0 {
+                        Some(XPathPredicate::Position(pos + 1))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
             if final_context.data_node.fields.contains_key("text") {
                 XPathSegment {
                     axis: XPathAxis::Child,
@@ -480,7 +515,7 @@ impl GraphNode {
                 XPathSegment {
                     axis: XPathAxis::Child,
                     node_test: document_node.get_element_name(),
-                    predicate: Some(XPathPredicate::AttributePresence(attributes)),
+                    predicate: position.or(Some(XPathPredicate::AttributePresence(attributes))),
                 }
             }
         };
