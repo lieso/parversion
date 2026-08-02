@@ -4,7 +4,7 @@ use rand::rng;
 
 use crate::context::Context;
 
-const CAP: usize = 100;
+const CAP: usize = 50;
 
 pub(super) fn pre_sample_context_group(mut group: Vec<Arc<Context>>) -> Vec<Arc<Context>> {
     if group.len() <= CAP {

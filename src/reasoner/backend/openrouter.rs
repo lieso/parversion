@@ -8,6 +8,8 @@ use openrouter_rs::{
 use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
 use http::StatusCode;
 use std::path::PathBuf;
+use tokio::sync::Semaphore;
+use std::sync::Arc;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, CompletionMetadata, Capability, EmbeddingMetadata};
@@ -19,7 +21,8 @@ use crate::hash::Hash;
 #[cfg(feature = "openrouter-reasoner")]
 pub struct OpenRouterReasoner {
     client: OpenRouterClient,
-    prompts: PromptRegistry
+    prompts: PromptRegistry,
+    concurrency_limit: Arc<Semaphore>,
 }
 
 #[cfg(feature = "openrouter-reasoner")]
@@ -30,7 +33,12 @@ impl OpenRouterReasoner {
             .api_key(api_key)
             .build()
             .expect("Could not build OpenRouter client");
-        OpenRouterReasoner { client, prompts }
+
+        OpenRouterReasoner {
+            client,
+            prompts,
+            concurrency_limit: Arc::new(Semaphore::new(37)),
+        }
     }
 }
 
@@ -46,6 +54,9 @@ impl Reasoner for OpenRouterReasoner {
         user_prompt: &str,
         schema: serde_json::Value,
     ) -> Result<(String, CompletionMetadata), Errors> {
+        let _permit = self.concurrency_limit.acquire().await
+            .expect("Semaphore should never be closed");
+
         let combined_prompt = format!("{}{}", system_prompt, user_prompt);
         let prompt_hash = Hash::from_str(&combined_prompt);
 
@@ -157,6 +168,9 @@ impl Reasoner for OpenRouterReasoner {
         &self,
         inputs: Vec<String>
     ) -> Result<(Vec<Vec<f32>>, EmbeddingMetadata), Errors> {
+        let _permit = self.concurrency_limit.acquire().await
+            .expect("Semaphore should never be closed");
+
         let input_count = inputs.len();
         let request = EmbeddingRequest::new("openai/text-embedding-3-small", inputs);
 
