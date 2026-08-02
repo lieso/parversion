@@ -47,7 +47,6 @@ impl BasisNetwork {
 
             if let Some(basis_network) = context_to_network.get(&context.id) {
                 if basis_network.id != current_network.id {
-                    log::info!("Detected network boundary");
                     return Ok(Vec::new());
                 }
             }
