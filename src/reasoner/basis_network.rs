@@ -97,14 +97,15 @@ async fn get_user_prompt<R: Reasoner>(
     let context_group = pre_sample_context_group(context_group);
     let context_strings: Vec<String> = context_group
         .iter()
+        .take(10)
         .map(|context| context.generate_context_string_basis_network(
             Arc::clone(&normalization_context)
         ))
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
-    let samples = sample_most_different(context_strings, &embeddings);
-    let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
+    //let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
+    //let samples = sample_most_different(context_strings, &embeddings);
+    let merged_samples = context_strings.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(r##"
 [SNIPPETS]

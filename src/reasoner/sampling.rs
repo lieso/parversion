@@ -22,7 +22,7 @@ pub(super) fn sample_most_different(candidates: Vec<String>, embeddings: &[Vec<f
     // *************************
     let min_samples = 5;
     let threshold = 0.2;
-    let max_samples = 50;
+    let max_samples = 20;
     // *************************
 
     if n < min_samples {
