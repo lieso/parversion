@@ -60,6 +60,18 @@ What matters is what should happen to the *instances* on each side:
   UNIFY_FIELDS when you can identify which existing instance on the other side
   each instance corresponds to.
 
+  **A shared identifier field (id, url, etc.) is NOT required to establish this
+  correspondence.** Two networks extracted from the same page frequently have no
+  overlapping field names at all — that is exactly the case UNIFY_FIELDS exists
+  for. Instead, use the [SOURCE DOCUMENT EXAMPLES]: if the left network and the
+  right network were extracted from the same sequence of structural positions
+  on the page (e.g. the same rows in the same order — the Nth snippet's instance
+  on the left occupies the same structural position as the Nth snippet's
+  instance on the right), then the Nth instance on the left corresponds to the
+  Nth instance on the right, even though nothing in their field values overlaps.
+  Do not default to CONCATENATE just because the two sides have no field in
+  common — check positional/structural alignment first.
+
 - **NO_RELATIONSHIP**: No network in the left document is related to any network
   in the right document. They should remain separate in the final schema.
 

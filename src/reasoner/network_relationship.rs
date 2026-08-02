@@ -90,10 +90,9 @@ pub async fn network_relationship<R: Reasoner>(
 
     match result.relationship_type {
         RelationshipType::Concatenate => {
-
-
-
-
+            unimplemented!()
+        }
+        RelationshipType::UnifyFields => {
 
             let left_network_name = result.left_network.ok_or_else(|| {
                 Errors::UnexpectedError("Received CONCATENATE but no left_network name".to_string())
@@ -105,37 +104,16 @@ pub async fn network_relationship<R: Reasoner>(
                 Errors::UnexpectedError("Received CONCATENATE but no canonical_network_name".to_string())
             })?;
 
-            let left_normal_meta_context = left.apply(
-                Arc::clone(&normalization_context),
-            )?;
 
 
-            let left_contexts = left_normal_meta_context.collect_contexts_by_network_name(
-                &left_network_name
-            )?;
-
-            for context in left_contexts {
-                let context_string = context.generate_context_string_network_relationship(
-                    Arc::clone(&normalization_context)
-                )?;
-
-                log::debug!("context_string: {}", context_string);
-            }
-
-
-
-
-
-
-            network_relationship_concatenate(
+            network_relationship_unify(
                 reasoner,
                 Arc::clone(&normalization_context),
                 left.clone(),
-                right.clone()
+                &left_network_name,
+                right.clone(),
+                &right_network_name
             ).await
-        }
-        RelationshipType::UnifyFields => {
-            unimplemented!()
         }
         RelationshipType::NoRelationship => {
             unimplemented!()
@@ -143,18 +121,22 @@ pub async fn network_relationship<R: Reasoner>(
     }
 }
 
-async fn network_relationship_concatenate<R: Reasoner>(
+async fn network_relationship_unify<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<NetworkRelationship>,
-    right: Arc<NetworkRelationship>
+    left_network_name: &str,
+    right: Arc<NetworkRelationship>,
+    right_network_name: &str
 ) -> Result<(RelationshipTransformation, ReasonerMetadata), Errors> {
 
-    let user_prompt = get_user_prompt_concatenate(
+    let user_prompt = get_user_prompt_unify(
         reasoner,
         Arc::clone(&normalization_context),
         left.clone(),
-        right.clone()
+        &left_network_name,
+        right.clone(),
+        &right_network_name
     ).await?;
 
     log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
@@ -164,12 +146,29 @@ async fn network_relationship_concatenate<R: Reasoner>(
     unimplemented!()
 }
 
-async fn get_user_prompt_concatenate<R: Reasoner>(
+async fn get_user_prompt_unify<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<NetworkRelationship>,
+    left_network_name: &str,
     right: Arc<NetworkRelationship>,
+    right_network_name: &str
 ) -> Result<String, Errors> {
+
+    let left_normal_meta_context = left.apply(
+        Arc::clone(&normalization_context),
+    )?;
+    let left_contexts = left_normal_meta_context.collect_contexts_by_network_name(
+        left_network_name
+    )?;
+
+    let right_normal_meta_context = right.apply(
+        Arc::clone(&normalization_context),
+    )?;
+    let right_contexts = left_normal_meta_context.collect_contexts_by_network_name(
+        right_network_name
+    )?;
+
     unimplemented!()
 }
 

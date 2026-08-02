@@ -338,7 +338,7 @@ impl Context {
         let target_node = &self.graph_node;
 
         // ******************************************
-        let max_neighbours = 40;
+        let max_neighbours = 100;
         let max_children = 7;
         // ******************************************
         
