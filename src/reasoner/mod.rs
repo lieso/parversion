@@ -19,6 +19,7 @@ mod basis_group;
 mod basis_node;
 mod basis_network;
 mod network_relationship;
+mod sampling;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;

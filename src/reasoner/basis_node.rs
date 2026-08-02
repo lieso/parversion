@@ -11,6 +11,7 @@ use crate::transformation::{
     FieldMetadata,
     FieldTransformation
 };
+use super::sampling::pre_sample_context_group;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisNodeResponseItem {
@@ -139,6 +140,8 @@ async fn get_user_prompt<R: Reasoner>(
             })?
             .clone()
     };
+
+    let group = pre_sample_context_group(group);
 
     let basis_fields = {
         let lock = read_lock!(normalization_context);

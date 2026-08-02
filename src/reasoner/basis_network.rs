@@ -6,6 +6,7 @@ use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
 use crate::transformation::NetworkTransformation;
+use super::sampling::pre_sample_context_group;
 
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct BasisNetworkResponse {
@@ -93,6 +94,7 @@ async fn get_user_prompt<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     context_group: Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
+    let context_group = pre_sample_context_group(context_group);
     let context_strings: Vec<String> = context_group
         .iter()
         .map(|context| context.generate_context_string_basis_network(

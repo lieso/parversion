@@ -5,6 +5,7 @@ use serde::Deserialize;
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::basis_field::{BasisField, BasisFieldMetadata};
+use super::sampling::pre_sample_context_group;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisFieldResponse {
@@ -100,6 +101,7 @@ async fn get_user_prompt<R: Reasoner>(
         let lock = read_lock!(normalization_context);
         lock.meta_context.clone().unwrap()
     };
+    let group = pre_sample_context_group(group);
     let context_strings: Vec<String> = group
         .iter()
         .map(|context| context.generate_context_string(&meta_context, Vec::new()))
