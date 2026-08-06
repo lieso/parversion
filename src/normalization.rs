@@ -12,7 +12,7 @@ use crate::network_analysis::{
     get_classification,
     generate_basis_networks
 };
-use crate::graph_analysis::{generate_basis_graph};
+use crate::graph_analysis::{generate_basis_clusters};
 use crate::reports::{
     report_basis_groups,
     report_basis_fields,
@@ -199,14 +199,13 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     stage.finish();
-    panic!();
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Network relationships");
+    let stage = execution_context.enter_stage("Cluster analysis");
 
-    log::info!("Generating basis graph");
-    let basis_graph =
-        generate_basis_graph(
+    log::info!("Generating basis clusters");
+    let basis_clusters =
+        generate_basis_clusters(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
             Arc::clone(&normalization_context),
@@ -215,15 +214,16 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    {
-        let mut lock = write_lock!(normalization_context);
-        lock.update_basis_graph(basis_graph);
-    }
+    //{
+    //    let mut lock = write_lock!(normalization_context);
+    //    lock.update_basis_graph(basis_graph);
+    //}
 
     let elapsed = start.elapsed();
     log::info!("get_network_relationships: {:.2?}", elapsed);
 
     stage.finish();
+    panic!();
 
     let start = Instant::now();
     let stage = execution_context.enter_stage("Building normalized graph");

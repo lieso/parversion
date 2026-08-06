@@ -9,8 +9,6 @@ use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
-use crate::basis_graph::NetworkRelationship;
-use crate::transformation::RelationshipTransformation;
 
 mod backend;
 mod classify;
@@ -18,7 +16,6 @@ mod basis_field;
 mod basis_group;
 mod basis_node;
 mod basis_network;
-mod network_relationship;
 mod sampling;
 
 #[cfg(feature = "openrouter-reasoner")]
@@ -169,21 +166,6 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         )
     }
 
-    async fn network_relationship(
-        &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        left: Arc<NetworkRelationship>,
-        right: Arc<NetworkRelationship>,
-    ) -> Result<(RelationshipTransformation, ReasonerMetadata), Errors> {
-        Ok(
-            network_relationship::network_relationship(
-                self,
-                normalization_context,
-                left,
-                right
-            ).await?
-        )
-    }
 }
 
 fn is_retryable(error: &Errors) -> bool {
