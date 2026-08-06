@@ -12,7 +12,7 @@ pub struct BasisClusterMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NetworkRelationshipType {
     Combine,
-    Equal,
+    Equal { canonical: Hash },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -20,7 +20,6 @@ pub struct NetworkRelationship {
     pub id: ID,
     pub from: Hash,
     pub to: Hash,
-    pub canonical: Hash,
     pub relationship: NetworkRelationshipType,
 }
 
