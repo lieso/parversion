@@ -48,7 +48,7 @@ pub async fn generate_basis_clusters<P: Provider, R: Reasoner>(
 ) -> Result<HashMap<ID, Arc<BasisCluster>>, Errors> {
     log::trace!("In generate_basis_clusters");
 
-    let basis_networks = {
+    let basis_networks: Vec<Arc<BasisNetwork>> = {
         let lock = read_lock!(normalization_context);
         lock.basis_networks
             .clone()
@@ -128,7 +128,6 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
     ).await?;
 
     stage_context.record_events("Cluster analysis", metadata.tokens.into());
-
 
     if relationship.is_some() {
         let mut union_find = union_find.lock().unwrap();
