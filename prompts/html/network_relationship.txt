@@ -1,84 +1,51 @@
-You are an expert data engineer analyzing two extracted JSON schemas to find a
-network embedded in the left document and a network embedded in the right document
-that should be concatenated, unified, or kept separate in the final API response.
-
-**TASK:** Each target document contains one or more networks (top-level keys with
-their child values). Examine the networks embedded within the left document and
-the networks embedded within the right document to find a pair, one from each side,
-that are related. If you find such a pair, specify the relationship type, which
-network (key) from each document is involved, and what the resulting network name
-should be.
+You are an expert data engineer reverse-engineering backend data models from
+rendered HTML. Pages are very often rendered from a structured API response —
+markup and layout dilute that original structure, splitting a single entity's
+fields across several elements, and scattering repeated instances around the
+page. Your job is to look at two entities extracted from the same page and
+determine how they relate to the structured data model the page was likely
+rendered from.
 
 **INPUT CONTEXT EXPLAINED:**
 
-1. [SOURCE DOCUMENT EXAMPLES]: HTML snippets showing how data is rendered on the
-   actual page. Separated by ---SNIPPET SEPARATOR---. Use these to understand what
-   each network represents and whether a network from the left document and a
-   network from the right document describe the same conceptual entity (e.g. visual
-   co-location on the page). Correlate the keys and values in the target documents
-   with the actual HTML to understand what each network represents.
+1. [SOURCE DOCUMENT EXAMPLES]: HTML snippets showing how each entity is
+   rendered on the actual page. Separated by ---SNIPPET SEPARATOR---. Use
+   these to understand what each entity represents and to judge structural
+   or positional correspondence between instances when needed.
 
-2. [LEFT TARGET DOCUMENT] and [RIGHT TARGET DOCUMENT]: Two JSON structures extracted
-   from the same source HTML, each potentially containing multiple networks. Compare
-   the networks in these documents to the source HTML to determine if any network
-   from the left document and any network from the right document extract
-   overlapping or complementary information.
-
-**NOTE ON CORRESPONDENCE:** There is not necessarily a one-to-one correspondence
-between networks. One side may hold a single instance while the other holds many
-repeated instances (e.g. an array of similar objects). Whether a network's value is
-one instance or many has no bearing on whether it is the *same entity type* as a
-network on the other side — use the source document examples to determine that,
-even though only one of the repeated instances may actually match by value. Report
-the network (key) name that holds the instances, not an index into an array. Once
-you've established that two networks share the same entity type, use the DECISION
-CRITERIA below to determine whether the specific instance(s) should be appended
-(CONCATENATE) or folded onto a corresponding instance (UNIFY_FIELDS).
+2. [LEFT ENTITY] and [RIGHT ENTITY]: JSON produced by applying each entity's
+   extraction pattern to the source document. Compare these to each other
+   and to the source document examples to determine their relationship.
 
 **DECISION CRITERIA:**
 
-A network's value may be a single instance (one object) or multiple instances (an
-array of repeated objects) — this has no bearing on which relationship applies.
-What matters is what should happen to the *instances* on each side:
+- **EQUAL**: The left and right entities represent the same conceptual type
+  of thing, playing the same role on the page — e.g. both are "products in a
+  listing," both are "user comments" — even though their extraction patterns
+  differ (perhaps because a handful of instances are structured slightly
+  differently in the underlying markup than the rest), and even though field
+  names between the two may not match. Each side already produces complete
+  instances on its own — nothing needs to be reconciled field-by-field. The
+  correct outcome is to treat every instance either one produces as
+  belonging to a single pool of that entity type.
 
-- **CONCATENATE**: The instance(s) in the right document's network are a
-  *different* occurrence of the same entity type as the instance(s) in the left
-  document's network — e.g. another row, another item, another user, not a more
-  complete description of an instance already present on the other side. The
-  correct outcome is to append the right side's instance(s) alongside the left
-  side's instance(s), so the resulting network holds every instance from both
-  sides side by side. Use CONCATENATE when you cannot point to a specific
-  instance on the other side that this instance corresponds to — it is simply
-  one more of the same kind of thing.
+- **COMBINE**: The left and right entities describe the same specific
+  instances, but incompletely — neither side has the full picture without
+  the other (e.g. one has the date and amount, the other has the
+  description and customer, for the same invoices). The correct outcome is
+  to merge fields together so each resulting instance has the union of both
+  sides. A shared identifier field is not required to establish this
+  correspondence — if no field overlaps, use the [SOURCE DOCUMENT EXAMPLES]:
+  if the left and right entities were extracted from the same sequence of
+  structural positions on the page (the Nth snippet's instance on the left
+  occupies the same position as the Nth snippet's instance on the right),
+  treat the Nth instance on each side as corresponding.
 
-- **UNIFY_FIELDS**: The instance(s) in the right document's network describe the
-  *same specific instance(s)* already present in the left document's network,
-  just with different, overlapping, or complementary fields (e.g. one side has
-  the score and author, the other has only the timestamp for that same item).
-  The correct outcome is to fold the right side's fields directly onto the
-  matching instance(s) on the left, rather than adding new instances. Use
-  UNIFY_FIELDS when you can identify which existing instance on the other side
-  each instance corresponds to.
-
-  **A shared identifier field (id, url, etc.) is NOT required to establish this
-  correspondence.** Two networks extracted from the same page frequently have no
-  overlapping field names at all — that is exactly the case UNIFY_FIELDS exists
-  for. Instead, use the [SOURCE DOCUMENT EXAMPLES]: if the left network and the
-  right network were extracted from the same sequence of structural positions
-  on the page (e.g. the same rows in the same order — the Nth snippet's instance
-  on the left occupies the same structural position as the Nth snippet's
-  instance on the right), then the Nth instance on the left corresponds to the
-  Nth instance on the right, even though nothing in their field values overlaps.
-  Do not default to CONCATENATE just because the two sides have no field in
-  common — check positional/structural alignment first.
-
-- **NO_RELATIONSHIP**: No network in the left document is related to any network
-  in the right document. They should remain separate in the final schema.
+- **NO_RELATIONSHIP**: The two entities represent conceptually unrelated
+  things (e.g. one is product listings, the other is customer/account
+  details elsewhere on the page).
 
 Respond with strictly valid JSON:
 {
-  "relationship_type": "CONCATENATE" | "UNIFY_FIELDS" | "NO_RELATIONSHIP",
-  "canonical_network_name": "name_or_null",
-  "left_network": "network_key_or_null",
-  "right_network": "network_key_or_null"
+  "relationship_type": "EQUAL" | "COMBINE" | "NO_RELATIONSHIP"
 }
