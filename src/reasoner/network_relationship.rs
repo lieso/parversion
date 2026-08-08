@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::basis_network::BasisNetwork;
-use crate::basis_cluster::NetworkRelationship;
+use crate::basis_cluster::{NetworkRelationship, NetworkRelationshipType};
 use crate::graph_node::{Graph, GraphNode};
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
@@ -16,21 +16,16 @@ use crate::data_node::DataNode;
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+/// The relationship between two entities extracted from the same document —
+/// see the system prompt's decision criteria for how to choose between these.
 pub enum RelationshipType {
-    /// The two networks describe different, complementary parts of the same
-    /// entity and should be merged into one object (e.g. one has the invoice
-    /// date and amount, the other has the description and customer).
     Combine,
-    /// The two networks describe the same entity, extracted twice — same
-    /// keys/values pointing at the same conceptual thing.
     Equal,
-    /// The two networks describe unrelated entities and should remain separate.
     NoRelationship,
 }
 
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct NetworkRelationshipResponse {
-    /// The relationship between the left network and the right network.
     pub relationship_type: RelationshipType,
 }
 
@@ -78,7 +73,41 @@ pub async fn network_relationship<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    unimplemented!()
+    let (result, metadata) = reasoner.execute::<NetworkRelationshipResponse>(
+        &capability,
+        &system_prompt,
+        &user_prompt,
+        schema
+    ).await?;
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
+    };
+
+    match result.relationship_type {
+         RelationshipType::Combine => {
+             let network_relationship = NetworkRelationship {
+                 id: ID::new(),
+                 from: left.basis_lineages.clone(),
+                 to: right.basis_lineages.clone(),
+                 relationship: NetworkRelationshipType::Combine,
+             };
+
+             Ok((Some(network_relationship), reasoner_metadata))
+         },
+         RelationshipType::Equal => {
+             let network_relationship = NetworkRelationship {
+                 id: ID::new(),
+                 from: left.basis_lineages.clone(),
+                 to: right.basis_lineages.clone(),
+                 relationship: NetworkRelationshipType::Equal,
+             };
+
+             Ok((Some(network_relationship), reasoner_metadata))
+         },
+         RelationshipType::NoRelationship => Ok((None, reasoner_metadata))
+    }
 }
 
 fn get_user_prompt<R: Reasoner>(
