@@ -126,13 +126,30 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
         }
     }
 
-    let (relationship, metadata) = reasoner.network_relationship(
-        Arc::clone(&normalization_context),
-        Arc::clone(&left),
-        Arc::clone(&right),
-    ).await?;
+    let relationship = if !options.regenerate {
+        provider.get_network_relationship(left.clone(), right.clone()).await?
+    } else {
+        None
+    };
 
-    stage_context.record_events("Cluster analysis", metadata.tokens.into());
+    let (relationship, metadata) = match relationship {
+        Some(relationship) => (relationship, None),
+        None => {
+            let (relationship, metadata) = reasoner.network_relationship(
+                Arc::clone(&normalization_context),
+                Arc::clone(&left),
+                Arc::clone(&right),
+            ).await?;
+
+            stage_context.record_events("Cluster analysis", metadata.tokens.into());
+
+            provider
+                .save_network_relationship(left.clone(), right.clone(), relationship.clone())
+                .await?;
+
+            (relationship, Some(metadata))
+        }
+    };
 
     if relationship.is_some() {
         let mut union_find = union_find.lock().unwrap();

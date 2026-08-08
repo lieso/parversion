@@ -15,6 +15,7 @@ use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::document::Document;
+use crate::basis_cluster::NetworkRelationship;
 
 #[cfg(feature = "sqlite-provider")]
 pub struct SqliteProvider {
@@ -72,6 +73,12 @@ impl SqliteProvider {
                  data               TEXT,
                  PRIMARY KEY (lineage_from, lineage_to)
              );
+             CREATE TABLE IF NOT EXISTS network_relationships (
+                basis_lineages_from TEXT NOT NULL DEFAULT '',
+                basis_lineages_to   TEXT NOT NULL DEFAULT '',
+                data                TEXT,
+                PRIMARY KEY (basis_lineages_from, basis_lineages_to)
+             );
              ",
         )
         .map_err(|e| Errors::ProviderError(e.to_string()))?;
@@ -80,6 +87,12 @@ impl SqliteProvider {
             connection: Arc::new(Mutex::new(conn)),
         })
     }
+}
+
+fn sorted_keys(a: &Hash, b: &Hash) -> Result<(String, String), Errors> {
+    let a = a.to_string().ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
+    let b = b.to_string().ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
+    Ok(if a <= b { (a, b) } else { (b, a) })
 }
 
 fn lock_err() -> Errors {
@@ -605,5 +618,53 @@ impl Provider for SqliteProvider {
         })
         .await
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
+
+    async fn get_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>
+    ) -> Result<Option<Option<NetworkRelationship>>, Errors> {
+        let conn = self.connection.clone();
+        let (key1, key2) = sorted_keys(&left.basis_lineages, &right.basis_lineages)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM network_relationships WHERE basis_lineages_from = ?1 AND basis_lineages_to = ?2",
+                params![key1, key2],
+                |row| row.get::<_, Option<String>>(0),
+            ) {
+                Ok(Some(data)) => deserialize(data).map(Some),
+                Ok(None) => Ok(Some(None)),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
+
+    async fn save_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>,
+        relationship: Option<NetworkRelationship>
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let (key1, key2) = sorted_keys(&left.basis_lineages, &right.basis_lineages)?;
+        let data = serialize(&relationship)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            conn.execute(
+                "INSERT OR REPLACE INTO network_relationships (basis_lineages_from, basis_lineages_to, data) VALUES (?1, ?2, ?3)",
+                params![key1, key2, data],
+            )
+                .map_err(|e| db_err(e))?;
+            Ok(())
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 }
