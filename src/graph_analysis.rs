@@ -1,12 +1,13 @@
 use std::sync::{Arc, RwLock, Mutex};
 use futures::future::try_join_all;
 use tokio::task;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tokio::sync::Semaphore;
 
 use crate::prelude::*;
-use crate::basis_cluster::{BasisCluster, NetworkRelationship};
+use crate::basis_cluster::{BasisCluster, BasisClusterMetadata, NetworkRelationship};
 use crate::basis_network::BasisNetwork;
+use crate::reasoner::ReasonerMetadata;
 
 struct UnionFind {
     parent: HashMap<Hash, Hash>,
@@ -94,14 +95,49 @@ pub async fn generate_basis_clusters<P: Provider, R: Reasoner>(
         }
     }
 
-    let relationships: Vec<NetworkRelationship> = try_join_all(handles).await?
+    let results: Vec<(NetworkRelationship, Option<ReasonerMetadata>)> = try_join_all(handles).await?
         .into_iter()
         .collect::<Result<Vec<_>, Errors>>()?
         .into_iter()
-        .flatten()
+        .filter_map(|(relationship, metadata)| relationship.map(|r| (r, metadata)))
         .collect();
 
-    unimplemented!()
+    let mut union_find = union_find.lock().unwrap();
+
+    let mut cluster_networks: HashMap<Hash, HashSet<Hash>> = HashMap::new();
+    for network in &basis_networks {
+        let root = union_find.find(&network.basis_lineages);
+        cluster_networks.entry(root).or_default().insert(network.basis_lineages.clone());
+    }
+
+    let mut cluster_relationships: HashMap<Hash, Vec<NetworkRelationship>> = HashMap::new();
+    let mut cluster_prompts: HashMap<Hash, Vec<Hash>> = HashMap::new();
+
+    for (relationship, metadata) in results {
+        let root = union_find.find(&relationship.from);
+        cluster_relationships.entry(root.clone()).or_default().push(relationship);
+        if let Some(metadata) = metadata {
+            cluster_prompts.entry(root).or_default().push(metadata.prompt_hash);
+        }
+    }
+
+    let basis_clusters: HashMap<ID, Arc<BasisCluster>> = cluster_networks
+        .into_iter()
+        .map(|(root, networks)| {
+            let basis_cluster = BasisCluster {
+                id: ID::new(),
+                networks,
+                relationships: cluster_relationships.remove(&root).unwrap_or_default(),
+                metadata: BasisClusterMetadata {
+                    prompts: cluster_prompts.remove(&root).unwrap_or_default(),
+                }
+            };
+
+            (basis_cluster.id.clone(), Arc::new(basis_cluster))
+        })
+        .collect();
+
+    Ok(basis_clusters)
 }
 
 async fn generate_network_relationship<P: Provider, R: Reasoner>(
@@ -113,7 +149,7 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
     union_find: Arc<Mutex<UnionFind>>,
     left: Arc<BasisNetwork>,
     right: Arc<BasisNetwork>,
-) -> Result<Option<NetworkRelationship>, Errors> {
+) -> Result<(Option<NetworkRelationship>, Option<ReasonerMetadata>), Errors> {
     stage_context.record_events("Cluster analysis", 0);
 
     let from = left.basis_lineages.clone();
@@ -122,7 +158,7 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
     {
         let mut union_find = union_find.lock().unwrap();
         if union_find.same_set(&from, &to) {
-            return Ok(None);
+            return Ok((None, None));
         }
     }
 
@@ -156,5 +192,5 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
         union_find.union(&from, &to);
     }
 
-    Ok(relationship)
+    Ok((relationship, metadata))
 }
