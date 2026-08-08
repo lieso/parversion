@@ -2,6 +2,7 @@ use std::sync::{Arc, RwLock, Mutex};
 use futures::future::try_join_all;
 use tokio::task;
 use std::collections::HashMap;
+use tokio::sync::Semaphore;
 
 use crate::prelude::*;
 use crate::basis_cluster::{BasisCluster, NetworkRelationship};
@@ -56,15 +57,18 @@ pub async fn generate_basis_clusters<P: Provider, R: Reasoner>(
                 Errors::DeficientNormalizationContextError("Basis networks not provided in normalization context".to_string())
             })?
             .into_values()
-            .take(2)
             .collect()
     };
+
+    let max_concurrency = basis_networks.len().clamp(4, 16);
+    let semaphore = Arc::new(Semaphore::new(max_concurrency));
 
     let union_find = Arc::new(Mutex::new(UnionFind::new()));
     let mut handles = Vec::new();
 
     for i in 0..basis_networks.len() {
         for j in (i + 1)..basis_networks.len() {
+            let permit = semaphore.clone().acquire_owned().await.unwrap();
             let cloned_provider = Arc::clone(&provider);
             let cloned_reasoner = Arc::clone(&reasoner);
             let cloned_normalization_context = Arc::clone(&normalization_context);
@@ -75,6 +79,7 @@ pub async fn generate_basis_clusters<P: Provider, R: Reasoner>(
             let right = Arc::clone(&basis_networks[j]);
 
             handles.push(task::spawn(async move {
+                let _permit = permit;
                 generate_network_relationship(
                     cloned_provider,
                     cloned_reasoner,
