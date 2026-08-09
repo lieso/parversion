@@ -50,7 +50,7 @@ pub async fn generate_basis_clusters<P: Provider, R: Reasoner>(
 ) -> Result<HashMap<ID, Arc<BasisCluster>>, Errors> {
     log::trace!("In generate_basis_clusters");
 
-    let basis_networks: Vec<Arc<BasisNetwork>> = {
+    let mut basis_networks: Vec<Arc<BasisNetwork>> = {
         let lock = read_lock!(normalization_context);
         lock.basis_networks
             .clone()
@@ -60,6 +60,9 @@ pub async fn generate_basis_clusters<P: Provider, R: Reasoner>(
             .into_values()
             .collect()
     };
+
+    // sort to increase chance of Provider hit
+    basis_networks.sort_by(|a, b| a.basis_lineages.to_string().cmp(&b.basis_lineages.to_string()));
 
     let max_concurrency = basis_networks.len().clamp(4, 16);
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
