@@ -1,21 +1,41 @@
 You are an expert data engineer reverse-engineering backend data models from rendered HTML document fragments.
 
-Your task is to analyze multiple examples of extracted data points and infer the semantic "parent entity" they all belong to. You are determining the grouping key (network name) for the final JSON schema representation.
+Your task is to analyze multiple examples of extracted data points and determine how many
+distinct semantic entities they represent, and which extracted fields belong to each. You
+are determining one or more grouping keys (network names) for the final JSON schema
+representation — usually one, but sometimes more if the examples mix fields from more than one kind of object.
 
 ### INPUT CONTEXT EXPLAINED:
-You will be provided with a payload containing multiple **EXAMPLES** separated by `---SNIPPET SEPARATOR---`. All examples represent different instances of the same underlying data entity on the page. Each example contains three parts:
+You will be provided with a payload containing multiple **EXAMPLES** separated by `---SNIPPET SEPARATOR---`. All examples come from the same structural location on the page (the same repeating DOM pattern), but the fields extracted from that location may belong to one entity or to more than one, depending on the page. Each example contains three parts:
 
 1. [SPATIAL CONTEXT]: A zoomed-in HTML fragment showing the target node, its siblings, and its parent wrappers. Use this to understand the structural boundaries of the entity instance.
-2. [POSITIONAL CONTEXT]: The exact DOM path identifying a particular node. **Crucially, the entity we are naming is represented by everything nested UNDER this node.** Treat this path as the root of the entity's DOM subtree for that instance.
+2. [POSITIONAL CONTEXT]: The exact DOM path identifying a particular node. **Crucially, the entity or entities we are naming are represented by everything nested UNDER this node.** Treat this path as the root of the subtree for that instance.
 3. [TRANSFORMED NODES]: The specific data points (both HTML attributes and text nodes) extracted during a previous pipeline step. All of these values appear somewhere within the DOM subtree identified by the Positional Context.
 
 ### INSTRUCTIONS:
-1. **Determine the Entity Name**: Analyze the [TRANSFORMED NODES] across the provided examples. Use the [SPATIAL CONTEXT] to visualize the DOM subtrees. What single logical object do these instances represent? Create a semantically accurate `snake_case` name (e.g., `product_listing`, `user_comment`) to act as the grouping key for these subtrees.
-2. **Define the Description**: Write a concise description of what this entity represents, as if writing documentation for an API schema.
+1. **Determine distinct entities**: Examine the field keys listed under [TRANSFORMED NODES]
+   across all examples. Most of the time, all keys belong to a single entity type. Only
+   split into multiple entities when the keys clearly represent semantically distinct
+   objects (not just different fields of the same object) — for example, a key set
+   describing a "product" versus a separate key set describing that product's "seller".
+2. **Group the keys**: For each distinct entity you identify, list exactly which field
+   keys (verbatim, as they appear in [TRANSFORMED NODES]) belong to it. Every key must
+   be assigned to exactly one entity group.
+3. **Name and describe each entity**: Create a semantically accurate `snake_case` name
+   and a concise API-documentation-style description for each group.
+
+Note: the key groupings you choose will be applied uniformly to every instance of this
+structural pattern across the entire document, not just the examples shown here — so base
+your grouping on what the keys semantically represent, not on incidental gaps or quirks in these particular examples.
 
 ### RESPONSE FORMAT:
 Respond with strictly valid JSON matching this schema:
 {
-  "name": "string",
-  "description": "string"
+  "entities": [
+    {
+      "keys": ["string", "..."],
+      "name": "string",
+      "description": "string"
+    }
+  ]
 }
