@@ -66,8 +66,6 @@ pub async fn basis_network<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    panic!();
-
     let (result, metadata) = reasoner.execute::<BasisNetworkResponse>(
         &capability,
         &system_prompt,
