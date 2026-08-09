@@ -16,7 +16,7 @@ pub struct BasisNetworkMetadata {
 pub struct BasisNetwork {
     pub id: ID,
     pub basis_lineages: Hash,
-    pub transformation: NetworkTransformation,
+    pub transformations: Vec<NetworkTransformation>,
     pub metadata: BasisNetworkMetadata,
 }
 
@@ -103,8 +103,8 @@ impl BasisNetwork {
        
         Ok(NormalContext {
             id: ID::new(),
-            network_name: Some(self.transformation.image.clone()),
-            network_description: Some(self.transformation.description.clone()),
+            network_name: Some(self.transformations.first().unwrap().image.clone()),
+            network_description: Some(self.transformations.first().unwrap().description.clone()),
             data_node: combined_data_node,
             graph_node,
             contexts: vec![context.clone()]

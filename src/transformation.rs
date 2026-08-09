@@ -1,7 +1,7 @@
 use quick_js::Context as QuickContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, RwLock};
 
 use crate::data_node::DataNode;
@@ -126,6 +126,7 @@ pub struct NetworkTransformation {
     pub id: ID,
     pub description: String,
     pub image: String,
+    pub keys: HashSet<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

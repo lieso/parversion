@@ -9,11 +9,18 @@ use crate::transformation::NetworkTransformation;
 use super::sampling::{pre_sample_context_group, sample_most_different};
 
 #[derive(Deserialize, JsonSchema, Debug)]
-pub struct BasisNetworkResponse {
-    /// A short paragraph describing the semantic purpose of the cluster of values
-    pub description: String,
-    /// An appropriate name describing the cluster of transformed values
+pub struct EntityTransformation {
+    /// The exact field keys (as shown in [TRANSFORMED NODES]) belonging to this distinct entity
+    pub keys: Vec<String>,
+    /// snake_case name for this entity
     pub name: String,
+    /// Concise description of this entity
+    pub description: String,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
+pub struct BasisNetworkResponse {
+    pub entities: Vec<EntityTransformation>,
 }
 
 pub async fn basis_network<R: Reasoner>(
@@ -59,6 +66,8 @@ pub async fn basis_network<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
+    panic!();
+
     let (result, metadata) = reasoner.execute::<BasisNetworkResponse>(
         &capability,
         &system_prompt,
@@ -71,16 +80,23 @@ pub async fn basis_network<R: Reasoner>(
         prompt_hash: metadata.prompt_hash.clone(),
     };
 
-    let transformation = NetworkTransformation {
-        id: ID::new(),
-        description: result.description.clone(),
-        image: result.name.clone(),
-    };
+    let transformations: Vec<NetworkTransformation> = result
+        .entities
+        .iter()
+        .map(|entity| {
+            NetworkTransformation {
+                id: ID::new(),
+                description: entity.description.clone(),
+                image: entity.name.clone(),
+                keys: entity.keys.iter().cloned().collect(),
+            }
+        })
+        .collect();
 
     let basis_network = BasisNetwork {
         id: ID::new(),
         basis_lineages: basis_lineages_hash.clone(),
-        transformation,
+        transformations,
         metadata: BasisNetworkMetadata {
             prompts: vec![reasoner_metadata.prompt_hash.clone()]
         }
