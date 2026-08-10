@@ -35,7 +35,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     let mut handles = Vec::new();
 
-    for (basis_lineages_hash, (_basis_lineages, candidates)) in candidate_networks {
+    for (basis_lineages_hash, (basis_lineages, candidates)) in candidate_networks {
         let cloned_provider = Arc::clone(&provider);
         let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_normalization_context = Arc::clone(&normalization_context);
@@ -50,6 +50,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 &cloned_options,
                 &cloned_stage_context,
                 basis_lineages_hash,
+                basis_lineages,
                 candidates.clone(),
             )
             .await?;
@@ -96,6 +97,7 @@ async fn generate_basis_network<R: Reasoner, P: Provider>(
     options: &Options,
     stage_context: &StageContext,
     basis_lineages_hash: Hash,
+    basis_lineages: HashSet<BasisLineage>,
     context_group: Vec<Arc<Context>>
 ) -> Result<BasisNetwork, Errors> {
     stage_context.record_events("Network analysis", 0);
@@ -109,7 +111,8 @@ async fn generate_basis_network<R: Reasoner, P: Provider>(
     let (basis_network, metadata) = reasoner.basis_network(
         Arc::clone(&normalization_context),
         basis_lineages_hash,
-        context_group
+        context_group,
+        basis_lineages,
     ).await?;
 
     stage_context.record_events("Network analysis", metadata.tokens.into());

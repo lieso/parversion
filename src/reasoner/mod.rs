@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use std::sync::{Arc, RwLock};
+use std::collections::HashSet;
 
 use crate::prelude::*;
 use crate::hash::Hash;
@@ -157,13 +158,15 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         basis_lineages_hash: Hash,
         context_group: Vec<Arc<Context>>,
+        basis_lineages: HashSet<BasisLineage>
     ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
         Ok(
             basis_network::basis_network(
                 self,
                 normalization_context,
                 basis_lineages_hash,
-                context_group
+                context_group,
+                basis_lineages
             ).await?
         )
     }

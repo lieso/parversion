@@ -126,7 +126,8 @@ impl Context {
 
     pub fn generate_context_string_basis_network(
         &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        relevant_contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -138,11 +139,12 @@ impl Context {
                 .clone()
         };
 
-        let mut context_string = self.generate_context_string(&meta_context, Vec::new())?;
+        let mut context_string = self.generate_context_string(&meta_context, relevant_contexts.clone())?;
 
         if read_lock!(normalization_context).basis_nodes.is_some() {
             let basis_nodes_context_string = self.generate_basis_nodes_context(
-                Arc::clone(&normalization_context)
+                Arc::clone(&normalization_context),
+                relevant_contexts.clone()
             )?;
 
             context_string.push_str(&basis_nodes_context_string);
@@ -252,7 +254,8 @@ if current_context.network_name.is_empty() {
 
     fn generate_basis_nodes_context(
         &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        relevant_contexts: Vec<Arc<Context>>
     ) -> Result<String, Errors> {
 
         let mut result: String = String::new();

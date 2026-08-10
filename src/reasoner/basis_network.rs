@@ -1,11 +1,13 @@
 use std::sync::{Arc, RwLock};
 use schemars::JsonSchema;
 use serde::Deserialize;
+use std::collections::{HashSet, VecDeque};
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
 use crate::transformation::NetworkTransformation;
+use crate::graph_node::Graph;
 use super::sampling::{pre_sample_context_group, sample_most_different};
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -28,6 +30,7 @@ pub async fn basis_network<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     basis_lineages_hash: Hash,
     context_group: Vec<Arc<Context>>,
+    basis_lineages: HashSet<BasisLineage>,
 ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
     log::trace!("In basis_network");
 
@@ -39,6 +42,7 @@ pub async fn basis_network<R: Reasoner>(
         reasoner,
         Arc::clone(&normalization_context),
         context_group,
+        basis_lineages
     ).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisNetworkResponse))
         .expect("Failed to serialise BasisNetworkResponse schema");
@@ -107,14 +111,57 @@ async fn get_user_prompt<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     context_group: Vec<Arc<Context>>,
+    basis_lineages: HashSet<BasisLineage>
 ) -> Result<String, Errors> {
     let context_group = pre_sample_context_group(context_group);
     let context_strings: Vec<String> = context_group
         .iter()
         .take(10)
-        .map(|context| context.generate_context_string_basis_network(
-            Arc::clone(&normalization_context)
-        ))
+        .map(|context| {
+            let relevant_contexts = {
+                let contexts_lookup = {
+                    let lock = read_lock!(normalization_context);
+                    lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+                };
+                let context_to_group = {
+                    let lock = read_lock!(normalization_context);
+                    lock.context_to_group.clone().ok_or(Errors::DeficientNormalizationContextError("'context_to_group' not provided in normalization context".to_string()))?
+                };
+
+                let mut contexts: Vec<Arc<Context>> = Vec::new();
+
+                let mut queue: VecDeque<Graph> = VecDeque::new();
+                queue.push_back(Arc::clone(&context.graph_node));
+
+                while let Some(node) = queue.pop_front() {
+                    let context = contexts_lookup
+                        .get(&read_lock!(node).id)
+                        .cloned()
+                        .unwrap();
+
+                    if let Some(basis_group) = context_to_group.get(&context.id).cloned() {
+                        let basis_lineage = basis_group.get_basis_lineage();
+
+                        if basis_lineages.contains(&basis_lineage) {
+                            contexts.push(context.clone());
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    for child in &read_lock!(node).children {
+                        queue.push_back(Arc::clone(&child));
+                    }
+                }
+
+                contexts
+            };
+
+            context.generate_context_string_basis_network(
+                Arc::clone(&normalization_context),
+                relevant_contexts
+            )
+        })
         .collect::<Result<Vec<String>, Errors>>()?;
 
     //let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
