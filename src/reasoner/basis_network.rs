@@ -70,6 +70,8 @@ pub async fn basis_network<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
+    panic!();
+
     let (result, metadata) = reasoner.execute::<BasisNetworkResponse>(
         &capability,
         &system_prompt,
@@ -145,7 +147,11 @@ async fn get_user_prompt<R: Reasoner>(
                         if basis_lineages.contains(&basis_lineage) {
                             contexts.push(context.clone());
                         } else {
-                            continue;
+                            if let Some(basis_node) = read_lock!(node).resolve_basis_node(Arc::clone(&normalization_context))? {
+                                if !basis_node.transformations.is_empty() {
+                                    continue;
+                                }
+                            }
                         }
                     }
 

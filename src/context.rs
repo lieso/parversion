@@ -263,7 +263,8 @@ if current_context.network_name.is_empty() {
         fn recurse(
             normalization_context: Arc<RwLock<NormalizationContext>>,
             graph: Graph,
-            result: &mut String
+            result: &mut String,
+            relevant_contexts: &Vec<Arc<Context>>
         ) -> Result<(), Errors> {
             let lock = read_lock!(graph);
 
@@ -277,13 +278,15 @@ if current_context.network_name.is_empty() {
                 .cloned()
                 .unwrap();
 
-            if let Some(basis_node) = lock.resolve_basis_node(Arc::clone(&normalization_context))? {
-                for transformation in &basis_node.transformations {
-                    let transformed = transformation.transform(context.data_node.clone())?;
-                    if let Some(value) = transformed.fields.get(&transformation.image) {
-                        result.push_str(&format!("{} => {} (value = {})\n", transformation.field, transformation.image, value));
-                    } else {
-                        log::info!("why");
+            if relevant_contexts.iter().any(|c| c.id == context.id) {
+                if let Some(basis_node) = lock.resolve_basis_node(Arc::clone(&normalization_context))? {
+                    for transformation in &basis_node.transformations {
+                        let transformed = transformation.transform(context.data_node.clone())?;
+                        if let Some(value) = transformed.fields.get(&transformation.image) {
+                            result.push_str(&format!("{} => {} (value = {})\n", transformation.field, transformation.image, value));
+                        } else {
+                            log::info!("why");
+                        }
                     }
                 }
             }
@@ -292,7 +295,8 @@ if current_context.network_name.is_empty() {
                 recurse(
                     Arc::clone(&normalization_context),
                     Arc::clone(&child),
-                    result
+                    result,
+                    relevant_contexts
                 );
             }
 
@@ -302,7 +306,8 @@ if current_context.network_name.is_empty() {
         recurse(
             Arc::clone(&normalization_context),
             self.graph_node.clone(),
-            &mut result
+            &mut result,
+            &relevant_contexts
         )?;
 
 
