@@ -10,7 +10,12 @@ You will be provided with a payload containing multiple **EXAMPLES** separated b
 
 1. [SPATIAL CONTEXT]: A zoomed-in HTML fragment showing the target node, its siblings, and its parent wrappers. Use this to understand the structural boundaries of the entity instance.
 2. [POSITIONAL CONTEXT]: The exact DOM path identifying a particular node. **Crucially, the entity or entities we are naming are represented by everything nested UNDER this node.** Treat this path as the root of the subtree for that instance.
-3. [TRANSFORMED NODES]: The specific data points (both HTML attributes and text nodes) extracted during a previous pipeline step. All of these values appear somewhere within the DOM subtree identified by the Positional Context.
+3. [TRANSFORMED NODES]: The specific data points (both HTML attributes and text nodes) extracted during a previous pipeline step, shown one per line as:
+
+       SOURCE => KEY (value = VALUE)
+
+   SOURCE is the raw HTML attribute or text node the value came from, shown only for context.
+   KEY is the field's name in the final data model — this is the identifier you must use everywhere below when grouping keys into entities. All of these values appear somewhere within the DOM subtree identified by the Positional Context.
 
 ### INSTRUCTIONS:
 1. **Determine distinct entities**: Examine the field keys listed under [TRANSFORMED NODES]
@@ -20,7 +25,7 @@ You will be provided with a payload containing multiple **EXAMPLES** separated b
    describing a "product" versus a separate key set describing that product's "seller".
 
    **Exception — repeated keys**: If the same key appears more than once within a single
-   example (i.e. it has multiple different values listed under [TRANSFORMED NODES] for
+   example (i.e. the same KEY has multiple different values listed under [TRANSFORMED NODES] for 
    that example), this means the example actually spans multiple real-world instances
    rather than describing one coherent object. In that case, do not group that key with
    any other key — give every key present in that example its own single-key entity

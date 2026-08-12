@@ -12,7 +12,8 @@ use super::sampling::{pre_sample_context_group, sample_most_different};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct EntityTransformation {
-    /// The exact field keys (as shown in [TRANSFORMED NODES]) belonging to this distinct entity
+    /// The KEY portion only (the identifier after "=>" in each [TRANSFORMED NODES] line,
+    /// never the SOURCE before it) for each field belonging to this distinct entity
     pub keys: Vec<String>,
     /// snake_case name for this entity
     pub name: String,
