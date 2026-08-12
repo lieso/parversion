@@ -285,28 +285,18 @@ pub async fn report_basis_networks<P: Provider>(
             children: Vec::new(),
         }));
 
-        let normalized: Vec<NormalContext> = contexts
-            .iter()
-            .map(|context| {
-                network.apply(
-                    Arc::clone(&normalization_context),
-                    context.clone(),
-                    Arc::clone(&graph_root),
-                )
-            })
-            .collect::<Result<Vec<NormalContext>, Errors>>()?;
-
         let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
         let mut contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
 
-        for normal_context in normalized {
-            let normal_context = Arc::new(normal_context);
+        for context in &contexts {
+            let normal_meta_context = network.apply(
+                Arc::clone(&normalization_context),
+                context.clone(),
+                Arc::clone(&graph_root),
+            )?;
 
-            normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
-            contexts_lookup.insert(
-                read_lock!(normal_context.graph_node).id.clone(),
-                Arc::clone(&normal_context)
-            );
+            normal_contexts.extend(normal_meta_context.contexts);
+            contexts_lookup.extend(normal_meta_context.contexts_lookup);
         }
 
         let root_normal_context = Arc::new(NormalContext {

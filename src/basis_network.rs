@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 use crate::prelude::*;
 use crate::transformation::NetworkTransformation;
 use crate::graph_node::{Graph, GraphNode};
 use crate::normal_context::NormalContext;
-use crate::data_node::DataNode;
+use crate::data_node::{DataNode, DataNodeFields};
+use crate::normal_meta_context::NormalMetaContext;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetworkMetadata {
@@ -26,7 +28,7 @@ impl BasisNetwork {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         context: Arc<Context>,
         parent: Graph
-    ) -> Result<NormalContext, Errors> {
+    ) -> Result<NormalMetaContext, Errors> {
         let start_node = context.graph_node.clone();
 
         fn recurse(
@@ -95,19 +97,48 @@ impl BasisNetwork {
 
         let combined_data_node = Arc::new(DataNode::from_data_nodes(data_nodes));
 
-        let graph_node = Arc::new(RwLock::new(
-            GraphNode::from_data_node(Arc::clone(&combined_data_node), vec![Arc::clone(&parent)])
-        ));
+        let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
+        let mut normal_contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
 
-        write_lock!(parent).children.push(Arc::clone(&graph_node));
-       
-        Ok(NormalContext {
-            id: ID::new(),
-            network_name: Some(self.transformations.first().unwrap().image.clone()),
-            network_description: Some(self.transformations.first().unwrap().description.clone()),
-            data_node: combined_data_node,
-            graph_node,
-            contexts: vec![context.clone()]
+        for transformation in &self.transformations {
+            let fields: DataNodeFields = combined_data_node.fields
+                .iter()
+                .filter(|(key, _)| transformation.keys.contains(*key))
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect();
+
+            let data_node = Arc::new(DataNode {
+                id: ID::new(),
+                hash: Hash::new(),
+                lineage: Lineage::new(),
+                fields,
+                description: String::new(),
+            });
+
+            let graph_node = Arc::new(RwLock::new(
+                GraphNode::from_data_node(Arc::clone(&data_node), vec![Arc::clone(&parent)])
+            ));
+
+            write_lock!(parent).children.push(Arc::clone(&graph_node));
+
+            let normal_context = Arc::new(NormalContext {
+                id: ID::new(),
+                network_name: Some(transformation.image.clone()),
+                network_description: Some(transformation.description.clone()),
+                data_node,
+                graph_node: Arc::clone(&graph_node),
+                contexts: vec![context.clone()],
+            });
+
+
+            normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
+            normal_contexts_lookup.insert(read_lock!(graph_node).id.clone(), Arc::clone(&normal_context));
+        }
+
+        Ok(NormalMetaContext {
+            contexts: normal_contexts,
+            graph_root: parent,
+            contexts_lookup: normal_contexts_lookup
         })
     }
 }

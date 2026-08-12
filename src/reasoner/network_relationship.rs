@@ -163,20 +163,14 @@ fn get_user_prompt_basis_network(
                 children: Vec::new(),
             }));
 
-            let normal_context = Arc::new(basis_network.apply(
+            let normal_meta_context = Arc::new(basis_network.apply(
                 Arc::clone(&normalization_context),
                 context.clone(),
                 graph_root.clone(),
             )?);
 
-            let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
-            let mut contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
-
-            normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
-            contexts_lookup.insert(
-                read_lock!(normal_context.graph_node).id.clone(),
-                Arc::clone(&normal_context),
-            );
+            let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = normal_meta_context.contexts.clone();
+            let mut contexts_lookup: HashMap<ID, Arc<NormalContext>> = normal_meta_context.contexts_lookup.clone();
 
             let root_normal_context = Arc::new(NormalContext {
                 id: ID::new(),

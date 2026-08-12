@@ -346,8 +346,8 @@ impl Context {
         let target_node = &self.graph_node;
 
         // ******************************************
-        let max_neighbours = 50;
-        let max_children = 7;
+        let max_neighbours = 100;
+        let max_children = 12;
         // ******************************************
         
         let mut queue: VecDeque<Graph> = VecDeque::new();

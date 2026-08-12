@@ -18,6 +18,13 @@ You will be provided with a payload containing multiple **EXAMPLES** separated b
    split into multiple entities when the keys clearly represent semantically distinct
    objects (not just different fields of the same object) — for example, a key set
    describing a "product" versus a separate key set describing that product's "seller".
+
+   **Exception — repeated keys**: If the same key appears more than once within a single
+   example (i.e. it has multiple different values listed under [TRANSFORMED NODES] for
+   that example), this means the example actually spans multiple real-world instances
+   rather than describing one coherent object. In that case, do not group that key with
+   any other key — give every key present in that example its own single-key entity
+   instead of attempting to merge them.
 2. **Group the keys**: For each distinct entity you identify, list exactly which field
    keys (verbatim, as they appear in [TRANSFORMED NODES]) belong to it. Every key must
    be assigned to exactly one entity group.
