@@ -151,9 +151,21 @@ impl Json {
             let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
             for json_node in json_nodes {
                 let json = json_node.json;
+
                 let value = json!(json.value.trim().to_string());
                 if let Value::Object(ref mut map) = result {
-                    map.insert(json.key, value);
+                    match map.get_mut(&json.key) {
+                        Some(Value::Array(arr)) => {
+                            arr.push(value);
+                        }
+                        Some(existing) => {
+                            let existing_value = existing.clone();
+                            *existing = json!(vec![existing_value, value]);
+                        }
+                        None => {
+                            map.insert(json.key, value);
+                        }
+                    }
                 }
             }
 
