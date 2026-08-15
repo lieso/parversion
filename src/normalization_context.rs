@@ -13,7 +13,6 @@ use crate::graph_node::Graph;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::normal_context::NormalContext;
-use crate::basis_cluster::BasisCluster;
 
 pub struct NormalizationContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
@@ -30,7 +29,6 @@ pub struct NormalizationContext {
     pub context_to_group: Option<HashMap<ID, Arc<BasisGroup>>>,
     pub basis_network_contexts: Option<HashMap<BasisNetworkID, Vec<Arc<Context>>>>,
     pub context_basis_networks: Option<HashMap<ContextID, Arc<BasisNetwork>>>,
-    pub basis_clusters: Option<HashMap<ID, Arc<BasisCluster>>>,
 }
 
 impl NormalizationContext {
@@ -50,7 +48,6 @@ impl NormalizationContext {
             context_to_group: None,
             basis_network_contexts: None,
             context_basis_networks: None,
-            basis_clusters: None,
         }
     }
 
@@ -135,10 +132,4 @@ impl NormalizationContext {
         self.context_to_group = Some(context_to_group);
     }
 
-    pub fn update_basis_clusters(
-        &mut self,
-        basis_clusters: HashMap<ID, Arc<BasisCluster>>,
-    ) {
-        self.basis_clusters = Some(basis_clusters);
-    }
 }

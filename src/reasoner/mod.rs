@@ -10,7 +10,6 @@ use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::basis_network::BasisNetwork;
-use crate::basis_cluster::NetworkRelationship;
 
 mod backend;
 mod classify;
@@ -19,7 +18,6 @@ mod basis_group;
 mod basis_node;
 mod basis_network;
 mod sampling;
-mod network_relationship;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -167,22 +165,6 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
                 basis_lineages_hash,
                 context_group,
                 basis_lineages
-            ).await?
-        )
-    }
-
-    async fn network_relationship(
-        &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        left: Arc<BasisNetwork>,
-        right: Arc<BasisNetwork>,
-    ) -> Result<(Option<NetworkRelationship>, ReasonerMetadata), Errors> {
-        Ok(
-            network_relationship::network_relationship(
-                self,
-                normalization_context,
-                left,
-                right,
             ).await?
         )
     }

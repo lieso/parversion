@@ -12,7 +12,6 @@ use crate::basis_field::BasisField;
 use crate::operation::Operation;
 use crate::translation_node::TranslationNode;
 use crate::translation_network::TranslationNetwork;
-use crate::basis_cluster::NetworkRelationship;
 
 #[cfg(feature = "yaml-provider")]
 pub mod yaml;
@@ -116,17 +115,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineages: (Lineage, Lineage),
         translation_network: Option<TranslationNetwork>
-    ) -> Result<(), Errors>;
-    async fn get_network_relationship(
-        &self,
-        left: Arc<BasisNetwork>,
-        right: Arc<BasisNetwork>
-    ) -> Result<Option<Option<NetworkRelationship>>, Errors>;
-    async fn save_network_relationship(
-        &self,
-        left: Arc<BasisNetwork>,
-        right: Arc<BasisNetwork>,
-        relationship: Option<NetworkRelationship>
     ) -> Result<(), Errors>;
 }
 
@@ -282,20 +270,4 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
-    async fn get_network_relationship(
-        &self,
-        left: Arc<BasisNetwork>,
-        right: Arc<BasisNetwork>
-    ) -> Result<Option<Option<NetworkRelationship>>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_network_relationship(
-        &self,
-        left: Arc<BasisNetwork>,
-        right: Arc<BasisNetwork>,
-        relationship: Option<NetworkRelationship>
-    ) -> Result<(), Errors> {
-        Ok(())
-    }
 }

@@ -66,65 +66,6 @@ impl Context {
         Ok(result)
     }
 
-    pub fn generate_context_string_network_relationship(
-        &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        relevant_contexts: Vec<Arc<Context>>,
-    ) -> Result<String, Errors> {
-        let meta_context = {
-            let lock = read_lock!(normalization_context);
-            lock.meta_context
-                .as_ref()
-                .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
-                })?
-                .clone()
-        };
-
-        let current_network = {
-            let lock = read_lock!(normalization_context);
-            let context_basis_networks = lock.context_basis_networks.as_ref().unwrap().clone();
-            context_basis_networks.get(&self.id).unwrap().clone()
-        };
-        let context_to_network = {
-            let lock = read_lock!(normalization_context);
-            lock.context_basis_networks.clone().unwrap()
-        };
-
-        let mut relevant_contexts: Vec<Arc<Context>> = relevant_contexts.clone();
-
-        let mut queue: VecDeque<Graph> = VecDeque::new();
-        queue.push_back(Arc::clone(&self.graph_node));
-
-        while let Some(node) = queue.pop_front() {
-            let context = meta_context.contexts_lookup
-                .get(&read_lock!(node).id)
-                .cloned()
-                .unwrap();
-
-            if let Some(basis_network) = context_to_network.get(&context.id) {
-                if basis_network.id != current_network.id {
-                    continue;
-                }
-            }
-
-            relevant_contexts.push(context.clone());
-
-            for child in &read_lock!(node).children {
-                queue.push_back(Arc::clone(&child));
-            }
-        }
-
-        let spatial_context: String = self.generate_spatial_context(&meta_context, relevant_contexts)?;
-
-        let context_string = format!(r##"
-[SPATIAL CONTEXT]
-{}
-"##, spatial_context);
-
-        Ok(context_string)
-    }
-
     pub fn generate_context_string_basis_network(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,

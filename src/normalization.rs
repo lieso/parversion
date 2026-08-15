@@ -12,13 +12,10 @@ use crate::network_analysis::{
     get_classification,
     generate_basis_networks
 };
-use crate::graph_analysis::{generate_basis_clusters};
 use crate::reports::{
     report_basis_groups,
     report_basis_fields,
     report_basis_nodes,
-    report_basis_networks,
-    report_basis_clusters
 };
 use crate::package::Package;
 use crate::prelude::*;
@@ -193,40 +190,6 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     let elapsed = start.elapsed();
     log::info!("get_basis_networks: {:.2?}", elapsed);
-
-    #[cfg(debug_assertions)]
-    {
-        report_basis_networks(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
-    }
-
-    stage.finish();
-
-    let start = Instant::now();
-    let stage = execution_context.enter_stage("Cluster analysis");
-
-    log::info!("Generating basis clusters");
-    let basis_clusters =
-        generate_basis_clusters(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            Arc::clone(&normalization_context),
-            &options,
-            &stage,
-        )
-        .await?;
-
-    {
-        let mut lock = write_lock!(normalization_context);
-        lock.update_basis_clusters(basis_clusters);
-    }
-
-    let elapsed = start.elapsed();
-    log::info!("get_network_relationships: {:.2?}", elapsed);
-
-    #[cfg(debug_assertions)]
-    {
-        report_basis_clusters(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
-    }
 
     stage.finish();
     panic!();
