@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use tokio::sync::Semaphore;
 
 use crate::prelude::*;
-use crate::basis_cluster::{BasisCluster, BasisClusterMetadata, NetworkRelationship};
+use crate::basis_cluster::{BasisCluster, BasisClusterMetadata, NetworkRelationship, NetworkTraversal};
 use crate::basis_network::BasisNetwork;
 use crate::reasoner::ReasonerMetadata;
 
@@ -39,6 +39,18 @@ impl UnionFind {
     fn same_set(&mut self, a: &Hash, b: &Hash) -> bool {
         self.find(a) == self.find(b)
     }
+}
+
+pub async fn generate_network_traversals<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext
+) -> Result<HashMap<ID, Arc<NetworkTraversal>>, Errors> {
+    log::trace!("In generate_network_traversals");
+
+    unimplemented!()
 }
 
 pub async fn generate_basis_clusters<P: Provider, R: Reasoner>(

@@ -12,7 +12,7 @@ use crate::network_analysis::{
     get_classification,
     generate_basis_networks
 };
-use crate::graph_analysis::{generate_basis_clusters};
+use crate::graph_analysis::{generate_basis_clusters, generate_network_traversals};
 use crate::reports::{
     report_basis_groups,
     report_basis_fields,
@@ -227,6 +227,25 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     {
         report_basis_clusters(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
     }
+
+    stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Relationship traversals");
+
+    log::info!("Generating relationship traversals");
+    let network_traversals =
+        generate_network_traversals(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            Arc::clone(&normalization_context),
+            &options,
+            &stage,
+        )
+        .await?;
+
+    let elapsed = start.elapsed();
+    log::info!("generate_network_traversals: {:.2?}", elapsed);
 
     stage.finish();
     panic!();
