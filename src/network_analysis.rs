@@ -30,6 +30,30 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 ), Errors> {
     log::trace!("In generate_basis_networks");
 
+    let basis_nodes: Vec<Arc<BasisNode>> = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_nodes
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(
+                    "Basis nodes not provided in normalization context".to_string()
+                )
+            })?
+            .values()
+            .cloned()
+            .collect()
+    };
+
+    log::info!("Number of basis nodes: {}", basis_nodes.len());
+
+    let non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
+        .iter()
+        .filter(|basis_node| !basis_node.transformations.is_empty())
+        .cloned()
+        .collect();
+
+    log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
+
     todo!("generate_basis_networks is being rewritten from scratch")
 }
 
