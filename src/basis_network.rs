@@ -121,15 +121,25 @@ impl BasisNetwork {
 
             write_lock!(parent).children.push(Arc::clone(&graph_node));
 
-            let normal_context = Arc::new(NormalContext {
-                id: ID::new(),
-                network_name: Some(transformation.image.clone()),
-                network_description: Some(transformation.description.clone()),
-                data_node,
-                graph_node: Arc::clone(&graph_node),
-                contexts: vec![context.clone()],
-            });
-
+            let normal_context = if transformation.keys.len() > 1 {
+                Arc::new(NormalContext {
+                    id: ID::new(),
+                    network_name: Some(transformation.image.clone()),
+                    network_description: Some(transformation.description.clone()),
+                    data_node,
+                    graph_node: Arc::clone(&graph_node),
+                    contexts: vec![context.clone()],
+                })
+            } else {
+                Arc::new(NormalContext {
+                    id: ID::new(),
+                    network_name: None,
+                    network_description: None,
+                    data_node,
+                    graph_node: Arc::clone(&graph_node),
+                    contexts: vec![context.clone()],
+                })
+            };
 
             normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
             normal_contexts_lookup.insert(read_lock!(graph_node).id.clone(), Arc::clone(&normal_context));
