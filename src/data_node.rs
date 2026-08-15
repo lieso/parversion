@@ -4,7 +4,88 @@ use std::collections::HashMap;
 use crate::prelude::*;
 use crate::json_node::{Json, JsonNode};
 
-pub type DataNodeFields = HashMap<String, String>;
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DataNodeFields {
+    inner: Vec<(String, String)>,
+}
+
+impl DataNodeFields {
+    pub fn new() -> Self {
+        Self { inner: Vec::new() }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(String, String)> {
+        self.inner.iter()
+    }
+
+    pub fn from_hash_map(map: HashMap<String, String>) -> Self {
+        Self {
+            inner: map.into_iter().collect(),
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Vec<&String> {
+        self.inner
+            .iter()
+            .filter(|(k, _)| k == key)
+            .map(|(_, v)| v)
+            .collect()
+    }
+
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.inner.iter().any(|(k, _)| k == key)
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = &String> {
+        self.inner.iter().map(|(k, _)| k)
+    }
+
+    pub fn insert(&mut self, key: String, value: String) {
+        self.inner.push((key, value));
+    }
+
+    pub fn get_all(&self, key: &str) -> impl Iterator<Item = &String> {
+        let key_str = key.to_string();
+        self.inner
+            .iter()
+            .filter(move |(k, _)| k == &key_str)
+            .map(|(_, v)| v)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+}
+
+impl IntoIterator for DataNodeFields {
+    type Item = (String, String);
+    type IntoIter = std::vec::IntoIter<(String, String)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a DataNodeFields {
+    type Item = &'a (String, String);
+    type IntoIter = std::slice::Iter<'a, (String, String)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.iter()
+    }
+}
+
+impl FromIterator<(String, String)> for DataNodeFields {
+    fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
+        Self { inner: iter.into_iter().collect() }
+    }
+}
+
+impl Extend<(String, String)> for DataNodeFields {
+    fn extend<T: IntoIterator<Item = (String, String)>>(&mut self, iter: T) {
+        self.inner.extend(iter);
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DataNode {
@@ -37,7 +118,7 @@ impl DataNode {
             hash: Hash::new(),
             lineage: Lineage::new(),
             fields: data_nodes.into_iter().fold(
-                HashMap::new(),
+                DataNodeFields::new(),
                 |mut acc, data_node| {
                     acc.extend(data_node.fields);
                     acc

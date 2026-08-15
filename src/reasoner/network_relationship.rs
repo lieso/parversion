@@ -12,7 +12,7 @@ use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
-use crate::data_node::DataNode;
+use crate::data_node::{DataNode, DataNodeFields};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -180,7 +180,7 @@ fn get_user_prompt_basis_network(
                     id: ID::new(),
                     hash: Hash::new(),
                     lineage: Lineage::new(),
-                    fields: HashMap::new(),
+                    fields: DataNodeFields::new(),
                     description: String::new(),
                 }),
                 graph_node: Arc::clone(&graph_root),

@@ -29,7 +29,7 @@ use crate::basis_network::BasisNetwork;
 use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::normal_context::NormalContext;
-use crate::data_node::DataNode;
+use crate::data_node::{DataNode, DataNodeFields};
 use crate::classification::Classification;
 
 pub async fn normalize<P: Provider, R: Reasoner>(
@@ -893,7 +893,7 @@ fn process_node(
             id: ID::new(),
             hash: Hash::new(),
             lineage: Lineage::new(),
-            fields: HashMap::new(),
+            fields: DataNodeFields::new(),
             description: "placeholder".to_string()
         })
     }

@@ -282,10 +282,9 @@ if current_context.network_name.is_empty() {
                 if let Some(basis_node) = lock.resolve_basis_node(Arc::clone(&normalization_context))? {
                     for transformation in &basis_node.transformations {
                         let transformed = transformation.transform(context.data_node.clone())?;
-                        if let Some(value) = transformed.fields.get(&transformation.image) {
+
+                        for value in transformed.fields.get(&transformation.image) {
                             result.push_str(&format!("{} => {} (value = {})\n", transformation.field, transformation.image, value));
-                        } else {
-                            log::info!("why");
                         }
                     }
                 }

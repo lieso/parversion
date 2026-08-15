@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, RwLock};
 
-use crate::data_node::DataNode;
+use crate::data_node::{DataNode, DataNodeFields};
 use crate::id::ID;
 use crate::prelude::*;
 use crate::basis_network::BasisNetwork;
@@ -45,23 +45,18 @@ pub struct FieldTranslationTransformation {
 
 impl FieldTranslationTransformation {
     pub fn transform(&self, data_node: Arc<DataNode>) -> Result<DataNode, Errors> {
-        let fields = {
-            if let Some(value) = data_node.fields.get(&self.field) {
-                let mut fields = HashMap::new();
-                fields.insert(self.image.clone(), value.to_string());
+        let mut new_fields = DataNodeFields::new();
 
-                fields
-            } else {
-                HashMap::new()
-            }
-        };
+        for value in data_node.fields.get(&self.field) {
+            new_fields.insert(self.image.clone(), value.to_string());
+        }
 
         let transformed = DataNode {
             id: ID::new(),
             hash: data_node.hash.clone(),
             lineage: data_node.lineage.clone(),
             description: data_node.description.clone(),
-            fields,
+            fields: new_fields,
         };
 
         Ok(transformed)
@@ -102,22 +97,21 @@ pub struct FieldTransformation {
 
 impl FieldTransformation {
     pub fn transform(&self, data_node: Arc<DataNode>) -> Result<DataNode, Errors> {
-        if let Some(value) = data_node.fields.get(&self.field) {
-            let mut fields = HashMap::new();
+        let mut fields = DataNodeFields::new();
+
+        for value in data_node.fields.get(&self.field) {
             fields.insert(self.image.clone(), value.to_string());
-
-            let transformed = DataNode {
-                id: ID::new(),
-                hash: data_node.hash.clone(),
-                lineage: data_node.lineage.clone(),
-                description: self.description.clone(),
-                fields,
-            };
-
-            Ok(transformed)
-        } else {
-            Err(Errors::FieldTransformationFieldNotFound)
         }
+
+        let transformed = DataNode {
+            id: ID::new(),
+            hash: data_node.hash.clone(),
+            lineage: data_node.lineage.clone(),
+            description: self.description.clone(),
+            fields,
+        };
+
+        Ok(transformed)
     }
 }
 

@@ -35,10 +35,10 @@ impl Xml {
     pub fn get_fields(xml_node: &XMLNode) -> DataNodeFields {
         match xml_node {
             XMLNode::Element(element_node) => {
-                element_node.attributes.clone()
+                DataNodeFields::from_hash_map(element_node.attributes.clone())
             }
             XMLNode::Text(text_node) => {
-                HashMap::from([("text".to_string(), text_node.trim().to_string())])
+                DataNodeFields::from_hash_map(HashMap::from([("text".to_string(), text_node.trim().to_string())]))
             }
             _ => panic!("Unexpected XML node type"),
         }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use crate::data_node::DataNode;
+use crate::data_node::{DataNode, DataNodeFields};
 use crate::document::Document;
 use crate::document::DocumentType;
 use crate::document_format::DocumentFormat;
@@ -307,7 +307,7 @@ pub async fn report_basis_networks<P: Provider>(
                 id: ID::new(),
                 hash: Hash::new(),
                 lineage: Lineage::new(),
-                fields: HashMap::new(),
+                fields: DataNodeFields::new(),
                 description: String::new(),
             }),
             graph_node: Arc::clone(&graph_root),

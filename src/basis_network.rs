@@ -103,7 +103,7 @@ impl BasisNetwork {
         for transformation in &self.transformations {
             let fields: DataNodeFields = combined_data_node.fields
                 .iter()
-                .filter(|(key, _)| transformation.keys.contains(*key))
+                .filter(|(key, _)| transformation.keys.contains(key))
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect();
 
