@@ -18,7 +18,7 @@ use crate::reports::{
     report_basis_fields,
     report_basis_nodes,
     report_basis_networks,
-    //report_basis_clusters
+    report_basis_clusters
 };
 use crate::package::Package;
 use crate::prelude::*;
@@ -225,7 +225,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     #[cfg(debug_assertions)]
     {
-        //report_basis_clusters(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+        report_basis_clusters(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
