@@ -23,13 +23,6 @@ pub struct NetworkRelationship {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NetworkTraversal {
-    pub id: ID,
-    pub from: Hash,
-    pub to: Hash,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisCluster {
     pub id: ID,
     pub networks: HashSet<Hash>,
