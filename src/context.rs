@@ -68,7 +68,8 @@ impl Context {
 
     pub fn generate_context_string_network_relationship(
         &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        relevant_contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -90,7 +91,7 @@ impl Context {
             lock.context_basis_networks.clone().unwrap()
         };
 
-        let mut relevant_contexts: Vec<Arc<Context>> = Vec::new();
+        let mut relevant_contexts: Vec<Arc<Context>> = relevant_contexts.clone();
 
         let mut queue: VecDeque<Graph> = VecDeque::new();
         queue.push_back(Arc::clone(&self.graph_node));

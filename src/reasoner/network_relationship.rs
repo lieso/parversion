@@ -118,11 +118,13 @@ fn get_user_prompt<R: Reasoner>(
 ) -> Result<String, Errors> {
     let left_context_string = get_user_prompt_basis_network(
         Arc::clone(&normalization_context),
-        left,
+        left.clone(),
+        right.clone(),
     )?;
     let right_context_string = get_user_prompt_basis_network(
         Arc::clone(&normalization_context),
-        right,
+        right.clone(),
+        left.clone(),
     )?;
 
     Ok(format!(r##"
@@ -137,6 +139,7 @@ fn get_user_prompt<R: Reasoner>(
 fn get_user_prompt_basis_network(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     basis_network: Arc<BasisNetwork>,
+    comparison_network: Arc<BasisNetwork>
 ) -> Result<String, Errors> {
     let contexts = {
         let lock = read_lock!(normalization_context);
@@ -147,6 +150,17 @@ fn get_user_prompt_basis_network(
             })?
             .get(&basis_network.id)
             .map(|contexts| contexts.iter().take(5).cloned().collect::<Vec<_>>())
+            .unwrap_or_default()
+    };
+    let comparison_contexts = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_network_contexts
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Basis network contexts not provided in normalization context".to_string())
+            })?
+            .get(&comparison_network.id)
+            .map(|contexts| contexts.iter().cloned().collect::<Vec<_>>())
             .unwrap_or_default()
     };
 
@@ -215,6 +229,7 @@ fn get_user_prompt_basis_network(
 
             let original = context.generate_context_string_network_relationship(
                 Arc::clone(&normalization_context),
+                comparison_contexts.clone(),
             )?;
 
             Ok(format!(r##"

@@ -199,7 +199,6 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         report_basis_networks(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
     }
 
-    panic!();
     stage.finish();
 
     let start = Instant::now();
@@ -230,7 +229,6 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     stage.finish();
-
     panic!();
 
     let start = Instant::now();
