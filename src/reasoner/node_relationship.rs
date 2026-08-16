@@ -7,6 +7,21 @@ use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata
 use crate::basis_network::NodeRelationship;
 use crate::basis_node::BasisNode;
 
+#[derive(Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum RelationshipType {
+    Combine,
+    Equal,
+    NoRelationship,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
+pub struct NodeRelationshipResponse {
+    pub relationship_type: RelationshipType,
+    pub left_to_right_xpath: Option<String>,
+    pub right_to_left_xpath: Option<String>,
+}
+
 pub async fn node_relationship<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -88,10 +103,10 @@ async fn get_user_prompt<R: Reasoner>(
     )?;
 
     Ok(format!(r##"
-[LEFT NODE]
+[LEFT]
 {}
 
-[RIGHT NODE]
+[RIGHT]
 {}
 "##, left_context_string, right_context_string))
 }
