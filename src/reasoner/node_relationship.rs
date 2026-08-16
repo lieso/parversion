@@ -35,26 +35,31 @@ async fn get_user_prompt<R: Reasoner>(
     right: Arc<BasisNode>,
 ) -> Result<String, Errors> {
 
-    let basis_groups = {
+    let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
-        lock.basis_groups
+        lock.basis_node_contexts
             .clone()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
-            })?
-            .values()
-            .cloned()
-    };
-
-
-    let context_groups = {
-        let lock = read_lock!(normalization_context);
-        lock.context_groups
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Context groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError("Basis node contexts not provided in meta context".to_string())
             })?
     };
+
+    let left_contexts: Vec<Arc<Context>> = basis_node_contexts
+        .get(&left.id)
+        .unwrap()
+        .iter()
+        .take(5)
+        .cloned()
+        .collect();
+    log::info!("Number of left contexts: {}", left_contexts.len());
+    let right_contexts: Vec<Arc<Context>> = basis_node_contexts
+        .get(&right.id)
+        .unwrap()
+        .iter()
+        .take(5)
+        .cloned()
+        .collect();
+    log::info!("Number of right contexts: {}", right_contexts.len());
 
 
 
