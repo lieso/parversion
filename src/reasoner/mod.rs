@@ -9,15 +9,15 @@ use crate::prompt_registry::PromptRegistry;
 use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
-use crate::basis_network::BasisNetwork;
+use crate::basis_network::{BasisNetwork, NodeRelationship};
 
 mod backend;
 mod classify;
 mod basis_field;
 mod basis_group;
 mod basis_node;
-mod basis_network;
 mod sampling;
+mod node_relationship;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -147,6 +147,22 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
                 normalization_context,
                 basis_group,
                 context_group
+            ).await?
+        )
+    }
+
+    async fn node_relationship(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        left: Arc<BasisNode>,
+        right: Arc<BasisNode>,
+    ) -> Result<(NodeRelationship, ReasonerMetadata), Errors> {
+        Ok(
+            node_relationship::node_relationship(
+                self,
+                normalization_context,
+                left,
+                right
             ).await?
         )
     }

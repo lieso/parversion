@@ -22,6 +22,11 @@ pub struct BasisNetwork {
     pub metadata: BasisNetworkMetadata,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NodeRelationship {
+    pub id: ID,
+}
+
 impl BasisNetwork {
     pub fn apply(
         &self,
