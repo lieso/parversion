@@ -144,7 +144,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let stage = execution_context.enter_stage("Node analysis");
 
     log::info!("Getting basis nodes");
-    let basis_nodes =
+    let (basis_nodes, basis_node_contexts) =
         generate_basis_nodes(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
@@ -156,7 +156,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     {
         let mut lock = write_lock!(normalization_context);
-        lock.update_basis_nodes(basis_nodes);
+        lock.update_basis_nodes(basis_nodes, basis_node_contexts);
     }
 
     let elapsed = start.elapsed();
@@ -209,7 +209,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     let elapsed = start.elapsed();
-    log::info!("buld_normalized_graph: {:.2?}", elapsed);
+    log::info!("build_normalized_graph: {:.2?}", elapsed);
 
     stage.finish();
 

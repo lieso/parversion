@@ -186,7 +186,10 @@ pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<HashMap<ID, Arc<BasisNode>>, Errors> {
+) -> Result<(
+    HashMap<ID, Arc<BasisNode>>,
+    HashMap<ID, Vec<Arc<Context>>>
+), Errors> {
     log::trace!("In generate_basis_nodes");
 
     let basis_groups = {
@@ -219,24 +222,34 @@ pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
                 cloned_reasoner,
                 cloned_normalization_context,
                 basis_group.clone(),
-                context_group,
+                context_group.clone(),
                 &cloned_options,
                 &cloned_stage_context,
             )
             .await?;
 
-            Ok((basis_node.id.clone(), Arc::new(basis_node)))
+            Ok::<_, Errors>((
+                basis_node.id.clone(),
+                Arc::new(basis_node),
+                context_group.clone(),
+            ))
         });
 
         handles.push(handle);
     }
 
-    let results: Vec<Result<(ID, Arc<BasisNode>), Errors>> = try_join_all(handles).await?;
+    let results = try_join_all(handles).await?;
 
-    let hashmap_results: HashMap<ID, Arc<BasisNode>> =
-        results.into_iter().collect::<Result<_, _>>()?;
+    let mut basis_nodes = HashMap::new();
+    let mut basis_node_to_context_group = HashMap::new();
 
-    Ok(hashmap_results)
+    for result in results {
+        let (id, basis_node, ctx_group) = result?;
+        basis_nodes.insert(id.clone(), basis_node);
+        basis_node_to_context_group.insert(id, ctx_group);
+    }
+
+    Ok((basis_nodes, basis_node_to_context_group))
 }
 
 async fn generate_basis_node<P: Provider, R: Reasoner>(
