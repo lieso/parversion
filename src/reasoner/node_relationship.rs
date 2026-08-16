@@ -20,6 +20,7 @@ pub async fn node_relationship<R: Reasoner>(
         left.clone(),
         right.clone()
     ).await?;
+    log::info!("user_prompt: {}", user_prompt);
     let system_prompt = get_system_prompt(
         reasoner,
         Arc::clone(&normalization_context)
@@ -34,7 +35,6 @@ async fn get_user_prompt<R: Reasoner>(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
 ) -> Result<String, Errors> {
-
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
         lock.basis_node_contexts
@@ -44,26 +44,56 @@ async fn get_user_prompt<R: Reasoner>(
             })?
     };
 
-    let left_contexts: Vec<Arc<Context>> = basis_node_contexts
-        .get(&left.id)
-        .unwrap()
-        .iter()
-        .take(5)
-        .cloned()
-        .collect();
-    log::info!("Number of left contexts: {}", left_contexts.len());
-    let right_contexts: Vec<Arc<Context>> = basis_node_contexts
-        .get(&right.id)
-        .unwrap()
-        .iter()
-        .take(5)
-        .cloned()
-        .collect();
-    log::info!("Number of right contexts: {}", right_contexts.len());
+    fn make_context(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_node: Arc<BasisNode>,
+        contexts: Vec<Arc<Context>>
+    ) -> Result<String, Errors> {
+        contexts.iter().try_fold(String::new(), |acc, context| {
+            let context_string = context.generate_context_string_node_relationship(
+                Arc::clone(&normalization_context),
+                basis_node.clone()
+            )?;
 
+            Ok::<String, Errors>(if acc.is_empty() {
+                context_string
+            } else {
+                format!("{}\n\n---SNIPPET SEPARATOR---\n\n{}", acc, context_string)
+            })
+        })
+    }
 
+    let left_context_string = make_context(
+        Arc::clone(&normalization_context),
+        left.clone(),
+        basis_node_contexts
+            .get(&left.id)
+            .unwrap()
+            .iter()
+            .take(5)
+            .cloned()
+            .collect()
+    )?;
 
-    unimplemented!()
+    let right_context_string = make_context(
+        Arc::clone(&normalization_context),
+        right.clone(),
+        basis_node_contexts
+            .get(&right.id)
+            .unwrap()
+            .iter()
+            .take(5)
+            .cloned()
+            .collect()
+    )?;
+
+    Ok(format!(r##"
+[LEFT NODE]
+{}
+
+[RIGHT NODE]
+{}
+"##, left_context_string, right_context_string))
 }
 
 async fn get_system_prompt<R: Reasoner>(

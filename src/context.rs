@@ -11,6 +11,7 @@ use crate::prelude::*;
 use crate::basis_group::BasisGroup;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
+use crate::basis_node::BasisNode;
 
 pub type ContextID = ID;
 
@@ -27,6 +28,47 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn generate_context_string_node_relationship(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_node: Arc<BasisNode>
+    ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                })?
+                .clone()
+        };
+
+        let spatial_context: String = self.generate_spatial_context(&meta_context, Vec::new())?;
+        let positional_context: String = self.generate_positional_context(&meta_context)?;
+
+        let mut transformed_context = String::new();
+        for transformation in &basis_node.transformations {
+            let transformed = transformation.transform(self.data_node.clone())?;
+
+            for value in transformed.fields.get(&transformation.image) {
+                transformed_context.push_str(&format!("{} => {}", transformation.image, value));
+            }
+        }
+
+        let result = format!(r##"
+[SPATIAL CONTEXT]
+{}
+
+[POSITIONAL CONTEXT]
+{}
+
+[TRANSFORMED FIELDS]
+{}
+"##, spatial_context, positional_context, transformed_context);
+
+        Ok(result)
+    }
+
     pub fn generate_context_string_basis_group(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>
@@ -132,7 +174,7 @@ impl Context {
         let context_string = root_to_target.iter().fold(String::new(), |acc, graph| {
             let current_context = meta_context.contexts_lookup.get(&read_lock!(graph).id).unwrap();
 
-if current_context.network_name.is_empty() {
+            if current_context.network_name.is_empty() {
                 acc
             } else {
                 if acc.is_empty() {
@@ -287,8 +329,8 @@ impl Context {
         let target_node = &self.graph_node;
 
         // ******************************************
-        let max_neighbours = 100;
-        let max_children = 12;
+        let max_neighbours = 50;
+        let max_children = 6;
         // ******************************************
         
         let mut queue: VecDeque<Graph> = VecDeque::new();
