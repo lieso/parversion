@@ -46,15 +46,72 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     log::info!("Number of basis nodes: {}", basis_nodes.len());
 
-    let non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
+    let mut non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
         .iter()
         .filter(|basis_node| !basis_node.transformations.is_empty())
         .cloned()
         .collect();
 
+    non_empty_basis_nodes.sort_by(|a, b| a.lineage.to_string().cmp(&b.lineage.to_string()));
+
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
 
+
+    let mut handles = Vec::new();
+
+
+    for i in 0..1 {
+        for j in (i + 1)..2 {
+            let left = Arc::clone(&non_empty_basis_nodes[i]);
+            let right = Arc::clone(&non_empty_basis_nodes[j]);
+            let cloned_provider = Arc::clone(&provider);
+            let cloned_reasoner = Arc::clone(&reasoner);
+            let cloned_normalization_context = Arc::clone(&normalization_context);
+            let cloned_stage_context = stage_context.clone();
+            let cloned_options = options.clone();
+
+            let handle = task::spawn(async move {
+                generate_node_relationship(
+                    cloned_provider,
+                    cloned_reasoner,
+                    cloned_normalization_context,
+                    &cloned_options,
+                    &cloned_stage_context,
+                    left,
+                    right,
+                )
+                .await
+            });
+
+            handles.push(handle);
+
+        }
+    }
+
+    let _ = futures::future::join_all(handles).await;
+
+
+
+
+
     todo!("generate_basis_networks is being rewritten from scratch")
+}
+
+async fn generate_node_relationship<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+    left: Arc<BasisNode>,
+    right: Arc<BasisNode>,
+) -> Result<(), Errors> {
+
+
+
+
+
+    unimplemented!()
 }
 
 pub async fn get_translation_networks<P: Provider, R: Reasoner>(
