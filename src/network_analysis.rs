@@ -108,8 +108,15 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
 ) -> Result<(), Errors> {
 
 
+    stage_context.record_events("Node relationship", 0);
 
+    let (relationship, metadata) = reasoner.node_relationship(
+        Arc::clone(&normalization_context),
+        left.clone(),
+        right.clone(),
+    ).await?;
 
+    stage_context.record_events("Node relationship", metadata.tokens.into());
 
     unimplemented!()
 }

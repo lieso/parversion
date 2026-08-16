@@ -150,24 +150,6 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
             ).await?
         )
     }
-
-    async fn basis_network(
-        &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        basis_lineages_hash: Hash,
-        context_group: Vec<Arc<Context>>,
-        basis_lineages: HashSet<BasisLineage>
-    ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
-        Ok(
-            basis_network::basis_network(
-                self,
-                normalization_context,
-                basis_lineages_hash,
-                context_group,
-                basis_lineages
-            ).await?
-        )
-    }
 }
 
 fn is_retryable(error: &Errors) -> bool {
