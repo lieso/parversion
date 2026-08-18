@@ -5,7 +5,7 @@ use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::classification::Classification;
-use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
+use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NodeRelationship};
 use crate::basis_graph::BasisGraph;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
@@ -56,14 +56,21 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
 
+    let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
-    let mut handles = Vec::new();
+    for i in 0..non_empty_basis_nodes.len() {
+        let mut handles = Vec::new();
 
-
-    for i in 0..1 {
-        for j in (i + 1)..2 {
+        for j in (i + 1)..non_empty_basis_nodes.len() {
             let left = Arc::clone(&non_empty_basis_nodes[i]);
             let right = Arc::clone(&non_empty_basis_nodes[j]);
+
+
+
+
+
+
+
             let cloned_provider = Arc::clone(&provider);
             let cloned_reasoner = Arc::clone(&reasoner);
             let cloned_normalization_context = Arc::clone(&normalization_context);
@@ -84,13 +91,14 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             });
 
             handles.push(handle);
+        }
 
+        let results = try_join_all(handles).await?;
+        
+        for result in results {
+            node_relationships.push(Arc::new(result?));
         }
     }
-
-    let _ = futures::future::join_all(handles).await;
-
-
 
 
 
