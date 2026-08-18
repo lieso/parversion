@@ -59,15 +59,35 @@ async fn get_user_prompt<R: Reasoner>(
             })?
     };
 
+    // TODO: collect contexts that exist on path from left to right to ensure valid xpaths are generated
+
+    let left_contexts: Vec<Arc<Context>> = basis_node_contexts
+        .get(&left.id)
+        .unwrap()
+        .iter()
+        .take(5)
+        .cloned()
+        .collect();
+
+    let right_contexts: Vec<Arc<Context>> = basis_node_contexts
+        .get(&right.id)
+        .unwrap()
+        .iter()
+        .take(5)
+        .cloned()
+        .collect();
+
     fn make_context(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         basis_node: Arc<BasisNode>,
-        contexts: Vec<Arc<Context>>
+        contexts: Vec<Arc<Context>>,
+        other_contexts: Vec<Arc<Context>>
     ) -> Result<String, Errors> {
         contexts.iter().try_fold(String::new(), |acc, context| {
             let context_string = context.generate_context_string_node_relationship(
                 Arc::clone(&normalization_context),
-                basis_node.clone()
+                basis_node.clone(),
+                other_contexts.clone(),
             )?;
 
             Ok::<String, Errors>(if acc.is_empty() {
@@ -81,25 +101,15 @@ async fn get_user_prompt<R: Reasoner>(
     let left_context_string = make_context(
         Arc::clone(&normalization_context),
         left.clone(),
-        basis_node_contexts
-            .get(&left.id)
-            .unwrap()
-            .iter()
-            .take(5)
-            .cloned()
-            .collect()
+        left_contexts.clone(),
+        right_contexts.clone(),
     )?;
 
     let right_context_string = make_context(
         Arc::clone(&normalization_context),
         right.clone(),
-        basis_node_contexts
-            .get(&right.id)
-            .unwrap()
-            .iter()
-            .take(5)
-            .cloned()
-            .collect()
+        right_contexts.clone(),
+        left_contexts.clone()
     )?;
 
     Ok(format!(r##"
