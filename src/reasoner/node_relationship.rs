@@ -17,8 +17,11 @@ pub enum RelationshipType {
 
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct NodeRelationshipResponse {
+    // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "NO_RELATIONSHIP")
     pub relationship_type: RelationshipType,
+    // The XPath to get from LEFT to RIGHT, if applicable
     pub left_to_right_xpath: Option<String>,
+    // The XPath to get from RIGHT to LEFT, if applicable
     pub right_to_left_xpath: Option<String>,
 }
 
@@ -29,17 +32,53 @@ pub async fn node_relationship<R: Reasoner>(
     right: Arc<BasisNode>,
 ) -> Result<(NodeRelationship, ReasonerMetadata), Errors> {
 
+    let system_prompt = get_system_prompt(
+        reasoner,
+        Arc::clone(&normalization_context)
+    ).await?;
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&normalization_context),
         left.clone(),
         right.clone()
     ).await?;
-    log::info!("user_prompt: {}", user_prompt);
-    let system_prompt = get_system_prompt(
-        reasoner,
-        Arc::clone(&normalization_context)
+    let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipResponse))
+        .expect("Failed to serialise NodeRelationshipResponse schema");
+    let capability = Capability::Fast;
+
+    log::debug!("");
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║                   NODE RELATIONSHIP                           ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("");
+    log::debug!("  Capability : {:?}", capability);
+    log::debug!("");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+
+    let (result, metadata) = reasoner.execute::<NodeRelationshipResponse>(
+        &capability,
+        &system_prompt,
+        &user_prompt,
+        schema
     ).await?;
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
+    };
 
     unimplemented!()
 }
