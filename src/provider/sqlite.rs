@@ -7,7 +7,7 @@ use crate::basis_field::BasisField;
 use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
-use crate::basis_network::BasisNetwork;
+use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_node::BasisNode;
 use crate::translation_node::TranslationNode;
 use crate::translation_network::TranslationNetwork;
@@ -48,6 +48,12 @@ impl SqliteProvider {
              CREATE TABLE IF NOT EXISTS basis_networks (
                  basis_lineages TEXT NOT NULL PRIMARY KEY,
                  data           TEXT NOT NULL
+             );
+             CREATE TABLE IF NOT EXISTS node_relationships (
+                 left_basis_lineage   TEXT NOT NULL,
+                 right_basis_lineage  TEXT NOT NULL,
+                 data                 TEXT NOT NULL,
+                 PRIMARY KEY (left_basis_lineage, right_basis_lineage)
              );
              CREATE TABLE IF NOT EXISTS basis_graphs (
                  hash TEXT PRIMARY KEY,
@@ -613,4 +619,52 @@ impl Provider for SqliteProvider {
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
+    async fn get_node_relationship(
+        &self,
+        left_basis_lineage: &Lineage,
+        right_basis_lineage: &Lineage,
+    ) -> Result<Option<NodeRelationship>, Errors> {
+        let conn = self.connection.clone();
+        let key1 = left_basis_lineage.to_string();
+        let key2 = right_basis_lineage.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM node_relationships WHERE left_basis_lineage = ?1 AND right_basis_lineage = ?2",
+                params![key1, key2],
+                |row| row.get::<_, String>(0),
+            ) {
+                Ok(data) => deserialize(data).map(Some),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
+
+    async fn save_node_relationship(
+        &self,
+        left_basis_lineage: Lineage,
+        right_basis_lineage: Lineage,
+        node_relationship: NodeRelationship,
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let key1 = left_basis_lineage.to_string();
+        let key2 = right_basis_lineage.to_string();
+        let data = serialize(&node_relationship)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            conn.execute(
+                "INSERT OR REPLACE INTO node_relationships (left_basis_lineage, right_basis_lineage, data) VALUES (?1, ?2, ?3)",
+                params![key1, key2, data],
+            )
+                .map_err(|e| db_err(e))?;
+            Ok(())
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
 }

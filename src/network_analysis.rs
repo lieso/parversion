@@ -105,8 +105,16 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
     stage_context: &StageContext,
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
-) -> Result<(), Errors> {
+) -> Result<NodeRelationship, Errors> {
 
+    if !options.regenerate {
+        if let Some(node_relationship) = provider.get_node_relationship(
+            &left.lineage,
+            &right.lineage,
+        ).await? {
+            return Ok(node_relationship);
+        }
+    }
 
     stage_context.record_events("Node relationship", 0);
 
@@ -118,7 +126,15 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
 
     stage_context.record_events("Node relationship", metadata.tokens.into());
 
-    unimplemented!()
+    provider
+        .save_node_relationship(
+            left.lineage.clone(),
+            right.lineage.clone(),
+            relationship.clone()
+        )
+        .await?;
+
+    Ok(relationship)
 }
 
 pub async fn get_translation_networks<P: Provider, R: Reasoner>(

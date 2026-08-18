@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::prelude::*;
 use crate::document::Document;
 use crate::classification::Classification;
-use crate::basis_network::BasisNetwork;
+use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::basis_graph::BasisGraph;
@@ -115,6 +115,17 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         lineages: (Lineage, Lineage),
         translation_network: Option<TranslationNetwork>
+    ) -> Result<(), Errors>;
+    async fn get_node_relationship(
+        &self,
+        left_basis_lineage: &Lineage,
+        right_basis_lineage: &Lineage,
+    ) -> Result<Option<NodeRelationship>, Errors>;
+    async fn save_node_relationship(
+        &self,
+        left_basis_lineage: Lineage,
+        right_basis_lineage: Lineage,
+        node_relationship: NodeRelationship,
     ) -> Result<(), Errors>;
 }
 
@@ -270,4 +281,20 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
+    async fn get_node_relationship(
+        &self,
+        _left_basis_lineage: &Lineage,
+        _right_basis_lineage: &Lineage,
+    ) -> Result<Option<NodeRelationship>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_node_relationship(
+        &self,
+        _left_basis_lineage: Lineage,
+        _right_basis_lineage: Lineage,
+        _node_relationship: NodeRelationship,
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
 }
