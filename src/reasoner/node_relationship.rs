@@ -4,12 +4,12 @@ use serde::Deserialize;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_network::NodeRelationship;
+use crate::basis_network::{NodeRelationship, NodeRelationshipType};
 use crate::basis_node::BasisNode;
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum RelationshipType {
+pub enum RelationshipTypeResponse {
     Combine,
     Equal,
     NoRelationship,
@@ -18,7 +18,7 @@ pub enum RelationshipType {
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct NodeRelationshipResponse {
     // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "NO_RELATIONSHIP")
-    pub relationship_type: RelationshipType,
+    pub relationship_type: RelationshipTypeResponse,
     // The XPath to get from LEFT to RIGHT, if applicable
     pub left_to_right_xpath: Option<String>,
     // The XPath to get from RIGHT to LEFT, if applicable
@@ -80,7 +80,30 @@ pub async fn node_relationship<R: Reasoner>(
         prompt_hash: metadata.prompt_hash.clone(),
     };
 
-    unimplemented!()
+    let relationship_type = {
+        match result.relationship_type {
+            RelationshipTypeResponse::Combine => {
+                NodeRelationshipType::Combine {
+                    xpath_ltr: result.left_to_right_xpath.unwrap().clone()
+                }
+            },
+            RelationshipTypeResponse::Equal => {
+                NodeRelationshipType::Equal
+            },
+            RelationshipTypeResponse::NoRelationship => {
+                NodeRelationshipType::NoRelationship
+            },
+        }
+    };
+
+    let node_relationship = NodeRelationship {
+        id: ID::new(),
+        left_basis_lineage: left.lineage.clone(),
+        right_basis_lineage: right.lineage.clone(),
+        relationship_type,
+    };
+
+    Ok((node_relationship, reasoner_metadata))
 }
 
 async fn get_user_prompt<R: Reasoner>(
