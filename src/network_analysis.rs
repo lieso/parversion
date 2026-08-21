@@ -65,7 +65,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             let left = Arc::clone(&non_empty_basis_nodes[i]);
             let right = Arc::clone(&non_empty_basis_nodes[j]);
 
-
             let has_transitivity = get_relationship(
                 node_relationships.clone(),
                 &left.lineage,

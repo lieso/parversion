@@ -8,7 +8,6 @@ use tokio::sync::RwLock as AsyncRwLock;
 use crate::basis_graph::BasisGraph;
 use crate::classification::Classification;
 use crate::basis_group::BasisGroup;
-use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::basis_field::BasisField;
 use crate::bloom_filter::BloomFilter;
@@ -147,43 +146,6 @@ impl Provider for YamlFileProvider {
             sequence.push(serialized_basis_node);
         } else {
             yaml["basis_nodes"] = serde_yaml::Value::Sequence(vec![serialized_basis_node]);
-        }
-
-        self.save_data(&yaml).await
-    }
-
-    async fn save_basis_network(
-        &self,
-        lineage: &Lineage,
-        subgraph_hash: &Hash,
-        basis_network: BasisNetwork,
-    ) -> Result<(), Errors> {
-        let mut yaml = self.load_data().await?;
-
-        let serialized_basis_network =
-            serde_yaml::to_value(&basis_network).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
-
-        if let Some(basis_networks) = yaml.get_mut("basis_networks") {
-            let sequence = basis_networks.as_sequence_mut().ok_or_else(|| {
-                Errors::YamlParseError(
-                    "Failed to get mutable sequence for 'basis_networks'.".to_string(),
-                )
-            })?;
-
-            // Remove existing entry with matching lineage and subgraph_hash
-            sequence.retain(|network| {
-                if let Ok(existing_network) =
-                    serde_yaml::from_value::<BasisNetwork>(network.clone())
-                {
-                    !(existing_network.lineage == *lineage && existing_network.subgraph_hash == *subgraph_hash)
-                } else {
-                    true
-                }
-            });
-
-            sequence.push(serialized_basis_network);
-        } else {
-            yaml["basis_networks"] = serde_yaml::Value::Sequence(vec![serialized_basis_network]);
         }
 
         self.save_data(&yaml).await

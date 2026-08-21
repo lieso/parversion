@@ -7,7 +7,7 @@ use crate::basis_field::BasisField;
 use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
-use crate::basis_network::{BasisNetwork, NodeRelationship};
+use crate::basis_network::{NodeRelationship};
 use crate::basis_node::BasisNode;
 use crate::translation_node::TranslationNode;
 use crate::translation_network::TranslationNetwork;
@@ -44,10 +44,6 @@ impl SqliteProvider {
              CREATE TABLE IF NOT EXISTS basis_nodes (
                  lineage_hash TEXT PRIMARY KEY,
                  data         TEXT NOT NULL
-             );
-             CREATE TABLE IF NOT EXISTS basis_networks (
-                 basis_lineages TEXT NOT NULL PRIMARY KEY,
-                 data           TEXT NOT NULL
              );
              CREATE TABLE IF NOT EXISTS node_relationships (
                  left_basis_lineage   TEXT NOT NULL,
@@ -149,50 +145,6 @@ impl Provider for SqliteProvider {
             let conn = conn.lock().map_err(|_| lock_err())?;
             conn.execute(
                 "INSERT OR REPLACE INTO basis_nodes (lineage_hash, data) VALUES (?1, ?2)",
-                params![key, data],
-            )
-            .map_err(|e| db_err(e))?;
-            Ok(())
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
-    async fn get_basis_network_by_basis_lineages(
-        &self,
-        basis_lineages: &Hash,
-    ) -> Result<Option<BasisNetwork>, Errors> {
-        let conn = self.connection.clone();
-        let key = basis_lineages.to_string().unwrap();
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-            match conn.query_row(
-                "SELECT data FROM basis_networks WHERE basis_lineages = ?1",
-                params![key],
-                |row| row.get::<_, String>(0),
-            ) {
-                Ok(data) => deserialize(data).map(Some),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(db_err(e)),
-            }
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
-    async fn save_basis_network(
-        &self,
-        basis_network: BasisNetwork,
-    ) -> Result<(), Errors> {
-        let conn = self.connection.clone();
-        let key = basis_network.basis_lineages.to_string().ok_or(Errors::UnexpectedError("Database operation failed".to_string()))?;
-        let data = serialize(&basis_network)?;
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-            conn.execute(
-                "INSERT OR REPLACE INTO basis_networks (basis_lineages, data) VALUES (?1, ?2)",
                 params![key, data],
             )
             .map_err(|e| db_err(e))?;

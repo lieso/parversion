@@ -61,14 +61,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         lineage: &Lineage,
         basis_node: BasisNode
     ) -> Result<(), Errors>;
-    async fn get_basis_network_by_basis_lineages(
-        &self,
-        basis_lineages: &Hash
-    ) -> Result<Option<BasisNetwork>, Errors>;
-    async fn save_basis_network(
-        &self,
-        basis_network: BasisNetwork,
-    ) -> Result<(), Errors>;
     async fn get_classification_by_lineage(
         &self,
         lineage: &Lineage,
@@ -174,20 +166,6 @@ impl Provider for VoidProvider {
         &self,
         _lineage: &Lineage,
         _basis_node: BasisNode,
-    ) -> Result<(), Errors> {
-        Ok(())
-    }
-
-    async fn get_basis_network_by_basis_lineages(
-        &self,
-        _basis_lineages: &Hash
-    ) -> Result<Option<BasisNetwork>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_basis_network(
-        &self,
-        _basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
         Ok(())
     }

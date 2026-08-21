@@ -8,6 +8,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::normal_context::NormalContext;
 use crate::data_node::{DataNode, DataNodeFields};
 use crate::normal_meta_context::NormalMetaContext;
+use crate::basis_node::BasisNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetworkMetadata {
@@ -17,7 +18,8 @@ pub struct BasisNetworkMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetwork {
     pub id: ID,
-    pub basis_lineages: Hash,
+    pub basis_nodes: Vec<Arc<BasisNode>>,
+    pub relationships: Vec<Arc<NodeRelationship>>,
     pub transformations: Vec<NetworkTransformation>,
     pub metadata: BasisNetworkMetadata,
 }
