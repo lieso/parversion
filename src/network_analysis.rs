@@ -5,7 +5,7 @@ use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::classification::Classification;
-use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NodeRelationship};
+use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NodeRelationship, NodeRelationshipType};
 use crate::basis_graph::BasisGraph;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
@@ -66,10 +66,15 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             let right = Arc::clone(&non_empty_basis_nodes[j]);
 
 
+            let has_transitivity = get_relationship(
+                node_relationships.clone(),
+                &left.lineage,
+                &right.lineage,
+            ).is_some();
 
-
-
-
+            if has_transitivity {
+                continue
+            }
 
             let cloned_provider = Arc::clone(&provider);
             let cloned_reasoner = Arc::clone(&reasoner);
@@ -344,4 +349,53 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
     stage_context.record_events("Document classification", metadata.tokens.into());
 
     Ok(Arc::new(classification))
+}
+
+fn get_relationship(
+    relationships: Vec<Arc<NodeRelationship>>,
+    left_basis_lineage: &Lineage,
+    right_basis_lineage: &Lineage,
+) -> Option<NodeRelationshipType> {
+
+    let left_relationships: Vec<Arc<NodeRelationship>> = relationships
+        .iter()
+        .filter(|relationship| {
+            relationship.left_basis_lineage == *left_basis_lineage ||
+            relationship.right_basis_lineage == *left_basis_lineage 
+        })
+        .cloned()
+        .collect();
+
+    if left_relationships.is_empty() {
+        return None;
+    }
+
+    for relationship in left_relationships.iter() {
+        if relationship.left_basis_lineage == *right_basis_lineage ||
+            relationship.right_basis_lineage == *right_basis_lineage {
+            return Some(relationship.relationship_type.clone());
+        }
+    }
+
+    for relationship in left_relationships.iter() {
+        if relationship.left_basis_lineage == *left_basis_lineage {
+            if let Some(relationship_type) = get_relationship(
+                relationships.clone(),
+                &relationship.right_basis_lineage,
+                right_basis_lineage,
+            ) {
+                return Some(relationship_type);
+            }
+        } else {
+            if let Some(relationship_type) = get_relationship(
+                relationships.clone(),
+                &relationship.left_basis_lineage,
+                right_basis_lineage,
+            ) {
+                return Some(relationship_type);
+            }
+        }
+    }
+
+    None
 }
