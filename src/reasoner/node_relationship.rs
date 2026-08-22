@@ -84,7 +84,8 @@ pub async fn node_relationship<R: Reasoner>(
         match result.relationship_type {
             RelationshipTypeResponse::Combine => {
                 NodeRelationshipType::Combine {
-                    xpath_ltr: result.left_to_right_xpath.unwrap().clone()
+                    xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                    xpath_rtl: result.right_to_left_xpath.unwrap().clone()
                 }
             },
             RelationshipTypeResponse::Equal => {
