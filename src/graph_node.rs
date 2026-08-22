@@ -385,8 +385,31 @@ impl GraphNode {
 
                 Ok(filtered)
             }
-            XPathPredicate::AttributePresence(_) => {
-                unimplemented!()
+            XPathPredicate::AttributePresence(names) => {
+                let contexts_lookup = {
+                    let lock = read_lock!(normalization_context);
+                    lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+                };
+
+                let filtered: Vec<Graph> = graphs
+                    .iter()
+                    .filter(|graph| {
+                        let graph_id = read_lock!(graph).id.clone();
+                        contexts_lookup
+                            .get(&graph_id)
+                            .map(|context| {
+                                names.iter().all(|name| {
+                                    read_lock!(&context.document_node)
+                                        .get_attribute_value(name)
+                                        .is_some()
+                                })
+                            })
+                        .unwrap_or(false)
+                    })
+                    .cloned()
+                    .collect();
+
+                Ok(filtered)
             }
         }
     }

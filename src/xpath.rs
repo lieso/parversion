@@ -176,15 +176,16 @@ impl XPathAxis {
 impl XPathPredicate {
     fn from_str(s: &str) -> Result<Self, Errors> {
         if let Some(inner) = s.strip_prefix('@') {
-            let eq_pos = inner.find('=').ok_or_else(|| {
-                Errors::XPathParseError(format!("Invalid attribute predicate: {}", s))
-            })?;
-            let name = inner[..eq_pos].to_string();
-            let value = inner[eq_pos + 1..]
-                .trim_matches('\'')
-                .trim_matches('"')
-                .to_string();
-            Ok(XPathPredicate::Attribute { name, value })
+            if let Some(eq_pos) = inner.find('=') {
+                let name = inner[..eq_pos].to_string();
+                let value = inner[eq_pos + 1..]
+                    .trim_matches('\'')
+                    .trim_matches('"')
+                    .to_string();
+                Ok(XPathPredicate::Attribute { name, value })
+            } else {
+                Ok(XPathPredicate::AttributePresence(vec![inner.to_string()]))
+            }
         } else if let Some(inner) = s.strip_prefix("contains(").and_then(|s| s.strip_suffix(')')) {
             let (attr_part, val_part) = inner.split_once(',')
                 .ok_or_else(|| Errors::XPathParseError(format!("Invalid contains() predicate: {}", s)))?;
