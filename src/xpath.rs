@@ -34,6 +34,7 @@ pub enum XPathPredicate {
     AttributePresence(Vec<String>),
     Contains { name: String, value: String },
     Last,
+    StartsWith { name: String, value: String },
 }
 
 impl XPath {
@@ -208,6 +209,12 @@ impl XPathPredicate {
             let name = attr_part.trim().trim_start_matches('@').to_string();
             let value = val_part.trim().trim_matches('\'').trim_matches('"').to_string();
             Ok(XPathPredicate::Contains { name, value })
+        } else if let Some(inner) = s.strip_prefix("starts-with(").and_then(|s| s.strip_suffix(')')) {
+            let (attr_part, val_part) = inner.split_once(',')
+                .ok_or_else(|| Errors::XPathParseError(format!("Invalid starts-with() predicate: {}", s)))?;
+            let name = attr_part.trim().trim_start_matches('@').to_string();
+            let value = val_part.trim().trim_matches('\'').trim_matches('"').to_string();
+            Ok(XPathPredicate::StartsWith { name, value })
         } else if let Ok(pos) = s.parse::<usize>() {
             Ok(XPathPredicate::Position(pos))
         } else {
@@ -229,7 +236,8 @@ impl XPathPredicate {
                     .map(|attr| format!("@{}", attr))
                     .collect::<Vec<_>>()
                     .join(" and ")
-            }
+            },
+            XPathPredicate::StartsWith { name, value } => format!("starts-with(@{},'{}')", name, value),
         }
     }
 }
