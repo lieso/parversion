@@ -166,23 +166,27 @@ impl BasisNetwork {
                                 .unwrap();
 
                             // TODO: inefficient
-                            let target_basis_node = all_contexts
+                            let target_pair = all_contexts
                                 .iter()
                                 .find(|(basis_node, context)| {
                                     context.id == target_context.id
-                                })
-                                .unwrap()
-                                .0
-                                .clone();
+                                });
 
-                            if let Some(target_data_node) = target_basis_node.apply(target_context.clone())? {
-                                data_node = DataNode::from_data_nodes(vec![
-                                    data_node,
-                                    target_data_node,
-                                ]);
+                            if let Some(target_pair) = target_pair {
+                                let target_basis_node = &target_pair.0;
+
+                                if let Some(target_data_node) = target_basis_node.apply(target_context.clone())? {
+                                    data_node = DataNode::from_data_nodes(vec![
+                                        data_node,
+                                        target_data_node,
+                                    ]);
+                                }
+
+                                queue.push_back((target_context.clone(), target_basis_node.lineage.clone()));
+                            } else {
+                                log::warn!("Could not find target context with current network");
                             }
 
-                            queue.push_back((target_context.clone(), target_basis_node.lineage.clone()));
                             processed_contexts.insert(target_context.id.clone());
                         } else {
                             log::warn!("Failed to apply xpath");
