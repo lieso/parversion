@@ -4,6 +4,10 @@ use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::basis_network::BasisNetwork;
+use crate::graph_node::GraphNode;
+use crate::document::{Document, DocumentType};
+use crate::document_format::DocumentFormat;
 
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
@@ -217,6 +221,72 @@ pub async fn report_basis_nodes<P: Provider>(
     }
 
     println!("{}=== End Basis Node Report ==={}", GREEN, RESET);
+
+    Ok(())
+}
+
+pub async fn report_basis_networks(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<(), Errors> {
+    let basis_networks = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_networks
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Basis networks not provided in normalization context".to_string())
+            })?
+            .clone()
+    };
+
+    let parent = Arc::new(RwLock::new(GraphNode {
+        id: ID::new(),
+        parents: Vec::new(),
+        description: "report_parent".to_string(),
+        hash: Hash::new(),
+        subgraph_hash: Hash::new(),
+        lineage: Lineage::new(),
+        children: Vec::new(),
+    }));
+
+    println!("{}=== Basis Network Report ({} networks) ==={}", CYAN, basis_networks.len(), RESET);
+
+    for network in basis_networks.values() {
+        println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
+        println!("{}--- Network [{}] ---{}", CYAN, network.id.to_string(), RESET);
+        println!("{}  basis nodes: {}{}", CYAN, network.basis_nodes.len(), RESET);
+        println!("{}  relationships: {}{}", CYAN, network.relationships.len(), RESET);
+        println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
+
+        match network.apply(Arc::clone(&normalization_context), Arc::clone(&parent)) {
+            Ok(normal_meta_context) => {
+                let format = DocumentFormat {
+                    format_type: DocumentType::Json,
+                    encoding: None,
+                    indent: Some(2),
+                    line_ending: None,
+                    headers: None,
+                    wrap_text: None,
+                    exclude_nulls: None,
+                    custom_delimiter: None,
+                };
+                match Document::from_normal_meta_context(&normal_meta_context, &format) {
+                    Ok(document) => {
+                        println!("{}{}{}", CYAN, document.data, RESET);
+                    }
+                    Err(e) => {
+                        println!("{}  Error converting to document: {:?}{}", CYAN, e, RESET);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("{}  Error applying network: {:?}{}", CYAN, e, RESET);
+            }
+        }
+
+        println!();
+    }
+
+    println!("{}=== End Basis Network Report ==={}", CYAN, RESET);
 
     Ok(())
 }
