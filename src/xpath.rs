@@ -110,6 +110,14 @@ impl XPathSegment {
             });
         }
 
+        if node_part == ".." {
+            return Ok(XPathSegment {
+                axis: XPathAxis::Parent,
+                node_test: String::new(),
+                predicates,
+            });
+        }
+
         let (axis, node_test) = if let Some(axis_end) = node_part.find("::") {
             let axis = XPathAxis::from_str(&node_part[..axis_end])?;
             (axis, &node_part[axis_end + 2..])

@@ -185,7 +185,7 @@ impl GraphNode {
             XPathAxis::Child => {
                 Ok(lock.children.clone())
             },
-            XPathAxis::Parent => unimplemented!(),
+            XPathAxis::Parent => Ok(lock.parents.clone()),
             XPathAxis::Self_ => Ok(vec![graph.clone()]),
             XPathAxis::Descendant => {
                 let mut descendants = Vec::new();
@@ -426,7 +426,7 @@ impl GraphNode {
             &xpath_segment.axis
         )?;
 
-        let next_graphs: Vec<Graph> = if xpath_segment.axis == XPathAxis::Self_ {
+        let next_graphs: Vec<Graph> = if matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent) {
             next_graphs
         } else {
             next_graphs
