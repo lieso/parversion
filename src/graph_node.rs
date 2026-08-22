@@ -331,6 +331,7 @@ impl GraphNode {
                 let selected_graph = graphs.get(*index as usize - 1).cloned().unwrap();
                 Ok(vec![selected_graph])
             }
+            XPathPredicate::Last => Ok(graphs.last().cloned().into_iter().collect()),
             XPathPredicate::Contains { name, value } => {
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);

@@ -31,7 +31,8 @@ pub enum XPathPredicate {
     Position(usize),
     Attribute { name: String, value: String },
     AttributePresence(Vec<String>),
-    Contains { name: String, value: String }
+    Contains { name: String, value: String },
+    Last,
 }
 
 impl XPath {
@@ -175,6 +176,10 @@ impl XPathAxis {
 
 impl XPathPredicate {
     fn from_str(s: &str) -> Result<Self, Errors> {
+        if s == "last()" {
+            return Ok(XPathPredicate::Last);
+        }
+
         if let Some(inner) = s.strip_prefix('@') {
             if let Some(eq_pos) = inner.find('=') {
                 let name = inner[..eq_pos].to_string();
@@ -207,6 +212,7 @@ impl XPathPredicate {
             XPathPredicate::Position(n) => n.to_string(),
             XPathPredicate::Attribute { name, value } => format!("@{}='{}'", name, value),
             XPathPredicate::Contains { name, value } => format!("contains(@{},'{}')", name, value),
+            XPathPredicate::Last => "last()".to_string(),
             XPathPredicate::AttributePresence(attrs) => {
                 attrs.iter()
                     .map(|attr| format!("@{}", attr))
