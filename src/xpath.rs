@@ -35,16 +35,33 @@ pub enum XPathPredicate {
     Contains { name: String, value: String },
     Last,
     StartsWith { name: String, value: String },
+    Path(XPath),
 }
 
 impl XPath {
     pub fn from_str(s: &str) -> Result<Self, Errors> {
         log::trace!("In XPath::from_str");
-        log::debug!("xpath: {}", s);
 
-        let segments = s
-            .replace("//", "/descendant::")
-            .split('/')
+        let s = s.replace("//", "/descendant::");
+
+        let mut parts: Vec<&str> = Vec::new();
+        let mut depth = 0;
+        let mut start = 0;
+        for (i, c) in s.char_indices() {
+            match c {
+                '[' => depth += 1,
+                ']' => depth -= 1,
+                '/' if depth == 0 => {
+                    parts.push(&s[start..i]);
+                    start = i + 1;
+                }
+                _ => {}
+            }
+        }
+        parts.push(&s[start..]);
+
+        let segments = parts
+            .into_iter()
             .filter(|part| !part.is_empty())
             .map(XPathSegment::from_str)
             .collect::<Result<Vec<_>, Errors>>()?;
@@ -217,6 +234,8 @@ impl XPathPredicate {
             Ok(XPathPredicate::StartsWith { name, value })
         } else if let Ok(pos) = s.parse::<usize>() {
             Ok(XPathPredicate::Position(pos))
+        } else if let Ok(path) = XPath::from_str(s) {
+            Ok(XPathPredicate::Path(path))
         } else {
             Err(Errors::XPathParseError(format!(
                 "Unrecognized predicate: {}",
@@ -238,6 +257,7 @@ impl XPathPredicate {
                     .join(" and ")
             },
             XPathPredicate::StartsWith { name, value } => format!("starts-with(@{},'{}')", name, value),
+            XPathPredicate::Path(path) => path.to_string(),
         }
     }
 }

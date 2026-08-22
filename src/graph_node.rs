@@ -475,6 +475,19 @@ impl GraphNode {
 
                 Ok(filtered)
             }
+            XPathPredicate::Path(path) => {
+                let filtered: Vec<Graph> = graphs
+                    .into_iter()
+                    .filter(|graph| {
+                        matches!(
+                            Self::traverse_using_xpath(Arc::clone(&normalization_context), Arc::clone(graph), path),
+                            Ok(Some(_))
+                        )
+                    })
+                .collect();
+
+                Ok(filtered)
+            }
         }
     }
 

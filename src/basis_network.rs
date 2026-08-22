@@ -184,7 +184,7 @@ impl BasisNetwork {
 
                                 queue.push_back((target_context.clone(), target_basis_node.lineage.clone()));
                             } else {
-                                log::warn!("Could not find target context with current network");
+                                log::warn!("Could not find target context within current network");
                             }
 
                             processed_contexts.insert(target_context.id.clone());
