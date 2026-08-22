@@ -181,11 +181,14 @@ impl BasisNetwork {
                                     target_data_node,
                                 ]);
                             }
-                            processed_contexts.insert(target_context.id.clone());
-                            processed_relationships.insert(relationship.id.clone());
 
                             queue.push_back((target_context.clone(), target_basis_node.lineage.clone()));
+                            processed_contexts.insert(target_context.id.clone());
+                        } else {
+                            log::warn!("Failed to apply xpath");
                         }
+
+                        processed_relationships.insert(relationship.id.clone());
                     },
                     NodeRelationshipType::Equal => {
                         unimplemented!()

@@ -37,6 +37,7 @@ pub enum XPathPredicate {
 impl XPath {
     pub fn from_str(s: &str) -> Result<Self, Errors> {
         log::trace!("In XPath::from_str");
+        log::debug!("xpath: {}", s);
 
         let segments = s
             .replace("//", "/descendant::")
