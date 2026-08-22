@@ -291,10 +291,6 @@ impl GraphNode {
             panic!("Received node_test 'node()'");
         }
 
-        if node_test == "text()" {
-            panic!("Received node_test 'text()'");
-        }
-
         if node_test == "comment()" {
             panic!("Received node_test 'comment()'");
         }
@@ -302,6 +298,8 @@ impl GraphNode {
         if node_test == "*" {
             panic!("Received node_test '*'");
         }
+
+        let node_test = if node_test == "text()" { "#text" } else { node_test.as_str() };
 
         let contexts_lookup = {
             let lock = read_lock!(normalization_context);
