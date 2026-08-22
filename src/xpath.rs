@@ -95,10 +95,19 @@ impl XPathSegment {
         predicate_strs.reverse(); // preserve left-to-right predicate order
 
         let node_part = rest;
+
         let predicates = predicate_strs
             .into_iter()
             .map(XPathPredicate::from_str)
             .collect::<Result<Vec<_>, Errors>>()?;
+
+        if node_part == "." {
+            return Ok(XPathSegment {
+                axis: XPathAxis::Self_,
+                node_test: String::new(),
+                predicates,
+            });
+        }
 
         let (axis, node_test) = if let Some(axis_end) = node_part.find("::") {
             let axis = XPathAxis::from_str(&node_part[..axis_end])?;
@@ -109,8 +118,8 @@ impl XPathSegment {
 
         if node_test.is_empty() {
             return Err(Errors::XPathParseError(format!(
-                        "Empty node test in segment: {}",
-                        s
+                "Empty node test in segment: {}",
+                s
             )));
         }
 

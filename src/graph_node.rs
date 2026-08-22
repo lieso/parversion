@@ -186,7 +186,7 @@ impl GraphNode {
                 Ok(lock.children.clone())
             },
             XPathAxis::Parent => unimplemented!(),
-            XPathAxis::Self_ => unimplemented!(),
+            XPathAxis::Self_ => Ok(vec![graph.clone()]),
             XPathAxis::Descendant => {
                 let mut descendants = Vec::new();
                 let mut queue = lock.children.clone();
@@ -404,19 +404,23 @@ impl GraphNode {
             &xpath_segment.axis
         )?;
 
-        let next_graphs: Vec<Graph> = next_graphs
-            .iter()
-            .map(|graph| {
-                Self::traverse_using_xpath_node_test(
-                    Arc::clone(&normalization_context),
-                    Arc::clone(&graph),
-                    &xpath_segment.node_test
-                )
-            })
-            .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
-            .into_iter()
-            .flatten()
-            .collect();
+        let next_graphs: Vec<Graph> = if xpath_segment.axis == XPathAxis::Self_ {
+            next_graphs
+        } else {
+            next_graphs
+                .iter()
+                .map(|graph| {
+                    Self::traverse_using_xpath_node_test(
+                        Arc::clone(&normalization_context),
+                        Arc::clone(&graph),
+                        &xpath_segment.node_test
+                    )
+                })
+                .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
+                .into_iter()
+                .flatten()
+                .collect()
+        };
 
         let next_graphs = xpath_segment.predicates.iter().try_fold(
             next_graphs,
