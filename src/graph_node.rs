@@ -333,6 +333,33 @@ impl GraphNode {
                 let selected_graph = graphs.get(*index as usize - 1).cloned().unwrap();
                 Ok(vec![selected_graph])
             }
+            XPathPredicate::Contains { name, value } => {
+                let contexts_lookup = {
+                    let lock = read_lock!(normalization_context);
+                    lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+                };
+
+                let filtered: Vec<Graph> = graphs
+                    .iter()
+                    .filter(|graph| {
+                        let graph_id = read_lock!(graph).id.clone();
+                        contexts_lookup
+                            .get(&graph_id)
+                            .and_then(|context| {
+                                let _foo = read_lock!(&context.document_node)
+                                    .get_attribute_value(name);
+
+                                read_lock!(&context.document_node)
+                                    .get_attribute_value(name)
+                                    .map(|attr_value| attr_value.trim().contains(value.trim()))
+                            })
+                            .unwrap_or(false)
+                    })
+                    .cloned()
+                    .collect();
+
+                Ok(filtered)
+            }
             XPathPredicate::Attribute { name, value } => {
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
@@ -391,15 +418,16 @@ impl GraphNode {
             .flatten()
             .collect();
 
-        if let Some(predicate) = &xpath_segment.predicate {
-            let next_graphs = Self::traverse_using_xpath_predicate(
-                Arc::clone(&normalization_context),
-                next_graphs,
-                &predicate
-            )?;
-
-            return Ok(next_graphs);
-        }
+        let next_graphs = xpath_segment.predicates.iter().try_fold(
+            next_graphs,
+            |graphs, predicate| {
+                Self::traverse_using_xpath_predicate(
+                    Arc::clone(&normalization_context),
+                    graphs,
+                    predicate,
+                )
+            },
+        )?;
 
         Ok(next_graphs)
     }
@@ -482,7 +510,7 @@ impl GraphNode {
             XPathSegment {
                 axis: XPathAxis::Child,
                 node_test: document_node.get_element_name(),
-                predicate,
+                predicates: predicate.into_iter().collect()
             }
         }).collect();
 
@@ -506,7 +534,7 @@ impl GraphNode {
                 XPathSegment {
                     axis: XPathAxis::Child,
                     node_test: "text()".to_string(),
-                    predicate: None,
+                    predicates: vec![],
                 }
             } else {
                 let document_node = read_lock!(final_context.document_node);
@@ -515,7 +543,7 @@ impl GraphNode {
                 XPathSegment {
                     axis: XPathAxis::Child,
                     node_test: document_node.get_element_name(),
-                    predicate: position.or(Some(XPathPredicate::AttributePresence(attributes))),
+                    predicates: position.or(Some(XPathPredicate::AttributePresence(attributes))).into_iter().collect(),
                 }
             }
         };

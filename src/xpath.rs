@@ -11,7 +11,7 @@ pub struct XPath {
 pub struct XPathSegment {
     pub axis: XPathAxis,
     pub node_test: String,
-    pub predicate: Option<XPathPredicate>,
+    pub predicates: Vec<XPathPredicate>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -31,6 +31,7 @@ pub enum XPathPredicate {
     Position(usize),
     Attribute { name: String, value: String },
     AttributePresence(Vec<String>),
+    Contains { name: String, value: String }
 }
 
 impl XPath {
@@ -62,18 +63,41 @@ impl XPath {
 
 impl XPathSegment {
     fn from_str(s: &str) -> Result<Self, Errors> {
-        let (node_part, predicate) = if let Some(bracket_pos) = s.find('[') {
-            if !s.ends_with(']') {
-                return Err(Errors::XPathParseError(format!(
-                    "Unterminated predicate in segment: {}",
-                    s
-                )));
+        let mut rest = s;
+        let mut predicate_strs: Vec<&str> = Vec::new();
+
+        while rest.ends_with(']') {
+            // find the matching '[' for this trailing ']', scanning from the end
+            // so nested/independent bracket groups don't get confused
+            let mut depth = 0;
+            let mut open_pos = None;
+            for (i, c) in rest.char_indices().rev() {
+                match c {
+                    ']' => depth += 1,
+                    '[' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            open_pos = Some(i);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
             }
-            let pred_str = &s[bracket_pos + 1..s.len() - 1];
-            (&s[..bracket_pos], Some(XPathPredicate::from_str(pred_str)?))
-        } else {
-            (s, None)
-        };
+            let open_pos = open_pos.ok_or_else(|| {
+                Errors::XPathParseError(format!("Unterminated predicate in segment: {}", s))
+            })?;
+
+            predicate_strs.push(&rest[open_pos + 1..rest.len() - 1]);
+            rest = &rest[..open_pos];
+        }
+        predicate_strs.reverse(); // preserve left-to-right predicate order
+
+        let node_part = rest;
+        let predicates = predicate_strs
+            .into_iter()
+            .map(XPathPredicate::from_str)
+            .collect::<Result<Vec<_>, Errors>>()?;
 
         let (axis, node_test) = if let Some(axis_end) = node_part.find("::") {
             let axis = XPathAxis::from_str(&node_part[..axis_end])?;
@@ -84,15 +108,15 @@ impl XPathSegment {
 
         if node_test.is_empty() {
             return Err(Errors::XPathParseError(format!(
-                "Empty node test in segment: {}",
-                s
+                        "Empty node test in segment: {}",
+                        s
             )));
         }
 
         Ok(XPathSegment {
             axis,
             node_test: node_test.to_string(),
-            predicate,
+            predicates,
         })
     }
 
@@ -102,10 +126,10 @@ impl XPathSegment {
         } else {
             format!("{}::", self.axis.to_str())
         };
-        let predicate_suffix = match &self.predicate {
-            Some(pred) => format!("[{}]", pred.to_string()),
-            None => String::new(),
-        };
+        let predicate_suffix: String = self.predicates
+            .iter()
+            .map(|pred| format!("[{}]", pred.to_string()))
+            .collect();
         format!("{}{}{}", axis_prefix, self.node_test, predicate_suffix)
     }
 }
@@ -151,6 +175,12 @@ impl XPathPredicate {
                 .trim_matches('"')
                 .to_string();
             Ok(XPathPredicate::Attribute { name, value })
+        } else if let Some(inner) = s.strip_prefix("contains(").and_then(|s| s.strip_suffix(')')) {
+            let (attr_part, val_part) = inner.split_once(',')
+                .ok_or_else(|| Errors::XPathParseError(format!("Invalid contains() predicate: {}", s)))?;
+            let name = attr_part.trim().trim_start_matches('@').to_string();
+            let value = val_part.trim().trim_matches('\'').trim_matches('"').to_string();
+            Ok(XPathPredicate::Contains { name, value })
         } else if let Ok(pos) = s.parse::<usize>() {
             Ok(XPathPredicate::Position(pos))
         } else {
@@ -165,6 +195,7 @@ impl XPathPredicate {
         match self {
             XPathPredicate::Position(n) => n.to_string(),
             XPathPredicate::Attribute { name, value } => format!("@{}='{}'", name, value),
+            XPathPredicate::Contains { name, value } => format!("contains(@{},'{}')", name, value),
             XPathPredicate::AttributePresence(attrs) => {
                 attrs.iter()
                     .map(|attr| format!("@{}", attr))
