@@ -65,7 +65,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             let left = Arc::clone(&non_empty_basis_nodes[i]);
             let right = Arc::clone(&non_empty_basis_nodes[j]);
 
-            let has_transitivity = get_relationship(
+            let has_transitivity = get_relationship_between_nodes(
                 node_relationships.clone(),
                 &left.lineage,
                 &right.lineage,
@@ -104,9 +104,75 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         }
     }
 
+    let basis_networks = resolve_basis_networks(
+        non_empty_basis_nodes.clone(),
+        node_relationships
+    );
 
 
     todo!("generate_basis_networks is being rewritten from scratch")
+}
+
+fn resolve_basis_networks(
+    basis_nodes: Vec<Arc<BasisNode>>,
+    relationships: Vec<Arc<NodeRelationship>>,
+) -> Vec<Arc<BasisNetwork>> {
+    let actual_relationships: Vec<Arc<NodeRelationship>> = relationships
+        .iter()
+        .filter(|rel| {
+            matches!(rel.relationship_type, NodeRelationshipType::Equal | NodeRelationshipType::Combine { .. })
+        })
+        .cloned()
+        .collect();
+
+    let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
+    let mut placed: HashSet<Lineage> = HashSet::new();
+
+    for basis_node in &basis_nodes {
+        if placed.contains(&basis_node.lineage) {
+            continue;
+        }
+
+        let current_relationships = get_node_relationships(
+            actual_relationships.clone(),
+            &basis_node.lineage
+        );
+
+        let mut basis_network_nodes: Vec<Arc<BasisNode>> = Vec::new();
+
+        for relationship in &current_relationships {
+            let lineages = vec![relationship.left_basis_lineage.clone(), relationship.right_basis_lineage.clone()];
+
+            for lineage in lineages {
+                if placed.contains(&lineage) {
+                    continue;
+                }
+
+                let node: Arc<BasisNode> = basis_nodes
+                    .iter()
+                    .find(|item| item.lineage == lineage)
+                    .unwrap()
+                    .clone();
+
+                basis_network_nodes.push(node);
+                placed.insert(lineage.clone());
+            }
+        }
+
+        let basis_network = Arc::new(BasisNetwork {
+            id: ID::new(),
+            basis_nodes: basis_network_nodes,
+            relationships: current_relationships.clone(),
+            transformations: Vec::new(),
+            metadata: BasisNetworkMetadata {
+                prompts: Vec::new()
+            }
+        });
+
+        basis_networks.push(basis_network);
+    }
+
+    basis_networks
 }
 
 async fn generate_node_relationship<P: Provider, R: Reasoner>(
@@ -350,11 +416,47 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
     Ok(Arc::new(classification))
 }
 
-fn get_relationship(
+fn get_node_relationships(
+    relationships: Vec<Arc<NodeRelationship>>,
+    basis_lineage: &Lineage
+) -> Vec<Arc<NodeRelationship>> {
+    let (direct_relationships, remaining_relationships): (Vec<Arc<NodeRelationship>>, Vec<Arc<NodeRelationship>>) = relationships
+        .iter()
+        .cloned()
+        .partition(|relationship| {
+            relationship.left_basis_lineage == *basis_lineage ||
+            relationship.right_basis_lineage == *basis_lineage
+        });
+
+    let related_lineages: Vec<Lineage> = direct_relationships
+        .iter()
+        .map(|relationship| {
+            if relationship.left_basis_lineage == *basis_lineage {
+                relationship.right_basis_lineage.clone()
+            } else {
+                relationship.left_basis_lineage.clone()
+            }
+        })
+        .collect();
+
+    let other_relationships: Vec<Arc<NodeRelationship>> = related_lineages
+        .iter()
+        .flat_map(|lineage| {
+            get_node_relationships(
+                remaining_relationships.clone(),
+                &lineage
+            )
+        })
+        .collect();
+
+    direct_relationships.into_iter().chain(other_relationships).collect()
+}
+
+fn get_relationship_between_nodes(
     relationships: Vec<Arc<NodeRelationship>>,
     left_basis_lineage: &Lineage,
     right_basis_lineage: &Lineage,
-) -> Option<NodeRelationshipType> {
+) -> Option<Arc<NodeRelationship>> {
 
     let left_relationships: Vec<Arc<NodeRelationship>> = relationships
         .iter()
@@ -372,26 +474,26 @@ fn get_relationship(
     for relationship in left_relationships.iter() {
         if relationship.left_basis_lineage == *right_basis_lineage ||
             relationship.right_basis_lineage == *right_basis_lineage {
-            return Some(relationship.relationship_type.clone());
+            return Some(relationship.clone());
         }
     }
 
     for relationship in left_relationships.iter() {
         if relationship.left_basis_lineage == *left_basis_lineage {
-            if let Some(relationship_type) = get_relationship(
+            if let Some(result) = get_relationship_between_nodes(
                 relationships.clone(),
                 &relationship.right_basis_lineage,
                 right_basis_lineage,
             ) {
-                return Some(relationship_type);
+                return Some(result);
             }
         } else {
-            if let Some(relationship_type) = get_relationship(
+            if let Some(result) = get_relationship_between_nodes(
                 relationships.clone(),
                 &relationship.left_basis_lineage,
                 right_basis_lineage,
             ) {
-                return Some(relationship_type);
+                return Some(result);
             }
         }
     }
