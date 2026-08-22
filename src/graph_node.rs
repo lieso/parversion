@@ -279,6 +279,45 @@ impl GraphNode {
 
                 Ok(result)
             },
+            XPathAxis::Preceding => {
+                let mut result = Vec::new();
+                let mut current_id = lock.id.clone();
+                let mut current_parents = lock.parents.clone();
+
+                loop {
+                    let Some(parent) = current_parents.first().cloned() else {
+                        break;
+                    };
+
+                    let (next_id, next_parents, preceding_siblings) = {
+                        let parent_lock = read_lock!(parent);
+                        let Some(index) = parent_lock.children.iter().position(|child| {
+                            read_lock!(child).id == current_id
+                        }) else {
+                            return Err(Errors::XPathTraverseError(
+                                    "Could not find index of current node as a child of parent".to_string()
+                            ));
+                        };
+                        let preceding_siblings = parent_lock.children[..index].to_vec();
+                        (parent_lock.id.clone(), parent_lock.parents.clone(), preceding_siblings)
+                    };
+
+                    for sibling in preceding_siblings {
+                        result.push(sibling.clone());
+                        let mut queue = read_lock!(sibling).children.clone();
+                        while !queue.is_empty() {
+                            let desc = queue.remove(0);
+                            result.push(desc.clone());
+                            queue.extend(read_lock!(desc).children.clone());
+                        }
+                    }
+
+                    current_id = next_id;
+                    current_parents = next_parents;
+                }
+
+                Ok(result)
+            },
         }
     }
 
