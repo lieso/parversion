@@ -25,8 +25,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     stage_context: &StageContext,
 ) -> Result<(
     HashMap<BasisNetworkID, Arc<BasisNetwork>>,
-    HashMap<BasisNetworkID, Vec<Arc<Context>>>,
-    HashMap<ContextID, Arc<BasisNetwork>>
 ), Errors> {
     log::trace!("In generate_basis_networks");
 
@@ -109,8 +107,12 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         node_relationships
     );
 
+    let hashmap: HashMap<BasisNetworkID, Arc<BasisNetwork>> = basis_networks
+        .into_iter()
+        .map(|network| (network.id.clone(), network))
+        .collect();
 
-    todo!("generate_basis_networks is being rewritten from scratch")
+    Ok((hashmap,))
 }
 
 fn resolve_basis_networks(
