@@ -56,39 +56,11 @@ identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
 The XPath engine supports a constrained grammar — keep generated xpaths
 within it:
 
-- Axes: child (default), following-sibling::, preceding-sibling::,
-  following::, preceding::.
-- To move upward, use one `../` per level instead of `ancestor::`
-  (e.g. `../../span` to go up two levels, not `ancestor::span`). `..`
-  always means exactly the immediate parent — one specific node, never
-  a set — so it never needs a position qualifier and can't accidentally
-  match the wrong level when a tag is nested inside itself (e.g. a
-  table inside a table, a list inside a list).
-- To search downward at an unknown or variable depth, use `//` before
-  the target (e.g. `//span[@class='foo']`), not `descendant::`. This
-  can still match more than one node if the tag repeats below, so
-  qualify it with a predicate (`[1]`, `[@attr='x']`, `[contains(...)]`)
-  whenever more than one match is structurally possible.
-- Predicates: `[N]` (position), `[last()]`, `[@name='value']`, `[@name]`
-  (attribute presence — for multiple required attributes use
-  `[@a][@b]`, not `[@a and @b]`), `[contains(@name,'value')]`,
-  `[starts-with(@name,'value')]`, and a nested relative path used as a
-  filter, e.g. `[.//td[@class='foo']]`.
-- Multiple predicates on one step must each be their own bracket group:
-  `tr[@class='x'][1]`, not `tr[@class='x' and 1]`.
-- Prefer the narrowest axis that's structurally guaranteed to work:
-  `following-sibling::`/`preceding-sibling::` over `following::`/
-  `preceding::` whenever the target is a direct sibling — the sibling
-  axes only search immediate siblings, while the broader axes search
-  the entire rest of the document and can match an unintended instance
-  in a repeating list.
-- Do not use function predicates other than `contains()`, `starts-with()`,
-  and `last()` (no `not()`, `ends-with()`, `string-length()`, etc.), and
-  do not combine conditions with `and`/`or` inside a single predicate —
-  express them as separate stacked predicates instead.
-- Never end an xpath with a trailing `/` or `//`, or use `//`/`descendant::`
-  as the last component of a path — both always require a node test
-  (a tag name, `text()`, or `*`) immediately after them.
+Use the simplest and most robust XPath 1.0 grammar possible to ensure a strict 1-to-1 match. specifically:*
+* Use semantic axes like `ancestor::tag[1]` instead of chaining multiple `../`.
+* Use single direct-child slashes (`/`) for exact paths; do not use double slashes (`//`) unless searching an unknown depth.
+* Target nodes using their structural attributes (e.g., `@class='xyz'`, `@id`) rather than brittle positional indexes (like `td[3]`)."
+* If a [POSITIONAL CONTEXT] you are targeting ends in /text(), your generated xpath must also end with a trailing /text() step (with no predicates) to land on that exact text node, not its containing element.
 
 Leave both null for EQUAL and NO_RELATIONSHIP.
 

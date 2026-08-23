@@ -125,8 +125,7 @@ impl BasisNetwork {
             let mut processed_relationships: HashSet<ID> = HashSet::new();
 
             while let Some((current_context, current_lineage)) = queue.front() {
-
-                let relationships: Vec<Arc<NodeRelationship>> = self.relationships
+                let mut relationships: Vec<Arc<NodeRelationship>> = self.relationships
                     .iter()
                     .filter(|relationship| {
                         !processed_relationships.contains(&relationship.id) && (
@@ -185,7 +184,19 @@ impl BasisNetwork {
 
                                     queue.push_back((target_context.clone(), target_basis_node.lineage.clone()));
                                 } else {
-                                    log::warn!("Could not find target context within current network");
+                                    log::warn!("Could not find target context within current network: {}", xpath.to_string());
+
+                                    log::debug!("=====================================================================================================");
+
+                                    let context_string = target_context.generate_context_string(&meta_context, Vec::new())?;
+                                    log::debug!("context_string: {}", context_string);
+
+                                    log::debug!("=====================================================================================================");
+
+
+
+
+
                                 }
 
                                 processed_contexts.insert(target_context.id.clone());
