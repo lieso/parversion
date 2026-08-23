@@ -165,14 +165,14 @@ async fn get_user_prompt<R: Reasoner>(
         Arc::clone(&normalization_context),
         left.clone(),
         left_contexts.clone(),
-        right_contexts.clone(),
+        Vec::new(),
     )?;
 
     let right_context_string = make_context(
         Arc::clone(&normalization_context),
         right.clone(),
         right_contexts.clone(),
-        left_contexts.clone()
+        Vec::new(),
     )?;
 
     Ok(format!(r##"

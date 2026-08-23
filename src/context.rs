@@ -1,6 +1,7 @@
 use serde_json::{json, Value, Map};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque, BinaryHeap};
 use std::sync::{Arc, RwLock};
+use std::cmp::Ordering;
 
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
@@ -209,19 +210,20 @@ impl Context {
     fn generate_spatial_context(&self, meta_context: &MetaContext, relevant_contexts: Vec<Arc<Context>>) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
 
-        self.traverse_structural_envelope(
+        traverse_structural_envelope(
+            self.clone(),
             &mut neighbourhood
         );
 
-        for context in relevant_contexts {
-            let mut relevant_neighbourhood = HashSet::new();
+        //for context in relevant_contexts {
+        //    let mut relevant_neighbourhood = HashSet::new();
 
-            context.traverse_structural_envelope(
-                &mut relevant_neighbourhood
-            );
+        //    context.traverse_structural_envelope(
+        //        &mut relevant_neighbourhood
+        //    );
 
-            neighbourhood.extend(relevant_neighbourhood);
-        }
+        //    neighbourhood.extend(relevant_neighbourhood);
+        //}
 
         let partial_document = Document::from_meta_context(
             meta_context,
@@ -326,65 +328,7 @@ impl Context {
             None
         }
     }
-
-    fn traverse_structural_envelope(
-        &self,
-        neighbourhood: &mut HashSet<GraphNodeID>,
-    ) {
-        let target_node = &self.graph_node;
-
-        // ******************************************
-        let max_neighbours = 50;
-        let max_children = 6;
-        // ******************************************
-        
-        let mut queue: VecDeque<Graph> = VecDeque::new();
-        queue.push_back(Arc::clone(&target_node));
-
-        while let Some(node) = queue.pop_front() {
-            let lock = read_lock!(node);
-
-            if neighbourhood.contains(&lock.id) {
-                continue;
-            }
-
-            neighbourhood.insert(lock.id.clone());
-
-            if neighbourhood.len() > max_neighbours {
-                return;
-            }
-
-            // Center the children around the target node,
-            // only if one of these children is the target_node
-            let children = lock.children.clone();
-
-            let children_to_enqueue = if children.iter().any(|child| {
-                read_lock!(child).id == read_lock!(target_node).id
-            }) {
-                let target_node_position = children.iter().position(|child| {
-                    read_lock!(child).id == read_lock!(target_node).id
-                }).unwrap();
-
-                let half = max_children / 2;
-                let start = target_node_position.saturating_sub(half);
-                let end = (start + max_children).min(children.len());
-
-                &children[start..end]
-            } else {
-                &children[..max_children.min(children.len())]
-            };
-
-            for child in &lock.children {
-                queue.push_back(Arc::clone(&child));
-            }
-
-            for parent in lock.parents.iter() {
-                queue.push_back(Arc::clone(parent));
-            }
-        }
-    }
 }
-
 
 fn get_path_to_target(target_node: Graph) -> Vec<Graph> {
     let mut ancestors: Vec<Graph> = Vec::new();
@@ -398,4 +342,150 @@ fn get_path_to_target(target_node: Graph) -> Vec<Graph> {
 
     ancestors.reverse();
     ancestors
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Clone)]
+struct QueueItem {
+    cost: usize,
+    node: Graph,
+    came_from_id: Option<ID>,
+}
+
+impl PartialEq for QueueItem {
+    fn eq(&self, other: &Self) -> bool { self.cost == other.cost }
+}
+impl Eq for QueueItem {}
+impl PartialOrd for QueueItem {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(other.cost.cmp(&self.cost))
+    }
+}
+impl Ord for QueueItem {
+    fn cmp(&self, other: &Self) -> Ordering { other.cost.cmp(&self.cost) }
+}
+
+fn traverse_structural_envelope(context: Context, neighbourhood: &mut HashSet<GraphNodeID>) {
+    let target_node = context.graph_node;
+    let max_neighbours = 100;
+
+    let mut queue: BinaryHeap<QueueItem> = BinaryHeap::new();
+
+    queue.push(QueueItem {
+        cost: 0,
+        node: Arc::clone(&target_node),
+        came_from_id: None,
+    });
+
+    while let Some(item) = queue.pop() {
+        let lock = read_lock!(item.node);
+
+        // Standard Dijkstra: if we already finalized this node, skip it
+        if neighbourhood.contains(&lock.id) {
+            continue;
+        }
+
+        neighbourhood.insert(lock.id.clone());
+
+        if neighbourhood.len() >= max_neighbours {
+            return;
+        }
+
+        // 1. Traverse UP to parents (Cost always increases by 1)
+        for parent in &lock.parents {
+            let parent_lock = read_lock!(parent);
+            if !neighbourhood.contains(&parent_lock.id) {
+                queue.push(QueueItem {
+                    cost: item.cost + 1,
+                    node: Arc::clone(parent),
+                    came_from_id: Some(lock.id.clone()),
+                });
+            }
+        }
+
+        // 2. Traverse DOWN / ACROSS to children
+        // First, check if we arrived at this parent from one of its children
+        let mut source_index = None;
+        if let Some(came_from) = &item.came_from_id {
+            for (idx, child) in lock.children.iter().enumerate() {
+                if read_lock!(child).id == *came_from {
+                    source_index = Some(idx);
+                    break;
+                }
+            }
+        }
+
+        for (idx, child) in lock.children.iter().enumerate() {
+            let child_lock = read_lock!(child);
+            if !neighbourhood.contains(&child_lock.id) {
+
+                // Calculate how much distance to add
+                let step_cost = match source_index {
+                    // We are radiating outwards from a sibling!
+                    // Distance is the array index difference.
+                    Some(src_idx) => src_idx.abs_diff(idx),
+
+                    // We are traversing normally down from a parent.
+                    None => 1,
+                };
+
+                queue.push(QueueItem {
+                    cost: item.cost + step_cost,
+                    node: Arc::clone(child),
+                    came_from_id: Some(lock.id.clone()),
+                });
+            }
+        }
+    }
 }
