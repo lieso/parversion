@@ -56,9 +56,19 @@ identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
 The XPath engine supports a constrained grammar — keep generated xpaths
 within it:
 
-- Axes: child (default), parent (`..`), self (`.`), ancestor::,
-  descendant::, following-sibling::, preceding-sibling::, following::,
-  preceding::.
+- Axes: child (default), following-sibling::, preceding-sibling::,
+  following::, preceding::.
+- To move upward, use one `../` per level instead of `ancestor::`
+  (e.g. `../../span` to go up two levels, not `ancestor::span`). `..`
+  always means exactly the immediate parent — one specific node, never
+  a set — so it never needs a position qualifier and can't accidentally
+  match the wrong level when a tag is nested inside itself (e.g. a
+  table inside a table, a list inside a list).
+- To search downward at an unknown or variable depth, use `//` before
+  the target (e.g. `//span[@class='foo']`), not `descendant::`. This
+  can still match more than one node if the tag repeats below, so
+  qualify it with a predicate (`[1]`, `[@attr='x']`, `[contains(...)]`)
+  whenever more than one match is structurally possible.
 - Predicates: `[N]` (position), `[last()]`, `[@name='value']`, `[@name]`
   (attribute presence — for multiple required attributes use
   `[@a][@b]`, not `[@a and @b]`), `[contains(@name,'value')]`,
@@ -76,6 +86,9 @@ within it:
   and `last()` (no `not()`, `ends-with()`, `string-length()`, etc.), and
   do not combine conditions with `and`/`or` inside a single predicate —
   express them as separate stacked predicates instead.
+- Never end an xpath with a trailing `/` or `//`, or use `//`/`descendant::`
+  as the last component of a path — both always require a node test
+  (a tag name, `text()`, or `*`) immediately after them.
 
 Leave both null for EQUAL and NO_RELATIONSHIP.
 

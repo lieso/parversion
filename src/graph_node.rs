@@ -231,7 +231,7 @@ impl GraphNode {
                     if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
                         read_lock!(child).id == lock.id
                     }) {
-                        let siblings: Vec<Graph> = read_lock!(parent).children[..index_current].to_vec();
+                        let siblings: Vec<Graph> = read_lock!(parent).children[..index_current].iter().rev().cloned().collect();
                         Ok(siblings)
                     } else {
                         Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
@@ -298,7 +298,7 @@ impl GraphNode {
                                     "Could not find index of current node as a child of parent".to_string()
                             ));
                         };
-                        let preceding_siblings = parent_lock.children[..index].to_vec();
+                        let preceding_siblings: Vec<Graph> = parent_lock.children[..index].iter().rev().cloned().collect();
                         (parent_lock.id.clone(), parent_lock.parents.clone(), preceding_siblings)
                     };
 

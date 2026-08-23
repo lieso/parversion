@@ -41,6 +41,7 @@ pub enum XPathPredicate {
 impl XPath {
     pub fn from_str(s: &str) -> Result<Self, Errors> {
         log::trace!("In XPath::from_str");
+        log::debug!("s: {}", s);
 
         let s = s.replace("//", "/descendant::");
 
@@ -52,13 +53,13 @@ impl XPath {
                 '[' => depth += 1,
                 ']' => depth -= 1,
                 '/' if depth == 0 => {
-                    parts.push(&s[start..i]);
+                    parts.push(&s[start..i].trim());
                     start = i + 1;
                 }
                 _ => {}
             }
         }
-        parts.push(&s[start..]);
+        parts.push(&s[start..].trim());
 
         let segments = parts
             .into_iter()
