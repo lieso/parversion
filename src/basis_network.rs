@@ -189,7 +189,7 @@ impl BasisNetwork {
 
                             processed_contexts.insert(target_context.id.clone());
                         } else {
-                            log::warn!("Failed to apply xpath");
+                            log::warn!("Failed to apply xpath: {}", xpath.to_string());
                         }
 
                         processed_relationships.insert(relationship.id.clone());

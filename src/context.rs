@@ -214,9 +214,13 @@ impl Context {
         );
 
         for context in relevant_contexts {
+            let mut relevant_neighbourhood = HashSet::new();
+
             context.traverse_structural_envelope(
-                &mut neighbourhood
+                &mut relevant_neighbourhood
             );
+
+            neighbourhood.extend(relevant_neighbourhood);
         }
 
         let partial_document = Document::from_meta_context(
