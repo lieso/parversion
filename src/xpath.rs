@@ -209,6 +209,16 @@ impl XPathPredicate {
             return Ok(XPathPredicate::Last);
         }
 
+        if s.contains(" and ") && s.split(" and ").all(|part| {
+            let part = part.trim();
+            part.starts_with('@') && !part.contains('=')
+        }) {
+            let names = s.split(" and ")
+                .map(|part| part.trim().trim_start_matches('@').to_string())
+                .collect();
+            return Ok(XPathPredicate::AttributePresence(names));
+        }
+
         if let Some(inner) = s.strip_prefix('@') {
             if let Some(eq_pos) = inner.find('=') {
                 let name = inner[..eq_pos].to_string();

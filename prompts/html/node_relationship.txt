@@ -53,6 +53,30 @@ identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
 - `right_to_left_xpath`: relative XPath from a right instance's node to the
   corresponding left instance's node.
 
+The XPath engine supports a constrained grammar — keep generated xpaths
+within it:
+
+- Axes: child (default), parent (`..`), self (`.`), ancestor::,
+  descendant::, following-sibling::, preceding-sibling::, following::,
+  preceding::.
+- Predicates: `[N]` (position), `[last()]`, `[@name='value']`, `[@name]`
+  (attribute presence — for multiple required attributes use
+  `[@a][@b]`, not `[@a and @b]`), `[contains(@name,'value')]`,
+  `[starts-with(@name,'value')]`, and a nested relative path used as a
+  filter, e.g. `[.//td[@class='foo']]`.
+- Multiple predicates on one step must each be their own bracket group:
+  `tr[@class='x'][1]`, not `tr[@class='x' and 1]`.
+- Prefer the narrowest axis that's structurally guaranteed to work:
+  `following-sibling::`/`preceding-sibling::` over `following::`/
+  `preceding::` whenever the target is a direct sibling — the sibling
+  axes only search immediate siblings, while the broader axes search
+  the entire rest of the document and can match an unintended instance
+  in a repeating list.
+- Do not use function predicates other than `contains()`, `starts-with()`,
+  and `last()` (no `not()`, `ends-with()`, `string-length()`, etc.), and
+  do not combine conditions with `and`/`or` inside a single predicate —
+  express them as separate stacked predicates instead.
+
 Leave both null for EQUAL and NO_RELATIONSHIP.
 
 Respond with strictly valid JSON:
