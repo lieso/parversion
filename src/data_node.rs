@@ -41,7 +41,9 @@ impl DataNodeFields {
     }
 
     pub fn insert(&mut self, key: String, value: String) {
-        self.inner.push((key, value));
+        if !self.inner.iter().any(|(k, v)| *k == key && *v == value) {
+            self.inner.push((key, value));
+        }
     }
 
     pub fn get_all(&self, key: &str) -> impl Iterator<Item = &String> {
@@ -77,13 +79,17 @@ impl<'a> IntoIterator for &'a DataNodeFields {
 
 impl FromIterator<(String, String)> for DataNodeFields {
     fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
-        Self { inner: iter.into_iter().collect() }
+        let mut fields = Self::new();
+        fields.extend(iter);
+        fields
     }
 }
 
 impl Extend<(String, String)> for DataNodeFields {
     fn extend<T: IntoIterator<Item = (String, String)>>(&mut self, iter: T) {
-        self.inner.extend(iter);
+        for (key, value) in iter {
+            self.insert(key, value);
+        }
     }
 }
 

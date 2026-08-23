@@ -40,9 +40,6 @@ pub enum XPathPredicate {
 
 impl XPath {
     pub fn from_str(s: &str) -> Result<Self, Errors> {
-        log::trace!("In XPath::from_str");
-        log::debug!("s: {}", s);
-
         let s = s.replace("//", "/descendant::");
 
         let mut parts: Vec<&str> = Vec::new();
