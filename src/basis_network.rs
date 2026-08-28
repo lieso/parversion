@@ -188,7 +188,7 @@ impl BasisNetwork {
 
                                     log::debug!("=====================================================================================================");
 
-                                    let context_string = target_context.generate_context_string(&meta_context, Vec::new());
+                                    let context_string = target_context.generate_context_string(&meta_context, Vec::new())?;
                                     log::debug!("context_string: {}", context_string);
 
                                     log::debug!("=====================================================================================================");
