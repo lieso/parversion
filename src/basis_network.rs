@@ -128,6 +128,9 @@ impl BasisNetwork {
                 let mut relationships: Vec<Arc<NodeRelationship>> = self.relationships
                     .iter()
                     .filter(|relationship| {
+                        matches!(relationship.relationship_type, NodeRelationshipType::Combine { .. })
+                    })
+                    .filter(|relationship| {
                         !processed_relationships.contains(&relationship.id) && (
                             relationship.left_basis_lineage == *current_lineage ||
                             relationship.right_basis_lineage == *current_lineage

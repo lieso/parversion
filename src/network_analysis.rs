@@ -56,20 +56,21 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
-    for i in 0..non_empty_basis_nodes.len() {
+    for gap in 1..non_empty_basis_nodes.len() {
         let mut handles = Vec::new();
 
-        for j in (i + 1)..non_empty_basis_nodes.len() {
+        for i in 0..(non_empty_basis_nodes.len() - gap) {
+            let j = i + gap;
             let left = Arc::clone(&non_empty_basis_nodes[i]);
             let right = Arc::clone(&non_empty_basis_nodes[j]);
 
-            let has_transitivity = get_relationship_between_nodes(
-                node_relationships.clone(),
+            let is_reachable = has_reachability(
+                &node_relationships,
                 &left.lineage,
                 &right.lineage,
-            ).is_some();
+            );
 
-            if has_transitivity {
+            if is_reachable {
                 continue
             }
 
@@ -454,51 +455,79 @@ fn get_node_relationships(
     direct_relationships.into_iter().chain(other_relationships).collect()
 }
 
-fn get_relationship_between_nodes(
-    relationships: Vec<Arc<NodeRelationship>>,
+fn has_reachability(
+    relationships: &Vec<Arc<NodeRelationship>>,
     left_basis_lineage: &Lineage,
     right_basis_lineage: &Lineage,
-) -> Option<Arc<NodeRelationship>> {
-
-    let left_relationships: Vec<Arc<NodeRelationship>> = relationships
-        .iter()
-        .filter(|relationship| {
-            relationship.left_basis_lineage == *left_basis_lineage ||
-            relationship.right_basis_lineage == *left_basis_lineage 
-        })
-        .cloned()
-        .collect();
-
-    if left_relationships.is_empty() {
-        return None;
-    }
-
-    for relationship in left_relationships.iter() {
-        if relationship.left_basis_lineage == *right_basis_lineage ||
-            relationship.right_basis_lineage == *right_basis_lineage {
-            return Some(relationship.clone());
+) -> bool {
+    fn recurse(
+        relationships: &Vec<Arc<NodeRelationship>>,
+        current: &Lineage,
+        target: &Lineage,
+        visited: &mut HashSet<Lineage>,
+    ) -> bool {
+        if current == target {
+            return true;
         }
-    }
+        
+        visited.insert(current.clone());
 
-    for relationship in left_relationships.iter() {
-        if relationship.left_basis_lineage == *left_basis_lineage {
-            if let Some(result) = get_relationship_between_nodes(
-                relationships.clone(),
-                &relationship.right_basis_lineage,
-                right_basis_lineage,
-            ) {
-                return Some(result);
-            }
-        } else {
-            if let Some(result) = get_relationship_between_nodes(
-                relationships.clone(),
-                &relationship.left_basis_lineage,
-                right_basis_lineage,
-            ) {
-                return Some(result);
+        for relationship in relationships {
+            let neighbour = {
+                match relationship.relationship_type {
+                    NodeRelationshipType::Combine {  .. } => {
+                        if relationship.left_basis_lineage == *current {
+                            &relationship.right_basis_lineage
+                        } else if relationship.right_basis_lineage == *current {
+                            &relationship.left_basis_lineage
+                        } else {
+                            continue;
+                        }
+                    },
+                    NodeRelationshipType::Equal => {
+
+
+
+
+                        // hmm....
+                        if relationship.left_basis_lineage == *current {
+                            &relationship.right_basis_lineage
+                        } else if relationship.right_basis_lineage == *current {
+                            &relationship.left_basis_lineage
+                        } else {
+                            continue;
+                        }
+
+
+
+
+
+                    },
+                    NodeRelationshipType::NoRelationship => {
+                        continue;
+                    }
+                }
+            };
+
+            if !visited.contains(neighbour) {
+                if recurse(
+                    relationships,
+                    neighbour,
+                    target,
+                    visited,
+                ) {
+                    return true;
+                }
             }
         }
+
+        false
     }
 
-    None
+    recurse(
+        relationships,
+        left_basis_lineage,
+        right_basis_lineage,
+        &mut HashSet::new()
+    )
 }
