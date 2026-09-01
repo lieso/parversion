@@ -33,6 +33,7 @@ instance pairs to compare directly.
   are "product names in a catalog," both are "line items in an order"),
   even though the patterns differ. Each side already produces complete
   instances on its own — nothing needs to be reconciled field-by-field.
+  Provide xpaths showing how to navigate from one instance to the other.
 
 - **COMBINE**: The left and right extraction patterns describe the same
   specific records, but incompletely — neither side has the full picture
@@ -44,7 +45,7 @@ instance pairs to compare directly.
   unrelated things (e.g. one is order line items, the other is site
   navigation links).
 
-**IF AND ONLY IF you choose COMBINE**, also provide relative XPaths that
+**IF AND ONLY IF you choose COMBINE or EQUAL**, also provide relative XPaths that
 locate an instance of the other extraction pattern, anchored at the node
 identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
 
@@ -62,7 +63,7 @@ Use the simplest and most robust XPath 1.0 grammar possible to ensure a strict 1
 * Target nodes using their structural attributes (e.g., `@class='xyz'`, `@id`) rather than brittle positional indexes (like `td[3]`)."
 * If a [POSITIONAL CONTEXT] you are targeting ends in /text(), your generated xpath must also end with a trailing /text() step (with no predicates) to land on that exact text node, not its containing element.
 
-Leave both null for EQUAL and NO_RELATIONSHIP.
+Leave both null for NO_RELATIONSHIP.
 
 Respond with strictly valid JSON:
 {

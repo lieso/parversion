@@ -89,7 +89,10 @@ pub async fn node_relationship<R: Reasoner>(
                 }
             },
             RelationshipTypeResponse::Equal => {
-                NodeRelationshipType::Equal
+                NodeRelationshipType::Equal {
+                    xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                    xpath_rtl: result.right_to_left_xpath.unwrap().clone()
+                }
             },
             RelationshipTypeResponse::NoRelationship => {
                 NodeRelationshipType::NoRelationship

@@ -28,7 +28,7 @@ pub struct BasisNetwork {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NodeRelationshipType {
     Combine { xpath_ltr: String, xpath_rtl: String },
-    Equal,
+    Equal { xpath_ltr: String, xpath_rtl: String },
     NoRelationship,
 }
 
@@ -128,7 +128,7 @@ impl BasisNetwork {
                 let mut relationships: Vec<Arc<NodeRelationship>> = self.relationships
                     .iter()
                     .filter(|relationship| {
-                        matches!(relationship.relationship_type, NodeRelationshipType::Combine { .. })
+                        !matches!(relationship.relationship_type, NodeRelationshipType::NoRelationship)
                     })
                     .filter(|relationship| {
                         !processed_relationships.contains(&relationship.id) && (
@@ -210,8 +210,95 @@ impl BasisNetwork {
 
                         processed_relationships.insert(relationship.id.clone());
                     },
-                    NodeRelationshipType::Equal => {
-                        unimplemented!()
+                    NodeRelationshipType::Equal { xpath_ltr, xpath_rtl } => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        let xpath: XPath = {
+                            if relationship.left_basis_lineage == *current_lineage {
+                                XPath::from_str(&xpath_ltr)?
+                            } else {
+                                XPath::from_str(&xpath_rtl)?
+                            }
+                        };
+
+                        if let Some(target_graph_node) = GraphNode::traverse_using_xpath(
+                            Arc::clone(&normalization_context),
+                            Arc::clone(&current_context.graph_node),
+                            &xpath
+                        )? {
+                            // assumming this is the right context...
+                            let target_context = meta_context.contexts_lookup
+                                .get(&read_lock!(target_graph_node).id)
+                                .cloned()
+                                .unwrap();
+
+                            if !processed_contexts.contains(&target_context.id) {
+                                // TODO: inefficient
+                                let target_pair = all_contexts
+                                    .iter()
+                                    .find(|(basis_node, context)| {
+                                        context.id == target_context.id
+                                    });
+
+                                if let Some(target_pair) = target_pair {
+                                    let target_basis_node = &target_pair.0;
+
+                                    if let Some(target_data_node) = target_basis_node.apply(target_context.clone())? {
+                                        data_node = DataNode::from_data_nodes(vec![
+                                            data_node,
+                                            target_data_node,
+                                        ]);
+                                    }
+
+                                    queue.push_back((target_context.clone(), target_basis_node.lineage.clone()));
+                                } else {
+                                    log::warn!("Could not find target context within current network: {}", xpath.to_string());
+
+                                    log::debug!("=====================================================================================================");
+
+                                    let context_string = target_context.generate_context_string(&meta_context, Vec::new())?;
+                                    log::debug!("context_string: {}", context_string);
+
+                                    log::debug!("=====================================================================================================");
+
+
+
+
+
+                                }
+
+                                processed_contexts.insert(target_context.id.clone());
+                            }
+                        } else {
+                            log::warn!("Failed to apply xpath: {}", xpath.to_string());
+                        }
+
+                        processed_relationships.insert(relationship.id.clone());
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                     },
                     NodeRelationshipType::NoRelationship => {
                         return Err(Errors::UnexpectedError("Did not expect a NoRelationship here..".to_string()));

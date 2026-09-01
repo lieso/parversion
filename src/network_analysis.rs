@@ -123,7 +123,7 @@ fn resolve_basis_networks(
     let actual_relationships: Vec<Arc<NodeRelationship>> = relationships
         .iter()
         .filter(|rel| {
-            matches!(rel.relationship_type, NodeRelationshipType::Equal | NodeRelationshipType::Combine { .. })
+            matches!(rel.relationship_type, NodeRelationshipType::Equal { .. } | NodeRelationshipType::Combine { .. })
         })
         .cloned()
         .collect();
@@ -484,7 +484,7 @@ fn has_reachability(
                             continue;
                         }
                     },
-                    NodeRelationshipType::Equal => {
+                    NodeRelationshipType::Equal { .. } => {
 
 
 
