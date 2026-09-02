@@ -45,7 +45,7 @@ impl Context {
                 .clone()
         };
 
-        let spatial_context: String = self.generate_spatial_context(&meta_context, other_contexts)?;
+        let spatial_context: String = self.generate_spatial_context(&meta_context)?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let mut transformed_context = String::new();
@@ -85,7 +85,7 @@ impl Context {
                 .clone()
         };
 
-        let spatial_context: String = self.generate_spatial_context(&meta_context, Vec::new())?;
+        let spatial_context: String = self.generate_spatial_context(&meta_context)?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
 
@@ -140,7 +140,7 @@ impl Context {
     }
 
     pub fn generate_context_string(&self, meta_context: &MetaContext, relevant_contexts: Vec<Arc<Context>>) -> Result<String, Errors> {
-        let spatial_context: String = self.generate_spatial_context(meta_context, relevant_contexts)?;
+        let spatial_context: String = self.generate_spatial_context(meta_context)?;
         let positional_context: String = self.generate_positional_context(meta_context)?;
 
         let result = format!(r##"
@@ -207,23 +207,13 @@ impl Context {
         Ok(context_strings.join("\n"))
     }
 
-    fn generate_spatial_context(&self, meta_context: &MetaContext, relevant_contexts: Vec<Arc<Context>>) -> Result<String, Errors> {
+    fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
 
         traverse_structural_envelope(
             self.clone(),
             &mut neighbourhood
         );
-
-        //for context in relevant_contexts {
-        //    let mut relevant_neighbourhood = HashSet::new();
-
-        //    context.traverse_structural_envelope(
-        //        &mut relevant_neighbourhood
-        //    );
-
-        //    neighbourhood.extend(relevant_neighbourhood);
-        //}
 
         let partial_document = Document::from_meta_context(
             meta_context,
