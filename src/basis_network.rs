@@ -27,15 +27,9 @@ pub struct BasisNetwork {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NodeRelationshipPath {
-    pub xpath_ltr: String,
-    pub xpath_rtl: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NodeRelationshipType {
-    Combine { paths: Vec<NodeRelationshipPath> },
-    Equal { paths: Vec<NodeRelationshipPath> },
+    Combine { xpath_ltr: String, xpath_rtl: String },
+    Equal { xpath_ltr: String, xpath_rtl: String },
     NoRelationship,
 }
 
@@ -183,7 +177,7 @@ impl BasisNetwork {
 
                     for relationship in current_relationships {
                         match &relationship.relationship_type {
-                            NodeRelationshipType::Combine { .. } => {
+                            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl } => {
                                 if let Some((next_data_node, next_context, next_lineage)) = apply_combine(
                                     Arc::clone(&normalization_context),
                                     data_node.clone(),
@@ -197,7 +191,7 @@ impl BasisNetwork {
                                 }
                                 processed_relationships.insert(relationship.id.clone());
                             },
-                            NodeRelationshipType::Equal { .. } => {
+                            NodeRelationshipType::Equal { xpath_ltr, xpath_rtl } => {
                                 if let Some((next_data_node, next_context, next_lineage)) = apply_combine(
                                     Arc::clone(&normalization_context),
                                     data_node.clone(),
@@ -264,10 +258,7 @@ fn apply_combine(
     };
 
     let xpath_str = match &relationship.relationship_type {
-        NodeRelationshipType::Combine { paths } => {
-            let path = paths.first().unwrap();
-            let NodeRelationshipPath { xpath_ltr, xpath_rtl } = path;
-
+        NodeRelationshipType::Combine { xpath_ltr, xpath_rtl } => {
             if relationship.left_basis_lineage == *lineage {
                 xpath_ltr
             } else {
@@ -275,10 +266,7 @@ fn apply_combine(
             }
         }
         // TODO: Delete branch
-        NodeRelationshipType::Equal { paths } => {
-            let path = paths.first().unwrap();
-            let NodeRelationshipPath { xpath_ltr, xpath_rtl } = path;
-
+        NodeRelationshipType::Equal { xpath_ltr, xpath_rtl } => {
             if relationship.left_basis_lineage == *lineage {
                 xpath_ltr
             } else {

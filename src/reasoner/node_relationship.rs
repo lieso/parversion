@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_network::{NodeRelationship, NodeRelationshipType, NodeRelationshipPath};
+use crate::basis_network::{NodeRelationship, NodeRelationshipType};
 use crate::basis_node::BasisNode;
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -84,18 +84,14 @@ pub async fn node_relationship<R: Reasoner>(
         match result.relationship_type {
             RelationshipTypeResponse::Combine => {
                 NodeRelationshipType::Combine {
-                    paths: vec![NodeRelationshipPath {
-                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                        xpath_rtl: result.right_to_left_xpath.unwrap().clone()
-                    }]
+                    xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                    xpath_rtl: result.right_to_left_xpath.unwrap().clone()
                 }
             },
             RelationshipTypeResponse::Equal => {
                 NodeRelationshipType::Equal {
-                    paths: vec![NodeRelationshipPath {
-                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                        xpath_rtl: result.right_to_left_xpath.unwrap().clone()
-                    }]
+                    xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                    xpath_rtl: result.right_to_left_xpath.unwrap().clone()
                 }
             },
             RelationshipTypeResponse::NoRelationship => {
@@ -128,6 +124,8 @@ async fn get_user_prompt<R: Reasoner>(
                 Errors::DeficientNormalizationContextError("Basis node contexts not provided in meta context".to_string())
             })?
     };
+
+    // TODO: collect contexts that exist on path from left to right to ensure valid xpaths are generated
 
     let left_contexts: Vec<Arc<Context>> = basis_node_contexts
         .get(&left.id)
