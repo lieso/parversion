@@ -571,11 +571,11 @@ impl Provider for SqliteProvider {
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
-    async fn get_node_relationship(
+    async fn get_node_relationships(
         &self,
         left_basis_lineage: &Lineage,
         right_basis_lineage: &Lineage,
-    ) -> Result<Option<NodeRelationship>, Errors> {
+    ) -> Result<Option<Vec<NodeRelationship>>, Errors> {
         let conn = self.connection.clone();
         let key1 = left_basis_lineage.to_string();
         let key2 = right_basis_lineage.to_string();
@@ -596,16 +596,16 @@ impl Provider for SqliteProvider {
             .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
-    async fn save_node_relationship(
+    async fn save_node_relationships(
         &self,
         left_basis_lineage: Lineage,
         right_basis_lineage: Lineage,
-        node_relationship: NodeRelationship,
+        node_relationships: Vec<NodeRelationship>,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
         let key1 = left_basis_lineage.to_string();
         let key2 = right_basis_lineage.to_string();
-        let data = serialize(&node_relationship)?;
+        let data = serialize(&node_relationships)?;
 
         task::spawn_blocking(move || {
             let conn = conn.lock().map_err(|_| lock_err())?;

@@ -28,8 +28,8 @@ pub struct BasisNetwork {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NodeRelationshipType {
-    Combine { xpath_ltr: String, xpath_rtl: String },
-    Equal { xpath_ltr: String, xpath_rtl: String },
+    Combine { xpath_ltr: String, xpath_rtl: String, reachability: bool },
+    Equal { xpath_ltr: String, xpath_rtl: String, reachability: bool },
     NoRelationship,
 }
 
@@ -177,7 +177,7 @@ impl BasisNetwork {
 
                     for relationship in current_relationships {
                         match &relationship.relationship_type {
-                            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl } => {
+                            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
                                 if let Some((next_data_node, next_context, next_lineage)) = apply_combine(
                                     Arc::clone(&normalization_context),
                                     data_node.clone(),
@@ -191,7 +191,7 @@ impl BasisNetwork {
                                 }
                                 processed_relationships.insert(relationship.id.clone());
                             },
-                            NodeRelationshipType::Equal { xpath_ltr, xpath_rtl } => {
+                            NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
                                 if let Some((next_data_node, next_context, next_lineage)) = apply_combine(
                                     Arc::clone(&normalization_context),
                                     data_node.clone(),
@@ -258,7 +258,7 @@ fn apply_combine(
     };
 
     let xpath_str = match &relationship.relationship_type {
-        NodeRelationshipType::Combine { xpath_ltr, xpath_rtl } => {
+        NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
             if relationship.left_basis_lineage == *lineage {
                 xpath_ltr
             } else {
@@ -266,7 +266,7 @@ fn apply_combine(
             }
         }
         // TODO: Delete branch
-        NodeRelationshipType::Equal { xpath_ltr, xpath_rtl } => {
+        NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
             if relationship.left_basis_lineage == *lineage {
                 xpath_ltr
             } else {

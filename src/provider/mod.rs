@@ -108,16 +108,16 @@ pub trait Provider: Send + Sync + Sized + 'static {
         lineages: (Lineage, Lineage),
         translation_network: Option<TranslationNetwork>
     ) -> Result<(), Errors>;
-    async fn get_node_relationship(
+    async fn get_node_relationships(
         &self,
         left_basis_lineage: &Lineage,
         right_basis_lineage: &Lineage,
-    ) -> Result<Option<NodeRelationship>, Errors>;
-    async fn save_node_relationship(
+    ) -> Result<Option<Vec<NodeRelationship>>, Errors>;
+    async fn save_node_relationships(
         &self,
         left_basis_lineage: Lineage,
         right_basis_lineage: Lineage,
-        node_relationship: NodeRelationship,
+        node_relationships: Vec<NodeRelationship>,
     ) -> Result<(), Errors>;
 }
 
@@ -259,19 +259,19 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
-    async fn get_node_relationship(
+    async fn get_node_relationships(
         &self,
         _left_basis_lineage: &Lineage,
         _right_basis_lineage: &Lineage,
-    ) -> Result<Option<NodeRelationship>, Errors> {
+    ) -> Result<Option<Vec<NodeRelationship>>, Errors> {
         Ok(None)
     }
 
-    async fn save_node_relationship(
+    async fn save_node_relationships(
         &self,
         _left_basis_lineage: Lineage,
         _right_basis_lineage: Lineage,
-        _node_relationship: NodeRelationship,
+        _node_relationships: Vec<NodeRelationship>,
     ) -> Result<(), Errors> {
         Ok(())
     }

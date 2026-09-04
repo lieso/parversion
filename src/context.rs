@@ -33,7 +33,6 @@ impl Context {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         basis_node: Arc<BasisNode>,
-        other_contexts: Vec<Arc<Context>>
     ) -> Result<String, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);

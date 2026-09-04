@@ -99,7 +99,9 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         let results = try_join_all(handles).await?;
         
         for result in results {
-            node_relationships.push(Arc::new(result?));
+            for relationship in result? {
+                node_relationships.push(Arc::new(relationship));
+            }
         }
     }
 
@@ -186,36 +188,39 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
     stage_context: &StageContext,
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
-) -> Result<NodeRelationship, Errors> {
+) -> Result<Vec<NodeRelationship>, Errors> {
 
     if !options.regenerate {
-        if let Some(node_relationship) = provider.get_node_relationship(
+        if let Some(node_relationships) = provider.get_node_relationships(
             &left.lineage,
             &right.lineage,
         ).await? {
-            return Ok(node_relationship);
+            return Ok(node_relationships);
         }
     }
 
     stage_context.record_events("Node relationship", 0);
 
-    let (relationship, metadata) = reasoner.node_relationship(
+    let results = reasoner.node_relationship(
         Arc::clone(&normalization_context),
         left.clone(),
         right.clone(),
     ).await?;
 
-    stage_context.record_events("Node relationship", metadata.tokens.into());
+    let total_tokens: u32 = results.iter().map(|(_, metadata)| metadata.tokens).sum();
+    stage_context.record_events("Node relationship", total_tokens.into());
+
+    let relationships: Vec<NodeRelationship> = results.into_iter().map(|(r, _)| r).collect();
 
     provider
-        .save_node_relationship(
+        .save_node_relationships(
             left.lineage.clone(),
             right.lineage.clone(),
-            relationship.clone()
+            relationships.clone()
         )
         .await?;
 
-    Ok(relationship)
+    Ok(relationships)
 }
 
 pub async fn get_translation_networks<P: Provider, R: Reasoner>(
@@ -423,36 +428,32 @@ fn get_node_relationships(
     relationships: Vec<Arc<NodeRelationship>>,
     basis_lineage: &Lineage
 ) -> Vec<Arc<NodeRelationship>> {
-    let (direct_relationships, remaining_relationships): (Vec<Arc<NodeRelationship>>, Vec<Arc<NodeRelationship>>) = relationships
-        .iter()
-        .cloned()
-        .partition(|relationship| {
-            relationship.left_basis_lineage == *basis_lineage ||
-            relationship.right_basis_lineage == *basis_lineage
-        });
+    let mut visited_lineages: HashSet<Lineage> = HashSet::new();
+    let mut queue: VecDeque<Lineage> = VecDeque::new();
+    let mut collected: HashMap<ID, Arc<NodeRelationship>> = HashMap::new();
 
-    let related_lineages: Vec<Lineage> = direct_relationships
-        .iter()
-        .map(|relationship| {
-            if relationship.left_basis_lineage == *basis_lineage {
-                relationship.right_basis_lineage.clone()
-            } else {
-                relationship.left_basis_lineage.clone()
+    visited_lineages.insert(basis_lineage.clone());
+    queue.push_back(basis_lineage.clone());
+
+    while let Some(current) = queue.pop_front() {
+        for relationship in &relationships {
+            if relationship.left_basis_lineage == current || relationship.right_basis_lineage == current {
+                collected.entry(relationship.id.clone()).or_insert_with(|| Arc::clone(relationship));
+
+                let neighbour = if relationship.left_basis_lineage == current {
+                    relationship.right_basis_lineage.clone()
+                } else {
+                    relationship.left_basis_lineage.clone()
+                };
+
+                if visited_lineages.insert(neighbour.clone()) {
+                    queue.push_back(neighbour);
+                }
             }
-        })
-        .collect();
+        }
+    }
 
-    let other_relationships: Vec<Arc<NodeRelationship>> = related_lineages
-        .iter()
-        .flat_map(|lineage| {
-            get_node_relationships(
-                remaining_relationships.clone(),
-                &lineage
-            )
-        })
-        .collect();
-
-    direct_relationships.into_iter().chain(other_relationships).collect()
+    collected.into_values().collect()
 }
 
 fn has_reachability(
