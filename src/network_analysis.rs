@@ -41,8 +41,16 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             .cloned()
             .collect()
     };
-
     log::info!("Number of basis nodes: {}", basis_nodes.len());
+
+    let basis_node_contexts = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_node_contexts
+            .clone()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError("Basis node contexts not provided in normalization context".to_string())
+            })?
+    };
 
     let mut non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
         .iter()
@@ -50,17 +58,27 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         .cloned()
         .collect();
 
-    non_empty_basis_nodes.sort_by(|a, b| a.lineage.to_string().cmp(&b.lineage.to_string()));
+    non_empty_basis_nodes.sort_by(|a, b| {
+        let count_a = basis_node_contexts
+            .get(&a.id)
+            .unwrap()
+            .len();
+        let count_b = basis_node_contexts
+            .get(&b.id)
+            .unwrap()
+            .len();
+
+        count_b.cmp(&count_a)
+    });
 
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
 
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
-    for gap in 1..non_empty_basis_nodes.len() {
+    for i in 0..non_empty_basis_nodes.len() {
         let mut handles = Vec::new();
 
-        for i in 0..(non_empty_basis_nodes.len() - gap) {
-            let j = i + gap;
+        for j in (i+1)..non_empty_basis_nodes.len() {
             let left = Arc::clone(&non_empty_basis_nodes[i]);
             let right = Arc::clone(&non_empty_basis_nodes[j]);
 
