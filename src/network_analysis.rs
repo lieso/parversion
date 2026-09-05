@@ -248,7 +248,8 @@ async fn generate_basis_network<P: Provider, R: Reasoner>(
 
     let (basis_network, metadata) = reasoner.basis_network(
         Arc::clone(&normalization_context),
-        basis_nodes.clone()
+        basis_nodes.clone(),
+        relationships,
     ).await?;
 
     stage_context.record_events("Network analysis", metadata.tokens.into());

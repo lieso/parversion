@@ -20,6 +20,8 @@ pub struct BasisNetworkMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetwork {
     pub id: ID,
+    pub name: String,
+    pub description: String,
     pub basis_nodes: Vec<Arc<BasisNode>>,
     pub relationships: Vec<Arc<NodeRelationship>>,
     pub transformations: Vec<NetworkTransformation>,

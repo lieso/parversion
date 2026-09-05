@@ -171,13 +171,15 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
     async fn basis_network(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        basis_nodes: Vec<Arc<BasisNode>>
+        basis_nodes: Vec<Arc<BasisNode>>,
+        relationships: Vec<Arc<NodeRelationship>>
     ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
         Ok(
             basis_network::basis_network(
                 self,
                 normalization_context,
                 basis_nodes,
+                relationships
             ).await?
         )
     }

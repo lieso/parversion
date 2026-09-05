@@ -5,7 +5,7 @@ use serde::Deserialize;
 use crate::prelude::*;
 use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::basis_node::BasisNode;
-use crate::basis_network::BasisNetwork;
+use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NodeRelationship};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct BasisNetworkResponse {
@@ -18,7 +18,8 @@ pub struct BasisNetworkResponse {
 pub async fn basis_network<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    basis_nodes: Vec<Arc<BasisNode>>
+    basis_nodes: Vec<Arc<BasisNode>>,
+    relationships: Vec<Arc<NodeRelationship>>,
 ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
     let system_prompt = get_system_prompt(
         reasoner,
@@ -27,7 +28,7 @@ pub async fn basis_network<R: Reasoner>(
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&normalization_context),
-        basis_nodes,
+        basis_nodes.clone(),
     ).await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(BasisNetworkResponse))
@@ -63,8 +64,24 @@ pub async fn basis_network<R: Reasoner>(
         schema
     ).await?;
 
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
+    };
 
-    unimplemented!()
+    let basis_network = BasisNetwork {
+        id: ID::new(),
+        name: result.network_name.clone(),
+        description: result.network_description.clone(),
+        basis_nodes: basis_nodes.clone(),
+        relationships: relationships.clone(),
+        transformations: Vec::new(),
+        metadata: BasisNetworkMetadata {
+            prompts: vec![reasoner_metadata.prompt_hash.clone()]
+        }
+    };
+
+    Ok((basis_network, reasoner_metadata))
 }
 
 async fn get_system_prompt<R: Reasoner>(
