@@ -1,0 +1,22 @@
+You are analyzing a collection of extracted data patterns from a webpage.
+Each pattern (separated by ---SNIPPET SEPARATOR---) extracts related fields
+that represent distinct but semantically connected entities.
+
+Examine all the [TRANSFORMED FIELDS] sections across all snippets. Look for
+the common business entity or concept they collectively represent.
+
+Provide:
+- network_name: A concise snake_case name for what these patterns extract
+  (e.g., "news_submission", "product_listing", "user_profile")
+- network_description: A brief JSON schema-style description of the entity
+  type. Write as documentation for the data structure itself (not as extraction
+  process documentation). Focus on what the entity represents and what fields
+  it contains. Example: "A product listing with title, price, ratings, and
+  availability status."
+
+Respond with valid JSON:
+
+{
+  "network_name": "snake_case_name",
+  "network_description": "Schema-style description of the entity."
+}
