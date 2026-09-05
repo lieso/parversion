@@ -124,9 +124,14 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     }
 
     let basis_networks = resolve_basis_networks(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&normalization_context),
+        options,
+        stage_context,
         non_empty_basis_nodes.clone(),
         node_relationships
-    );
+    ).await?;
 
     let hashmap: HashMap<BasisNetworkID, Arc<BasisNetwork>> = basis_networks
         .into_iter()
@@ -136,10 +141,15 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     Ok((hashmap,))
 }
 
-fn resolve_basis_networks(
+async fn resolve_basis_networks<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
     basis_nodes: Vec<Arc<BasisNode>>,
     relationships: Vec<Arc<NodeRelationship>>,
-) -> Vec<Arc<BasisNetwork>> {
+) -> Result<Vec<Arc<BasisNetwork>>, Errors> {
     let actual_relationships: Vec<Arc<NodeRelationship>> = relationships
         .iter()
         .filter(|rel| {
@@ -150,6 +160,7 @@ fn resolve_basis_networks(
 
     let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
     let mut placed: HashSet<Lineage> = HashSet::new();
+    let mut handles = Vec::new();
 
     for basis_node in &basis_nodes {
         if placed.contains(&basis_node.lineage) {
@@ -182,20 +193,73 @@ fn resolve_basis_networks(
             }
         }
 
-        let basis_network = Arc::new(BasisNetwork {
-            id: ID::new(),
-            basis_nodes: basis_network_nodes,
-            relationships: current_relationships.clone(),
-            transformations: Vec::new(),
-            metadata: BasisNetworkMetadata {
-                prompts: Vec::new()
-            }
-        });
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
+        let cloned_normalization_context = Arc::clone(&normalization_context);
+        let cloned_stage_context = stage_context.clone();
+        let cloned_options = options.clone();
 
-        basis_networks.push(basis_network);
+        let handle = task::spawn(async move {
+            generate_basis_network(
+                cloned_provider,
+                cloned_reasoner,
+                cloned_normalization_context,
+                &cloned_options,
+                &cloned_stage_context,
+                basis_network_nodes,
+                current_relationships.clone(),
+            )
+        });
+        handles.push(handle);
     }
 
-    basis_networks
+    let results = try_join_all(handles).await?;
+
+    let basis_networks: Vec<Arc<BasisNetwork>> = results
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?
+        .map(|basis_network| {
+            Arc::new(basis_network)
+        })
+        .collect();
+
+    Ok(basis_networks)
+}
+
+async fn generate_basis_network<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+    basis_nodes: Vec<Arc<BasisNode>>,
+    relationships: Vec<Arc<NodeRelationship>>
+) -> Result<BasisNetwork, Errors> {
+    stage_context.record_events("Network analysis", 0);
+
+    if !options.regenerate {
+        if let Some(basis_network) = provider.get_basis_network(
+            basis_nodes.clone()
+        ).await? {
+            return Ok(basis_network);
+        }
+    }
+
+    let (basis_network, metadata) = reasoner.basis_network(
+        Arc::clone(&normalization_context),
+        basis_nodes.clone()
+    ).await?;
+
+    stage_context.record_events("Network analysis", metadata.tokens.into());
+
+    provider
+        .save_basis_network(
+            basis_nodes.clone(),
+            basis_network.clone()
+        )
+        .await?;
+
+    Ok(basis_network)
 }
 
 async fn generate_node_relationship<P: Provider, R: Reasoner>(
@@ -208,6 +272,8 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
     right: Arc<BasisNode>,
 ) -> Result<Vec<NodeRelationship>, Errors> {
 
+    stage_context.record_events("Node relationship", 0);
+
     if !options.regenerate {
         if let Some(node_relationships) = provider.get_node_relationships(
             &left.lineage,
@@ -216,8 +282,6 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
             return Ok(node_relationships);
         }
     }
-
-    stage_context.record_events("Node relationship", 0);
 
     let results = reasoner.node_relationship(
         Arc::clone(&normalization_context),

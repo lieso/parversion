@@ -18,6 +18,7 @@ mod basis_group;
 mod basis_node;
 mod sampling;
 mod node_relationship;
+mod basis_network;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -163,6 +164,20 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
                 normalization_context,
                 left,
                 right
+            ).await?
+        )
+    }
+
+    async fn basis_network(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_nodes: Vec<Arc<BasisNode>>
+    ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
+        Ok(
+            basis_network::basis_network(
+                self,
+                normalization_context,
+                basis_nodes,
             ).await?
         )
     }

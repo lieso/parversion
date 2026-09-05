@@ -7,7 +7,7 @@ use crate::basis_field::BasisField;
 use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
-use crate::basis_network::{NodeRelationship};
+use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_node::BasisNode;
 use crate::translation_node::TranslationNode;
 use crate::translation_network::TranslationNetwork;
@@ -74,6 +74,10 @@ impl SqliteProvider {
                  data               TEXT,
                  PRIMARY KEY (lineage_from, lineage_to)
              );
+             CREATE TABLE IF NOT EXISTS basis_networks (
+                basis_nodes   TEXT PRIMARY KEY,
+                data          TEXT NOT NULL
+            );
              ",
         )
         .map_err(|e| Errors::ProviderError(e.to_string()))?;
@@ -619,4 +623,58 @@ impl Provider for SqliteProvider {
         .await
             .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
+
+    async fn get_basis_network(
+        &self,
+        basis_nodes: Vec<Arc<BasisNode>>,
+    ) -> Result<Option<BasisNetwork>, Errors> {
+        let conn = self.connection.clone();
+        let key = basis_basis_nodes(&basis_nodes)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM basis_networks WHERE basis_nodes = ?1",
+                params![key],
+                |row| row.get::<_, String>(0),
+            ) {
+                Ok(data) => deserialize(data).map(Some),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
+
+    async fn save_basis_network(
+        &self,
+        basis_nodes: Vec<Arc<BasisNode>>,
+        basis_network: BasisNetwork
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let key = basis_basis_nodes(&basis_nodes)?;
+        let data = serialize(&basis_network)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            conn.execute(
+                "INSERT OR REPLACE INTO basis_networks (basis_nodes, data) VALUES (?1, ?2)",
+                params![key, data],
+            )
+                .map_err(|e| db_err(e))?;
+            Ok(())
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
+}
+
+fn basis_basis_nodes(basis_nodes: &[Arc<BasisNode>]) -> Result<String, Errors> {
+    let mut lineages: Vec<String> = basis_nodes
+        .iter()
+        .map(|bn| bn.lineage.to_string())
+        .collect();
+    lineages.sort();
+    Ok(lineages.join("|"))
 }

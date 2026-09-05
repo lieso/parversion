@@ -119,6 +119,15 @@ pub trait Provider: Send + Sync + Sized + 'static {
         right_basis_lineage: Lineage,
         node_relationships: Vec<NodeRelationship>,
     ) -> Result<(), Errors>;
+    async fn get_basis_network(
+        &self,
+        basis_nodes: Vec<Arc<BasisNode>>,
+    ) -> Result<Option<BasisNetwork>, Errors>;
+    async fn save_basis_network(
+        &self,
+        basis_nodes: Vec<Arc<BasisNode>>,
+        basis_network: BasisNetwork
+    ) -> Result<(), Errors>;
 }
 
 pub struct VoidProvider;
@@ -272,6 +281,21 @@ impl Provider for VoidProvider {
         _left_basis_lineage: Lineage,
         _right_basis_lineage: Lineage,
         _node_relationships: Vec<NodeRelationship>,
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+
+    async fn get_basis_network(
+        &self,
+        basis_nodes: Vec<Arc<BasisNode>>,
+    ) -> Result<Option<BasisNetwork>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_basis_network(
+        &self,
+        basis_nodes: Vec<Arc<BasisNode>>,
+        basis_network: BasisNetwork
     ) -> Result<(), Errors> {
         Ok(())
     }
