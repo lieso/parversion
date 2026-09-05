@@ -208,7 +208,7 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
                 &cloned_stage_context,
                 basis_network_nodes,
                 current_relationships.clone(),
-            )
+            ).await
         });
         handles.push(handle);
     }
@@ -218,6 +218,7 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
     let basis_networks: Vec<Arc<BasisNetwork>> = results
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
         .map(|basis_network| {
             Arc::new(basis_network)
         })
