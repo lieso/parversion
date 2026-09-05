@@ -1,20 +1,28 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{RwLock, Arc};
+use std::cell::RefCell;
 
 use crate::prelude::*;
+use crate::graph_node::{Graph, GraphNode};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+thread_local! {
+    static XPATH_CACHE: RefCell<HashMap<(ID, Vec<XPathSegment>), Vec<Graph>>> = RefCell::new(HashMap::new());
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct XPath {
     pub segments: Vec<XPathSegment>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct XPathSegment {
     pub axis: XPathAxis,
     pub node_test: String,
     pub predicates: Vec<XPathPredicate>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum XPathAxis {
     Child,
     Parent,
@@ -27,7 +35,7 @@ pub enum XPathAxis {
     Preceding,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum XPathPredicate {
     Position(usize),
     Attribute { name: String, value: String },
@@ -39,6 +47,49 @@ pub enum XPathPredicate {
 }
 
 impl XPath {
+    pub fn traverse(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        start: Graph,
+    ) -> Result<Option<Graph>, Errors> {
+        let start_id = read_lock!(start).id.clone();
+        let mut current: Vec<Graph> = vec![Arc::clone(&start)];
+
+        for (index, segment) in self.segments.iter().enumerate() {
+            let cache_key = (start_id.clone(), self.segments[0..=index].to_vec());
+
+            if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned()) {
+                current = cached;
+                if current.is_empty() {
+                    return Ok(None);
+                }
+                continue;
+            }
+
+            current = current
+                .iter()
+                .map(|graph| {
+                    GraphNode::traverse_using_xpath_segment(
+                        Arc::clone(&normalization_context),
+                        Arc::clone(graph),
+                        segment
+                    )
+                })
+            .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
+                .into_iter()
+                .flatten()
+                .collect();
+
+            if current.is_empty() {
+                return Ok(None);
+            }
+
+            XPATH_CACHE.with(|cache| cache.borrow_mut().insert(cache_key, current.clone()));
+        }
+
+        Ok(current.first().cloned())
+    }
+
     pub fn from_str(s: &str) -> Result<Self, Errors> {
         let s = s.replace("//", "/descendant::");
 

@@ -276,10 +276,9 @@ fn apply_combine(
 
     let xpath: XPath = XPath::from_str(&xpath_str)?;
 
-    if let Some(target_graph_node) = GraphNode::traverse_using_xpath(
+    if let Some(target_graph_node) = xpath.traverse(
         Arc::clone(&normalization_context),
         Arc::clone(&context.graph_node),
-        &xpath
     )? {
         // assumming this is the right context...
         let target_context = meta_context.contexts_lookup
