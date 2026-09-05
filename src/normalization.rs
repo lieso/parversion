@@ -519,7 +519,6 @@ fn build_normalized_graph<P: Provider>(
             fields: DataNodeFields::new(),
             description: "Root node".to_string()
         }),
-        contexts: vec![],
     });
 
     normalized.contexts.insert(read_lock!(root).id.clone(), root_context.clone());
