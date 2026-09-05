@@ -489,7 +489,12 @@ impl Json {
     ) -> Result<String, Errors> {
         log::trace!("In from_normalized_graph_json");
 
-        let graph_root = read_lock!(normalization_context).normal_graph_root.clone().unwrap();
+        let graph_root = read_lock!(normalization_context)
+            .normalized
+            .as_ref()
+            .unwrap()
+            .graph_root
+            .clone();
 
         let mut result: Map<String, Value> = Map::new();
 
@@ -498,10 +503,12 @@ impl Json {
             graph_node: Arc<RwLock<GraphNode>>,
             result: &mut Map<String, Value>,
         ) {
-            let contexts = {
-                let lock = read_lock!(normalization_context);
-                lock.normal_contexts.clone().unwrap()
-            };
+            let contexts = read_lock!(normalization_context)
+                .normalized
+                .as_ref()
+                .unwrap()
+                .contexts
+                .clone();
 
             let context = contexts.get(&read_lock!(graph_node).id).unwrap();
             let network_name = &context.network_name;

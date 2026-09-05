@@ -13,6 +13,7 @@ use crate::graph_node::Graph;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
 use crate::normal_context::NormalContext;
+use crate::normal_meta_context::NormalMetaContext;
 
 pub struct NormalizationContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
@@ -24,10 +25,9 @@ pub struct NormalizationContext {
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<BasisGraph>,
     pub classification: Option<Arc<Classification>>,
-    pub normal_contexts: Option<HashMap<ID, Arc<NormalContext>>>,
-    pub normal_graph_root: Option<Graph>,
     pub context_groups: Option<HashMap<ID, Vec<Arc<Context>>>>,
     pub context_to_group: Option<HashMap<ID, Arc<BasisGroup>>>,
+    pub normalized: Option<NormalMetaContext>,
 }
 
 impl NormalizationContext {
@@ -42,10 +42,9 @@ impl NormalizationContext {
             basis_networks: None,
             basis_graph: None,
             classification: None,
-            normal_contexts: None,
-            normal_graph_root: None,
             context_groups: None,
             context_to_group: None,
+            normalized: None,
         }
     }
 
@@ -79,11 +78,9 @@ impl NormalizationContext {
     
     pub fn update_normalized_graph(
         &mut self,
-        contexts: HashMap<ID, Arc<NormalContext>>,
-        graph_root: Graph,
+        normalized: NormalMetaContext,
     ) {
-        self.normal_contexts = Some(contexts);
-        self.normal_graph_root = Some(graph_root);
+        self.normalized = Some(normalized);
     }
 
     pub fn update_classification(&mut self, classification: Arc<Classification>) {

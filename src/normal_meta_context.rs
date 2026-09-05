@@ -41,4 +41,11 @@ impl NormalMetaContext {
 
         Ok(contexts)
     }
+
+    // Warning: this assumes both NormalMetaContexts are already part of the same graph
+    pub fn merge(mut self, other: NormalMetaContext) -> Result<NormalMetaContext, Errors> {
+        self.contexts.extend(other.contexts);
+        self.contexts_lookup.extend(other.contexts_lookup);
+        Ok(self)
+    }
 }
