@@ -215,8 +215,8 @@ impl BasisNetwork {
 
                 Ok(Arc::new(NormalContext {
                     id: ID::new(),
-                    network_name: Some("placeholdernetworkname".to_string()),
-                    network_description: Some("placeholderdescription".to_string()),
+                    network_name: Some(self.name.clone()),
+                    network_description: Some(self.description.clone()),
                     data_node: Arc::new(data_node.clone()),
                     graph_node: Arc::new(RwLock::new(
                         GraphNode::from_data_node(
