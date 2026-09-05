@@ -503,14 +503,14 @@ impl Json {
             graph_node: Arc<RwLock<GraphNode>>,
             result: &mut Map<String, Value>,
         ) {
-            let contexts = read_lock!(normalization_context)
+            let contexts_lookup = read_lock!(normalization_context)
                 .normalized
                 .as_ref()
                 .unwrap()
-                .contexts
+                .contexts_lookup
                 .clone();
 
-            let context = contexts.get(&read_lock!(graph_node).id).unwrap();
+            let context = contexts_lookup.get(&read_lock!(graph_node).id).unwrap();
             let network_name = &context.network_name;
             let network_description = &context.network_description;
             let data_node = &context.data_node;
@@ -523,7 +523,7 @@ for json_node in json_nodes {
             }
 
             for child in &read_lock!(graph_node).children {
-                let child_context = contexts.get(&read_lock!(child).id).unwrap();
+                let child_context = contexts_lookup.get(&read_lock!(child).id).unwrap();
 
                 if let Some(child_network_name) = &child_context.network_name {
                     let mut inner_result: Map<String, Value> = Map::new();

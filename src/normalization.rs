@@ -491,7 +491,7 @@ fn build_normalized_graph<P: Provider>(
             .clone()
     };
 
-    let normalized = basis_networks
+    let mut normalized = basis_networks
         .values()
         .try_fold(None, |acc, basis_network| -> Result<Option<NormalMetaContext>, Errors> {
             let normal_meta_context = basis_network.apply(
@@ -504,7 +504,26 @@ fn build_normalized_graph<P: Provider>(
             } else {
                 Ok(Some(normal_meta_context))
             }
-        })?.unwrap();
+        })?
+        .unwrap();
+
+    let root_context = Arc::new(NormalContext {
+        id: ID::new(),
+        network_name: Some(classification.name.clone()),
+        network_description: Some(classification.description.clone()),
+        graph_node: Arc::clone(&root),
+        data_node: Arc::new(DataNode {
+            id: ID::new(),
+            hash: Hash::new(),
+            lineage: Lineage::new(),
+            fields: DataNodeFields::new(),
+            description: "Root node".to_string()
+        }),
+        contexts: vec![],
+    });
+
+    normalized.contexts.insert(read_lock!(root).id.clone(), root_context.clone());
+    normalized.contexts_lookup.insert(read_lock!(root).id.clone(), root_context);
 
     Ok(normalized)
 }
