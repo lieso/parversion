@@ -234,39 +234,6 @@ impl Provider for YamlFileProvider {
         Ok(None)
     }
 
-    async fn save_basis_graph(
-        &self,
-        hash: &Hash,
-        basis_graph: BasisGraph,
-    ) -> Result<(), Errors> {
-        let mut yaml = self.load_data().await?;
-
-        let serialized_basis_graph =
-            serde_yaml::to_value(&basis_graph).map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
-
-        if let Some(basis_graphs) = yaml.get_mut("basis_graphs") {
-            let sequence = basis_graphs.as_sequence_mut().ok_or_else(|| {
-                Errors::YamlParseError(
-                    "Failed to get mutable sequence for 'basis_graphs'.".to_string(),
-                )
-            })?;
-
-            sequence.retain(|entry| {
-                if let Ok(existing) = serde_yaml::from_value::<BasisGraph>(entry.clone()) {
-                    &existing.hash != hash
-                } else {
-                    true
-                }
-            });
-
-            sequence.push(serialized_basis_graph);
-        } else {
-            yaml["basis_graphs"] = serde_yaml::Value::Sequence(vec![serialized_basis_graph]);
-        }
-
-        self.save_data(&yaml).await
-    }
-
     async fn save_operation(&self, hash: &Hash, operation: Operation) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
 

@@ -159,13 +159,17 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
 ) -> Result<Vec<BasisGroup>, Errors> {
     stage_context.record_events("Group analysis", 0);
 
-    if !options.regenerate {
-        let basis_groups: Vec<BasisGroup> = provider
-            .get_basis_groups_by_acyclic_lineage(&acyclic_lineage).await?
-            .into_iter()
-            .collect();
+    let maybe_basis_groups = {
+        if !options.regenerate {
+            provider.get_basis_groups_by_acyclic_lineage(&acyclic_lineage).await?
+        } else {
+            None
+        }
+    };
+
+    if let Some(ref basis_groups) = maybe_basis_groups {
         if !basis_groups.is_empty() {
-            return Ok(basis_groups);
+            return Ok(basis_groups.clone());
         }
     }
 
@@ -184,18 +188,32 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
         return Ok(vec![basis_group]);
     }
 
-    let (maybe_basis_group, metadata) = reasoner.basis_group(
-        Arc::clone(&normalization_context),
-        candidate_group.clone(),
-        acyclic_lineage.clone(),
+    let (maybe_basis_group, maybe_metadata) = {
+        if maybe_basis_groups.is_none() {
+            let (maybe_basis_group, metadata) = reasoner.basis_group(
+                Arc::clone(&normalization_context),
+                candidate_group.clone(),
+                acyclic_lineage.clone(),
+                None,
+                None,
+            ).await?;
+
+            stage_context.record_events("Group analysis", metadata.tokens.into());
+
+            (maybe_basis_group, Some(metadata))
+        } else {
+            (None, None)
+        }
+    };
+
+    provider.save_basis_group(
+        &acyclic_lineage,
         None,
         None,
+        maybe_basis_group.clone()
     ).await?;
 
-    stage_context.record_events("Group analysis", metadata.tokens.into());
-
     if let Some(basis_group) = maybe_basis_group {
-        provider.save_basis_group(&acyclic_lineage, None, None, basis_group.clone()).await?;
         return Ok(vec![basis_group]);
     }
 
@@ -245,7 +263,9 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
         .into_iter()
         .flatten()
         .map(|mut basis_group| {
-            basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+            if let Some(ref metadata) = maybe_metadata {
+                basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+            }
             basis_group
         })
         .collect();
@@ -265,13 +285,17 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
 ) -> Result<Vec<BasisGroup>, Errors> {
     stage_context.record_events("Group analysis", 0);
 
-    if !options.regenerate {
-        let cached: Vec<BasisGroup> = provider
-            .get_basis_groups_by_lineage(&acyclic_lineage, &lineage).await?
-            .into_iter()
-            .collect();
-        if !cached.is_empty() {
-            return Ok(cached);
+    let maybe_basis_groups = {
+        if !options.regenerate {
+            provider.get_basis_groups_by_lineage(&acyclic_lineage, &lineage).await?
+        } else {
+            None
+        }
+    };
+
+    if let Some(ref basis_groups) = maybe_basis_groups {
+        if !basis_groups.is_empty() {
+            return Ok(basis_groups.clone());
         }
     }
 
@@ -290,23 +314,32 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
         return Ok(vec![basis_group]);
     }
 
-    let (maybe_basis_group, metadata) = reasoner.basis_group(
-        Arc::clone(&normalization_context),
-        candidate_group.clone(),
-        acyclic_lineage.clone(),
-        Some(lineage.clone()),
+    let (maybe_basis_group, maybe_metadata) = {
+        if maybe_basis_groups.is_none() {
+            let (maybe_basis_group, metadata) = reasoner.basis_group(
+                Arc::clone(&normalization_context),
+                candidate_group.clone(),
+                acyclic_lineage.clone(),
+                Some(lineage.clone()),
+                None,
+            ).await?;
+
+            stage_context.record_events("Group analysis", metadata.tokens.into());
+
+            (maybe_basis_group, Some(metadata))
+        } else {
+            (None, None)
+        }
+    };
+
+    provider.save_basis_group(
+        &acyclic_lineage,
+        Some(&lineage),
         None,
+        maybe_basis_group.clone()
     ).await?;
 
-    stage_context.record_events("Group analysis", metadata.tokens.into());
-
     if let Some(basis_group) = maybe_basis_group {
-        provider.save_basis_group(
-            &acyclic_lineage,
-            Some(&lineage),
-            None,
-            basis_group.clone()
-        ).await?;
         return Ok(vec![basis_group]);
     }
 
@@ -358,7 +391,9 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
         .into_iter()
         .flatten()
         .map(|mut basis_group| {
-            basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+            if let Some(ref metadata) = maybe_metadata {
+                basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+            }
             basis_group
         })
         .collect();
@@ -380,12 +415,22 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
     stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
     stage_context.record_events("Group analysis", 0);
+    
+    let maybe_basis_groups = {
+        if !options.regenerate {
+            provider.get_basis_groups_by_indexed_lineage(
+                &acyclic_lineage,
+                &lineage,
+                &indexed_lineage
+            ).await?
+        } else {
+            None
+        }
+    };
 
-    if !options.regenerate {
-        let cached = provider
-            .get_basis_groups_by_indexed_lineage(&acyclic_lineage, &lineage, &indexed_lineage).await?;
-        if !cached.is_empty() {
-            return Ok(cached);
+    if let Some(ref basis_groups) = maybe_basis_groups {
+        if !basis_groups.is_empty() {
+            return Ok(basis_groups.clone());
         }
     }
 
@@ -404,23 +449,33 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
         return Ok(vec![basis_group]);
     }
 
-    let (maybe_basis_group, metadata) = reasoner.basis_group(
-        Arc::clone(&normalization_context),
-        candidate_group.clone(),
-        acyclic_lineage.clone(),
-        Some(lineage.clone()),
-        Some(indexed_lineage.clone())
+    let (maybe_basis_group, maybe_metadata) = {
+        if maybe_basis_groups.is_none() {
+            let (maybe_basis_group, metadata) = reasoner.basis_group(
+                Arc::clone(&normalization_context),
+                candidate_group.clone(),
+                acyclic_lineage.clone(),
+                Some(lineage.clone()),
+                Some(indexed_lineage.clone())
+            ).await?;
+
+            stage_context.record_events("Group analysis", metadata.tokens.into());
+
+            (maybe_basis_group, Some(metadata))
+        } else {
+            (None, None)
+        }
+    };
+
+    provider.save_basis_group(
+        &acyclic_lineage,
+        Some(&lineage),
+        Some(&indexed_lineage),
+        maybe_basis_group.clone()
     ).await?;
 
-    stage_context.record_events("Group analysis", metadata.tokens.into());
-
     if let Some(basis_group) = maybe_basis_group {
-        provider.save_basis_group(
-            &acyclic_lineage,
-            Some(&lineage),
-            Some(&indexed_lineage),
-            basis_group.clone()
-        ).await?;
+
         return Ok(vec![basis_group]);
     }
 
@@ -472,7 +527,9 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
         .into_iter()
         .flatten()
         .map(|mut basis_group| {
-            basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+            if let Some(ref metadata) = maybe_metadata {
+                basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+            }
             basis_group
         })
         .collect();

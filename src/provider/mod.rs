@@ -33,24 +33,24 @@ pub trait Provider: Send + Sync + Sized + 'static {
     async fn get_basis_groups_by_acyclic_lineage(
         &self,
         acyclic_lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors>;
+    ) -> Result<Option<Vec<BasisGroup>>, Errors>;
     async fn get_basis_groups_by_lineage(
         &self,
         acyclic_lineage: &Lineage,
         lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors>;
+    ) -> Result<Option<Vec<BasisGroup>>, Errors>;
     async fn get_basis_groups_by_indexed_lineage(
         &self,
         acyclic_lineage: &Lineage,
         lineage: &Lineage,
         indexed_lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors>;
+    ) -> Result<Option<Vec<BasisGroup>>, Errors>;
     async fn save_basis_group(
         &self,
         acyclic_lineage: &Lineage,
         lineage: Option<&Lineage>,
         indexed_lineage: Option<&Lineage>,
-        basis_group: BasisGroup,
+        basis_group: Option<BasisGroup>,
     ) -> Result<(), Errors>;
     async fn get_basis_node_by_lineage(
         &self,
@@ -74,11 +74,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         hash: &Hash
     ) -> Result<Option<BasisGraph>, Errors>;
-    async fn save_basis_graph(
-        &self,
-        hash: &Hash,
-        basis_graph: BasisGraph,
-    ) -> Result<(), Errors>;
     async fn save_schema_instance_document(
         &self,
         hash: &Hash,
@@ -137,30 +132,30 @@ impl Provider for VoidProvider {
     async fn get_basis_groups_by_acyclic_lineage(
         &self,
         _acyclic_lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors> {
-        Ok(Vec::new())
+    ) -> Result<Option<Vec<BasisGroup>>, Errors> {
+        Ok(None)
     }
     async fn get_basis_groups_by_lineage(
         &self,
         _acyclic_lineage: &Lineage,
         _lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors> {
-        Ok(Vec::new())
+    ) -> Result<Option<Vec<BasisGroup>>, Errors> {
+        Ok(None)
     }
     async fn get_basis_groups_by_indexed_lineage(
         &self,
         _acyclic_lineage: &Lineage,
         _lineage: &Lineage,
         _indexed_lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors> {
-        Ok(Vec::new())
+    ) -> Result<Option<Vec<BasisGroup>>, Errors> {
+        Ok(None)
     }
     async fn save_basis_group(
         &self,
         _acyclic_lineage: &Lineage,
         _lineage: Option<&Lineage>,
         _indexed_lineage: Option<&Lineage>,
-        _basis_group: BasisGroup,
+        _basis_group: Option<BasisGroup>,
     ) -> Result<(), Errors> {
         Ok(())
     }
@@ -196,14 +191,6 @@ impl Provider for VoidProvider {
 
     async fn get_basis_graph_by_hash(&self, _hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
         Ok(None)
-    }
-
-    async fn save_basis_graph(
-        &self,
-        _hash: &Hash,
-        _basis_graph: BasisGraph,
-    ) -> Result<(), Errors> {
-        Ok(())
     }
 
     async fn get_basis_fields_by_acyclic_subgraph_hash(

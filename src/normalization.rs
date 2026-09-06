@@ -141,6 +141,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     stage.finish();
+    panic!();
 
     let start = Instant::now();
     let stage = execution_context.enter_stage("Node analysis");

@@ -59,7 +59,7 @@ impl SqliteProvider {
                  acyclic_lineage_hash  TEXT NOT NULL,
                  lineage_hash          TEXT NOT NULL DEFAULT '',
                  indexed_lineage_hash  TEXT NOT NULL DEFAULT '',
-                 data                  TEXT NOT NULL,
+                 data                  TEXT,
                  PRIMARY KEY (acyclic_lineage_hash, lineage_hash, indexed_lineage_hash)
              );
              CREATE TABLE IF NOT EXISTS translation_nodes (
@@ -223,28 +223,10 @@ impl Provider for SqliteProvider {
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
-    async fn save_basis_graph(&self, hash: &Hash, basis_graph: BasisGraph) -> Result<(), Errors> {
-        let conn = self.connection.clone();
-        let key = hash.to_string().ok_or(Errors::UnexpectedError("Database operation failed".to_string()))?;
-        let data = serialize(&basis_graph)?;
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-            conn.execute(
-                "INSERT OR REPLACE INTO basis_graphs (hash, data) VALUES (?1, ?2)",
-                params![key, data],
-            )
-            .map_err(|e| db_err(e))?;
-            Ok(())
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
     async fn get_basis_groups_by_acyclic_lineage(
         &self,
         acyclic_lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors> {
+    ) -> Result<Option<Vec<BasisGroup>>, Errors> {
         let conn = self.connection.clone();
         let key = acyclic_lineage.to_string();
 
@@ -254,13 +236,23 @@ impl Provider for SqliteProvider {
                 .prepare("SELECT data FROM basis_groups WHERE acyclic_lineage_hash = ?1")
                 .map_err(|e| db_err(e))?;
 
-            let rows: Vec<String> = stmt
-                .query_map(params![key], |row| row.get::<_, String>(0))
+            let rows: Vec<Option<String>> = stmt
+                .query_map(params![key], |row| row.get::<_, Option<String>>(0))
                 .map_err(|e| db_err(e))?
                 .collect::<rusqlite::Result<_>>()
                 .map_err(|e| db_err(e))?;
 
-            rows.into_iter().map(deserialize).collect()
+            if rows.is_empty() {
+                return Ok(None);
+            }
+
+            let groups: Vec<BasisGroup> = rows
+                .into_iter()
+                .filter_map(|data| data)
+                .map(deserialize)
+                .collect::<Result<_, _>>()?;
+
+            Ok(Some(groups))
         })
         .await
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
@@ -270,7 +262,7 @@ impl Provider for SqliteProvider {
         &self,
         acyclic_lineage: &Lineage,
         lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors> {
+    ) -> Result<Option<Vec<BasisGroup>>, Errors> {
         let conn = self.connection.clone();
         let acyclic_key = acyclic_lineage.to_string();
         let lineage_key = lineage.to_string();
@@ -284,15 +276,25 @@ impl Provider for SqliteProvider {
                 )
                 .map_err(|e| db_err(e))?;
 
-            let rows: Vec<String> = stmt
+            let rows: Vec<Option<String>> = stmt
                 .query_map(params![acyclic_key, lineage_key], |row| {
-                    row.get::<_, String>(0)
+                    row.get::<_, Option<String>>(0)
                 })
                 .map_err(|e| db_err(e))?
                 .collect::<rusqlite::Result<_>>()
                 .map_err(|e| db_err(e))?;
 
-            rows.into_iter().map(deserialize).collect()
+            if rows.is_empty() {
+                return Ok(None);
+            }
+
+            let groups: Vec<BasisGroup> = rows
+                .into_iter()
+                .filter_map(|data| data)
+                .map(deserialize)
+                .collect::<Result<_, _>>()?;
+
+            Ok(Some(groups))
         })
         .await
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
@@ -303,7 +305,7 @@ impl Provider for SqliteProvider {
         acyclic_lineage: &Lineage,
         lineage: &Lineage,
         indexed_lineage: &Lineage,
-    ) -> Result<Vec<BasisGroup>, Errors> {
+    ) -> Result<Option<Vec<BasisGroup>>, Errors> {
         let conn = self.connection.clone();
         let acyclic_key = acyclic_lineage.to_string();
         let lineage_key = lineage.to_string();
@@ -320,15 +322,25 @@ impl Provider for SqliteProvider {
                 )
                 .map_err(|e| db_err(e))?;
 
-            let rows: Vec<String> = stmt
+            let rows: Vec<Option<String>> = stmt
                 .query_map(params![acyclic_key, lineage_key, indexed_key], |row| {
-                    row.get::<_, String>(0)
+                    row.get::<_, Option<String>>(0)
                 })
                 .map_err(|e| db_err(e))?
                 .collect::<rusqlite::Result<_>>()
                 .map_err(|e| db_err(e))?;
 
-            rows.into_iter().map(deserialize).collect()
+            if rows.is_empty() {
+                return Ok(None);
+            }
+
+            let groups: Vec<BasisGroup> = rows
+                .into_iter()
+                .filter_map(|data| data)
+                .map(deserialize)
+                .collect::<Result<_, _>>()?;
+
+            Ok(Some(groups))
         })
         .await
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
@@ -336,38 +348,30 @@ impl Provider for SqliteProvider {
 
     async fn save_basis_group(
         &self,
-        _acyclic_lineage: &Lineage,
-        _lineage: Option<&Lineage>,
-        _indexed_lineage: Option<&Lineage>,
-        basis_group: BasisGroup,
+        acyclic_lineage: &Lineage,
+        lineage: Option<&Lineage>,
+        indexed_lineage: Option<&Lineage>,
+        basis_group: Option<BasisGroup>,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
-        let acyclic_key = basis_group.acyclic_lineage.to_string();
-        let lineage_key = basis_group
-            .lineage
-            .as_ref()
-            .map(|l| l.to_string())
-            .unwrap_or_default();
-        let indexed_key = basis_group
-            .indexed_lineage
-            .as_ref()
-            .map(|l| l.to_string())
-            .unwrap_or_default();
-        let data = serialize(&basis_group)?;
+        let acyclic_key = acyclic_lineage.to_string();
+        let lineage_key = lineage.map(|l| l.to_string()).unwrap_or_default();
+        let indexed_key = indexed_lineage.map(|l| l.to_string()).unwrap_or_default();
+        let data = basis_group.as_ref().map(serialize).transpose()?;
 
         task::spawn_blocking(move || {
             let conn = conn.lock().map_err(|_| lock_err())?;
             conn.execute(
                 "INSERT OR REPLACE INTO basis_groups
-                 (acyclic_lineage_hash, lineage_hash, indexed_lineage_hash, data)
-                 VALUES (?1, ?2, ?3, ?4)",
-                params![acyclic_key, lineage_key, indexed_key, data],
+             (acyclic_lineage_hash, lineage_hash, indexed_lineage_hash, data)
+             VALUES (?1, ?2, ?3, ?4)",
+             params![acyclic_key, lineage_key, indexed_key, data],
             )
-            .map_err(|e| db_err(e))?;
+                .map_err(|e| db_err(e))?;
             Ok(())
         })
         .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_fields_by_acyclic_subgraph_hash(
