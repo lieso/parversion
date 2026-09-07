@@ -167,6 +167,7 @@ pub async fn report_basis_nodes<P: Provider>(
     let mut covered_nodes = std::collections::HashSet::new();
 
     println!("{}=== Basis Node Report ==={}", GREEN, RESET);
+    println!("{}Number of basis nodes: {}{}", GREEN, basis_nodes.len(), RESET);
 
     for (group_id, contexts) in &context_groups {
         let basis_group = basis_groups.get(group_id).ok_or_else(|| {
@@ -235,22 +236,24 @@ pub async fn report_basis_networks(
             .ok_or_else(|| {
                 Errors::DeficientNormalizationContextError("Basis networks not provided in normalization context".to_string())
             })?
-            .clone()
+            .values()
+            .cloned()
+            .collect::<Vec<Arc<BasisNetwork>>>()
     };
-
-    let parent = Arc::new(RwLock::new(GraphNode {
-        id: ID::new(),
-        parents: Vec::new(),
-        description: "report_parent".to_string(),
-        hash: Hash::new(),
-        subgraph_hash: Hash::new(),
-        lineage: Lineage::new(),
-        children: Vec::new(),
-    }));
 
     println!("{}=== Basis Network Report ({} networks) ==={}", CYAN, basis_networks.len(), RESET);
 
-    for network in basis_networks.values() {
+    for network in basis_networks {
+        let parent = Arc::new(RwLock::new(GraphNode {
+            id: ID::new(),
+            parents: Vec::new(),
+            description: "report_parent".to_string(),
+            hash: Hash::new(),
+            subgraph_hash: Hash::new(),
+            lineage: Lineage::new(),
+            children: Vec::new(),
+        }));
+
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
         println!("{}--- Network [{}] ---{}", CYAN, network.id.to_string(), RESET);
         println!("{}  basis nodes: {}{}", CYAN, network.basis_nodes.len(), RESET);
@@ -259,6 +262,10 @@ pub async fn report_basis_networks(
 
         match network.apply(Arc::clone(&normalization_context), Arc::clone(&parent)) {
             Ok(normal_meta_context) => {
+
+                log::debug!("normal_meta_context contexts: {}", normal_meta_context.contexts.len());
+                log::debug!("normal_meta_context contexts_lookup: {}", normal_meta_context.contexts_lookup.len());
+
                 let format = DocumentFormat {
                     format_type: DocumentType::Json,
                     encoding: None,

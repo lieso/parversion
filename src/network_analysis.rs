@@ -74,54 +74,93 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
 
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
+    let mut placed: HashSet<Lineage> = HashSet::new();
 
-    for i in 0..non_empty_basis_nodes.len() {
-        let mut handles = Vec::new();
+    loop {
+        if placed.len() == non_empty_basis_nodes.len() {
+            break;
+        }
+        
+        let mut next_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
-        for j in (i+1)..non_empty_basis_nodes.len() {
-            let left = Arc::clone(&non_empty_basis_nodes[i]);
-            let right = Arc::clone(&non_empty_basis_nodes[j]);
+        for i in 0..non_empty_basis_nodes.len() {
+            let mut handles = Vec::new();
 
-            let is_reachable = has_reachability(
-                &node_relationships,
-                &left.lineage,
-                &right.lineage,
+            for j in (i+1)..non_empty_basis_nodes.len() {
+                let left = Arc::clone(&non_empty_basis_nodes[i]);
+                let right = Arc::clone(&non_empty_basis_nodes[j]);
+
+                if placed.contains(&left.lineage) || placed.contains(&right.lineage) {
+                    continue;
+                }
+                
+                if let Some(transitive_relationship) = has_reachability(
+                    &next_relationships,
+                    &left.lineage,
+                    &right.lineage,
+                ) {
+                    continue;
+                }
+
+                let cloned_provider = Arc::clone(&provider);
+                let cloned_reasoner = Arc::clone(&reasoner);
+                let cloned_normalization_context = Arc::clone(&normalization_context);
+                let cloned_stage_context = stage_context.clone();
+                let cloned_options = options.clone();
+
+                let handle = task::spawn(async move {
+                    generate_node_relationship(
+                        cloned_provider,
+                        cloned_reasoner,
+                        cloned_normalization_context,
+                        &cloned_options,
+                        &cloned_stage_context,
+                        left,
+                        right,
+                    )
+                    .await
+                });
+
+                handles.push(handle);
+            }
+
+            let results = try_join_all(handles).await?;
+            
+            for result in results {
+                for relationship in result? {
+                    next_relationships.push(Arc::new(relationship));
+                }
+            }
+        }
+
+
+        let actual_relationships: Vec<Arc<NodeRelationship>> = next_relationships
+            .iter()
+            .filter(|rel| {
+                matches!(rel.relationship_type, NodeRelationshipType::Equal { .. } | NodeRelationshipType::Combine { .. })
+            })
+            .cloned()
+            .collect();
+
+        for basis_node in &non_empty_basis_nodes {
+            let current_relationships = get_node_relationships(
+                actual_relationships.clone(),
+                &basis_node.lineage
             );
 
-            if is_reachable {
-                continue
-            }
+            for relationship in &current_relationships {
+                let lineages = vec![relationship.left_basis_lineage.clone(), relationship.right_basis_lineage.clone()];
 
-            let cloned_provider = Arc::clone(&provider);
-            let cloned_reasoner = Arc::clone(&reasoner);
-            let cloned_normalization_context = Arc::clone(&normalization_context);
-            let cloned_stage_context = stage_context.clone();
-            let cloned_options = options.clone();
-
-            let handle = task::spawn(async move {
-                generate_node_relationship(
-                    cloned_provider,
-                    cloned_reasoner,
-                    cloned_normalization_context,
-                    &cloned_options,
-                    &cloned_stage_context,
-                    left,
-                    right,
-                )
-                .await
-            });
-
-            handles.push(handle);
-        }
-
-        let results = try_join_all(handles).await?;
-        
-        for result in results {
-            for relationship in result? {
-                node_relationships.push(Arc::new(relationship));
+                for lineage in lineages {
+                    placed.insert(lineage.clone());
+                }
             }
         }
+
+        node_relationships.extend(next_relationships);
     }
+
+
 
     let basis_networks = resolve_basis_networks(
         Arc::clone(&provider),
@@ -191,6 +230,10 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
                 basis_network_nodes.push(node);
                 placed.insert(lineage.clone());
             }
+        }
+
+        if basis_network_nodes.is_empty() {
+            panic!("why?");
         }
 
         let cloned_provider = Arc::clone(&provider);
@@ -544,75 +587,52 @@ fn has_reachability(
     relationships: &Vec<Arc<NodeRelationship>>,
     left_basis_lineage: &Lineage,
     right_basis_lineage: &Lineage,
-) -> bool {
+) -> Option<NodeRelationshipType> {
     fn recurse(
         relationships: &Vec<Arc<NodeRelationship>>,
         current: &Lineage,
         target: &Lineage,
         visited: &mut HashSet<Lineage>,
-    ) -> bool {
+        mut relationship_type: Option<NodeRelationshipType>
+    ) -> Option<NodeRelationshipType> {
         if current == target {
-            return true;
+            return relationship_type;
         }
         
         visited.insert(current.clone());
 
         for relationship in relationships {
-            let neighbour = {
-                match relationship.relationship_type {
-                    NodeRelationshipType::Combine {  .. } => {
-                        if relationship.left_basis_lineage == *current {
-                            &relationship.right_basis_lineage
-                        } else if relationship.right_basis_lineage == *current {
-                            &relationship.left_basis_lineage
-                        } else {
-                            continue;
-                        }
-                    },
-                    NodeRelationshipType::Equal { .. } => {
-
-
-
-
-                        // hmm....
-                        if relationship.left_basis_lineage == *current {
-                            &relationship.right_basis_lineage
-                        } else if relationship.right_basis_lineage == *current {
-                            &relationship.left_basis_lineage
-                        } else {
-                            continue;
-                        }
-
-
-
-
-
-                    },
-                    NodeRelationshipType::NoRelationship => {
-                        continue;
-                    }
+            let (neighbour, next_relationship_type) = {
+                if relationship.left_basis_lineage == *current {
+                    (&relationship.right_basis_lineage, Some(relationship.relationship_type.clone()))
+                } else if relationship.right_basis_lineage == *current {
+                    (&relationship.left_basis_lineage, Some(relationship.relationship_type.clone()))
+                } else {
+                    continue;
                 }
             };
 
             if !visited.contains(neighbour) {
-                if recurse(
+                if let Some(transitive_relationship) = recurse(
                     relationships,
                     neighbour,
                     target,
                     visited,
+                    next_relationship_type
                 ) {
-                    return true;
+                    return Some(transitive_relationship);
                 }
             }
         }
 
-        false
+        None
     }
 
     recurse(
         relationships,
         left_basis_lineage,
         right_basis_lineage,
-        &mut HashSet::new()
+        &mut HashSet::new(),
+        None
     )
 }
