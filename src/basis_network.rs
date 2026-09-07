@@ -30,8 +30,8 @@ pub struct BasisNetwork {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NodeRelationshipType {
-    Combine { xpath_ltr: String, xpath_rtl: String, reachability: bool },
-    Equal { xpath_ltr: String, xpath_rtl: String, reachability: bool },
+    Combine { xpath_ltr: String, xpath_rtl: String },
+    Equal { xpath_ltr: String, xpath_rtl: String },
     NoRelationship,
 }
 

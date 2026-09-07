@@ -77,6 +77,13 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     let mut placed: HashSet<Lineage> = HashSet::new();
 
     loop {
+        log::debug!("node_relationships: {}", node_relationships.len());
+        log::debug!("*****************************************************************************************************");
+        log::debug!("*****************************************************************************************************");
+        log::debug!("*****************************************************************************************************");
+        log::debug!("*****************************************************************************************************");
+        log::debug!("*****************************************************************************************************");
+        log::debug!("*****************************************************************************************************");
         if placed.len() == non_empty_basis_nodes.len() {
             break;
         }
@@ -157,7 +164,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             }
         }
 
-        node_relationships.extend(next_relationships);
+        node_relationships.extend(actual_relationships);
     }
 
 

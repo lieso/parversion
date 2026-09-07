@@ -120,14 +120,12 @@ pub async fn node_relationship<R: Reasoner>(
                 NodeRelationshipType::Combine {
                     xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
                     xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                    reachability: true,
                 }
             },
             RelationshipTypeResponse::Equal => {
                 NodeRelationshipType::Equal {
                     xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
                     xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                    reachability: true,
                 }
             },
             RelationshipTypeResponse::NoRelationship => {
@@ -135,28 +133,6 @@ pub async fn node_relationship<R: Reasoner>(
             },
         }
     };
-
-    if !matches!(relationship_type, NodeRelationshipType::NoRelationship) {
-        validate_reachability(
-            Arc::clone(&normalization_context),
-            &relationship_type,
-            &mut reachable_contexts,
-            &left_contexts,
-            &right_contexts
-        )?;
-
-        if reachable_contexts.len() != left_contexts.len() + right_contexts.len() {
-            match &mut relationship_type {
-                NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, reachability } => {
-                    *reachability = false;
-                }
-                NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, reachability } => {
-                    *reachability = false;
-                }
-                NodeRelationshipType::NoRelationship => {}
-            }
-        }
-    }
 
     let node_relationship = NodeRelationship {
         id: ID::new(),
@@ -261,58 +237,4 @@ async fn get_system_prompt<R: Reasoner>(
     }
 
     Err(Errors::UnavailableSystemPrompt("Expected a node_relationship.txt system prompt in prompts directory".to_string()))
-}
-
-fn validate_reachability(
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    relationship_type: &NodeRelationshipType,
-    reachable_contexts: &mut HashSet<ContextID>,
-    left_contexts: &Vec<Arc<Context>>,
-    right_contexts: &Vec<Arc<Context>>,
-) -> Result<(), Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
-    };
-
-    let left_contexts: Vec<&Arc<Context>> = left_contexts
-        .iter()
-        .filter(|context| {
-            !reachable_contexts.contains(&context.id)
-        })
-        .collect();
-
-    let xpath_str = match &relationship_type {
-        NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
-            xpath_ltr
-        }
-        NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
-            xpath_ltr
-        }
-        _ => return Err(Errors::UnexpectedError("Expected Combine relationship".to_string())),
-    };
-
-    let xpath: XPath = XPath::from_str(&xpath_str)?;
-
-    for context in left_contexts {
-        if let Some(target_graph_node) = GraphNode::traverse_using_xpath(
-            Arc::clone(&normalization_context),
-            Arc::clone(&context.graph_node),
-            &xpath
-        )? {
-            let target_context = meta_context.contexts_lookup
-                .get(&read_lock!(target_graph_node).id)
-                .cloned()
-                .unwrap();
-
-            if let Some(right_context) = right_contexts.iter().find(|item| {
-                item.id == target_context.id
-            }) {
-                reachable_contexts.insert(context.id.clone());
-                reachable_contexts.insert(right_context.id.clone());
-            }
-        }
-    }
-
-    Ok(())
 }
