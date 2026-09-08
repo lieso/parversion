@@ -195,7 +195,7 @@ pub async fn report_basis_nodes<P: Provider>(
         println!("{}  prompts: {:?}{}", GREEN, basis_node.metadata.prompts, RESET);
         println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
 
-        let sample_contexts: Vec<_> = contexts.iter().take(3).collect();
+        let sample_contexts: Vec<_> = contexts.iter().take(20).collect();
 
         for (ctx_idx, context) in sample_contexts.iter().enumerate() {
             println!("{}  [Context {}]{}", GREEN, ctx_idx + 1, RESET);

@@ -78,20 +78,15 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     loop {
         log::debug!("node_relationships: {}", node_relationships.len());
-        log::debug!("*****************************************************************************************************");
-        log::debug!("*****************************************************************************************************");
-        log::debug!("*****************************************************************************************************");
-        log::debug!("*****************************************************************************************************");
-        log::debug!("*****************************************************************************************************");
-        log::debug!("*****************************************************************************************************");
         if placed.len() == non_empty_basis_nodes.len() {
             break;
         }
         
-        let mut next_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
         for i in 0..non_empty_basis_nodes.len() {
             let mut handles = Vec::new();
+
+            let mut next_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
             for j in (i+1)..non_empty_basis_nodes.len() {
                 let left = Arc::clone(&non_empty_basis_nodes[i]);
@@ -138,33 +133,29 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                     next_relationships.push(Arc::new(relationship));
                 }
             }
-        }
 
+            let actual_relationships: Vec<Arc<NodeRelationship>> = next_relationships
+                .iter()
+                .filter(|rel| {
+                    matches!(rel.relationship_type, NodeRelationshipType::Equal { .. } | NodeRelationshipType::Combine { .. })
+                })
+                .cloned()
+                .collect();
 
-        let actual_relationships: Vec<Arc<NodeRelationship>> = next_relationships
-            .iter()
-            .filter(|rel| {
-                matches!(rel.relationship_type, NodeRelationshipType::Equal { .. } | NodeRelationshipType::Combine { .. })
-            })
-            .cloned()
-            .collect();
+            for basis_node in &non_empty_basis_nodes {
+                let current_relationships = get_node_relationships(
+                    actual_relationships.clone(),
+                    &basis_node.lineage
+                );
 
-        for basis_node in &non_empty_basis_nodes {
-            let current_relationships = get_node_relationships(
-                actual_relationships.clone(),
-                &basis_node.lineage
-            );
-
-            for relationship in &current_relationships {
-                let lineages = vec![relationship.left_basis_lineage.clone(), relationship.right_basis_lineage.clone()];
-
-                for lineage in lineages {
-                    placed.insert(lineage.clone());
+                for relationship in &current_relationships {
+                    placed.insert(relationship.left_basis_lineage.clone());
+                    placed.insert(relationship.right_basis_lineage.clone());
                 }
             }
-        }
 
-        node_relationships.extend(actual_relationships);
+            node_relationships.extend(actual_relationships);
+        }
     }
 
 
