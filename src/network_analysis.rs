@@ -73,24 +73,80 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
 
+
+
+
+
+
+    let mut handles = Vec::new();
+
+    for basis_node in non_empty_basis_nodes.clone() {
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
+        let cloned_normalization_context = Arc::clone(&normalization_context);
+        let cloned_stage_context = stage_context.clone();
+        let cloned_options = options.clone();
+
+        let handle = task::spawn(async move {
+            generate_node_relationship(
+                cloned_provider,
+                cloned_reasoner,
+                cloned_normalization_context,
+                &cloned_options,
+                &cloned_stage_context,
+                basis_node.clone(),
+                basis_node.clone(),
+            ).await
+        });
+
+        handles.push(handle);
+    }
+
+    let results = try_join_all(handles).await?;
+
+    for result in results {
+        for relationship in result? {
+            log::info!("=============RELATIONSHIP===================");
+            log::debug!("relationship: {:?}", relationship);
+        }
+    }
+
+
+
+
+
+
+    unimplemented!();
+
+
+
+
+
+
+
+
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
     let mut placed: HashSet<Lineage> = HashSet::new();
 
+    let mut unplaced: Vec<Arc<BasisNode>> = non_empty_basis_nodes.clone();
+
     loop {
         log::debug!("node_relationships: {}", node_relationships.len());
-        if placed.len() == non_empty_basis_nodes.len() {
+        log::debug!("placed.len(): {}", placed.len());
+        log::debug!("non_empty_basis_nodes.len(): {}", non_empty_basis_nodes.len());
+        if placed.len() == non_empty_basis_nodes.len() - 1 {
             break;
         }
         
-
-        for i in 0..non_empty_basis_nodes.len() {
+        for gap in 1..unplaced.len() {
             let mut handles = Vec::new();
 
             let mut next_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
-            for j in (i+1)..non_empty_basis_nodes.len() {
-                let left = Arc::clone(&non_empty_basis_nodes[i]);
-                let right = Arc::clone(&non_empty_basis_nodes[j]);
+            for i in 0..(unplaced.len() - gap) {
+                let j = i + gap;
+                let left = Arc::clone(&unplaced[i]);
+                let right = Arc::clone(&unplaced[j]);
 
                 if placed.contains(&left.lineage) || placed.contains(&right.lineage) {
                     continue;
@@ -156,6 +212,8 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
             node_relationships.extend(actual_relationships);
         }
+
+        unplaced = non_empty_basis_nodes.clone().into_iter().filter(|node| !placed.contains(&node.lineage)).collect();
     }
 
 
