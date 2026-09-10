@@ -57,11 +57,6 @@ pub async fn node_relationship_self<R: Reasoner>(
     node: Arc<BasisNode>,
 ) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
 
-    let system_prompt = get_system_prompt_self(
-        reasoner,
-        Arc::clone(&normalization_context)
-    ).await?;
-
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
         lock.basis_node_contexts
@@ -83,6 +78,11 @@ pub async fn node_relationship_self<R: Reasoner>(
         Arc::clone(&normalization_context),
         node.clone(),
         &contexts,
+    ).await?;
+
+    let system_prompt = get_system_prompt_self(
+        reasoner,
+        Arc::clone(&normalization_context)
     ).await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipResponse))
@@ -111,7 +111,50 @@ pub async fn node_relationship_self<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    unimplemented!()
+    let (result, metadata) = reasoner.execute::<NodeRelationshipResponse>(
+        &capability,
+        &system_prompt,
+        &user_prompt,
+        schema
+    ).await?;
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
+    };
+
+    let mut relationship_type = {
+        //match result.relationship_type {
+            //RelationshipTypeResponse::Combine => {
+            //    NodeRelationshipType::Combine {
+            //        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+            //        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+            //    }
+            //},
+            //RelationshipTypeResponse::Equal => {
+            //    NodeRelationshipType::Equal {
+            //        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+            //        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+            //    }
+            //},
+            //RelationshipTypeResponse::NoRelationship => {
+                NodeRelationshipType::NoRelationship
+            //},
+        //}
+    };
+
+    let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
+
+    let node_relationship = NodeRelationship {
+        id: ID::new(),
+        left_basis_lineage: node.lineage.clone(),
+        right_basis_lineage: node.lineage.clone(),
+        relationship_type,
+    };
+
+    relationships.push((node_relationship.clone(), reasoner_metadata));
+
+    Ok(relationships)
 }
 
 pub async fn node_relationship_other<R: Reasoner>(

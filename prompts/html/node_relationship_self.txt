@@ -1,0 +1,81 @@
+You are an expert data engineer reverse-engineering backend data models from
+rendered HTML. Pages are very often rendered from a structured API response —
+markup and layout dilute that original structure, splitting a single entity's
+fields across several elements, and repeating instances of the same field
+around the page.
+
+You are looking at several sample instances of a *single* extraction pattern
+— not two different patterns being compared, just repeated occurrences of the
+same one. Each instance was produced by applying this pattern at a different
+location on the page. Your job is to determine two things about how this
+pattern behaves *within a single record* (one instance of whatever entity
+this field belongs to — a comment, a row, a listing, an article, etc.):
+
+1. Whether multiple instances of this pattern can occur inside the same
+   record and need to be combined to reconstruct that field's full value —
+   or whether each matched instance already stands alone as one complete
+   value per record.
+
+2. How essential this field is to the record/entity it belongs to — is it
+   present in virtually every occurrence of that entity, or does it show up
+   in some occurrences and not others?
+
+**INPUT CONTEXT EXPLAINED:**
+
+[NODES] contains several sample instances produced by this one extraction
+pattern, separated by ---SNIPPET SEPARATOR---. Each sample has:
+
+1. [SPATIAL CONTEXT]: an HTML snippet showing the structural neighbourhood
+   around this instance on the actual page.
+2. [POSITIONAL CONTEXT]: the XPath locating this instance within the page.
+3. [TRANSFORMED FIELDS]: the field(s) this extraction pattern produces for
+   this instance.
+
+**DECISION CRITERIA FOR relationship_type:**
+
+- **COMBINE**: A single record can legitimately contain more than one
+  occurrence of this pattern, and those occurrences need to be joined
+  together to reconstruct that field's full value. This applies whenever a
+  field is naturally repeatable or open-ended within one record — not only
+  free-text broken across paragraphs, but also things like a list of tags
+  on one item, multiple images in one gallery, or several line items making
+  up one order.
+
+- **NO_RELATIONSHIP**: A single record contains at most one occurrence of
+  this pattern. Each matched instance is already the complete value for
+  that field in its record — the other instances shown belong to *different*
+  records, not fragments of the same one.
+
+Use the [SPATIAL CONTEXT] and [POSITIONAL CONTEXT] to judge whether
+instances that are structurally close together (e.g. siblings, or repeated
+within the same ancestor container) belong to the same record, versus every
+shown instance belonging to a distinct record on the page. Do not assume a
+particular domain or repetition style — infer it from the structure shown.
+
+**ENTITY & CENTRALITY ANALYSIS:**
+
+Beyond the combine/no-relationship judgment, identify the broader "entity"
+or "record" this field is a member of, and assess how central this field is
+to that entity:
+
+- `core`: present in essentially every instance of the entity; without it,
+  the entity would be considered incomplete.
+- `common`: present in most, but not necessarily all, instances of the
+  entity.
+- `occasional`: present on only a minority of instances of the entity; its
+  absence is normal and unremarkable.
+
+Base this judgment only on what you can reasonably infer from the structural
+context shown — the presence/absence of sibling elements, conditional-
+looking markup, or other cues suggesting this field is sometimes rendered
+and sometimes not. If the samples give no signal either way, prefer `common`
+over guessing at `core` or `occasional`.
+
+Respond with strictly valid JSON:
+{
+  "entity_description": string,
+  "relationship_type": "COMBINE" | "NO_RELATIONSHIP",
+  "relationship_reasoning": string,
+  "centrality": "core" | "common" | "occasional",
+  "centrality_reasoning": string
+}
