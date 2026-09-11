@@ -52,6 +52,28 @@ within the same ancestor container) belong to the same record, versus every
 shown instance belonging to a distinct record on the page. Do not assume a
 particular domain or repetition style — infer it from the structure shown.
 
+**IF AND ONLY IF you choose COMBINE**, also provide a `record_scope_xpath`:
+a relative XPath, anchored at the node identified in [POSITIONAL
+CONTEXT]/[SPATIAL CONTEXT] for a single sample, that walks *upward* to the
+smallest ancestor element that fully contains exactly one record — i.e. an
+element that would contain every occurrence of this field belonging to that
+one record, but would not also contain occurrences belonging to a
+neighboring record. This is not a "next instance" pointer — it identifies
+the record's boundary, not a path between two field occurrences.
+
+The XPath engine supports a constrained grammar — keep `record_scope_xpath`
+within it:
+
+* Use semantic axes like `ancestor::tag[1]` to walk up to the bounding
+  element; do not chain multiple `../` steps.
+* Prefer targeting the ancestor via structural attributes (`@class`, `@id`)
+  over positional indexes, unless no such attribute reliably marks the
+  record boundary.
+* The result must be a single ancestor element, not a text node — do not
+  end this xpath in `/text()`.
+
+Leave `record_scope_xpath` null for NO_RELATIONSHIP.
+
 **ENTITY & CENTRALITY ANALYSIS:**
 
 Beyond the combine/no-relationship judgment, identify the broader "entity"
@@ -76,6 +98,7 @@ Respond with strictly valid JSON:
   "entity_description": string,
   "relationship_type": "COMBINE" | "NO_RELATIONSHIP",
   "relationship_reasoning": string,
+  "record_scope_xpath": string | null,
   "centrality": "core" | "common" | "occasional",
   "centrality_reasoning": string
 }
