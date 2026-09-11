@@ -97,8 +97,6 @@ Respond with strictly valid JSON:
 {
   "entity_description": string,
   "relationship_type": "COMBINE" | "NO_RELATIONSHIP",
-  "relationship_reasoning": string,
   "record_scope_xpath": string | null,
-  "centrality": "core" | "common" | "occasional",
-  "centrality_reasoning": string
+  "centrality": "core" | "common" | "occasional"
 }

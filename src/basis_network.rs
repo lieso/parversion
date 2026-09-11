@@ -41,6 +41,8 @@ pub struct NodeRelationship {
     pub left_basis_lineage: Lineage,
     pub right_basis_lineage: Lineage,
     pub relationship_type: NodeRelationshipType,
+    pub scope_xpath: Option<String>,
+    pub centrality_hint: Option<bool>,
 }
 
 impl BasisNetwork {

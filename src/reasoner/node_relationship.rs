@@ -19,13 +19,44 @@ pub enum RelationshipTypeResponse {
 }
 
 #[derive(Deserialize, JsonSchema, Debug)]
-pub struct NodeRelationshipResponse {
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SelfRelationshipTypeResponse {
+    Combine,
+    NoRelationship,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum CentralityResponse {
+    Core,
+    Common,
+    Occasional,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
+pub struct NodeRelationshipOtherResponse {
     // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "NO_RELATIONSHIP")
     pub relationship_type: RelationshipTypeResponse,
     // The XPath to get from LEFT to RIGHT, if applicable
     pub left_to_right_xpath: Option<String>,
     // The XPath to get from RIGHT to LEFT, if applicable
     pub right_to_left_xpath: Option<String>,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
+pub struct NodeRelationshipSelfResponse {
+    // A short description of the record/entity this field is a member of (e.g. "forum comment", "job listing")
+    pub entity_description: String,
+    // Whether multiple instances of this field can occur within one record and must be combined ("COMBINE"), or whether at most one instance occurs per record ("NO_RELATIONSHIP")
+    pub relationship_type: SelfRelationshipTypeResponse,
+    // Brief justification for the relationship_type call
+    pub relationship_reasoning: String,
+    // Relative XPath from the sampled node up to the smallest ancestor that bounds exactly one record. Required if relationship_type is COMBINE, otherwise null
+    pub record_scope_xpath: Option<String>,
+    // How essential this field is to its entity: present in virtually every instance ("CORE"), most but not all ("COMMON"), or a minority ("OCCASIONAL")
+    pub centrality: CentralityResponse,
+    // Brief justification for the centrality call
+    pub centrality_reasoning: String,
 }
 
 pub async fn node_relationship<R: Reasoner>(
@@ -85,8 +116,8 @@ pub async fn node_relationship_self<R: Reasoner>(
         Arc::clone(&normalization_context)
     ).await?;
 
-    let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipResponse))
-        .expect("Failed to serialise NodeRelationshipResponse schema");
+    let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipSelfResponse))
+        .expect("Failed to serialise NodeRelationshipSelfResponse schema");
     let capability = Capability::Fast;
 
     log::debug!("");
@@ -111,7 +142,7 @@ pub async fn node_relationship_self<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<NodeRelationshipResponse>(
+    let (result, metadata) = reasoner.execute::<NodeRelationshipSelfResponse>(
         &capability,
         &system_prompt,
         &user_prompt,
@@ -124,32 +155,54 @@ pub async fn node_relationship_self<R: Reasoner>(
     };
 
     let mut relationship_type = {
-        //match result.relationship_type {
-            //RelationshipTypeResponse::Combine => {
-            //    NodeRelationshipType::Combine {
-            //        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-            //        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-            //    }
-            //},
-            //RelationshipTypeResponse::Equal => {
-            //    NodeRelationshipType::Equal {
-            //        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-            //        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-            //    }
-            //},
-            //RelationshipTypeResponse::NoRelationship => {
+        match result.relationship_type {
+            SelfRelationshipTypeResponse::Combine => {
+                NodeRelationshipType::Combine {
+                    xpath_ltr: ".".to_string(),
+                    xpath_rtl: ".".to_string()
+                }
+            },
+            SelfRelationshipTypeResponse::NoRelationship => {
                 NodeRelationshipType::NoRelationship
-            //},
-        //}
+            },
+        }
     };
 
     let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
+
+    let centrality_hint = {
+        match result.centrality {
+            CentralityResponse::Core => {
+                log::info!("=====================================================================================================");
+                log::info!("Received Core centrality response");
+                log::info!("=====================================================================================================");
+
+                true
+            },
+            CentralityResponse::Common => {
+                log::info!("=====================================================================================================");
+                log::info!("Received Common centrality response");
+                log::info!("=====================================================================================================");
+
+                false
+            },
+            CentralityResponse::Occasional => {
+                log::info!("=====================================================================================================");
+                log::info!("Received Occasional centrality response");
+                log::info!("=====================================================================================================");
+
+                false
+            }
+        }
+    };
 
     let node_relationship = NodeRelationship {
         id: ID::new(),
         left_basis_lineage: node.lineage.clone(),
         right_basis_lineage: node.lineage.clone(),
         relationship_type,
+        scope_xpath: result.record_scope_xpath.clone(),
+        centrality_hint: Some(centrality_hint.clone()),
     };
 
     relationships.push((node_relationship.clone(), reasoner_metadata));
@@ -202,8 +255,8 @@ pub async fn node_relationship_other<R: Reasoner>(
         &right_contexts,
     ).await?;
 
-    let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipResponse))
-        .expect("Failed to serialise NodeRelationshipResponse schema");
+    let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
+        .expect("Failed to serialise NodeRelationshipOtherResponse schema");
     let capability = Capability::Fast;
 
     log::debug!("");
@@ -228,7 +281,7 @@ pub async fn node_relationship_other<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<NodeRelationshipResponse>(
+    let (result, metadata) = reasoner.execute::<NodeRelationshipOtherResponse>(
         &capability,
         &system_prompt,
         &user_prompt,
@@ -265,6 +318,8 @@ pub async fn node_relationship_other<R: Reasoner>(
         left_basis_lineage: left.lineage.clone(),
         right_basis_lineage: right.lineage.clone(),
         relationship_type,
+        scope_xpath: None,
+        centrality_hint: None,
     };
 
     relationships.push((node_relationship.clone(), reasoner_metadata));
