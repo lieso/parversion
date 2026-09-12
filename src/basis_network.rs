@@ -79,6 +79,81 @@ impl BasisNetwork {
             lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
         };
 
+
+        fn recurse(
+            normalization_context: Arc<RwLock<NormalizationContext>>,
+            normal_contexts: &mut HashMap<ID, Arc<NormalContext>>,
+            normal_contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
+            current: Graph
+        ) {
+            let meta_context = {
+                let lock = read_lock!(normalization_context);
+                lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+            };
+
+
+            let context = meta_context.contexts_lookup.get(&read_lock!(current).id).unwrap();
+
+
+            for child in &read_lock!(current).children {
+
+                recurse(
+                    Arc::clone(&normalization_context),
+                    normal_contexts,
+
+                );
+
+            }
+
+
+        }
+
+        recurse(
+            Arc::clone(&normalization_context),
+            &mut normal_contexts,
+            &mut normal_contexts_lookup,
+            Arc::clone(&meta_contexts.graph_root)
+        )
+
+
+
+
+        unimplemented!()
+    }
+
+    pub fn _apply(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        parent: Graph
+    ) -> Result<NormalMetaContext, Errors> {
+        let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
+        let mut normal_contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
+        
+        let root_normal_context = Arc::new(NormalContext {
+            id: ID::new(),
+            network_name: None,
+            network_description: None,
+            data_node: Arc::new(DataNode {
+                id: ID::new(),
+                hash: Hash::new(),
+                lineage: Lineage::new(),
+                fields: DataNodeFields::new(),
+                description: String::new(),
+            }),
+            graph_node: Arc::clone(&parent),
+        });
+
+        normal_contexts.insert(root_normal_context.id.clone(), Arc::clone(&root_normal_context));
+        normal_contexts_lookup.insert(
+            read_lock!(root_normal_context.graph_node).id.clone(),
+            Arc::clone(&root_normal_context)
+        );
+
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        };
+
         let basis_node_contexts = {
             let lock = read_lock!(normalization_context);
             lock.basis_node_contexts
