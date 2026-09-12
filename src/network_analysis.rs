@@ -58,18 +58,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         .cloned()
         .collect();
 
-    non_empty_basis_nodes.sort_by(|a, b| {
-        let count_a = basis_node_contexts
-            .get(&a.id)
-            .unwrap()
-            .len();
-        let count_b = basis_node_contexts
-            .get(&b.id)
-            .unwrap()
-            .len();
-
-        count_b.cmp(&count_a)
-    });
+    non_empty_basis_nodes.sort_by(|a, b| a.lineage.to_string().cmp(&b.lineage.to_string()));
 
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
 
@@ -106,6 +95,21 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
 
     let mut central_basis_nodes: Vec<Arc<BasisNode>> = Vec::new();
+
+    central_basis_nodes.sort_by(|a, b| {
+        let count_a = basis_node_contexts
+            .get(&a.id)
+            .unwrap()
+            .len();
+        let count_b = basis_node_contexts
+            .get(&b.id)
+            .unwrap()
+            .len();
+
+        count_b.cmp(&count_a)
+    });
+
+    central_basis_nodes.sort_by(|a, b| a.lineage.to_string().cmp(&b.lineage.to_string()));
 
     for result in results {
         for relationship in result? {
