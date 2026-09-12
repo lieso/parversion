@@ -65,6 +65,9 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
 
 
+    let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
+
+
 
 
     let mut handles = Vec::new();
@@ -113,8 +116,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     for result in results {
         for relationship in result? {
-            log::info!("=============RELATIONSHIP===================");
-            log::debug!("relationship: {:?}", relationship);
+            node_relationships.push(relationship.clone().into());
 
             if let Some(centrality) = relationship.centrality_hint {
                 if centrality {
@@ -130,11 +132,8 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         }
     }
 
-
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
     log::info!("Number of central basis nodes: {}", central_basis_nodes.len());
-
-    let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
     for left in central_basis_nodes.iter().cloned() {
 
