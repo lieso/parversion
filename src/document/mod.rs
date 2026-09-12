@@ -241,7 +241,11 @@ impl Document {
 
         match document_format.format_type {
             DocumentType::Json => {
-                let data = Json::from_normalized_graph(Arc::clone(&normalization_context))?;
+                let normalized = {
+                    let lock = read_lock!(normalization_context);
+                    lock.normalized.clone().unwrap()
+                };
+                let data = Json::from_normal_meta_context(&normalized)?;
 
                 let document = Document {
                     document_type: DocumentType::Json,
