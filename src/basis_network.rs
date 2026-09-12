@@ -79,20 +79,20 @@ impl BasisNetwork {
             lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
         };
 
-
-
         self.traverse(
             Arc::clone(&normalization_context),
             &mut normal_contexts,
             &mut normal_contexts_lookup,
             &mut HashSet::new(),
-            Arc::clone(&meta_context.graph_root)
+            Arc::clone(&meta_context.graph_root),
+            Arc::clone(&parent),
         )?;
 
-
-
-
-        unimplemented!()
+        Ok(NormalMetaContext {
+            contexts: normal_contexts,
+            graph_root: parent,
+            contexts_lookup: normal_contexts_lookup
+        })
     }
 
     fn traverse(
@@ -101,7 +101,8 @@ impl BasisNetwork {
         normal_contexts: &mut HashMap<ID, Arc<NormalContext>>,
         normal_contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
         processed_contexts: &mut HashSet<ContextID>,
-        current: Graph
+        current: Graph,
+        parent: Graph
     ) -> Result<(), Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -113,30 +114,32 @@ impl BasisNetwork {
             lock.context_basis_node.clone().unwrap()
         };
 
-
         let context = meta_context.contexts_lookup.get(&read_lock!(current).id).unwrap();
 
-        if let Some(basis_node) = lookup_context_basis_node.get(&context.id) {
+        if !processed_contexts.contains(&context.id) {
+            if let Some(basis_node) = lookup_context_basis_node.get(&context.id) {
+                log::info!("Found a basis node");
 
-            log::info!("Found a basis node");
+                let is_element = self.basis_nodes.iter().any(|node| node.id == basis_node.id);
 
-            let is_element = self.basis_nodes.iter().any(|node| node.id == basis_node.id);
+                if is_element {
+                    log::info!("Basis node is an element of the network");
 
-            if is_element {
-                log::info!("Basis node is an element of the network");
+                    let normal_context = self.process_network(
+                        Arc::clone(&normalization_context),
+                        (context.clone(), basis_node.clone()),
+                        processed_contexts,
+                        Arc::clone(&parent),
+                    )?;
+                    let normal_context = Arc::new(normal_context);
 
+                    normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
+                    normal_contexts_lookup.insert(read_lock!(&normal_context.graph_node).id.clone(), Arc::clone(&normal_context));
 
-                self.process_network(
-                    Arc::clone(&normalization_context),
-                    (context.clone(), basis_node.clone()),
-                    processed_contexts,
-                );
-
-
+                    let graph_node = Arc::clone(&normal_context.graph_node);
+                    write_lock!(parent).children.push(graph_node.clone());
+                }
             }
-
-
-
         }
 
         for child in &read_lock!(current).children {
@@ -145,11 +148,10 @@ impl BasisNetwork {
                 normal_contexts,
                 normal_contexts_lookup,
                 processed_contexts,
-                Arc::clone(&child)
+                Arc::clone(&child),
+                Arc::clone(&parent)
             )?;
         }
-
-
 
         Ok(())
     }
@@ -159,7 +161,9 @@ impl BasisNetwork {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         leader: (Arc<Context>, Arc<BasisNode>),
         processed_contexts: &mut HashSet<ContextID>,
-    ) -> Result<(), Errors> {
+        parent: Graph
+    ) -> Result<NormalContext, Errors> {
+        log::trace!("In process_network");
 
         let mut target_contexts: Vec<Arc<Context>> = Vec::new();
 
@@ -233,14 +237,72 @@ impl BasisNetwork {
 
 
 
+
+
+
+
+
         target_contexts.sort_by(|a, b| {
             read_lock!(a.graph_node).preorder_position().cmp(&read_lock!(b.graph_node).preorder_position())
         });
 
 
 
-        unimplemented!()
 
+
+
+
+
+
+
+
+
+        let data_node = target_contexts.iter().try_fold(DataNode {
+            id: ID::new(),
+            hash: Hash::new(),
+            lineage: Lineage::new(),
+            fields: DataNodeFields::new(),
+            description: "placeholder".to_string()
+        }, |acc, context| -> Result<DataNode, Errors> {
+            let basis_node = {
+                let lock = read_lock!(normalization_context);
+                let lookup = lock.context_basis_node.as_ref().unwrap();
+                lookup.get(&context.id).unwrap().clone()
+            };
+
+            if let Some(next_data_node) = basis_node.apply(context.clone())? {
+                Ok(DataNode::from_data_nodes(vec![
+                    acc,
+                    next_data_node
+                ]))
+            } else {
+                Ok(acc)
+            }
+        })?;
+
+
+
+
+
+
+
+        let normal_context = NormalContext {
+            id: ID::new(),
+            network_name: Some(self.name.clone()),
+            network_description: Some(self.description.clone()),
+            data_node: Arc::new(data_node.clone()),
+            graph_node: Arc::new(RwLock::new(
+                GraphNode::from_data_node(
+                    Arc::new(data_node.clone()),
+                    vec![Arc::clone(&parent)]
+                )
+            )),
+        };
+
+
+
+
+        Ok(normal_context)
     }
 
     pub fn _apply(
