@@ -192,7 +192,8 @@ impl BasisNetwork {
 
             for relationship in current_relationships {
                 if relationship.left_basis_lineage == relationship.right_basis_lineage {
-                    unimplemented!();
+                    // TODO: implement this
+                    continue;
                 }
 
                 match &relationship.relationship_type {
@@ -230,7 +231,11 @@ impl BasisNetwork {
         }
 
 
-        // TODO: sort by document order
+
+
+        target_contexts.sort_by(|a, b| {
+            read_lock!(a.graph_node).preorder_position().cmp(&read_lock!(b.graph_node).preorder_position())
+        });
 
 
 

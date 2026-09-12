@@ -36,6 +36,26 @@ impl GraphNode {
         }
     }
 
+    pub fn preorder_position(&self) -> usize {
+        let mut position = 0;
+        let mut current = Some(self.clone());
+        let mut ancestors = Vec::new();
+
+        while let Some(node) = current {
+            ancestors.push(node.clone());
+            current = node.parents.first()
+                .map(|parent| read_lock!(parent).clone());
+        }
+
+        ancestors.reverse();
+
+        for ancestor in ancestors {
+            position = position * ancestor.children.len() + ancestor.index_in_parent().unwrap_or(0);
+        }
+
+        position
+    }
+
     pub fn index_in_parent(&self) -> Option<usize> {
         self.parents.first().and_then(|parent| {
             read_lock!(parent)
