@@ -188,7 +188,8 @@ pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
     stage_context: &StageContext,
 ) -> Result<(
     HashMap<ID, Arc<BasisNode>>,
-    HashMap<ID, Vec<Arc<Context>>>
+    HashMap<ID, Vec<Arc<Context>>>,
+    HashMap<ID, Arc<BasisNode>>
 ), Errors> {
     log::trace!("In generate_basis_nodes");
 
@@ -242,14 +243,19 @@ pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
 
     let mut basis_nodes = HashMap::new();
     let mut basis_node_to_context_group = HashMap::new();
+    let mut context_to_basis_node = HashMap::new();
 
     for result in results {
-        let (id, basis_node, ctx_group) = result?;
-        basis_nodes.insert(id.clone(), basis_node);
-        basis_node_to_context_group.insert(id, ctx_group);
+        let (id, basis_node, context_group) = result?;
+        basis_nodes.insert(id.clone(), basis_node.clone());
+        basis_node_to_context_group.insert(id, context_group.clone());
+
+        for context in context_group {
+            context_to_basis_node.insert(context.id.clone(), basis_node.clone());
+        }
     }
 
-    Ok((basis_nodes, basis_node_to_context_group))
+    Ok((basis_nodes, basis_node_to_context_group, context_to_basis_node))
 }
 
 async fn generate_basis_node<P: Provider, R: Reasoner>(

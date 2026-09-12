@@ -85,7 +85,7 @@ impl BasisNetwork {
             normal_contexts: &mut HashMap<ID, Arc<NormalContext>>,
             normal_contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
             current: Graph
-        ) {
+        ) -> Result<(), Errors> {
             let meta_context = {
                 let lock = read_lock!(normalization_context);
                 lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
@@ -100,20 +100,23 @@ impl BasisNetwork {
                 recurse(
                     Arc::clone(&normalization_context),
                     normal_contexts,
-
-                );
+                    normal_contexts_lookup,
+                    Arc::clone(&child)
+                )?;
 
             }
 
 
+
+            Ok(())
         }
 
         recurse(
             Arc::clone(&normalization_context),
             &mut normal_contexts,
             &mut normal_contexts_lookup,
-            Arc::clone(&meta_contexts.graph_root)
-        )
+            Arc::clone(&meta_context.graph_root)
+        )?;
 
 
 
