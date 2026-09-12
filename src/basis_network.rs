@@ -53,7 +53,7 @@ impl BasisNetwork {
     ) -> Result<NormalMetaContext, Errors> {
         let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
         let mut normal_contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
-        
+
         let root_normal_context = Arc::new(NormalContext {
             id: ID::new(),
             network_name: None,
@@ -118,8 +118,6 @@ impl BasisNetwork {
 
         if !processed_contexts.contains(&context.id) {
             if let Some(basis_node) = lookup_context_basis_node.get(&context.id) {
-                log::info!("Found a basis node");
-
                 let is_element = self.basis_nodes.iter().any(|node| node.id == basis_node.id);
 
                 if is_element {
@@ -196,7 +194,18 @@ impl BasisNetwork {
 
             for relationship in current_relationships {
                 if relationship.left_basis_lineage == relationship.right_basis_lineage {
-                    // TODO: implement this
+                    let other_contexts = apply_self_combine(
+                        Arc::clone(&normalization_context),
+                        current_context.clone(),
+                        current_node.clone(),
+                        &relationship
+                    )?;
+
+                    for context in other_contexts {
+                        target_contexts.push(context.clone());
+                        processed_contexts.insert(context.id.clone());
+                    }
+
                     continue;
                 }
 
@@ -503,6 +512,66 @@ impl BasisNetwork {
             contexts_lookup: normal_contexts_lookup
         })
     }
+}
+
+
+fn apply_self_combine(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    context: Arc<Context>,
+    basis_node: Arc<BasisNode>,
+    relationship: &NodeRelationship,
+) -> Result<Vec<Arc<Context>>, Errors> {
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+    };
+
+    let xpath_str = relationship.scope_xpath.as_ref().unwrap();
+    let xpath = XPath::from_str(&xpath_str)?;
+
+    if let Some(target_graph_node) = xpath.traverse(
+        Arc::clone(&normalization_context),
+        Arc::clone(&context.graph_node),
+    )? {
+        let lookup_context_basis_node = {
+            let lock = read_lock!(normalization_context);
+            lock.context_basis_node.as_ref().unwrap().clone()
+        };
+
+        let mut matching_contexts = Vec::new();
+        let mut queue: VecDeque<Graph> = VecDeque::new();
+        let mut visited: HashSet<ID> = HashSet::new();
+
+        queue.push_back(target_graph_node);
+
+        while let Some(current_node) = queue.pop_front() {
+            let node_id = read_lock!(current_node).id.clone();
+            if visited.contains(&node_id) {
+                continue;
+            }
+            visited.insert(node_id);
+
+            let current_context = meta_context.contexts_lookup
+                .get(&read_lock!(current_node).id)
+                .cloned();
+
+            if let Some(ctx) = current_context {
+                if let Some(ctx_basis_node) = lookup_context_basis_node.get(&ctx.id) {
+                    if ctx_basis_node.id == basis_node.id {
+                        matching_contexts.push(ctx);
+                    }
+                }
+            }
+
+            for child in &read_lock!(current_node).children {
+                queue.push_back(Arc::clone(child));
+            }
+        }
+
+        return Ok(matching_contexts);
+    }
+
+    Ok(Vec::new())
 }
 
 fn apply_combine(
