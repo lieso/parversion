@@ -80,41 +80,12 @@ impl BasisNetwork {
         };
 
 
-        fn recurse(
-            normalization_context: Arc<RwLock<NormalizationContext>>,
-            normal_contexts: &mut HashMap<ID, Arc<NormalContext>>,
-            normal_contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
-            current: Graph
-        ) -> Result<(), Errors> {
-            let meta_context = {
-                let lock = read_lock!(normalization_context);
-                lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
-            };
 
-
-            let context = meta_context.contexts_lookup.get(&read_lock!(current).id).unwrap();
-
-
-            for child in &read_lock!(current).children {
-
-                recurse(
-                    Arc::clone(&normalization_context),
-                    normal_contexts,
-                    normal_contexts_lookup,
-                    Arc::clone(&child)
-                )?;
-
-            }
-
-
-
-            Ok(())
-        }
-
-        recurse(
+        self.traverse(
             Arc::clone(&normalization_context),
             &mut normal_contexts,
             &mut normal_contexts_lookup,
+            &mut HashSet::new(),
             Arc::clone(&meta_context.graph_root)
         )?;
 
@@ -122,6 +93,149 @@ impl BasisNetwork {
 
 
         unimplemented!()
+    }
+
+    fn traverse(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        normal_contexts: &mut HashMap<ID, Arc<NormalContext>>,
+        normal_contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
+        processed_contexts: &mut HashSet<ContextID>,
+        current: Graph
+    ) -> Result<(), Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        };
+
+        let lookup_context_basis_node = {
+            let lock = read_lock!(normalization_context);
+            lock.context_basis_node.clone().unwrap()
+        };
+
+
+        let context = meta_context.contexts_lookup.get(&read_lock!(current).id).unwrap();
+
+        if let Some(basis_node) = lookup_context_basis_node.get(&context.id) {
+
+            log::info!("Found a basis node");
+
+            let is_element = self.basis_nodes.iter().any(|node| node.id == basis_node.id);
+
+            if is_element {
+                log::info!("Basis node is an element of the network");
+
+
+                self.process_network(
+                    Arc::clone(&normalization_context),
+                    (context.clone(), basis_node.clone()),
+                    processed_contexts,
+                );
+
+
+            }
+
+
+
+        }
+
+        for child in &read_lock!(current).children {
+            self.traverse(
+                Arc::clone(&normalization_context),
+                normal_contexts,
+                normal_contexts_lookup,
+                processed_contexts,
+                Arc::clone(&child)
+            )?;
+        }
+
+
+
+        Ok(())
+    }
+
+    fn process_network(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        leader: (Arc<Context>, Arc<BasisNode>),
+        processed_contexts: &mut HashSet<ContextID>,
+    ) -> Result<(), Errors> {
+
+        let mut target_contexts: Vec<Arc<Context>> = Vec::new();
+
+        let actual_relationships: Vec<Arc<NodeRelationship>> = self.relationships
+            .iter()
+            .filter(|relationship| {
+                !matches!(relationship.relationship_type, NodeRelationshipType::NoRelationship)
+            })
+            .cloned()
+            .collect();
+
+        let mut queue: VecDeque<(Arc<Context>, Arc<BasisNode>)> = VecDeque::new();
+        queue.push_back(leader.clone());
+
+        let mut processed_relationships: HashSet<ID> = HashSet::new();
+
+        while let Some((current_context, current_node)) = queue.pop_front() {
+            processed_contexts.insert(current_context.id.clone());
+
+            let current_relationships: Vec<Arc<NodeRelationship>> = actual_relationships
+                .iter()
+                .filter(|relationship| {
+                    !processed_relationships.contains(&relationship.id) && (
+                        relationship.left_basis_lineage == current_node.lineage ||
+                        relationship.right_basis_lineage == current_node.lineage
+                    )
+                })
+                .cloned()
+                .collect();
+
+            for relationship in current_relationships {
+                if relationship.left_basis_lineage == relationship.right_basis_lineage {
+                    unimplemented!();
+                }
+
+                match &relationship.relationship_type {
+                    NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
+                        if let Some((next_context, next_node)) = apply_combine(
+                            Arc::clone(&normalization_context),
+                            current_context.clone(),
+                            current_node.clone(),
+                            &relationship,
+                        )? {
+                            target_contexts.push(next_context.clone());
+                            queue.push_back((next_context.clone(), next_node));
+                        }
+
+                        processed_relationships.insert(relationship.id.clone());
+                    },
+                    NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
+                        if let Some((next_context, next_node)) = apply_combine(
+                            Arc::clone(&normalization_context),
+                            current_context.clone(),
+                            current_node.clone(),
+                            &relationship,
+                        )? {
+                            target_contexts.push(next_context.clone());
+                            queue.push_back((next_context.clone(), next_node));
+                        }
+
+                        processed_relationships.insert(relationship.id.clone());
+                    },
+                    NodeRelationshipType::NoRelationship => {
+                        panic!("Did not expect a NoRelationship here..");
+                    }
+                }
+            }
+        }
+
+
+        // TODO: sort by document order
+
+
+
+        unimplemented!()
+
     }
 
     pub fn _apply(
@@ -259,7 +373,7 @@ impl BasisNetwork {
                     for relationship in current_relationships {
                         match &relationship.relationship_type {
                             NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
-                                if let Some((next_data_node, next_context, next_lineage)) = apply_combine(
+                                if let Some((next_data_node, next_context, next_lineage)) = _apply_combine(
                                     Arc::clone(&normalization_context),
                                     data_node.clone(),
                                     current_context.clone(),
@@ -273,7 +387,7 @@ impl BasisNetwork {
                                 processed_relationships.insert(relationship.id.clone());
                             },
                             NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
-                                if let Some((next_data_node, next_context, next_lineage)) = apply_combine(
+                                if let Some((next_data_node, next_context, next_lineage)) = _apply_combine(
                                     Arc::clone(&normalization_context),
                                     data_node.clone(),
                                     current_context.clone(),
@@ -325,6 +439,65 @@ impl BasisNetwork {
 }
 
 fn apply_combine(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    context: Arc<Context>,
+    basis_node: Arc<BasisNode>,
+    relationship: &NodeRelationship,
+) -> Result<Option<(Arc<Context>, Arc<BasisNode>)>, Errors> {
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+    };
+
+    let xpath_str = match &relationship.relationship_type {
+        NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
+            if relationship.left_basis_lineage == basis_node.lineage {
+                xpath_ltr
+            } else {
+                xpath_rtl
+            }
+        }
+        // TODO: Delete branch
+        NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
+            if relationship.left_basis_lineage == basis_node.lineage {
+                xpath_ltr
+            } else {
+                xpath_rtl
+            }
+        }
+        _ => return Err(Errors::UnexpectedError("Expected Combine relationship".to_string())),
+    };
+
+    let xpath: XPath = XPath::from_str(&xpath_str)?;
+
+    if let Some(target_graph_node) = xpath.traverse(
+        Arc::clone(&normalization_context),
+        Arc::clone(&context.graph_node),
+    )? {
+        // assumming this is the right context...
+        let target_context = meta_context.contexts_lookup
+            .get(&read_lock!(target_graph_node).id)
+            .cloned()
+            .unwrap();
+
+        let target_basis_node = {
+            let lock = read_lock!(normalization_context);
+            let lookup = lock.context_basis_node.as_ref().unwrap();
+
+            lookup.get(&target_context.id).cloned()
+        };
+
+        if let Some(target_basis_node) = target_basis_node {
+            return Ok(Some((target_context, target_basis_node.clone())));
+        } else {
+            log::warn!("Could not find target context within current network: {}", xpath.to_string());
+        }
+    }
+
+    Ok(None)
+}
+
+fn _apply_combine(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     data_node: DataNode,
     context: Arc<Context>,
