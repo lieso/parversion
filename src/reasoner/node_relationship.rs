@@ -9,6 +9,7 @@ use crate::basis_network::{NodeRelationship, NodeRelationshipType};
 use crate::basis_node::BasisNode;
 use crate::graph_node::GraphNode;
 use crate::xpath::XPath;
+use super::sampling::{pre_sample_context_group, sample_most_different};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -359,30 +360,44 @@ async fn get_user_prompt_other<R: Reasoner>(
     right: Arc<BasisNode>,
     right_contexts: &Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
-    let left_contexts_sample: Vec<Arc<Context>> = left_contexts
+
+
+    let left_contexts_presample = pre_sample_context_group(left_contexts.clone());
+
+    let left_context_strings: Vec<String> = left_contexts_presample
         .iter()
-        .take(5)
-        .cloned()
-        .collect();
+        .map(|context| {
+            context.generate_context_string_node_relationship(
+                Arc::clone(&normalization_context),
+                left.clone()
+            )
+        })
+        .collect::<Result<Vec<String>, Errors>>()?;
 
-    let right_contexts_sample: Vec<Arc<Context>> = right_contexts
+    let (embeddings, metadata) = reasoner.embed(left_context_strings.clone()).await?;
+    let samples = sample_most_different(left_context_strings, &embeddings);
+    let left_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
+
+
+
+    let right_contexts_presample = pre_sample_context_group(right_contexts.clone());
+
+    let right_context_strings: Vec<String> = right_contexts_presample
         .iter()
-        .take(5)
-        .cloned()
-        .collect();
+        .map(|context| {
+            context.generate_context_string_node_relationship(
+                Arc::clone(&normalization_context),
+                right.clone()
+            )
+        })
+        .collect::<Result<Vec<String>, Errors>>()?;
 
 
-    let left_context_string = make_context(
-        Arc::clone(&normalization_context),
-        left.clone(),
-        left_contexts_sample.clone(),
-    )?;
+    let (embeddings, metadata) = reasoner.embed(right_context_strings.clone()).await?;
+    let samples = sample_most_different(right_context_strings, &embeddings);
+    let right_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-    let right_context_string = make_context(
-        Arc::clone(&normalization_context),
-        right.clone(),
-        right_contexts_sample.clone(),
-    )?;
+
 
     Ok(format!(r##"
 [LEFT]
