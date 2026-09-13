@@ -44,6 +44,7 @@ pub enum XPathPredicate {
     Last,
     StartsWith { name: String, value: String },
     Path(XPath),
+    And(Vec<XPathPredicate>),
 }
 
 impl XPath {
@@ -253,19 +254,43 @@ impl XPathAxis {
 }
 
 impl XPathPredicate {
+    // Splits `s` on top-level occurrences of `sep`, i.e. ones that are not
+    // nested inside parentheses (so `and` inside `contains(...)` /
+    // `starts-with(...)` arguments is left alone).
+    fn split_top_level<'a>(s: &'a str, sep: &str) -> Vec<&'a str> {
+        let mut parts = Vec::new();
+        let mut depth = 0;
+        let mut start = 0;
+
+        for (i, c) in s.char_indices() {
+            match c {
+                '(' => depth += 1,
+                ')' => depth -= 1,
+                _ => {}
+            }
+
+            if depth == 0 && s[i..].starts_with(sep) {
+                parts.push(s[start..i].trim());
+                start = i + sep.len();
+            }
+        }
+
+        parts.push(s[start..].trim());
+        parts
+    }
+
     fn from_str(s: &str) -> Result<Self, Errors> {
         if s == "last()" {
             return Ok(XPathPredicate::Last);
         }
 
-        if s.contains(" and ") && s.split(" and ").all(|part| {
-            let part = part.trim();
-            part.starts_with('@') && !part.contains('=')
-        }) {
-            let names = s.split(" and ")
-                .map(|part| part.trim().trim_start_matches('@').to_string())
-                .collect();
-            return Ok(XPathPredicate::AttributePresence(names));
+        let clauses = Self::split_top_level(s, " and ");
+        if clauses.len() > 1 {
+            let predicates = clauses
+                .into_iter()
+                .map(XPathPredicate::from_str)
+                .collect::<Result<Vec<_>, Errors>>()?;
+            return Ok(XPathPredicate::And(predicates));
         }
 
         if let Some(inner) = s.strip_prefix('@') {
@@ -317,6 +342,12 @@ impl XPathPredicate {
             },
             XPathPredicate::StartsWith { name, value } => format!("starts-with(@{},'{}')", name, value),
             XPathPredicate::Path(path) => path.to_string(),
+            XPathPredicate::And(predicates) => {
+                predicates.iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join(" and ")
+            },
         }
     }
 }

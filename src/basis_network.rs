@@ -268,8 +268,6 @@ impl BasisNetwork {
 
 
 
-
-
         let data_node = target_contexts.iter().try_fold(DataNode {
             id: ID::new(),
             hash: Hash::new(),

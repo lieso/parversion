@@ -508,6 +508,11 @@ impl GraphNode {
 
                 Ok(filtered)
             }
+            XPathPredicate::And(predicates) => {
+                predicates.iter().try_fold(graphs, |acc, predicate| {
+                    Self::traverse_using_xpath_predicate(Arc::clone(&normalization_context), acc, predicate)
+                })
+            }
         }
     }
 
