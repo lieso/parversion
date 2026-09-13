@@ -425,8 +425,10 @@ fn apply_combine(
         if let Some(target_basis_node) = target_basis_node {
             return Ok(Some((target_context, target_basis_node.clone())));
         } else {
-            log::warn!("Could not find target context within current network: {}", xpath.to_string());
+            log::warn!("xpath located context that does not correspond to a basis node in this network");
         }
+    } else {
+        log::warn!("Could not find target context within current network: {}", xpath.to_string());
     }
 
     Ok(None)
