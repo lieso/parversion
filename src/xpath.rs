@@ -51,7 +51,7 @@ impl XPath {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
-    ) -> Result<Option<Graph>, Errors> {
+    ) -> Result<Vec<Graph>, Errors> {
         let start_id = read_lock!(start).id.clone();
         let mut current: Vec<Graph> = vec![Arc::clone(&start)];
 
@@ -61,7 +61,7 @@ impl XPath {
             if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned()) {
                 current = cached;
                 if current.is_empty() {
-                    return Ok(None);
+                    return Ok(Vec::new());
                 }
                 continue;
             }
@@ -81,13 +81,13 @@ impl XPath {
                 .collect();
 
             if current.is_empty() {
-                return Ok(None);
+                return Ok(Vec::new());
             }
 
             XPATH_CACHE.with(|cache| cache.borrow_mut().insert(cache_key, current.clone()));
         }
 
-        Ok(current.first().cloned())
+        Ok(current.clone())
     }
 
     pub fn from_str(s: &str) -> Result<Self, Errors> {

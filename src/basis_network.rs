@@ -211,12 +211,14 @@ impl BasisNetwork {
 
                 match &relationship.relationship_type {
                     NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
-                        if let Some((next_context, next_node)) = apply_combine(
+                        let next_contexts = apply_combine(
                             Arc::clone(&normalization_context),
                             current_context.clone(),
                             current_node.clone(),
                             &relationship,
-                        )? {
+                        )?;
+
+                        for (next_context, next_node) in next_contexts {
                             target_contexts.push(next_context.clone());
                             queue.push_back((next_context.clone(), next_node));
                         }
@@ -224,12 +226,14 @@ impl BasisNetwork {
                         processed_relationships.insert(relationship.id.clone());
                     },
                     NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
-                        if let Some((next_context, next_node)) = apply_combine(
+                        let next_contexts = apply_combine(
                             Arc::clone(&normalization_context),
                             current_context.clone(),
                             current_node.clone(),
                             &relationship,
-                        )? {
+                        )?;
+
+                        for (next_context, next_node) in next_contexts {
                             target_contexts.push(next_context.clone());
                             queue.push_back((next_context.clone(), next_node));
                         }
@@ -328,7 +332,9 @@ fn apply_self_combine(
     let xpath_str = relationship.scope_xpath.as_ref().unwrap();
     let xpath = XPath::from_str(&xpath_str)?;
 
-    if let Some(target_graph_node) = xpath.traverse(
+    let mut matching_contexts = Vec::new();
+
+    for target_graph_node in xpath.traverse(
         Arc::clone(&normalization_context),
         Arc::clone(&context.graph_node),
     )? {
@@ -337,7 +343,6 @@ fn apply_self_combine(
             lock.context_basis_node.as_ref().unwrap().clone()
         };
 
-        let mut matching_contexts = Vec::new();
         let mut queue: VecDeque<Graph> = VecDeque::new();
         let mut visited: HashSet<ID> = HashSet::new();
 
@@ -366,11 +371,9 @@ fn apply_self_combine(
                 queue.push_back(Arc::clone(child));
             }
         }
-
-        return Ok(matching_contexts);
     }
 
-    Ok(Vec::new())
+    Ok(matching_contexts)
 }
 
 fn apply_combine(
@@ -378,7 +381,7 @@ fn apply_combine(
     context: Arc<Context>,
     basis_node: Arc<BasisNode>,
     relationship: &NodeRelationship,
-) -> Result<Option<(Arc<Context>, Arc<BasisNode>)>, Errors> {
+) -> Result<Vec<(Arc<Context>, Arc<BasisNode>)>, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
@@ -405,10 +408,18 @@ fn apply_combine(
 
     let xpath: XPath = XPath::from_str(&xpath_str)?;
 
-    if let Some(target_graph_node) = xpath.traverse(
+    let mut next_contexts: Vec<(Arc<Context>, Arc<BasisNode>)> = Vec::new();
+
+    let target_graph_nodes = xpath.traverse(
         Arc::clone(&normalization_context),
         Arc::clone(&context.graph_node),
-    )? {
+    )?;
+
+    if target_graph_nodes.is_empty() {
+        log::warn!("Could not find target graph nodes within current network: {}", xpath.to_string());
+    }
+
+    for target_graph_node in target_graph_nodes {
         // assumming this is the right context...
         let target_context = meta_context.contexts_lookup
             .get(&read_lock!(target_graph_node).id)
@@ -423,13 +434,11 @@ fn apply_combine(
         };
 
         if let Some(target_basis_node) = target_basis_node {
-            return Ok(Some((target_context, target_basis_node.clone())));
+            next_contexts.push((target_context, target_basis_node.clone()));
         } else {
             log::warn!("xpath located context that does not correspond to a basis node in this network");
         }
-    } else {
-        log::warn!("Could not find target context within current network: {}", xpath.to_string());
     }
 
-    Ok(None)
+    Ok(next_contexts)
 }
