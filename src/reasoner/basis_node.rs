@@ -93,7 +93,7 @@ pub async fn basis_node<R: Reasoner>(
         log::debug!("Field: {} (source: {})", response_field.field_name, response_field.source_field);
 
         let field = {
-            if response_field.source_field == "TEXT" {
+            if response_field.source_field == "TEXT" || response_field.source_field == "text" {
                 "text".to_string()
             } else if let Some(attr_name) = response_field.source_field.strip_prefix("ATTRIBUTE=") {
                 attr_name.to_string()
@@ -131,18 +131,6 @@ async fn get_user_prompt<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .as_ref()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
-            })?
-            .clone()
-    };
-
-    let group = pre_sample_context_group(group);
-
     let basis_fields = {
         let lock = read_lock!(normalization_context);
         lock.basis_fields
@@ -155,52 +143,33 @@ async fn get_user_prompt<R: Reasoner>(
             .collect::<Vec<_>>()
     };
 
-    let basis_fields_context_string = basis_fields.iter().fold(String::new(), |acc, item| {
-        if group.iter().any(|context| {
-            context.data_node.fields.contains_key(&item.name)
-        }) {
-            if item.name == "text" {
-                format!("{}\nTEXT", acc)
-            } else {
-                format!("{}\nATTRIBUTE={}", acc, item.name)
-            }
-        } else {
-            acc
-        }
-    });
+    let group: Vec<Arc<Context>> = group
+        .into_iter()
+        .filter(|context| {
+            basis_fields.iter().any(|field| {
+                context.data_node.fields.contains_key(&field.name)
+            })
+        })
+    .collect();
 
-    let extracted_values_string = group.iter().fold(String::new(), |mut acc, item| {
-        let fields: &DataNodeFields = &item.data_node.fields;
+    if group.is_empty() {
+        panic!("empty group");
+    }
 
-        for (key, value) in fields {
-            if basis_fields.iter().any(|basis_field| {
-                basis_field.name == *key
-            }) {
-                acc = format!("{}\n{}={}", acc, key, value.to_string())
-            }
-        }
-
-        acc
-    });
+    let group = pre_sample_context_group(group);
 
     let context_strings: Vec<String> = group
         .iter()
-        .map(|context| context.generate_context_string(&meta_context, Vec::new()))
+        .map(|context| context.generate_context_string_basis_node(Arc::clone(&normalization_context)))
         .collect::<Result<Vec<String>, Errors>>()?;
     let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = sample_most_different(context_strings, &embeddings);
-    let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
+    let merged_samples = samples.join("\n\n---OCCURRENCE SEPARATOR---\n\n");
 
     Ok(format!(r##"
-[FIELDS TO CONSIDER]
+[OCCURRENCES]
 {}
-
-[EXTRACTED VALUES]
-{}
-
-[SNIPPETS]
-{}
-"##, basis_fields_context_string, extracted_values_string, merged_samples))
+"##, merged_samples))
 }
 
 async fn get_system_prompt<R: Reasoner>(

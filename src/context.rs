@@ -29,6 +29,76 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn generate_context_string_basis_node(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+    ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                })?
+                .clone()
+        };
+
+        let basis_fields = {
+            let lock = read_lock!(normalization_context);
+            lock.basis_fields
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError("Basis fields not provided in normalization context".to_string())
+                })?
+                .values()
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        let spatial_context: String = self.generate_spatial_context(&meta_context)?;
+        let positional_context: String = self.generate_positional_context(&meta_context)?;
+
+        let fields_context: String = basis_fields.iter().fold(String::new(), |acc, item| {
+            let field = item.name.clone();
+            let values = self.data_node.fields.get(&field);
+
+            if values.is_empty() {
+                acc
+            } else {
+                let values_context = values.iter()
+                    .map(|v| v.to_string())
+                    .filter(|v| !v.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(",");
+
+                if values_context.is_empty() {
+                    return acc;
+                }
+
+                if acc.is_empty() {
+                    format!("FIELD: {}, VALUE: {}", field, values_context)
+                } else {
+                    format!("{}\nFIELD: {}, VALUE: {}", acc, field, values_context)
+                }
+            }
+        });
+
+
+        let result = format!(r##"
+[SPATIAL CONTEXT]
+{}
+
+[POSITIONAL CONTEXT]
+{}
+
+[EXTRACTED FIELDS]
+{}
+"##, spatial_context, positional_context, fields_context);
+
+        Ok(result)
+
+    }
+
     pub fn generate_context_string_node_relationship(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,

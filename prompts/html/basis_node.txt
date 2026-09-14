@@ -8,23 +8,25 @@ page renders a product listing, it came from something like:
 We want to extract that structure, filtering out everything else: UI chrome,
 framework artifacts, presentation noise, and advertisements.
 
-**HOW TO READ THE EXAMPLES:**
-Each example provides two perspectives on the target field:
-1. SPATIAL CONTEXT: A zoomed-in HTML fragment centered on the target node,
+**HOW TO READ THE CONTEXT INSTANCES:**
+Multiple context instances are provided below (separated by ---OCCURRENCE SEPARATOR---).
+Each instance shows:
+1. SPATIAL CONTEXT: A zoomed-in HTML fragment centered on the field location,
    showing immediate siblings and parent relationships. This reveals the actual
    content and structural position.
 2. POSITIONAL CONTEXT: The complete path from document root to the target node
-   (e.g., "/html/body/table/tr/td/a[@href]"). This shows the full structural lineage.
+   (e.g., "html/body/table/tbody/tr/td/a[@href]"). This shows the full structural lineage.
+3. EXTRACTED FIELDS: The field name and value that have been identified at this location.
 
-Use both contexts together to understand the field's semantic role and whether
-it represents meaningful data.
+Use all three perspectives together to understand the field's semantic role and whether
+it represents meaningful application data.
 
 **EVALUATION TASK:**
-For each field listed in [FIELDS TO CONSIDER], evaluate independently whether
-it represents application data or boilerplate/noise. When multiple instances
-are provided (separated by ---SNIPPET SEPARATOR---), assess whether the field
-consistently represents meaningful data across occurrences. If instances are
-mixed (some boilerplate, some not), describe the dominant semantic role.
+For each EXTRACTED FIELD shown, evaluate independently whether it represents
+application data or boilerplate/noise. When multiple instances are provided
+(separated by ---OCCURRENCE SEPARATOR---), assess whether the field consistently
+represents meaningful data across occurrences. If instances are mixed (some boilerplate,
+some not), describe the dominant semantic role.
 
 **ELIMINATION CRITERIA (do not include in response):**
 
@@ -72,7 +74,7 @@ EXAMPLES - MEANINGFUL:
   user-generated content that changes per item.
 
 For meaningful fields, provide exactly one mapping per source field:
-- source_field: The original field from [FIELDS TO CONSIDER] that was analyzed (e.g., "TEXT", "ATTRIBUTE=href")
+- source_field: The original field from the extracted fields (e.g., "TEXT", "ATTRIBUTE=href")
 - field_name: Semantic snake_case identifier reflecting its role in the data model
 - description: Brief description of what this field represents
 - data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.)
@@ -80,17 +82,19 @@ For meaningful fields, provide exactly one mapping per source field:
 
 **Important:** Each source field should map to exactly one output field_name. Do not provide multiple mappings for the same source field.
 
+Note on field notation: In EXTRACTED FIELDS, href attributes are shown as "FIELD: href, VALUE: ..." and text nodes as "FIELD: text, VALUE: ..."
+
 **Response Format:**
 Respond with valid JSON. Return one entry per meaningful field identified:
 
 {
   "fields": [
     {
-      "source_field": "TEXT",
-      "field_name": "string",
-      "description": "string",
+      "source_field": "ATTRIBUTE=href",
+      "field_name": "article_url",
+      "description": "URL to the full article",
       "data_type": "string",
-      "format": "string or null"
+      "format": "absolute-url"
     }
   ]
 }
