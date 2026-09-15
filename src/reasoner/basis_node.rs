@@ -93,7 +93,7 @@ pub async fn basis_node<R: Reasoner>(
         log::debug!("Field: {} (source: {})", response_field.field_name, response_field.source_field);
 
         let field = {
-            if response_field.source_field.starts_with("TEXT") || response_field.source_field.starts_with("text") {
+            if response_field.source_field == "TEXT" || response_field.source_field == "text" {
                 "text".to_string()
             } else if let Some(attr_name) = response_field.source_field.strip_prefix("ATTRIBUTE=") {
                 attr_name.to_string()
@@ -160,20 +160,8 @@ async fn get_user_prompt<R: Reasoner>(
 
     let context_strings: Vec<String> = group
         .iter()
-        .map(|context| {
-            context.generate_context_string_basis_node(Arc::clone(&normalization_context))
-                .map(|context_string| {
-                    log::debug!("context_string length: {}", context_string.len());
-
-                    if context_string.len() > 20000 {
-                        log::debug!("{}", context_string);
-                    }
-
-
-                    context_string
-                })
-        })
-    .collect::<Result<Vec<String>, Errors>>()?;
+        .map(|context| context.generate_context_string_basis_node(Arc::clone(&normalization_context)))
+        .collect::<Result<Vec<String>, Errors>>()?;
     let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = sample_most_different(context_strings, &embeddings);
     let merged_samples = samples.join("\n\n---OCCURRENCE SEPARATOR---\n\n");
