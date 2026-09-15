@@ -298,3 +298,8 @@ pub async fn report_basis_networks(
     Ok(())
 }
 
+pub async fn report_basis_graph(
+    normalization_context: Arc<RwLock<NormalizationContext>>
+) -> Result<(), Errors> {
+    unimplemented!()
+}

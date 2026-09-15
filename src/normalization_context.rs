@@ -24,7 +24,7 @@ pub struct NormalizationContext {
     pub basis_node_contexts: Option<HashMap<BasisNodeID, Vec<Arc<Context>>>>,
     pub context_basis_node: Option<HashMap<ContextID, Arc<BasisNode>>>,
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
-    pub basis_graph: Option<BasisGraph>,
+    pub basis_graph: Option<Arc<BasisGraph>>,
     pub classification: Option<Arc<Classification>>,
     pub context_groups: Option<HashMap<ID, Vec<Arc<Context>>>>,
     pub context_to_group: Option<HashMap<ID, Arc<BasisGroup>>>,
@@ -119,7 +119,7 @@ impl NormalizationContext {
         self.basis_networks = Some(networks);
     }
 
-    pub fn update_basis_graph(&mut self, basis_graph: BasisGraph) {
+    pub fn update_basis_graph(&mut self, basis_graph: Arc<BasisGraph>) {
         self.basis_graph = Some(basis_graph);
     }
 

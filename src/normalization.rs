@@ -12,11 +12,13 @@ use crate::network_analysis::{
     get_classification,
     generate_basis_networks
 };
+use crate::graph_analysis::generate_basis_graph;
 use crate::reports::{
     report_basis_groups,
     report_basis_fields,
     report_basis_nodes,
     report_basis_networks,
+    report_basis_graph
 };
 use crate::package::Package;
 use crate::prelude::*;
@@ -191,11 +193,39 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }
 
     let elapsed = start.elapsed();
-    log::info!("get_basis_networks: {:.2?}", elapsed);
+    log::info!("generate_basis_networks: {:.2?}", elapsed);
 
     #[cfg(debug_assertions)]
     {
         report_basis_networks(Arc::clone(&normalization_context)).await?;
+    }
+
+    stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Graph analysis");
+
+    log::info!("Generating basis graph");
+    let basis_graph = generate_basis_graph(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            Arc::clone(&normalization_context),
+            &options,
+            &stage,
+        )
+        .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_basis_graph(basis_graph);
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("generate_basis_graph: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_graph(Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
