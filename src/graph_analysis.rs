@@ -24,9 +24,14 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
             .clone()
     };
 
+    let basis_networks: Vec<Arc<BasisNetwork>> = basis_networks
+        .values()
+        .cloned()
+        .collect();
+
     let mut handles = Vec::new();
 
-    for basis_network in basis_networks.clone() {
+    for basis_network in basis_networks {
         let cloned_provider = Arc::clone(&provider);
         let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_normalization_context = Arc::clone(&normalization_context);

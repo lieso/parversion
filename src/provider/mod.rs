@@ -7,7 +7,7 @@ use crate::classification::Classification;
 use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
-use crate::basis_graph::BasisGraph;
+use crate::basis_graph::{BasisGraph, NetworkRelationship};
 use crate::basis_field::BasisField;
 use crate::operation::Operation;
 use crate::translation_node::TranslationNode;
@@ -122,6 +122,17 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         basis_nodes: Vec<Arc<BasisNode>>,
         basis_network: BasisNetwork
+    ) -> Result<(), Errors>;
+    async fn get_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>,
+    ) -> Result<Option<NetworkRelationship>, Errors>;
+    async fn save_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>,
+        network_relationship: NetworkRelationship,
     ) -> Result<(), Errors>;
 }
 
@@ -283,6 +294,23 @@ impl Provider for VoidProvider {
         &self,
         basis_nodes: Vec<Arc<BasisNode>>,
         basis_network: BasisNetwork
+    ) -> Result<(), Errors> {
+        Ok(())
+    }
+    
+    async fn get_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>,
+    ) -> Result<Option<NetworkRelationship>, Errors> {
+        Ok(None)
+    }
+
+    async fn save_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>,
+        network_relationship: NetworkRelationship,
     ) -> Result<(), Errors> {
         Ok(())
     }

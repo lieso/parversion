@@ -68,12 +68,19 @@ pub async fn basis_network<R: Reasoner>(
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompt_hash: metadata.prompt_hash.clone(),
     };
+    
+    let hashes: Vec<Hash> = basis_nodes
+        .iter()
+        .map(|basis_node| basis_node.lineage.identity_hash.clone())
+        .collect();
+    let lineage = Lineage::from_hashes(hashes);
 
     let basis_network = BasisNetwork {
         id: ID::new(),
         name: result.network_name.clone(),
         description: result.network_description.clone(),
         basis_nodes: basis_nodes.clone(),
+        lineage,
         relationships: relationships.clone(),
         transformations: Vec::new(),
         metadata: BasisNetworkMetadata {

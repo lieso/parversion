@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use tokio::task;
 
 use crate::basis_field::BasisField;
-use crate::basis_graph::BasisGraph;
+use crate::basis_graph::{BasisGraph, NetworkRelationship};
 use crate::basis_group::BasisGroup;
 use crate::classification::Classification;
 use crate::basis_network::{BasisNetwork, NodeRelationship};
@@ -77,7 +77,14 @@ impl SqliteProvider {
              CREATE TABLE IF NOT EXISTS basis_networks (
                 basis_nodes   TEXT PRIMARY KEY,
                 data          TEXT NOT NULL
-            );
+             );
+
+             CREATE TABLE IF NOT EXISTS network_relationships (
+                 left_network       TEXT NOT NULL,
+                 right_network      TEXT NOT NULL,
+                 data               TEXT NOT NULL,
+                 PRIMARY KEY (left_network, right_network)
+             );
              ",
         )
         .map_err(|e| Errors::ProviderError(e.to_string()))?;
@@ -672,6 +679,53 @@ impl Provider for SqliteProvider {
         .await
             .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
+
+    async fn get_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>,
+    ) -> Result<Option<NetworkRelationship>, Errors> {
+        let conn = self.connection.clone();
+        let (left_key, right_key) = sorted_networks(&left, &right)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM network_relationships WHERE left_network = ?1 AND right_network = ?2",
+                params![left_key, right_key],
+                |row| row.get::<_, String>(0),
+            ) {
+                Ok(data) => deserialize(data).map(Some),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
+
+    async fn save_network_relationship(
+        &self,
+        left: Arc<BasisNetwork>,
+        right: Arc<BasisNetwork>,
+        network_relationship: NetworkRelationship,
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let (left_key, right_key) = sorted_networks(&left, &right)?;
+        let data = serialize(&network_relationship)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            conn.execute(
+                "INSERT OR REPLACE INTO network_relationships (left_network, right_network, data) VALUES (?1, ?2, ?3)",
+                params![left_key, right_key, data],
+            )
+                .map_err(|e| db_err(e))?;
+            Ok(())
+        })
+        .await
+            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
 }
 
 fn basis_basis_nodes(basis_nodes: &[Arc<BasisNode>]) -> Result<String, Errors> {
@@ -681,4 +735,17 @@ fn basis_basis_nodes(basis_nodes: &[Arc<BasisNode>]) -> Result<String, Errors> {
         .collect();
     lineages.sort();
     Ok(lineages.join("|"))
+}
+
+fn sorted_networks(
+    left: &BasisNetwork,
+    right: &BasisNetwork,
+) -> Result<(String, String), Errors> {
+    let left_key = left.lineage.to_string();
+    let right_key = right.lineage.to_string();
+    Ok(if left_key <= right_key {
+        (left_key, right_key)
+    } else {
+        (right_key, left_key)
+    })
 }
