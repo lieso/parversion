@@ -66,7 +66,14 @@ impl Context {
                 acc
             } else {
                 let values_context = values.iter()
-                    .map(|v| v.to_string())
+                    .map(|v| {
+                        let s = v.to_string();
+                        if s.len() > 100 {
+                            format!("{}...", s.chars().take(97).collect::<String>())
+                        } else {
+                            s
+                        }
+                    })
                     .filter(|v| !v.is_empty())
                     .collect::<Vec<_>>()
                     .join(",");
@@ -122,7 +129,12 @@ impl Context {
             let transformed = transformation.transform(self.data_node.clone())?;
 
             for value in transformed.fields.get(&transformation.image) {
-                transformed_context.push_str(&format!("{} => {}", transformation.image, value));
+                let truncated = if value.len() > 100 {
+                    format!("{}...", value.chars().take(97).collect::<String>())
+                } else {
+                    value.to_string()
+                };
+                transformed_context.push_str(&format!("{} => {}", transformation.image, truncated));
             }
         }
 

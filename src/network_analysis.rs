@@ -112,8 +112,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         count_b.cmp(&count_a)
     });
 
-    central_basis_nodes.sort_by(|a, b| a.lineage.to_string().cmp(&b.lineage.to_string()));
-
     for result in results {
         for relationship in result? {
             node_relationships.push(relationship.clone().into());
