@@ -27,9 +27,6 @@ pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
 ) -> Result<HashMap<TranslationNodeID, Arc<TranslationNode>>, Errors> {
     log::trace!("In get_translation_nodes");
 
-
-
-
     let target_contexts = read_lock!(translation_context).must_get_unique_target_contexts()?;
 
     let mut unique_target_contexts: Vec<Arc<Context>> = Vec::new();
@@ -39,11 +36,6 @@ pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
             unique_target_contexts.push(ctx);
         }
     }
-
-
-
-
-
 
     let input_contexts = read_lock!(translation_context).must_get_unique_input_contexts()?;
 
@@ -55,32 +47,17 @@ pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
         }
     }
 
-
-
-
     let context_pairs: Vec<(Arc<Context>, Arc<Context>)> = unique_input_contexts.iter()
         .flat_map(|context_a| unique_target_contexts.iter().map(move |context_b| {
             (context_a.clone(), context_b.clone())
         }))
         .collect();
 
-
     log::info!("Number of context pairs: {}", context_pairs.len());
-
-
-
-
-
-
-
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
     let mut handles = Vec::new();
-
-
-
-
 
     for pair in context_pairs {
         let permit = semaphore.clone().acquire_owned().await.unwrap();
