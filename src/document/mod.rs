@@ -145,7 +145,7 @@ impl Document {
         self.data.clone()
     }
 
-    pub fn to_meta_context(&self) -> Result<MetaContext, Errors> {
+    pub fn to_meta_context(&self) -> Result<Vec<MetaContext>, Errors> {
         log::trace!("In to_meta_context");
 
         match self.document_type {

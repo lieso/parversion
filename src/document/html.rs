@@ -21,7 +21,7 @@ impl Html {
     pub fn to_meta_context(
         metadata: &DocumentMetadata,
         data: String
-    ) -> Result<MetaContext, Errors> {
+    ) -> Result<Vec<MetaContext>, Errors> {
         log::trace!("In to_meta_context");
 
         let document_root = Self::get_document_node(data)?;
@@ -135,13 +135,13 @@ impl Html {
         let contexts = read_lock!(contexts).clone();
         let contexts_lookup = read_lock!(contexts_lookup).clone();
 
-        Ok(MetaContext {
+        Ok(vec![MetaContext {
             contexts,
             graph_root,
             contexts_lookup,
             document_type: DocumentType::Html,
             acyclic_subgraph_hash,
-        })
+        }])
     }
 
     pub fn from_meta_context(

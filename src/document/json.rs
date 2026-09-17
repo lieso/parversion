@@ -21,7 +21,7 @@ impl Json {
     pub fn to_meta_context(
         metadata: &DocumentMetadata,
         data: String
-    ) -> Result<MetaContext, Errors> {
+    ) -> Result<Vec<MetaContext>, Errors> {
         log::trace!("In to_meta_context");
 
         let document_root = Self::get_document_node(data)?;
@@ -125,13 +125,13 @@ impl Json {
             lock.acyclic_subgraph_hash()
         };
 
-        Ok(MetaContext {
+        Ok(vec![MetaContext {
             contexts,
             graph_root,
             contexts_lookup,
             document_type: DocumentType::Json,
             acyclic_subgraph_hash,
-        })
+        }])
     }
 
     pub fn from_normal_meta_context(

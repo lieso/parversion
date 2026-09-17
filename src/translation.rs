@@ -102,12 +102,14 @@ pub async fn translate_json<P: Provider, R: Reasoner>(
         }
     )?;
 
-    let normalized_meta_context = normalized_document.to_meta_context()?;
+    unimplemented!();
 
-    {
-        let mut lock = write_lock!(translation_context);
-        lock.update_meta_contexts(normalized_meta_context, translation_meta_context);
-    }
+    //let normalized_meta_context = normalized_document.to_meta_context()?;
+
+    //{
+    //    let mut lock = write_lock!(translation_context);
+    //    lock.update_meta_contexts(normalized_meta_context, translation_meta_context);
+    //}
 
     Ok(())
 }
