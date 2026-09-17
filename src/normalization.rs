@@ -249,6 +249,8 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         log::info!("build_normalized_graph: {:.2?}", elapsed);
 
         stage.finish();
+
+        unimplemented!()
     }
 
     unimplemented!()

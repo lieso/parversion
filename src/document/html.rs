@@ -1,4 +1,4 @@
-use ego_tree::NodeRef;
+use ego_tree::{NodeId, NodeRef};
 use scraper::{Html as ScraperHtml, Node as ScraperNode};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -202,6 +202,27 @@ impl Html {
     fn get_document_node(data: String) -> Result<DocumentNode, Errors> {
         if let Some(dom) = to_dom(data.clone()) {
             let _ = fs::create_dir("debug");
+
+
+
+
+            let mut sizes = HashMap::new();
+
+            calculate_subtree_sizes(dom.tree.root(), &mut sizes);
+
+            let mut sizes_vec: Vec<_> = sizes.into_iter().collect();
+            sizes_vec.sort_by(|a, b| b.1.cmp(&a.1));
+
+            for (node_id, size) in sizes_vec {
+                if size > 1 {
+                    log::debug!("node_id: {:?}, size: {}", node_id, size);
+                }
+            }
+
+
+
+
+
 
             let mut xml = String::from("");
 
@@ -414,4 +435,21 @@ fn escape_xml(data: &str) -> String {
         .replace(">", "&gt;")
         .replace("\"", "&quot;")
         .replace("'", "&apos;")
+}
+
+fn calculate_subtree_sizes(
+    node: NodeRef<ScraperNode>,
+    sizes: &mut HashMap<NodeId, usize>
+) -> usize {
+    let mut count = match node.value() {
+        ScraperNode::Element(_) => 1,
+        _ => 0,
+    };
+
+    for child in node.children() {
+        count += calculate_subtree_sizes(child, sizes);
+    }
+
+    sizes.insert(node.id(), count);
+    count
 }
