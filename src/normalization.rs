@@ -53,6 +53,8 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     )
     .await?;
 
+    panic!();
+
     stage.finish();
     let elapsed = start.elapsed();
     log::info!("init_normalization_context: {:.2?}", elapsed);

@@ -24,124 +24,132 @@ impl Html {
     ) -> Result<Vec<MetaContext>, Errors> {
         log::trace!("In to_meta_context");
 
-        let document_root = Self::get_document_node(data)?;
-        let document_root = Arc::new(RwLock::new(document_root.clone()));
+        let document_roots = Self::get_document_nodes(data)?;
 
-        let contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
-        let contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
+        let meta_contexts = document_roots
+            .into_par_iter()
+            .map(|document_root| { 
+                let document_root = Arc::new(RwLock::new(document_root.clone()));
 
-        fn recurse(
-            document_node: Arc<RwLock<DocumentNode>>,
-            parent_lineage: &Lineage,
-            contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>>,
-            contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>>,
-            parents: Vec<Arc<RwLock<GraphNode>>>,
-        ) -> Arc<RwLock<GraphNode>> {
-            let (hash, lineage, fields, description, network_name) = {
-                let lock = read_lock!(document_node);
-                let hash = lock.get_hash();
-                let lineage = parent_lineage.with_hash(hash.clone());
-                (hash, lineage, lock.get_fields(), lock.get_description(), lock.get_name())
-            };
+                let contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
+                let contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
 
-            let data_node = Arc::new(DataNode::new(
-                hash,
-                lineage.clone(),
-                fields,
-                description,
-            ));
+                fn recurse(
+                    document_node: Arc<RwLock<DocumentNode>>,
+                    parent_lineage: &Lineage,
+                    contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>>,
+                    contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>>,
+                    parents: Vec<Arc<RwLock<GraphNode>>>,
+                ) -> Arc<RwLock<GraphNode>> {
+                    let (hash, lineage, fields, description, network_name) = {
+                        let lock = read_lock!(document_node);
+                        let hash = lock.get_hash();
+                        let lineage = parent_lineage.with_hash(hash.clone());
+                        (hash, lineage, lock.get_fields(), lock.get_description(), lock.get_name())
+                    };
 
-            let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
-                Arc::clone(&data_node),
-                parents.clone(),
-            )));
+                    let data_node = Arc::new(DataNode::new(
+                        hash,
+                        lineage.clone(),
+                        fields,
+                        description,
+                    ));
 
-            let indexed_lineages = Arc::new(RwLock::new(HashMap::new()));
+                    let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
+                        Arc::clone(&data_node),
+                        parents.clone(),
+                    )));
 
-            let context = Arc::new(Context {
-                id: ID::new(),
-                acyclic_lineage: data_node.lineage.acyclic(),
-                lineage: data_node.lineage.clone(),
-                indexed_lineages,
-                document_node: Arc::clone(&document_node),
-                graph_node: Arc::clone(&graph_node),
-                data_node: Arc::clone(&data_node),
-                network_name,
-            });
+                    let indexed_lineages = Arc::new(RwLock::new(HashMap::new()));
 
-            {
-                let mut lock = write_lock!(contexts);
-                lock.insert(context.id.clone(), Arc::clone(&context));
-            }
+                    let context = Arc::new(Context {
+                        id: ID::new(),
+                        acyclic_lineage: data_node.lineage.acyclic(),
+                        lineage: data_node.lineage.clone(),
+                        indexed_lineages,
+                        document_node: Arc::clone(&document_node),
+                        graph_node: Arc::clone(&graph_node),
+                        data_node: Arc::clone(&data_node),
+                        network_name,
+                    });
 
-            { 
-                let mut lock = write_lock!(contexts_lookup);
-                lock.insert(data_node.id.clone(), Arc::clone(&context));
-                lock.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
-                lock.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
-            }
+                    {
+                        let mut lock = write_lock!(contexts);
+                        lock.insert(context.id.clone(), Arc::clone(&context));
+                    }
 
-            {
-                let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
-                    .get_children()
-                    .into_par_iter()
-                    .map(|child| {
-                        recurse(
-                            Arc::new(RwLock::new(child)),
-                            &data_node.lineage,
-                            Arc::clone(&contexts),
-                            Arc::clone(&contexts_lookup),
-                            vec![Arc::clone(&graph_node)],
-                        )
-                    })
-                    .collect();
+                    { 
+                        let mut lock = write_lock!(contexts_lookup);
+                        lock.insert(data_node.id.clone(), Arc::clone(&context));
+                        lock.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
+                        lock.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
+                    }
 
-                let mut write_lock = graph_node.write().unwrap();
+                    {
+                        let children: Vec<Arc<RwLock<GraphNode>>> = read_lock!(document_node)
+                            .get_children()
+                            .into_par_iter()
+                            .map(|child| {
+                                recurse(
+                                    Arc::new(RwLock::new(child)),
+                                    &data_node.lineage,
+                                    Arc::clone(&contexts),
+                                    Arc::clone(&contexts_lookup),
+                                    vec![Arc::clone(&graph_node)],
+                                )
+                            })
+                            .collect();
 
-                let child_hashes: Vec<Hash> = children
-                    .iter()
-                    .map(|child| read_lock!(child).hash.clone())
-                    .collect();
+                        let mut write_lock = graph_node.write().unwrap();
 
-                let mut subgraph_hash = Hash::from_items(child_hashes.clone());
-                let subgraph_hash = subgraph_hash
-                    .sort()
-                    .push(write_lock.hash.clone())
-                    .finalize();
+                        let child_hashes: Vec<Hash> = children
+                            .iter()
+                            .map(|child| read_lock!(child).hash.clone())
+                            .collect();
 
-                write_lock.subgraph_hash = subgraph_hash.clone();
-                write_lock.children.extend(children);
-            }
+                        let mut subgraph_hash = Hash::from_items(child_hashes.clone());
+                        let subgraph_hash = subgraph_hash
+                            .sort()
+                            .push(write_lock.hash.clone())
+                            .finalize();
 
-            graph_node
-        }
+                        write_lock.subgraph_hash = subgraph_hash.clone();
+                        write_lock.children.extend(children);
+                    }
 
-        let origin_hash = Hash::from_str(&metadata.origin.clone().unwrap_or_default());
-        let initial_lineage = Lineage::new().with_hash(origin_hash);
+                    graph_node
+                }
 
-        let graph_root = recurse(
-            Arc::clone(&document_root),
-            &initial_lineage,
-            contexts.clone(),
-            contexts_lookup.clone(),
-            Vec::new(),
-        );
+                let origin_hash = Hash::from_str(&metadata.origin.clone().unwrap_or_default());
+                let initial_lineage = Lineage::new().with_hash(origin_hash);
 
-        let acyclic_subgraph_hash = {
-            let lock = read_lock!(graph_root);
-            lock.acyclic_subgraph_hash()
-        };
+                let graph_root = recurse(
+                    Arc::clone(&document_root),
+                    &initial_lineage,
+                    contexts.clone(),
+                    contexts_lookup.clone(),
+                    Vec::new(),
+                );
 
-        let contexts = read_lock!(contexts).clone();
-        let contexts_lookup = read_lock!(contexts_lookup).clone();
+                let acyclic_subgraph_hash = {
+                    let lock = read_lock!(graph_root);
+                    lock.acyclic_subgraph_hash()
+                };
 
-        Ok(vec![MetaContext {
-            contexts,
-            graph_root,
-            contexts_lookup,
-            document_type: DocumentType::Html,
-            acyclic_subgraph_hash,
-        }])
+                let contexts = read_lock!(contexts).clone();
+                let contexts_lookup = read_lock!(contexts_lookup).clone();
+
+                MetaContext {
+                    contexts,
+                    graph_root,
+                    contexts_lookup,
+                    document_type: DocumentType::Html,
+                    acyclic_subgraph_hash,
+                }
+            })
+            .collect();
+
+        Ok(meta_contexts)
     }
 
     pub fn from_meta_context(
@@ -199,7 +207,7 @@ impl Html {
         Ok(result)
     }
 
-    fn get_document_node(data: String) -> Result<DocumentNode, Errors> {
+    fn get_document_nodes(data: String) -> Result<Vec<DocumentNode>, Errors> {
         if let Some(dom) = to_dom(data.clone()) {
             let _ = fs::create_dir("debug");
 
@@ -235,11 +243,11 @@ impl Html {
 
             match Element::parse(reader) {
                 Ok(element) => Ok(
-                    DocumentNode::new(
+                    vec![DocumentNode::new(
                         DocumentNodeData::Xml(
                             xmltree::XMLNode::Element(element)
                         )
-                    )
+                    )]
                 ),
                 Err(e) => {
                     log::error!("Could not parse XML: {}", e);
