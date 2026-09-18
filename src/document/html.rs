@@ -21,10 +21,10 @@ impl Html {
     pub fn to_meta_context(
         metadata: &DocumentMetadata,
         data: String
-    ) -> Result<Vec<MetaContext>, Errors> {
+    ) -> Result<(Vec<MetaContext>, Vec<Document>), Errors> {
         log::trace!("In to_meta_context");
 
-        let document_roots = Self::get_document_nodes(data)?;
+        let (document_roots, other_documents) = Self::get_document_nodes(data)?;
 
         let meta_contexts = document_roots
             .into_par_iter()
@@ -149,7 +149,7 @@ impl Html {
             })
             .collect();
 
-        Ok(meta_contexts)
+        Ok((meta_contexts, other_documents))
     }
 
     pub fn from_meta_context(
@@ -207,54 +207,52 @@ impl Html {
         Ok(result)
     }
 
-    fn get_document_nodes(data: String) -> Result<Vec<DocumentNode>, Errors> {
+    fn get_document_nodes(data: String) -> Result<(Vec<DocumentNode>, Vec<Document>), Errors> {
         if let Some(dom) = to_dom(data.clone()) {
             let _ = fs::create_dir("debug");
 
-
-
-
             let mut sizes = HashMap::new();
-
             calculate_subtree_sizes(dom.tree.root(), &mut sizes);
 
-            let mut sizes_vec: Vec<_> = sizes.into_iter().collect();
-            sizes_vec.sort_by(|a, b| b.1.cmp(&a.1));
+            let trees = cut(dom.tree.root(), &sizes);
 
-            for (node_id, size) in sizes_vec {
-                if size > 1 {
-                    log::debug!("node_id: {:?}, size: {}", node_id, size);
-                }
-            }
+            let result = trees
+                .into_iter()
+                .map(|tree: NodeRef<ScraperNode>| {
+                    let mut xml = String::from("");
 
+                    let mut other_documents: Vec<Document> = Vec::new();
 
+                    walk(&mut xml, tree, 0, &mut other_documents);
 
+                    let reader = std::io::Cursor::new(xml);
 
+                    let document_node = match Element::parse(reader) {
+                        Ok(element) => Ok(
+                            DocumentNode::new(
+                                DocumentNodeData::Xml(
+                                    xmltree::XMLNode::Element(element)
+                                )
+                            )
+                        ),
+                        Err(e) => {
+                            log::error!("Could not parse XML: {}", e);
 
+                            Err(Errors::XmlParseError)
+                        }
+                    }?;
 
-            let mut xml = String::from("");
+                    Ok((document_node, other_documents))
+                })
+                .collect::<Result<Vec<_>, Errors>>()?
+                .into_iter()
+                .fold((Vec::new(), Vec::new()), |(mut acc), (document_node, other_documents)| {
+                    acc.0.push(document_node);
+                    acc.1.extend(other_documents);
+                    acc
+                });
 
-            // TODO: do we want to do anything with this?
-            let mut extracted_docs: Vec<Document> = Vec::new();
-
-            walk(&mut xml, dom.tree.root(), 0, &mut extracted_docs);
-
-            let reader = std::io::Cursor::new(xml);
-
-            match Element::parse(reader) {
-                Ok(element) => Ok(
-                    vec![DocumentNode::new(
-                        DocumentNodeData::Xml(
-                            xmltree::XMLNode::Element(element)
-                        )
-                    )]
-                ),
-                Err(e) => {
-                    log::error!("Could not parse XML: {}", e);
-
-                    Err(Errors::XmlParseError)
-                }
-            }
+            Ok(result)
         } else {
             unimplemented!()
         }
@@ -264,6 +262,13 @@ impl Html {
 fn to_dom(data: String) -> Option<ScraperHtml> {
     let sanitized = data.replace("\n", "");
     Some(ScraperHtml::parse_document(&sanitized))
+}
+
+fn cut<'a>(
+    tree: NodeRef<'a, ScraperNode>,
+    sizes: &HashMap<NodeId, usize>
+) -> Vec<NodeRef<'a, ScraperNode>> {
+    vec![tree]
 }
 
 fn walk(

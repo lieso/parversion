@@ -6,7 +6,7 @@ use crate::prelude::*;
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::context::Context;
-use crate::document::{DocumentMetadata, DocumentType};
+use crate::document::{Document, DocumentMetadata, DocumentType};
 use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::data_node::DataNode;
 use crate::meta_context::MetaContext;
@@ -21,7 +21,7 @@ impl Json {
     pub fn to_meta_context(
         metadata: &DocumentMetadata,
         data: String
-    ) -> Result<Vec<MetaContext>, Errors> {
+    ) -> Result<(Vec<MetaContext>, Vec<Document>), Errors> {
         log::trace!("In to_meta_context");
 
         let document_root = Self::get_document_node(data)?;
@@ -125,13 +125,13 @@ impl Json {
             lock.acyclic_subgraph_hash()
         };
 
-        Ok(vec![MetaContext {
+        Ok((vec![MetaContext {
             contexts,
             graph_root,
             contexts_lookup,
             document_type: DocumentType::Json,
             acyclic_subgraph_hash,
-        }])
+        }], Vec::new()))
     }
 
     pub fn from_normal_meta_context(

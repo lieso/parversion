@@ -53,8 +53,6 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     )
     .await?;
 
-    panic!();
-
     stage.finish();
     let elapsed = start.elapsed();
     log::info!("init_normalization_context: {:.2?}", elapsed);
@@ -266,7 +264,7 @@ async fn normalize_html<P: Provider, R: Reasoner>(
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     let mut document = document;
 
-    let meta_contexts = document.to_meta_context()?;
+    let (meta_contexts, _other_documents) = document.to_meta_context()?;
 
     let normalization_contexts = meta_contexts
         .into_iter()
