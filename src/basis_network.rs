@@ -67,6 +67,7 @@ impl BasisNetwork {
                 description: String::new(),
             }),
             graph_node: Arc::clone(&parent),
+            contexts: Vec::new(),
         });
 
         normal_contexts.insert(root_normal_context.id.clone(), Arc::clone(&root_normal_context));
@@ -309,6 +310,7 @@ impl BasisNetwork {
                     vec![Arc::clone(&parent)]
                 )
             )),
+            contexts: target_contexts.clone(),
         };
 
 
