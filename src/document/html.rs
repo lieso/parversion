@@ -1,4 +1,4 @@
-use ego_tree::{NodeId, NodeRef};
+use ego_tree::{Tree, NodeId, NodeRef};
 use scraper::{Html as ScraperHtml, Node as ScraperNode};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -14,6 +14,8 @@ use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::graph_node::{Graph, GraphNode};
 use crate::hash::Hash;
 use crate::document::{Document, DocumentType, DocumentMetadata};
+
+const MAX_SUBTREE_SIZE: usize = 2000;
 
 pub struct Html;
 
@@ -218,12 +220,12 @@ impl Html {
 
             let result = trees
                 .into_iter()
-                .map(|tree: NodeRef<ScraperNode>| {
+                .map(|tree: Tree<ScraperNode>| {
                     let mut xml = String::from("");
 
                     let mut other_documents: Vec<Document> = Vec::new();
 
-                    walk(&mut xml, tree, 0, &mut other_documents);
+                    walk(&mut xml, tree.root(), 0, &mut other_documents);
 
                     let reader = std::io::Cursor::new(xml);
 
@@ -264,11 +266,48 @@ fn to_dom(data: String) -> Option<ScraperHtml> {
     Some(ScraperHtml::parse_document(&sanitized))
 }
 
+fn find_cuts(
+    node: NodeRef<ScraperNode>,
+    sizes: &HashMap<NodeId, usize>,
+    cuts: &mut HashSet<NodeId>
+) -> bool {
+    let mut already_cut = false;
+
+    for child in node.children() {
+        if find_cuts(child, sizes, cuts) {
+            already_cut = true;
+        }
+    }
+
+    if already_cut {
+        return true;
+    }
+
+    if sizes[&node.id()] > MAX_SUBTREE_SIZE {
+        cuts.insert(node.id());
+        return true;
+    }
+
+    false
+}
+
 fn cut<'a>(
     tree: NodeRef<'a, ScraperNode>,
     sizes: &HashMap<NodeId, usize>
-) -> Vec<NodeRef<'a, ScraperNode>> {
-    vec![tree]
+) -> Vec<Tree<ScraperNode>> {
+
+    let mut cuts: HashSet<NodeId> = HashSet::new();
+
+    find_cuts(
+        tree,
+        sizes,
+        &mut cuts
+    );
+
+    log::info!("Found {} cut(s) to make", cuts.len());
+
+
+    unimplemented!()
 }
 
 fn walk(
