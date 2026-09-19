@@ -11,7 +11,7 @@ use crate::document_format::DocumentFormat;
 pub struct MetaContext {
     pub contexts: HashMap<ContextID, Arc<Context>>,
     pub graph_root: Graph,
-    pub contexts_lookup: HashMap<ID, Arc<Context>>,
+    pub contexts_lookup: Arc<HashMap<ID, Arc<Context>>>,
     pub document_type: DocumentType,
     pub acyclic_subgraph_hash: Hash,
 }

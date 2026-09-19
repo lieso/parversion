@@ -144,7 +144,7 @@ impl Html {
                 MetaContext {
                     contexts,
                     graph_root,
-                    contexts_lookup,
+                    contexts_lookup: Arc::new(contexts_lookup),
                     document_type: DocumentType::Html,
                     acyclic_subgraph_hash,
                 }

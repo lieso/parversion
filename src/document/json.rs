@@ -128,7 +128,7 @@ impl Json {
         Ok((vec![MetaContext {
             contexts,
             graph_root,
-            contexts_lookup,
+            contexts_lookup: Arc::new(contexts_lookup),
             document_type: DocumentType::Json,
             acyclic_subgraph_hash,
         }], Vec::new()))
