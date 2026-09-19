@@ -52,6 +52,8 @@ impl BasisNetwork {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         parent: Graph
     ) -> Result<NormalMetaContext, Errors> {
+        log::trace!("In apply()");
+
         let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
         let mut normal_contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
 
@@ -209,7 +211,7 @@ impl BasisNetwork {
 
                 match &relationship.relationship_type {
                     NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
-                        let next_contexts = apply_combine(
+                        let next_contexts = self.apply_combine(
                             Arc::clone(&normalization_context),
                             current_context.clone(),
                             current_node.clone(),
@@ -224,7 +226,7 @@ impl BasisNetwork {
                         processed_relationships.insert(relationship.id.clone());
                     },
                     NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
-                        let next_contexts = apply_combine(
+                        let next_contexts = self.apply_combine(
                             Arc::clone(&normalization_context),
                             current_context.clone(),
                             current_node.clone(),
@@ -360,6 +362,79 @@ impl BasisNetwork {
 
         Ok(normal_context.clone())
     }
+
+    fn apply_combine(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        context: Arc<Context>,
+        basis_node: Arc<BasisNode>,
+        relationship: &NodeRelationship,
+    ) -> Result<Vec<(Arc<Context>, Arc<BasisNode>)>, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        };
+
+        let xpath_str = match &relationship.relationship_type {
+            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
+                if relationship.left_basis_lineage == basis_node.lineage {
+                    xpath_ltr
+                } else {
+                    xpath_rtl
+                }
+            }
+            // TODO: Delete branch
+            NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
+                if relationship.left_basis_lineage == basis_node.lineage {
+                    xpath_ltr
+                } else {
+                    xpath_rtl
+                }
+            }
+            _ => return Err(Errors::UnexpectedError("Expected Combine relationship".to_string())),
+        };
+
+        let xpath: XPath = XPath::from_str(&xpath_str)?;
+
+        let mut next_contexts: Vec<(Arc<Context>, Arc<BasisNode>)> = Vec::new();
+
+        let target_graph_nodes = xpath.traverse(
+            Arc::clone(&normalization_context),
+            Arc::clone(&context.graph_node),
+        )?;
+
+        if target_graph_nodes.is_empty() {
+            log::warn!("Could not find target graph nodes within current network: {}", xpath.to_string());
+        }
+
+        for target_graph_node in target_graph_nodes {
+            let target_context = meta_context.contexts_lookup
+                .get(&read_lock!(target_graph_node).id)
+                .cloned()
+                .unwrap();
+
+            let target_basis_node = {
+                let lock = read_lock!(normalization_context);
+                let lookup = lock.context_basis_node.as_ref().unwrap();
+
+                lookup.get(&target_context.id).cloned()
+            };
+
+            if let Some(target_basis_node) = target_basis_node {
+                let is_member = self.basis_nodes.iter().any(|basis_node| basis_node.id == target_basis_node.id);
+
+                if is_member {
+                    next_contexts.push((target_context, target_basis_node.clone()));
+                } else {
+                    log::warn!("xpath located context that does not correspond to a basis node in this network: {}", xpath.to_string());
+                }
+            } else {
+                log::warn!("xpath located context that does not correspond to a basis node in any network: {}", xpath.to_string());
+            }
+        }
+
+        Ok(next_contexts)
+    }
 }
 
 
@@ -421,69 +496,3 @@ fn apply_self_combine(
     Ok(matching_contexts)
 }
 
-fn apply_combine(
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    context: Arc<Context>,
-    basis_node: Arc<BasisNode>,
-    relationship: &NodeRelationship,
-) -> Result<Vec<(Arc<Context>, Arc<BasisNode>)>, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
-    };
-
-    let xpath_str = match &relationship.relationship_type {
-        NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
-            if relationship.left_basis_lineage == basis_node.lineage {
-                xpath_ltr
-            } else {
-                xpath_rtl
-            }
-        }
-        // TODO: Delete branch
-        NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
-            if relationship.left_basis_lineage == basis_node.lineage {
-                xpath_ltr
-            } else {
-                xpath_rtl
-            }
-        }
-        _ => return Err(Errors::UnexpectedError("Expected Combine relationship".to_string())),
-    };
-
-    let xpath: XPath = XPath::from_str(&xpath_str)?;
-
-    let mut next_contexts: Vec<(Arc<Context>, Arc<BasisNode>)> = Vec::new();
-
-    let target_graph_nodes = xpath.traverse(
-        Arc::clone(&normalization_context),
-        Arc::clone(&context.graph_node),
-    )?;
-
-    if target_graph_nodes.is_empty() {
-        log::warn!("Could not find target graph nodes within current network: {}", xpath.to_string());
-    }
-
-    for target_graph_node in target_graph_nodes {
-        // assumming this is the right context...
-        let target_context = meta_context.contexts_lookup
-            .get(&read_lock!(target_graph_node).id)
-            .cloned()
-            .unwrap();
-
-        let target_basis_node = {
-            let lock = read_lock!(normalization_context);
-            let lookup = lock.context_basis_node.as_ref().unwrap();
-
-            lookup.get(&target_context.id).cloned()
-        };
-
-        if let Some(target_basis_node) = target_basis_node {
-            next_contexts.push((target_context, target_basis_node.clone()));
-        } else {
-            log::warn!("xpath located context that does not correspond to a basis node in this network");
-        }
-    }
-
-    Ok(next_contexts)
-}
