@@ -135,6 +135,12 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
     log::info!("Number of central basis nodes: {}", central_basis_nodes.len());
 
+    let pairwise_comparisons = central_basis_nodes.len() * non_empty_basis_nodes.len() - central_basis_nodes.len();
+
+    if pairwise_comparisons > 1000 {
+        panic!("Would be doing {} pairwise comparisons. Aborting...", pairwise_comparisons);
+    }
+
     for left in central_basis_nodes.iter().cloned() {
 
         let mut handles = Vec::new();
@@ -353,7 +359,6 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
 ) -> Result<Vec<NodeRelationship>, Errors> {
-
     stage_context.record_events("Node relationship", 0);
 
     if !options.regenerate {

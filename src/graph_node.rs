@@ -391,6 +391,32 @@ impl GraphNode {
                 Ok(vec![selected_graph])
             }
             XPathPredicate::Last => Ok(graphs.last().cloned().into_iter().collect()),
+            XPathPredicate::ContainsNormalized { value } => {
+                let contexts_lookup = {
+                    let lock = read_lock!(normalization_context);
+                    lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+                };
+
+                let filtered: Vec<Graph> = graphs
+                    .iter()
+                    .filter(|graph| {
+                        let graph_id = read_lock!(graph).id.clone();
+                        if let Some(context) = contexts_lookup.get(&graph_id) {
+                            let text_vals = context.data_node.fields.get("text");
+                            if !text_vals.is_empty() {
+                                let text_str = text_vals[0].to_string();
+                                let normalized = text_str.split_whitespace().collect::<Vec<_>>().join(" ");
+                                return normalized.contains(value.trim());
+                            }
+                            false
+                        } else {
+                            false
+                        }
+                    })
+                    .cloned()
+                    .collect();
+                Ok(filtered)
+            }
             XPathPredicate::Contains { name, value } => {
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);

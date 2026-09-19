@@ -41,6 +41,7 @@ pub enum XPathPredicate {
     Attribute { name: String, value: String },
     AttributePresence(Vec<String>),
     Contains { name: String, value: String },
+    ContainsNormalized { value: String },
     Last,
     StartsWith { name: String, value: String },
     Path(XPath),
@@ -304,6 +305,9 @@ impl XPathPredicate {
             } else {
                 Ok(XPathPredicate::AttributePresence(vec![inner.to_string()]))
             }
+        } else if let Some(inner) = s.strip_prefix("contains(normalize-space(.)").and_then(|s| s.strip_suffix(')')) {
+            let value = inner.trim_start_matches(',').trim().trim_matches('\'').trim_matches('"').to_string();
+            Ok(XPathPredicate::ContainsNormalized { value })
         } else if let Some(inner) = s.strip_prefix("contains(").and_then(|s| s.strip_suffix(')')) {
             let (attr_part, val_part) = inner.split_once(',')
                 .ok_or_else(|| Errors::XPathParseError(format!("Invalid contains() predicate: {}", s)))?;
@@ -348,6 +352,9 @@ impl XPathPredicate {
                     .collect::<Vec<_>>()
                     .join(" and ")
             },
+            XPathPredicate::ContainsNormalized { value } => {
+                format!("contains(normalize-space(.),'{}'')", value)
+            }
         }
     }
 }

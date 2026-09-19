@@ -93,7 +93,7 @@ pub async fn basis_node<R: Reasoner>(
         log::debug!("Field: {} (source: {})", response_field.field_name, response_field.source_field);
 
         let field = {
-            if response_field.source_field == "TEXT" || response_field.source_field == "text" {
+            if response_field.source_field.starts_with("TEXT") || response_field.source_field.starts_with("text") {
                 "text".to_string()
             } else if let Some(attr_name) = response_field.source_field.strip_prefix("ATTRIBUTE=") {
                 attr_name.to_string()
