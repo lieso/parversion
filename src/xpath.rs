@@ -46,6 +46,7 @@ pub enum XPathPredicate {
     StartsWith { name: String, value: String },
     Path(XPath),
     And(Vec<XPathPredicate>),
+    Not(Box<XPathPredicate>),
 }
 
 impl XPath {
@@ -314,6 +315,8 @@ impl XPathPredicate {
             let name = attr_part.trim().trim_start_matches('@').to_string();
             let value = val_part.trim().trim_matches('\'').trim_matches('"').to_string();
             Ok(XPathPredicate::Contains { name, value })
+        } else if let Some(inner) = s.strip_prefix("not(").and_then(|s| s.strip_suffix(')')) {
+            Ok(XPathPredicate::Not(Box::new(XPathPredicate::from_str(inner)?)))
         } else if let Some(inner) = s.strip_prefix("starts-with(").and_then(|s| s.strip_suffix(')')) {
             let (attr_part, val_part) = inner.split_once(',')
                 .ok_or_else(|| Errors::XPathParseError(format!("Invalid starts-with() predicate: {}", s)))?;
@@ -355,6 +358,7 @@ impl XPathPredicate {
             XPathPredicate::ContainsNormalized { value } => {
                 format!("contains(normalize-space(.),'{}'')", value)
             }
+            XPathPredicate::Not(pred) => format!("not({})", pred.to_string()),
         }
     }
 }

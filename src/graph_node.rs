@@ -391,6 +391,20 @@ impl GraphNode {
                 Ok(vec![selected_graph])
             }
             XPathPredicate::Last => Ok(graphs.last().cloned().into_iter().collect()),
+            XPathPredicate::Not(inner) => {
+                let mut filtered = Vec::new();
+                for graph in graphs {
+                    let matched = Self::traverse_using_xpath_predicate(
+                        Arc::clone(&normalization_context),
+                        vec![Arc::clone(&graph)],
+                        inner,
+                    )?;
+                    if matched.is_empty() {
+                        filtered.push(graph);
+                    }
+                }
+                Ok(filtered)
+            }
             XPathPredicate::ContainsNormalized { value } => {
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
