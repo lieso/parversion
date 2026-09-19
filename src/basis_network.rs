@@ -128,9 +128,13 @@ impl BasisNetwork {
                     let normal_context = self.process_network(
                         Arc::clone(&normalization_context),
                         (context.clone(), basis_node.clone()),
-                        processed_contexts,
                         Arc::clone(&parent),
                     )?;
+
+                    for context in &normal_context.contexts {
+                        processed_contexts.insert(context.id.clone());
+                    }
+
                     let normal_context = Arc::new(normal_context);
 
                     normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
@@ -160,7 +164,6 @@ impl BasisNetwork {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         leader: (Arc<Context>, Arc<BasisNode>),
-        processed_contexts: &mut HashSet<ContextID>,
         parent: Graph
     ) -> Result<NormalContext, Errors> {
         log::trace!("In process_network");
@@ -181,8 +184,6 @@ impl BasisNetwork {
         let mut processed_relationships: HashSet<ID> = HashSet::new();
 
         while let Some((current_context, current_node)) = queue.pop_front() {
-            processed_contexts.insert(current_context.id.clone());
-
             let current_relationships: Vec<Arc<NodeRelationship>> = actual_relationships
                 .iter()
                 .filter(|relationship| {
@@ -205,7 +206,6 @@ impl BasisNetwork {
 
                     for context in other_contexts {
                         target_contexts.push(context.clone());
-                        processed_contexts.insert(context.id.clone());
                     }
 
                     continue;
@@ -296,6 +296,13 @@ impl BasisNetwork {
 
 
 
+        let mut seen = HashSet::new();
+        let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
+        for context in target_contexts {
+            if seen.insert(context.id.clone()) {
+                unique_contexts.push(context);
+            }
+        }
 
 
 
@@ -310,7 +317,7 @@ impl BasisNetwork {
                     vec![Arc::clone(&parent)]
                 )
             )),
-            contexts: target_contexts.clone(),
+            contexts: unique_contexts.clone(),
         };
 
 
