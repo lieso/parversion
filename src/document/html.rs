@@ -15,7 +15,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::hash::Hash;
 use crate::document::{Document, DocumentType, DocumentMetadata};
 
-const MAX_SUBTREE_SIZE: usize = 2000;
+const MAX_SUBTREE_SIZE: usize = 1000;
 
 pub struct Html;
 

@@ -137,11 +137,14 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     let pairwise_comparisons = central_basis_nodes.len() * non_empty_basis_nodes.len() - central_basis_nodes.len();
 
-    if pairwise_comparisons > 1000 {
+    if pairwise_comparisons > 10000 {
         panic!("Would be doing {} pairwise comparisons. Aborting...", pairwise_comparisons);
     }
 
-    for left in central_basis_nodes.iter().cloned() {
+    for (index, left) in central_basis_nodes.iter().cloned().enumerate() {
+
+        log::debug!("index: {}", index);
+        log::debug!("total: {}", central_basis_nodes.len());
 
         let mut handles = Vec::new();
 
