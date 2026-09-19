@@ -298,6 +298,15 @@ fn clone_full_subtree(node: NodeRef<ScraperNode>, mut dest: NodeMut<ScraperNode>
     }
 }
 
+fn clone_into(node: NodeRef<ScraperNode>, mut dest: NodeMut<ScraperNode>, cuts: &HashSet<NodeId>) {
+    for child in node.children() {
+        let mut dest_child = dest.append(child.value().clone());
+        if !cuts.contains(&child.id()) {
+            clone_into(child, dest_child, cuts);
+        }
+    }
+}
+
 fn build_cut_tree(cut_node: NodeRef<ScraperNode>) -> Tree<ScraperNode> {
     let mut chain: Vec<NodeRef<ScraperNode>> = cut_node.ancestors().collect();
     chain.reverse();
@@ -349,8 +358,13 @@ fn cut<'a>(
         })
         .collect();
 
+    let mut new_tree = Tree::new(tree.value().clone());
+    clone_into(tree, new_tree.root_mut(), &cuts);
 
-    unimplemented!()
+    let mut result = subtrees;
+    result.push(new_tree);
+
+    result
 }
 
 fn walk(
