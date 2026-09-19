@@ -1,4 +1,4 @@
-use ego_tree::{Tree, NodeId, NodeRef};
+use ego_tree::{Tree, NodeId, NodeRef, NodeMut};
 use scraper::{Html as ScraperHtml, Node as ScraperNode};
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -291,6 +291,40 @@ fn find_cuts(
     false
 }
 
+fn clone_full_subtree(node: NodeRef<ScraperNode>, mut dest: NodeMut<ScraperNode>) {
+    for child in node.children() {
+        let dest_child = dest.append(child.value().clone());
+        clone_full_subtree(child, dest_child);
+    }
+}
+
+fn build_cut_tree(cut_node: NodeRef<ScraperNode>) -> Tree<ScraperNode> {
+    let mut chain: Vec<NodeRef<ScraperNode>> = cut_node.ancestors().collect();
+    chain.reverse();
+    chain.push(cut_node);
+
+    let mut iter = chain.into_iter();
+    let root_node = iter.next().unwrap();
+
+    let mut new_tree = Tree::new(root_node.value().clone());
+    let mut cursor_id = new_tree.root().id();
+
+    let mut last = root_node;
+    for ancestor in iter {
+        cursor_id = new_tree
+            .get_mut(cursor_id)
+            .unwrap()
+            .append(ancestor.value().clone())
+            .id();
+        last = ancestor;
+    }
+
+    let dest = new_tree.get_mut(cursor_id).unwrap();
+    clone_full_subtree(last, dest);
+
+    new_tree
+}
+
 fn cut<'a>(
     tree: NodeRef<'a, ScraperNode>,
     sizes: &HashMap<NodeId, usize>
@@ -305,6 +339,15 @@ fn cut<'a>(
     );
 
     log::info!("Found {} cut(s) to make", cuts.len());
+
+    let arena = tree.tree();
+    let subtrees: Vec<Tree<ScraperNode>> = cuts
+        .iter()
+        .map(|node_id| {
+            let node = arena.get(*node_id).expect("cut id must exist in tree");
+            build_cut_tree(node)
+        })
+        .collect();
 
 
     unimplemented!()
