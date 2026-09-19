@@ -424,7 +424,21 @@ impl BasisNetwork {
                 let is_member = self.basis_nodes.iter().any(|basis_node| basis_node.id == target_basis_node.id);
 
                 if is_member {
-                    next_contexts.push((target_context, target_basis_node.clone()));
+                    let expected_lineage = {
+                        let is_left = relationship.left_basis_lineage == basis_node.lineage;
+
+                        if is_left {
+                            &relationship.right_basis_lineage
+                        } else {
+                            &relationship.left_basis_lineage
+                        }
+                    };
+
+                    if target_basis_node.lineage == *expected_lineage {
+                        next_contexts.push((target_context, target_basis_node.clone()));
+                    } else {
+                        log::warn!("xpath located basis node in this network that does not correspond to the relationship being processed: {}", xpath.to_string());
+                    }
                 } else {
                     log::warn!("xpath located context that does not correspond to a basis node in this network: {}", xpath.to_string());
                 }
