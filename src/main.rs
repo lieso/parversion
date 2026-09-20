@@ -3,8 +3,6 @@ mod basis_graph;
 mod basis_group;
 mod basis_network;
 mod basis_node;
-#[cfg(feature = "caching")]
-mod cache;
 mod classification;
 mod config;
 mod context;

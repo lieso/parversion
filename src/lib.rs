@@ -3,8 +3,6 @@ pub mod basis_graph;
 pub mod basis_group;
 pub mod basis_network;
 pub mod basis_node;
-#[cfg(feature = "caching")]
-pub mod cache;
 pub mod classification;
 pub mod config;
 pub mod context;

@@ -63,7 +63,6 @@ path = "src/main.rs"
 
 [features]
 default = []
-caching = ["dep:sled", "dep:once_cell"]
 yaml-provider = ["dep:serde_yaml"]
 sqlite-provider = ["dep:rusqlite"]
 openrouter-reasoner = ["dep:openrouter-rs"]
