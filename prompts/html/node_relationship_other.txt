@@ -1,340 +1,73 @@
 You are an expert data engineer reverse-engineering backend data models from
-rendered HTML. Pages are very often rendered from a structured API response—
+rendered HTML. Pages are very often rendered from a structured API response —
 markup and layout dilute that original structure, splitting a single entity's
-fields across several elements, nesting child entities inside parent entities,
-and scattering repeated instances around the page.
-
-Your job is to examine two extraction patterns—each producing one or more
-fields from a specific position in the page's structure—and determine how they
-relate to the structured data model from which the page was likely rendered.
-
-Relationships may be one-to-one, one-to-many, parent-child, or ordered
-mixed-content relationships. Do not classify two patterns as unrelated merely
-because they cannot be joined one-to-one.
+fields across several elements, and scattering repeated instances around the
+page. Your job is to look at two extraction patterns — each one producing one
+or more fields from a specific position in the page's structure — and
+determine how they relate to the structured data model the page was likely
+rendered from.
 
 **INPUT CONTEXT EXPLAINED:**
 
 [LEFT] and [RIGHT] each contain several sample instances produced by that
 extraction pattern, separated by ---SNIPPET SEPARATOR---. Each sample has:
 
-1. [SPATIAL CONTEXT]: an HTML snippet showing the structural neighborhood
-   around this instance on the actual page. Use it to determine the instance's
-   logical record, parent container, child records, and document order.
+1. [SPATIAL CONTEXT]: an HTML snippet showing the structural neighbourhood
+   around this instance on the actual page. Use it to judge whether left
+   and right instances belong to the same underlying record.
 
 2. [POSITIONAL CONTEXT]: the XPath locating this instance within the page.
 
-3. [TRANSFORMED FIELDS]: the field or fields this extraction pattern produces
-   for this instance.
+3. [TRANSFORMED FIELDS]: the field(s) this extraction pattern produces for
+   this instance.
 
 Samples on the left and right are not guaranteed to come from the same
-underlying record. Treat each side's samples as independent evidence of what
-that extraction pattern represents in general, rather than as sample-to-sample
-pairs.
+underlying record — treat each side's samples as independent evidence of
+what that extraction pattern represents in general, not as instance-to-
+instance pairs to compare directly.
 
-Even if no supplied LEFT and RIGHT sample shares a literal record ID, patterns
-may still be related if they consistently occupy corresponding structural
-positions relative to a common record or container.
-
-Pay particular attention to:
-
-- The nearest repeated record container shared by the patterns.
-- Whether each pattern represents a complete record, a field of a record, a
-  child record, or a fragment of a larger ordered value.
-- Whether a single instance on one side can correspond to zero, one, or
-  multiple instances on the other side.
-- Whether nested inline markup interrupted text that must be reassembled in
-  DOM document order.
-
-**RELATIONSHIP TYPES:**
+**DECISION CRITERIA:**
 
 - **EQUAL**: The left and right extraction patterns represent the same
-  conceptual type of thing and play the same role on the page, even though
-  their markup or extraction paths differ.
-
-  Each side already produces a complete instance on its own. Nothing needs to
-  be reconciled field-by-field.
-
-  Examples:
-  - Two alternative layouts that each extract complete product names.
-  - Desktop and mobile renderings of the same kind of catalog item.
-  - Two structurally different patterns that each produce complete line-item
-    instances.
-
-  Use EQUAL only when the patterns have the same entity grain and neither side
-  supplies missing fields needed by the other.
+  conceptual type of thing, playing the same role on the page (e.g. both
+  are "product names in a catalog," both are "line items in an order"),
+  even though the patterns differ. Each side already produces complete
+  instances on its own — nothing needs to be reconciled field-by-field.
+  Provide xpaths showing how to navigate from one instance to the other.
 
 - **COMBINE**: The left and right extraction patterns describe the same
-  specific records at the same entity grain, but provide different fields.
+  specific records, but incompletely — neither side has the full picture
+  without the other (e.g. one produces a customer's name, the other their
+  account balance, for the same account). The correct outcome is to merge
+  fields together so each resulting record has the union of both sides.
 
-  The correct result is one record containing the union of the fields from
-  both sides. Relative ordering between the fields is not semantically
-  significant.
+- **NO_RELATIONSHIP**: The two extraction patterns represent conceptually
+  unrelated things (e.g. one is order line items, the other is site
+  navigation links).
 
-  Examples:
-  - One pattern extracts a customer's name and the other extracts that same
-    customer's account balance.
-  - One pattern extracts a product title and the other extracts the price for
-    the same product.
-  - One pattern extracts a comment permalink and the other extracts the author
-    of the same comment, assuming each comment has at most one corresponding
-    instance from each pattern.
+**IF AND ONLY IF you choose COMBINE or EQUAL**, also provide relative XPaths that
+locate an instance of the other extraction pattern, anchored at the node
+identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
 
-  Do not use COMBINE when one side represents child records that may occur
-  multiple times per record. Do not use COMBINE when the values must be
-  interleaved according to DOM order.
+- `left_to_right_xpath`: relative XPath from a left instance's node to the
+  corresponding right instance's node.
+- `right_to_left_xpath`: relative XPath from a right instance's node to the
+  corresponding left instance's node.
 
-- **CONTAINS**: One extraction pattern represents a parent record and the other
-  represents child records, nested values, or repeated subordinate entities
-  associated with that parent.
+The XPath engine supports a constrained grammar — keep generated xpaths
+within it:
 
-  The two patterns are related, but they do not have the same entity grain.
-  One parent may contain zero, one, or multiple children, while each child
-  normally belongs to one parent.
+Use the simplest and most robust XPath 1.0 grammar possible to ensure a strict 1-to-1 match. specifically:*
+* Use semantic axes like `ancestor::tag[1]` instead of chaining multiple `../`.
+* Use single direct-child slashes (`/`) for exact paths; do not use double slashes (`//`) unless searching an unknown depth.
+* Target nodes using their structural attributes (e.g., `@class='xyz'`, `@id`) rather than brittle positional indexes (like `td[3]`)."
+* If a [POSITIONAL CONTEXT] you are targeting ends in /text(), your generated xpath must also end with a trailing /text() step (with no predicates) to land on that exact text node, not its containing element.
 
-  Set `containment_direction` to identify the parent side:
+Leave both null for NO_RELATIONSHIP.
 
-  - `LEFT_CONTAINS_RIGHT`: a LEFT instance is the parent of associated RIGHT
-    instances.
-  - `RIGHT_CONTAINS_LEFT`: a RIGHT instance is the parent of associated LEFT
-    instances.
-
-  Examples:
-  - A comment record contains zero or more external-link records.
-  - An order contains multiple line items.
-  - A product contains multiple image records.
-  - A section contains multiple article cards.
-
-  CONTAINS describes logical data-model containment. The child will often be a
-  DOM descendant of the parent record, but literal DOM containment is not
-  required if the surrounding structure clearly establishes ownership.
-
-  Do not return NO_RELATIONSHIP merely because one direction can match
-  multiple instances.
-
-- **MIXED_CONTENT**: The left and right extraction patterns produce ordered
-  fragments of one logical value. Their outputs must be interleaved according
-  to DOM document order rather than merged as unordered fields.
-
-  This commonly occurs when an element contains direct text interrupted by
-  inline elements such as `<i>`, `<b>`, `<em>`, `<strong>`, `<a>`, `<code>`,
-  `<span>`, or similar markup.
-
-  Example source:
-
-      <div>
-        The <i>quick</i> brown fox jumps over the lazy dog
-      </div>
-
-  Possible extraction outputs:
-
-      LEFT:
-      comment_body => "The brown fox jumps over the lazy dog"
-
-      RIGHT:
-      comment_text => "quick"
-
-  MIXED_CONTENT means:
-
-  - Both patterns contribute fragments to one logical value.
-  - Fragment order is determined by DOM document order.
-  - Fragment boundaries and source field identities must be preserved.
-  - The right-side fragments must not simply be appended before or after the
-    complete left-side value.
-  - The extraction pipeline may need to retain individual text nodes rather
-    than concatenating them before relationship resolution.
-
-  For MIXED_CONTENT, provide assembly XPaths identifying:
-
-  - The common mixed-content container from a LEFT instance.
-  - The same common container from a RIGHT instance.
-  - All LEFT fragments relative to that common container.
-  - All RIGHT fragments relative to that common container.
-
-  The downstream resolver will evaluate the fragment selectors and interleave
-  the selected nodes in DOM document order.
-
-- **NO_RELATIONSHIP**: The two extraction patterns are conceptually and
-  structurally unrelated.
-
-  Examples:
-  - Order line items versus site navigation links.
-  - Product prices versus footer legal notices.
-  - Comment authors versus unrelated recommendation widgets.
-
-  Use NO_RELATIONSHIP only when there is no meaningful record-level,
-  containment, ownership, or mixed-content relationship.
-
-  The following are not, by themselves, reasons to choose NO_RELATIONSHIP:
-
-  - One side has multiple matches for the other side.
-  - One side is optional.
-  - One pattern is nested inside the other pattern's record.
-  - The patterns represent different entity grains.
-  - The patterns contribute differently marked-up fragments to one value.
-
-**CARDINALITY:**
-
-For every relationship other than NO_RELATIONSHIP, describe the number of
-associated instances reachable in each direction.
-
-Use one of these values:
-
-- `ONE`: every source instance has exactly one corresponding target instance.
-- `ZERO_OR_ONE`: the target is optional, but there is never more than one.
-- `ONE_OR_MORE`: every source has at least one target and may have several.
-- `ZERO_OR_MORE`: the source may have no target or may have several.
-
-`left_to_right_cardinality` describes how many RIGHT instances may correspond
-to one LEFT instance.
-
-`right_to_left_cardinality` describes how many LEFT instances may correspond
-to one RIGHT instance.
-
-Examples:
-
-- One-to-one fields belonging to the same record:
-  - LEFT to RIGHT: `ONE`
-  - RIGHT to LEFT: `ONE`
-
-- A comment with optional external links:
-  - Comment to links: `ZERO_OR_MORE`
-  - External link to owning comment: `ONE`
-
-- An order with one or more line items:
-  - Order to line items: `ONE_OR_MORE`
-  - Line item to owning order: `ONE`
-
-Infer cardinality from the repeated structure, semantics, and all supplied
-samples. Do not assume one-to-one cardinality merely because only one related
-instance appears in a particular snippet.
-
-**RELATIVE XPATHS:**
-
-For EQUAL, COMBINE, CONTAINS, and MIXED_CONTENT, provide relative XPaths that
-navigate between associated extraction instances:
-
-- `left_to_right_xpath`: a relative XPath anchored at the node identified by a
-  LEFT sample's [POSITIONAL CONTEXT], locating its associated RIGHT
-  instance or instances.
-
-- `right_to_left_xpath`: a relative XPath anchored at the node identified by a
-  RIGHT sample's [POSITIONAL CONTEXT], locating its associated LEFT instance
-  or instances.
-
-For EQUAL and COMBINE, these XPaths should normally identify one corresponding
-instance in each direction.
-
-For CONTAINS and MIXED_CONTENT, an XPath may intentionally return multiple
-nodes when the declared cardinality permits multiple associated instances.
-
-Use null only when:
-
-- The relationship is NO_RELATIONSHIP; or
-- No structurally reliable navigation XPath can be inferred in that direction.
-
-Do not fabricate a one-to-one XPath by using a positional predicate such as
-`[1]` when the true relationship is one-to-many.
-
-**MIXED-CONTENT ASSEMBLY:**
-
-For MIXED_CONTENT, populate the `assembly` object:
-
-- `mode` must be `DOCUMENT_ORDER`.
-- `container_from_left_xpath` is a relative XPath from a LEFT instance's node
-  to the common element whose content is being reconstructed.
-- `container_from_right_xpath` is a relative XPath from a RIGHT instance's node
-  to that same logical container.
-- `left_fragment_xpath` is evaluated relative to the common container and
-  selects all fragments produced by the LEFT pattern.
-- `right_fragment_xpath` is evaluated relative to the common container and
-  selects all fragments produced by the RIGHT pattern.
-- `preserve_fragment_boundaries` must be true.
-
-The downstream resolver will:
-
-1. Locate the common container.
-2. Evaluate both fragment selectors against that container.
-3. Preserve each selected fragment's source field identity.
-4. Sort all selected fragment nodes by DOM document order.
-5. Emit an ordered sequence.
-
-For every relationship type other than MIXED_CONTENT, set `assembly` to null.
-
-**XPATH CONSTRAINTS:**
-
-The XPath engine supports a constrained XPath 1.0 grammar. Use the simplest
-and most robust XPath possible.
-
-- Use semantic axes such as `ancestor::div[1]` or `ancestor::tr[1]` when
-  navigating to a containing record, rather than chaining multiple `../`
-  steps.
-- Use `.` when the current anchor node is already the desired node.
-- Use a single direct-child slash (`/`) for exact paths.
-- Do not use `//` unless the target may occur at an unknown or variable depth.
-- Target nodes using stable structural attributes such as `@class`, `@id`,
-  `@rel`, or other semantic attributes.
-- Avoid brittle positional indexes such as `td[3]`, `div[2]`, or `p[4]`
-  unless no stable structural alternative exists.
-- Do not use `[1]` merely to hide a real one-to-many relationship. A `[1]`
-  predicate is appropriate only for selecting a nearest ancestor, such as
-  `ancestor::tr[1]`, or when the first node has genuine semantic meaning.
-- Generated XPaths must be relative to the specified anchor. Do not begin them
-  with `/` or with an absolute page path.
-- If a [POSITIONAL CONTEXT] being targeted ends in `/text()`, the generated
-  XPath must also end with a trailing `/text()` step, with no predicate on the
-  `text()` step, so that it lands on the text node rather than its containing
-  element.
-- For MIXED_CONTENT, text-node selectors such as `text()` are allowed and
-  expected. Preserve separate text nodes; do not replace them with an already
-  concatenated string value.
-
-**OUTPUT REQUIREMENTS:**
-
-Respond with strictly valid JSON and no surrounding explanation.
-
-Use this exact shape:
-
+Respond with strictly valid JSON:
 {
-  "relationship_type": "EQUAL" | "COMBINE" | "CONTAINS" | "MIXED_CONTENT" | "NO_RELATIONSHIP",
-  "containment_direction": "LEFT_CONTAINS_RIGHT" | "RIGHT_CONTAINS_LEFT" | null,
-  "left_to_right_cardinality": "ONE" | "ZERO_OR_ONE" | "ONE_OR_MORE" | "ZERO_OR_MORE" | null,
-  "right_to_left_cardinality": "ONE" | "ZERO_OR_ONE" | "ONE_OR_MORE" | "ZERO_OR_MORE" | null,
+  "relationship_type": "EQUAL" | "COMBINE" | "NO_RELATIONSHIP",
   "left_to_right_xpath": string | null,
-  "right_to_left_xpath": string | null,
-  "assembly": {
-    "mode": "DOCUMENT_ORDER",
-    "container_from_left_xpath": string,
-    "container_from_right_xpath": string,
-    "left_fragment_xpath": string,
-    "right_fragment_xpath": string,
-    "preserve_fragment_boundaries": true
-  } | null
+  "right_to_left_xpath": string | null
 }
-
-Apply these field rules:
-
-- For EQUAL:
-  - `containment_direction` must be null.
-  - Both cardinalities should normally be `ONE`.
-  - `assembly` must be null.
-
-- For COMBINE:
-  - `containment_direction` must be null.
-  - Both cardinalities should normally be `ONE`.
-  - `assembly` must be null.
-
-- For CONTAINS:
-  - `containment_direction` must identify which side is the parent.
-  - Cardinalities must reflect the actual parent-child multiplicity.
-  - `assembly` must be null.
-
-- For MIXED_CONTENT:
-  - `containment_direction` must be null.
-  - Cardinalities must describe the number of associated fragments.
-  - `assembly` must be populated.
-
-- For NO_RELATIONSHIP:
-  - `containment_direction` must be null.
-  - Both cardinalities must be null.
-  - Both navigation XPaths must be null.
-  - `assembly` must be null.
