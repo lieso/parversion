@@ -113,7 +113,7 @@ pub async fn node_relationship_self<R: Reasoner>(
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipSelfResponse))
         .expect("Failed to serialise NodeRelationshipSelfResponse schema");
-    let capability = Capability::Fast;
+    let capability = Capability::Capable;
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");

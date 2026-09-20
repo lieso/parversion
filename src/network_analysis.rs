@@ -26,6 +26,71 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<(HashMap<BasisNetworkID, Arc<BasisNetwork>>,), Errors> {
+
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
+    };
+
+
+    fn recurse(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        current: Graph,
+    ) -> Result<(), Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                ))?
+        };
+
+        let context = meta_context
+            .contexts_lookup
+            .get(&read_lock!(current).id)
+            .unwrap();
+
+        if let Some(basis_node) = {
+            let lock = read_lock!(normalization_context);
+            lock.context_basis_node
+                .as_ref()
+                .and_then(|lookup| lookup.get(&context.id).cloned())
+        } {
+
+            log::info!("Context corresponds to a basis node");
+
+        }
+
+        for child in &read_lock!(current).children {
+            recurse(
+                Arc::clone(&normalization_context),
+                Arc::clone(&child),
+            )?;
+        }
+
+        Ok(())
+    }
+
+    recurse(
+        Arc::clone(&normalization_context),
+        Arc::clone(&meta_context.graph_root),
+    );
+
+    unimplemented!()
+}
+
+pub async fn _generate_basis_networks<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+) -> Result<(HashMap<BasisNetworkID, Arc<BasisNetwork>>,), Errors> {
     log::trace!("In generate_basis_networks");
 
     let basis_nodes: Vec<Arc<BasisNode>> = {
