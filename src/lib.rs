@@ -43,7 +43,6 @@ pub mod translation;
 pub mod translation_context;
 pub mod translation_network;
 pub mod translation_node;
-pub mod traversal;
 pub mod types;
 #[allow(dead_code)]
 pub mod utility;

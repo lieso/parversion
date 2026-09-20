@@ -9,7 +9,6 @@ use crate::data_node::{DataNode, DataNodeFields};
 use crate::graph_node::Graph;
 use crate::id::ID;
 use crate::prelude::*;
-use crate::traversal::Traversal;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {

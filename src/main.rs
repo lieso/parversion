@@ -43,7 +43,6 @@ mod translation;
 mod translation_context;
 mod translation_network;
 mod translation_node;
-mod traversal;
 mod types;
 #[allow(dead_code)]
 mod utility;
