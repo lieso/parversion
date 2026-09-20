@@ -61,16 +61,39 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 .as_ref()
                 .and_then(|lookup| lookup.get(&context.id).cloned())
         } {
-
             log::info!("Context corresponds to a basis node");
 
-        }
+            let edges: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = read_lock!(current)
+                .children
+                .clone()
+                .iter()
+                .map(|child| {
+                    let child_context = meta_context
+                        .contexts_lookup
+                        .get(&read_lock!(child).id)
+                        .unwrap();
 
-        for child in &read_lock!(current).children {
-            recurse(
-                Arc::clone(&normalization_context),
-                Arc::clone(&child),
-            )?;
+                    let lock = read_lock!(normalization_context);
+                    lock.context_basis_node
+                        .as_ref()
+                        .and_then(|lookup| lookup.get(&child_context.id).cloned())
+                })
+                .filter_map(|x| x)
+                .zip(std::iter::repeat(basis_node.clone()))
+                .collect();
+
+
+
+
+            unimplemented!()
+
+        } else {
+            for child in &read_lock!(current).children {
+                recurse(
+                    Arc::clone(&normalization_context),
+                    Arc::clone(&child),
+                )?;
+            }
         }
 
         Ok(())
