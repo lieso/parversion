@@ -287,7 +287,8 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
         }
 
         if basis_network_nodes.is_empty() {
-            panic!("why?");
+            log::error!("Basis network nodes is empty");
+            continue;
         }
 
         let cloned_provider = Arc::clone(&provider);

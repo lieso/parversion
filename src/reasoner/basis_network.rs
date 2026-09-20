@@ -150,7 +150,7 @@ async fn get_user_prompt<R: Reasoner>(
                 .next()
                 .unwrap();
 
-            let context_string = context.generate_context_string_node_relationship(
+            let context_string = context.generate_context_string_basis_network(
                 Arc::clone(&normalization_context),
                 basis_node.clone(),
             )?;

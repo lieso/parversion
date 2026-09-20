@@ -109,6 +109,48 @@ impl Context {
         Ok(result)
     }
 
+    pub fn generate_context_string_basis_network(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_node: Arc<BasisNode>,
+    ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
+                })?
+                .clone()
+        };
+
+        let mut transformed_context = String::new();
+        for transformation in &basis_node.transformations {
+            let transformed = transformation.transform(self.data_node.clone())?;
+
+            for value in transformed.fields.get(&transformation.image) {
+                let truncated = if value.len() > 400 {
+                    format!("{}...", value.chars().take(397).collect::<String>())
+                } else {
+                    value.to_string()
+                };
+                transformed_context.push_str(&format!("{} => {}", transformation.image, truncated));
+            }
+        }
+
+        let result = format!(
+            r##"
+[TRANSFORMED FIELDS]
+{}
+"##,
+            transformed_context
+        );
+
+        Ok(result)
+    }
+
     pub fn generate_context_string_node_relationship(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -201,38 +243,6 @@ impl Context {
         );
 
         Ok(result)
-    }
-
-    pub fn generate_context_string_basis_network(
-        &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        relevant_contexts: Vec<Arc<Context>>,
-    ) -> Result<String, Errors> {
-        let meta_context = {
-            let lock = read_lock!(normalization_context);
-            lock.meta_context
-                .as_ref()
-                .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError(
-                        "Meta context not provided in normalization context".to_string(),
-                    )
-                })?
-                .clone()
-        };
-
-        let mut context_string =
-            self.generate_context_string(&meta_context, relevant_contexts.clone())?;
-
-        if read_lock!(normalization_context).basis_nodes.is_some() {
-            let basis_nodes_context_string = self.generate_basis_nodes_context(
-                Arc::clone(&normalization_context),
-                relevant_contexts.clone(),
-            )?;
-
-            context_string.push_str(&basis_nodes_context_string);
-        }
-
-        Ok(context_string)
     }
 
     pub fn generate_context_string(
