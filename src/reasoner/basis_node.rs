@@ -12,7 +12,7 @@ use crate::transformation::{FieldMetadata, FieldTransformation};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisNodeResponseItem {
-    /// The original field being analyzed (e.g., "TEXT", "ATTRIBUTE=href")
+    /// The original field being analyzed (e.g., "TEXT", "FIELD=href")
     pub source_field: String,
     /// Semantic snake_case identifier reflecting the field's role in the data model
     pub field_name: String,
@@ -96,11 +96,11 @@ pub async fn basis_node<R: Reasoner>(
                 {
                     "text".to_string()
                 } else if let Some(attr_name) =
-                    response_field.source_field.strip_prefix("ATTRIBUTE=")
+                    response_field.source_field.strip_prefix("FIELD=")
                 {
                     attr_name.to_string()
                 } else {
-                    panic!("TODO: parse responses from llm better");
+                    response_field.source_field.to_string()
                 }
             };
 
