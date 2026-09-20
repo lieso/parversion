@@ -127,7 +127,7 @@ impl Json {
 
         Ok((
             vec![MetaContext {
-                contexts,
+                contexts: Arc::new(contexts),
                 graph_root,
                 contexts_lookup: Arc::new(contexts_lookup),
                 document_type: DocumentType::Json,

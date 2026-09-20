@@ -9,7 +9,7 @@ use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct MetaContext {
-    pub contexts: HashMap<ContextID, Arc<Context>>,
+    pub contexts: Arc<HashMap<ContextID, Arc<Context>>>,
     pub graph_root: Graph,
     pub contexts_lookup: Arc<HashMap<ID, Arc<Context>>>,
     pub document_type: DocumentType,

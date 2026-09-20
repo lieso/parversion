@@ -146,7 +146,7 @@ impl Html {
                 let contexts_lookup = read_lock!(contexts_lookup).clone();
 
                 MetaContext {
-                    contexts,
+                    contexts: Arc::new(contexts),
                     graph_root,
                     contexts_lookup: Arc::new(contexts_lookup),
                     document_type: DocumentType::Html,
