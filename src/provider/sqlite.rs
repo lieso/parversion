@@ -78,7 +78,6 @@ impl SqliteProvider {
                 basis_nodes   TEXT PRIMARY KEY,
                 data          TEXT NOT NULL
              );
-
              CREATE TABLE IF NOT EXISTS network_relationships (
                  left_network       TEXT NOT NULL,
                  right_network      TEXT NOT NULL,

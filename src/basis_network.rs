@@ -218,7 +218,7 @@ impl BasisNetwork {
 
             for relationship in current_relationships {
                 if relationship.left_basis_lineage == relationship.right_basis_lineage {
-                    let other_contexts = apply_self_combine(
+                    let other_contexts = self.apply_self_combine(
                         Arc::clone(&normalization_context),
                         current_context.clone(),
                         current_node.clone(),
@@ -473,67 +473,68 @@ impl BasisNetwork {
 
         Ok(next_contexts)
     }
-}
 
-fn apply_self_combine(
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    context: Arc<Context>,
-    basis_node: Arc<BasisNode>,
-    relationship: &NodeRelationship,
-) -> Result<Vec<Arc<Context>>, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .clone()
-            .ok_or(Errors::DeficientNormalizationContextError(
-                "Meta context not provided in normalization context".to_string(),
-            ))?
-    };
-
-    let xpath_str = relationship.scope_xpath.as_ref().unwrap();
-    let xpath = XPath::from_str(&xpath_str)?;
-
-    let mut matching_contexts = Vec::new();
-
-    for target_graph_node in xpath.traverse(
-        Arc::clone(&normalization_context),
-        Arc::clone(&context.graph_node),
-    )? {
-        let lookup_context_basis_node = {
+    fn apply_self_combine(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        context: Arc<Context>,
+        basis_node: Arc<BasisNode>,
+        relationship: &NodeRelationship,
+    ) -> Result<Vec<Arc<Context>>, Errors> {
+        let meta_context = {
             let lock = read_lock!(normalization_context);
-            lock.context_basis_node.as_ref().unwrap().clone()
+            lock.meta_context
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                ))?
         };
 
-        let mut queue: VecDeque<Graph> = VecDeque::new();
-        let mut visited: HashSet<ID> = HashSet::new();
+        let xpath_str = relationship.scope_xpath.as_ref().unwrap();
+        let xpath = XPath::from_str(&xpath_str)?;
 
-        queue.push_back(target_graph_node);
+        let mut matching_contexts = Vec::new();
 
-        while let Some(current_node) = queue.pop_front() {
-            let node_id = read_lock!(current_node).id.clone();
-            if visited.contains(&node_id) {
-                continue;
-            }
-            visited.insert(node_id);
+        for target_graph_node in xpath.traverse(
+            Arc::clone(&normalization_context),
+            Arc::clone(&context.graph_node),
+        )? {
+            let lookup_context_basis_node = {
+                let lock = read_lock!(normalization_context);
+                lock.context_basis_node.as_ref().unwrap().clone()
+            };
 
-            let current_context = meta_context
-                .contexts_lookup
-                .get(&read_lock!(current_node).id)
-                .cloned();
+            let mut queue: VecDeque<Graph> = VecDeque::new();
+            let mut visited: HashSet<ID> = HashSet::new();
 
-            if let Some(ctx) = current_context {
-                if let Some(ctx_basis_node) = lookup_context_basis_node.get(&ctx.id) {
-                    if ctx_basis_node.id == basis_node.id {
-                        matching_contexts.push(ctx);
+            queue.push_back(target_graph_node);
+
+            while let Some(current_node) = queue.pop_front() {
+                let node_id = read_lock!(current_node).id.clone();
+                if visited.contains(&node_id) {
+                    continue;
+                }
+                visited.insert(node_id);
+
+                let current_context = meta_context
+                    .contexts_lookup
+                    .get(&read_lock!(current_node).id)
+                    .cloned();
+
+                if let Some(ctx) = current_context {
+                    if let Some(ctx_basis_node) = lookup_context_basis_node.get(&ctx.id) {
+                        if ctx_basis_node.id == basis_node.id {
+                            matching_contexts.push(ctx);
+                        }
                     }
                 }
-            }
 
-            for child in &read_lock!(current_node).children {
-                queue.push_back(Arc::clone(child));
+                for child in &read_lock!(current_node).children {
+                    queue.push_back(Arc::clone(child));
+                }
             }
         }
-    }
 
-    Ok(matching_contexts)
+        Ok(matching_contexts)
+    }
 }
