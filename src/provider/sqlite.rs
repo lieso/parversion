@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use tokio::task;
 
 use crate::basis_field::BasisField;
-use crate::basis_graph::{BasisGraph, NetworkRelationship};
+use crate::basis_graph::{NetworkRelationship};
 use crate::basis_group::BasisGroup;
 use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_node::BasisNode;
@@ -50,10 +50,6 @@ impl SqliteProvider {
                  right_basis_lineage  TEXT NOT NULL,
                  data                 TEXT NOT NULL,
                  PRIMARY KEY (left_basis_lineage, right_basis_lineage)
-             );
-             CREATE TABLE IF NOT EXISTS basis_graphs (
-                 hash TEXT PRIMARY KEY,
-                 data TEXT NOT NULL
              );
              CREATE TABLE IF NOT EXISTS basis_groups (
                  acyclic_lineage_hash  TEXT NOT NULL,
@@ -208,28 +204,6 @@ impl Provider for SqliteProvider {
             )
             .map_err(|e| db_err(e))?;
             Ok(())
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
-    async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
-        let conn = self.connection.clone();
-        let key = hash.to_string().ok_or(Errors::UnexpectedError(
-            "Database operation failed".to_string(),
-        ))?;
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-            match conn.query_row(
-                "SELECT data FROM basis_graphs WHERE hash = ?1",
-                params![key],
-                |row| row.get::<_, String>(0),
-            ) {
-                Ok(data) => deserialize(data).map(Some),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(db_err(e)),
-            }
         })
         .await
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?

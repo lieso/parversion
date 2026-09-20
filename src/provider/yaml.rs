@@ -213,29 +213,6 @@ impl Provider for YamlFileProvider {
         self.save_data(&yaml).await
     }
 
-    async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
-        let yaml = self.load_data().await?;
-
-        let basis_graphs: Vec<BasisGraph> = yaml
-            .get("basis_graphs")
-            .and_then(|data| {
-                let deserialized: Result<Vec<BasisGraph>, _> = serde_yaml::from_value(data.clone());
-                if let Err(ref err) = deserialized {
-                    log::error!("Deserialization error for basis_graphs: {:?}", err);
-                }
-                deserialized.ok()
-            })
-            .unwrap_or_else(Vec::new);
-
-        for basis_graph in basis_graphs {
-            if &basis_graph.hash == hash {
-                return Ok(Some(basis_graph));
-            }
-        }
-
-        Ok(None)
-    }
-
     async fn save_operation(&self, hash: &Hash, operation: Operation) -> Result<(), Errors> {
         let mut yaml = self.load_data().await?;
 

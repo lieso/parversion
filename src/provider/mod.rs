@@ -67,7 +67,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         lineage: &Lineage,
         classification: Classification,
     ) -> Result<(), Errors>;
-    async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors>;
     async fn save_schema_instance_document(
         &self,
         hash: &Hash,
@@ -194,21 +193,17 @@ impl Provider for VoidProvider {
         Ok(())
     }
 
-    async fn get_basis_graph_by_hash(&self, _hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
-        Ok(None)
-    }
-
     async fn get_basis_fields_by_acyclic_subgraph_hash(
         &self,
-        acyclic_subgraph_hash: &Hash,
+        _acyclic_subgraph_hash: &Hash,
     ) -> Result<Vec<BasisField>, Errors> {
         Ok(Vec::new())
     }
 
     async fn save_basis_fields(
         &self,
-        acyclic_subgraph_hash: &Hash,
-        basis_fields: Vec<BasisField>,
+        _acyclic_subgraph_hash: &Hash,
+        _basis_fields: Vec<BasisField>,
     ) -> Result<(), Errors> {
         Ok(())
     }
@@ -279,32 +274,32 @@ impl Provider for VoidProvider {
 
     async fn get_basis_network(
         &self,
-        basis_nodes: Vec<Arc<BasisNode>>,
+        _basis_nodes: Vec<Arc<BasisNode>>,
     ) -> Result<Option<BasisNetwork>, Errors> {
         Ok(None)
     }
 
     async fn save_basis_network(
         &self,
-        basis_nodes: Vec<Arc<BasisNode>>,
-        basis_network: BasisNetwork,
+        _basis_nodes: Vec<Arc<BasisNode>>,
+        _basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
         Ok(())
     }
 
     async fn get_network_relationship(
         &self,
-        left: Arc<BasisNetwork>,
-        right: Arc<BasisNetwork>,
+        _left: Arc<BasisNetwork>,
+        _right: Arc<BasisNetwork>,
     ) -> Result<Option<NetworkRelationship>, Errors> {
         Ok(None)
     }
 
     async fn save_network_relationship(
         &self,
-        left: Arc<BasisNetwork>,
-        right: Arc<BasisNetwork>,
-        network_relationship: NetworkRelationship,
+        _left: Arc<BasisNetwork>,
+        _right: Arc<BasisNetwork>,
+        _network_relationship: NetworkRelationship,
     ) -> Result<(), Errors> {
         Ok(())
     }
