@@ -7,7 +7,6 @@ use std::sync::RwLock;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LlmConfig {
     pub max_concurrency: usize,
-    pub example_snippet_count: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -70,7 +69,6 @@ impl Default for Config {
         let config = Config {
             llm: LlmConfig {
                 max_concurrency: 1,
-                example_snippet_count: 3,
             },
             dev: DevConfig::default(),
             reasoner: ReasonerConfig::default(),
