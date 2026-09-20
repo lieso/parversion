@@ -205,7 +205,6 @@ pub async fn translate_text_to_package<P: Provider, R: Reasoner>(
 
     Ok(Package {
         document: translated_document,
-        mutations: Vec::new(),
     })
 }
 

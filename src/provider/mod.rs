@@ -8,7 +8,6 @@ use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_node::BasisNode;
 use crate::classification::Classification;
 use crate::document::Document;
-use crate::operation::Operation;
 use crate::prelude::*;
 use crate::translation_network::TranslationNetwork;
 use crate::translation_node::TranslationNode;

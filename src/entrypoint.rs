@@ -405,7 +405,6 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
 
         Ok(Package {
             document: translated_document,
-            mutations: Vec::new(),
         })
     } else {
         let normalized_document = normalization::normalize_text_to_document(
@@ -421,7 +420,6 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
 
         Ok(Package {
             document: normalized_document,
-            mutations: Vec::new(),
         })
     }
 }

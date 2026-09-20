@@ -1,9 +1,7 @@
 use crate::document::Document;
-use crate::mutation::Mutation;
 
 pub struct Package {
     pub document: Document,
-    pub mutations: Vec<Mutation>,
 }
 
 impl Package {

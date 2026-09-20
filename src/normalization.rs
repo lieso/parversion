@@ -295,7 +295,6 @@ pub async fn normalize_document<P: Provider, R: Reasoner>(
 
     Ok(Package {
         document: normalized_document,
-        mutations: Vec::new(),
     })
 }
 
