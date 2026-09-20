@@ -1,10 +1,10 @@
-use std::sync::Arc;
 use schemars::JsonSchema;
 use serde::Deserialize;
+use std::sync::Arc;
 
-use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
 use crate::classification::Classification;
+use crate::prelude::*;
+use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ClassificationResponse {
@@ -22,7 +22,7 @@ pub struct ClassificationResponse {
 
 pub async fn classify<R: Reasoner>(
     reasoner: &R,
-    meta_context: Arc<MetaContext>
+    meta_context: Arc<MetaContext>,
 ) -> Result<(Classification, ReasonerMetadata), Errors> {
     log::trace!("In classify");
 
@@ -50,16 +50,16 @@ pub async fn classify<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
     log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<ClassificationResponse>(
-        &capability,
-        &system_prompt,
-        &user_prompt,
-        schema,
-    ).await?;
+    let (result, metadata) = reasoner
+        .execute::<ClassificationResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
@@ -69,11 +69,10 @@ pub async fn classify<R: Reasoner>(
     let classification = Classification {
         id: ID::new(),
         name: result.category.clone(),
-        aliases: result.one_word_aliases
+        aliases: result
+            .one_word_aliases
             .iter()
-            .chain(
-                &result.two_word_aliases
-            )
+            .chain(&result.two_word_aliases)
             .cloned()
             .collect(),
         structure: result.structure.clone(),
@@ -85,7 +84,10 @@ pub async fn classify<R: Reasoner>(
     Ok((classification, reasoner_metadata))
 }
 
-async fn get_system_prompt<R: Reasoner>(reasoner: &R, meta_context: Arc<MetaContext>) -> Result<String, Errors> {
+async fn get_system_prompt<R: Reasoner>(
+    reasoner: &R,
+    meta_context: Arc<MetaContext>,
+) -> Result<String, Errors> {
     let subgraph_hash = {
         let lock = read_lock!(meta_context.graph_root);
         lock.subgraph_hash.clone().to_string().unwrap()
@@ -95,7 +97,7 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R, meta_context: Arc<MetaCont
 
     let paths_to_try: Vec<String> = vec![
         format!("{}/{}", document_type, subgraph_hash),
-        format!("{}", document_type)
+        format!("{}", document_type),
     ];
 
     for path in paths_to_try {
@@ -104,6 +106,8 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R, meta_context: Arc<MetaCont
             return Ok(system_prompt);
         }
     }
-    
-    Err(Errors::UnavailableSystemPrompt("Expected a classify.txt system prompt in prompts directory".to_string()))
+
+    Err(Errors::UnavailableSystemPrompt(
+        "Expected a classify.txt system prompt in prompts directory".to_string(),
+    ))
 }

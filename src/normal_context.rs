@@ -1,9 +1,9 @@
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::graph_node::GraphNode;
-use crate::data_node::DataNode;
 use crate::context::Context;
+use crate::data_node::DataNode;
+use crate::graph_node::GraphNode;
+use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct NormalContext {

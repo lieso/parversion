@@ -1,21 +1,21 @@
+use serde_json::{json, Map, Value};
 use std::sync::{Arc, RwLock};
-use serde_json::{json, Value, Map};
 
-use crate::document::{Document, DocumentType, DocumentRole};
+use crate::data_node::DataNode;
+use crate::document::{Document, DocumentRole, DocumentType};
 use crate::document_format::DocumentFormat;
-use crate::normalization_context::NormalizationContext;
-use crate::translation_context::TranslationContext;
+use crate::graph_node::Graph;
+use crate::network_analysis::get_translation_networks;
+use crate::node_analysis::get_translation_nodes;
+use crate::normalization;
 use crate::normalization::normalize;
+use crate::normalization_context::NormalizationContext;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::normalization;
-use crate::node_analysis::{get_translation_nodes};
-use crate::network_analysis::{get_translation_networks};
-use crate::graph_node::Graph;
-use crate::translation_node::TranslationNode;
+use crate::translation_context::TranslationContext;
 use crate::translation_network::TranslationNetwork;
-use crate::data_node::DataNode;
+use crate::translation_node::TranslationNode;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -34,19 +34,19 @@ pub async fn translate<P: Provider, R: Reasoner>(
         target,
         options,
         execution_context.clone(),
-    ).await?;
+    )
+    .await?;
 
     let stage = execution_context.enter_stage("Translating nodes");
 
-    let translation_nodes = 
-        get_translation_nodes(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            Arc::clone(&translation_context),
-            &options,
-            &stage,
-        )
-        .await?;
+    let translation_nodes = get_translation_nodes(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&translation_context),
+        &options,
+        &stage,
+    )
+    .await?;
 
     {
         let mut lock = write_lock!(translation_context);
@@ -56,15 +56,14 @@ pub async fn translate<P: Provider, R: Reasoner>(
     stage.finish();
     let stage = execution_context.enter_stage("Translating networks");
 
-    let translation_networks =
-        get_translation_networks(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            Arc::clone(&translation_context),
-            &options,
-            &stage,
-        )
-        .await?;
+    let translation_networks = get_translation_networks(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&translation_context),
+        &options,
+        &stage,
+    )
+    .await?;
 
     {
         let mut lock = write_lock!(translation_context);
@@ -82,7 +81,7 @@ pub async fn translate_json<P: Provider, R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     translation_context: Arc<RwLock<TranslationContext>>,
     document: Document,
-    options: &Options
+    options: &Options,
 ) -> Result<(), Errors> {
     log::trace!("In translate_json");
 
@@ -99,7 +98,7 @@ pub async fn translate_json<P: Provider, R: Reasoner>(
             wrap_text: None,
             exclude_nulls: None,
             custom_delimiter: None,
-        }
+        },
     )?;
 
     unimplemented!();
@@ -132,12 +131,11 @@ pub async fn translate_text_to_document<P: Provider, R: Reasoner>(
         target,
         options,
         execution_context,
-    ).await?;
+    )
+    .await?;
 
-    let translated_document = Document::from_translation(
-        Arc::clone(&translation_context),
-        document_format
-    )?;
+    let translated_document =
+        Document::from_translation(Arc::clone(&translation_context), document_format)?;
 
     Ok(translated_document)
 }
@@ -156,17 +154,16 @@ pub async fn translate_text<P: Provider, R: Reasoner>(
 
     let target_document = {
         match target.1.role {
-            DocumentRole::Instance => {
-                Document::from_string(target.0, options, target.1)?
-            },
+            DocumentRole::Instance => Document::from_string(target.0, options, target.1)?,
             DocumentRole::Schema => {
                 Document::from_schema_string(
                     Arc::clone(&provider),
                     Arc::clone(&reasoner),
                     target.0,
                     options,
-                    target.1
-                ).await?
+                    target.1,
+                )
+                .await?
             }
         }
     };
@@ -178,7 +175,8 @@ pub async fn translate_text<P: Provider, R: Reasoner>(
         target_document,
         options,
         execution_context.clone(),
-    ).await?;
+    )
+    .await?;
 
     Ok(translation_context)
 }
@@ -202,7 +200,8 @@ pub async fn translate_text_to_package<P: Provider, R: Reasoner>(
         options,
         document_format,
         execution_context,
-    ).await?;
+    )
+    .await?;
 
     Ok(Package {
         document: translated_document,
@@ -226,7 +225,8 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
         source,
         options,
         execution_context.clone(),
-    ).await?;
+    )
+    .await?;
 
     let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
 

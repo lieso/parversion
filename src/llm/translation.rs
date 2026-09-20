@@ -6,8 +6,8 @@ use openrouter_rs::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::prelude::*;
 use crate::environment::get_env_variable;
+use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TranslateNetworksResponseMetadata {
@@ -42,7 +42,7 @@ pub struct Translation;
 
 impl Translation {
     pub async fn translate_networks(
-        user_prompt: &str
+        user_prompt: &str,
     ) -> Result<(TranslateNetworksResponse, TranslateNetworksResponseMetadata), Errors> {
         log::trace!("In translate_networks");
 
@@ -189,7 +189,9 @@ Example Output:
                                     "╚═══════════════════════════════════════════════════════════════╝"
                                 );
                                 log::error!("Failed to parse LLM response: {}", e);
-                                Err(Errors::UnexpectedError("Failed to parse LLM response".to_string()))
+                                Err(Errors::UnexpectedError(
+                                    "Failed to parse LLM response".to_string(),
+                                ))
                             }
                         }
                     }?;
@@ -200,9 +202,7 @@ Example Output:
                                 tokens: usage.total_tokens as u64,
                             }
                         } else {
-                            TranslateNetworksResponseMetadata {
-                                tokens: 0,
-                            }
+                            TranslateNetworksResponseMetadata { tokens: 0 }
                         }
                     };
 
@@ -218,7 +218,9 @@ Example Output:
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
+                    Err(Errors::UnexpectedError(
+                        "No content in LLM response".to_string(),
+                    ))
                 }
             }
             Err(e) => {
@@ -226,13 +228,15 @@ Example Output:
                 log::error!("║                    REQUEST ERROR                              ║");
                 log::error!("╚═══════════════════════════════════════════════════════════════╝");
                 log::error!("Failed to get response from OpenRouter: {}", e);
-                Err(Errors::UnexpectedError("Failed to get response from OpenRouter".to_string()))
+                Err(Errors::UnexpectedError(
+                    "Failed to get response from OpenRouter".to_string(),
+                ))
             }
         }
     }
 
     pub async fn translate_nodes(
-        user_prompt: &str
+        user_prompt: &str,
     ) -> Result<(TranslateNodesResponse, TranslateNodesResponseMetadata), Errors> {
         log::trace!("In translate_nodes");
 
@@ -390,7 +394,9 @@ If the values are already in the exact same format and type, `transform_code` sh
                                     "╚═══════════════════════════════════════════════════════════════╝"
                                 );
                                 log::error!("Failed to parse LLM response: {}", e);
-                                Err(Errors::UnexpectedError("Failed to parse LLM response".to_string()))
+                                Err(Errors::UnexpectedError(
+                                    "Failed to parse LLM response".to_string(),
+                                ))
                             }
                         }
                     }?;
@@ -401,9 +407,7 @@ If the values are already in the exact same format and type, `transform_code` sh
                                 tokens: usage.total_tokens as u64,
                             }
                         } else {
-                            TranslateNodesResponseMetadata {
-                                tokens: 0,
-                            }
+                            TranslateNodesResponseMetadata { tokens: 0 }
                         }
                     };
 
@@ -419,7 +423,9 @@ If the values are already in the exact same format and type, `transform_code` sh
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
+                    Err(Errors::UnexpectedError(
+                        "No content in LLM response".to_string(),
+                    ))
                 }
             }
             Err(e) => {
@@ -427,7 +433,9 @@ If the values are already in the exact same format and type, `transform_code` sh
                 log::error!("║                    REQUEST ERROR                              ║");
                 log::error!("╚═══════════════════════════════════════════════════════════════╝");
                 log::error!("Failed to get response from OpenRouter: {}", e);
-                Err(Errors::UnexpectedError("Failed to get response from OpenRouter".to_string()))
+                Err(Errors::UnexpectedError(
+                    "Failed to get response from OpenRouter".to_string(),
+                ))
             }
         }
     }

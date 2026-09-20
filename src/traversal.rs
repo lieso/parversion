@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
 use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 
+use crate::graph_node::Graph;
 use crate::prelude::*;
 use crate::xpath::XPath;
-use crate::graph_node::Graph;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TraversalValue {
@@ -20,7 +20,9 @@ pub struct Traversal {
     pub filter_function: String,
 }
 
-pub fn get_original_document_condensed(normalization_context: Arc<RwLock<NormalizationContext>>) -> Result<String, Errors> {
+pub fn get_original_document_condensed(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<String, Errors> {
     let mut document = String::new();
     let mut visited_lineages: HashSet<Lineage> = HashSet::new();
     let root_node = {
@@ -46,7 +48,12 @@ fn traverse_for_condensed_document(
 ) {
     let lock = read_lock!(current_node);
     let current_id = lock.id.clone();
-    let contexts_lookup = read_lock!(normalization_context).meta_context.as_ref().unwrap().contexts_lookup.clone();
+    let contexts_lookup = read_lock!(normalization_context)
+        .meta_context
+        .as_ref()
+        .unwrap()
+        .contexts_lookup
+        .clone();
     let current_context = contexts_lookup.get(&current_id).unwrap();
     let current_lineage = current_context.lineage.clone();
     let document_node = current_context.document_node.clone();

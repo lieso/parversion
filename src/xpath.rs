@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{RwLock, Arc};
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
 use crate::graph_node::{Graph, GraphNode};
+use crate::prelude::*;
 
 thread_local! {
     static XPATH_CACHE: RefCell<HashMap<(ID, Vec<XPathSegment>), Vec<Graph>>> = RefCell::new(HashMap::new());
@@ -61,7 +61,8 @@ impl XPath {
         for (index, segment) in self.segments.iter().enumerate() {
             let cache_key = (start_id.clone(), self.segments[0..=index].to_vec());
 
-            if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned()) {
+            if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned())
+            {
                 current = cached;
                 if current.is_empty() {
                     return Ok(Vec::new());
@@ -75,10 +76,10 @@ impl XPath {
                     GraphNode::traverse_using_xpath_segment(
                         Arc::clone(&normalization_context),
                         Arc::clone(graph),
-                        segment
+                        segment,
                     )
                 })
-            .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
+                .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
                 .into_iter()
                 .flatten()
                 .collect();
@@ -216,7 +217,8 @@ impl XPathSegment {
         } else {
             format!("{}::", self.axis.to_str())
         };
-        let predicate_suffix: String = self.predicates
+        let predicate_suffix: String = self
+            .predicates
             .iter()
             .map(|pred| format!("[{}]", pred.to_string()))
             .collect();
@@ -250,7 +252,7 @@ impl XPathAxis {
             XPathAxis::FollowingSibling => "following-sibling",
             XPathAxis::PrecedingSibling => "preceding-sibling",
             XPathAxis::Following => "following",
-            XPathAxis::Preceding => "preceding"
+            XPathAxis::Preceding => "preceding",
         }
     }
 }
@@ -306,22 +308,48 @@ impl XPathPredicate {
             } else {
                 Ok(XPathPredicate::AttributePresence(vec![inner.to_string()]))
             }
-        } else if let Some(inner) = s.strip_prefix("contains(normalize-space(.)").and_then(|s| s.strip_suffix(')')) {
-            let value = inner.trim_start_matches(',').trim().trim_matches('\'').trim_matches('"').to_string();
+        } else if let Some(inner) = s
+            .strip_prefix("contains(normalize-space(.)")
+            .and_then(|s| s.strip_suffix(')'))
+        {
+            let value = inner
+                .trim_start_matches(',')
+                .trim()
+                .trim_matches('\'')
+                .trim_matches('"')
+                .to_string();
             Ok(XPathPredicate::ContainsNormalized { value })
-        } else if let Some(inner) = s.strip_prefix("contains(").and_then(|s| s.strip_suffix(')')) {
-            let (attr_part, val_part) = inner.split_once(',')
-                .ok_or_else(|| Errors::XPathParseError(format!("Invalid contains() predicate: {}", s)))?;
+        } else if let Some(inner) = s
+            .strip_prefix("contains(")
+            .and_then(|s| s.strip_suffix(')'))
+        {
+            let (attr_part, val_part) = inner.split_once(',').ok_or_else(|| {
+                Errors::XPathParseError(format!("Invalid contains() predicate: {}", s))
+            })?;
             let name = attr_part.trim().trim_start_matches('@').to_string();
-            let value = val_part.trim().trim_matches('\'').trim_matches('"').to_string();
+            let value = val_part
+                .trim()
+                .trim_matches('\'')
+                .trim_matches('"')
+                .to_string();
             Ok(XPathPredicate::Contains { name, value })
         } else if let Some(inner) = s.strip_prefix("not(").and_then(|s| s.strip_suffix(')')) {
-            Ok(XPathPredicate::Not(Box::new(XPathPredicate::from_str(inner)?)))
-        } else if let Some(inner) = s.strip_prefix("starts-with(").and_then(|s| s.strip_suffix(')')) {
-            let (attr_part, val_part) = inner.split_once(',')
-                .ok_or_else(|| Errors::XPathParseError(format!("Invalid starts-with() predicate: {}", s)))?;
+            Ok(XPathPredicate::Not(Box::new(XPathPredicate::from_str(
+                inner,
+            )?)))
+        } else if let Some(inner) = s
+            .strip_prefix("starts-with(")
+            .and_then(|s| s.strip_suffix(')'))
+        {
+            let (attr_part, val_part) = inner.split_once(',').ok_or_else(|| {
+                Errors::XPathParseError(format!("Invalid starts-with() predicate: {}", s))
+            })?;
             let name = attr_part.trim().trim_start_matches('@').to_string();
-            let value = val_part.trim().trim_matches('\'').trim_matches('"').to_string();
+            let value = val_part
+                .trim()
+                .trim_matches('\'')
+                .trim_matches('"')
+                .to_string();
             Ok(XPathPredicate::StartsWith { name, value })
         } else if let Ok(pos) = s.parse::<usize>() {
             Ok(XPathPredicate::Position(pos))
@@ -341,20 +369,20 @@ impl XPathPredicate {
             XPathPredicate::Attribute { name, value } => format!("@{}='{}'", name, value),
             XPathPredicate::Contains { name, value } => format!("contains(@{},'{}')", name, value),
             XPathPredicate::Last => "last()".to_string(),
-            XPathPredicate::AttributePresence(attrs) => {
-                attrs.iter()
-                    .map(|attr| format!("@{}", attr))
-                    .collect::<Vec<_>>()
-                    .join(" and ")
-            },
-            XPathPredicate::StartsWith { name, value } => format!("starts-with(@{},'{}')", name, value),
+            XPathPredicate::AttributePresence(attrs) => attrs
+                .iter()
+                .map(|attr| format!("@{}", attr))
+                .collect::<Vec<_>>()
+                .join(" and "),
+            XPathPredicate::StartsWith { name, value } => {
+                format!("starts-with(@{},'{}')", name, value)
+            }
             XPathPredicate::Path(path) => path.to_string(),
-            XPathPredicate::And(predicates) => {
-                predicates.iter()
-                    .map(|p| p.to_string())
-                    .collect::<Vec<_>>()
-                    .join(" and ")
-            },
+            XPathPredicate::And(predicates) => predicates
+                .iter()
+                .map(|p| p.to_string())
+                .collect::<Vec<_>>()
+                .join(" and "),
             XPathPredicate::ContainsNormalized { value } => {
                 format!("contains(normalize-space(.),'{}'')", value)
             }

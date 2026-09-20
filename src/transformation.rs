@@ -1,15 +1,15 @@
 use quick_js::Context as QuickContext;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
+use crate::basis_network::BasisNetwork;
 use crate::data_node::{DataNode, DataNodeFields};
+use crate::graph_node::Graph;
 use crate::id::ID;
 use crate::prelude::*;
-use crate::basis_network::BasisNetwork;
 use crate::traversal::Traversal;
-use crate::graph_node::Graph;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Runtime {
@@ -19,21 +19,12 @@ pub enum Runtime {
     QuickJS,
 }
 
-
-
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NetworkTranslationTransformation {
     pub id: ID,
     pub image: String,
     pub cardinality: String,
 }
-
-
-
-
-
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldTranslationTransformation {
@@ -62,18 +53,6 @@ impl FieldTranslationTransformation {
         Ok(transformed)
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisFieldTransformation {

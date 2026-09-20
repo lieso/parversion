@@ -1,9 +1,9 @@
-use std::sync::Arc;
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 
-use crate::prelude::*;
 use crate::graph_node::Graph;
 use crate::normal_context::NormalContext;
+use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct NormalMetaContext {

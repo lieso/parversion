@@ -1,20 +1,23 @@
-use futures::future::try_join_all;
-use std::sync::{Arc, RwLock};
-use std::collections::{HashMap};
-use tokio::task;
 use async_recursion::async_recursion;
+use futures::future::try_join_all;
 use rayon::prelude::*;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use tokio::task;
 
-use crate::prelude::*;
 use crate::basis_field::BasisField;
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
+use crate::prelude::*;
 
 pub fn resolve_context_groups(
     normalization_context: Arc<RwLock<NormalizationContext>>,
-) -> Result<(
-    HashMap<BasisGroupID, Vec<Arc<Context>>>,
-    HashMap<ContextID, Arc<BasisGroup>>
-), Errors> {
+) -> Result<
+    (
+        HashMap<BasisGroupID, Vec<Arc<Context>>>,
+        HashMap<ContextID, Arc<BasisGroup>>,
+    ),
+    Errors,
+> {
     log::trace!("In resolve_context_groups");
 
     let non_empty_contexts = get_non_empty_contexts(Arc::clone(&normalization_context))?;
@@ -25,38 +28,53 @@ pub fn resolve_context_groups(
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis groups not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis groups not provided in normalization context".to_string(),
+                )
             })?
             .values()
             .cloned()
             .collect::<Vec<_>>()
     };
 
-    let mut basis_group_lookup: HashMap<(Lineage, Option<Lineage>, Option<Lineage>), Arc<BasisGroup>> = HashMap::new();
+    let mut basis_group_lookup: HashMap<
+        (Lineage, Option<Lineage>, Option<Lineage>),
+        Arc<BasisGroup>,
+    > = HashMap::new();
 
     for group in basis_groups {
         let key = (
             group.acyclic_lineage.clone(),
             group.lineage.clone(),
-            group.indexed_lineage.clone()
+            group.indexed_lineage.clone(),
         );
 
         basis_group_lookup.insert(key, group.clone());
     }
 
-    let mut context_groups: Arc<RwLock<HashMap<BasisGroupID, Vec<Arc<Context>>>>> = Arc::new(RwLock::new(HashMap::new()));
-    let mut context_to_group: Arc<RwLock<HashMap<ContextID, Arc<BasisGroup>>>> = Arc::new(RwLock::new(HashMap::new()));
+    let mut context_groups: Arc<RwLock<HashMap<BasisGroupID, Vec<Arc<Context>>>>> =
+        Arc::new(RwLock::new(HashMap::new()));
+    let mut context_to_group: Arc<RwLock<HashMap<ContextID, Arc<BasisGroup>>>> =
+        Arc::new(RwLock::new(HashMap::new()));
 
     non_empty_contexts.par_iter().for_each(|context| {
-        if let Some(basis_group) = basis_group_lookup.get(
-            &(context.acyclic_lineage.clone(), None, None)
-        ) {
-            write_lock!(context_groups).entry(basis_group.id.clone()).or_default().push(context.clone());
+        if let Some(basis_group) =
+            basis_group_lookup.get(&(context.acyclic_lineage.clone(), None, None))
+        {
+            write_lock!(context_groups)
+                .entry(basis_group.id.clone())
+                .or_default()
+                .push(context.clone());
             write_lock!(context_to_group).insert(context.id.clone(), basis_group.clone());
-        } else if let Some(basis_group) = basis_group_lookup.get(
-            &(context.acyclic_lineage.clone(), Some(context.lineage.clone()), None)
-        ) {
-            write_lock!(context_groups).entry(basis_group.id.clone()).or_default().push(context.clone());
+        } else if let Some(basis_group) = basis_group_lookup.get(&(
+            context.acyclic_lineage.clone(),
+            Some(context.lineage.clone()),
+            None,
+        )) {
+            write_lock!(context_groups)
+                .entry(basis_group.id.clone())
+                .or_default()
+                .push(context.clone());
             write_lock!(context_to_group).insert(context.id.clone(), basis_group.clone());
         } else {
             let mut depth = 0;
@@ -66,10 +84,15 @@ pub fn resolve_context_groups(
                     break;
                 };
 
-                if let Some(basis_group) = basis_group_lookup.get(
-                    &(context.acyclic_lineage.clone(), Some(context.lineage.clone()), Some(indexed_lineage))
-                ) {
-                    write_lock!(context_groups).entry(basis_group.id.clone()).or_default().push(context.clone());
+                if let Some(basis_group) = basis_group_lookup.get(&(
+                    context.acyclic_lineage.clone(),
+                    Some(context.lineage.clone()),
+                    Some(indexed_lineage),
+                )) {
+                    write_lock!(context_groups)
+                        .entry(basis_group.id.clone())
+                        .or_default()
+                        .push(context.clone());
                     write_lock!(context_to_group).insert(context.id.clone(), basis_group.clone());
                     break;
                 } else {
@@ -161,7 +184,9 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
 
     let maybe_basis_groups = {
         if !options.regenerate {
-            provider.get_basis_groups_by_acyclic_lineage(&acyclic_lineage).await?
+            provider
+                .get_basis_groups_by_acyclic_lineage(&acyclic_lineage)
+                .await?
         } else {
             None
         }
@@ -182,7 +207,7 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
             indexed_lineage: None,
             metadata: BasisGroupMetadata {
                 prompts: Vec::new(),
-            }
+            },
         };
 
         return Ok(vec![basis_group]);
@@ -190,13 +215,15 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
 
     let (maybe_basis_group, maybe_metadata) = {
         if maybe_basis_groups.is_none() {
-            let (maybe_basis_group, metadata) = reasoner.basis_group(
-                Arc::clone(&normalization_context),
-                candidate_group.clone(),
-                acyclic_lineage.clone(),
-                None,
-                None,
-            ).await?;
+            let (maybe_basis_group, metadata) = reasoner
+                .basis_group(
+                    Arc::clone(&normalization_context),
+                    candidate_group.clone(),
+                    acyclic_lineage.clone(),
+                    None,
+                    None,
+                )
+                .await?;
 
             stage_context.record_events("Group analysis", metadata.tokens.into());
 
@@ -206,12 +233,9 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
         }
     };
 
-    provider.save_basis_group(
-        &acyclic_lineage,
-        None,
-        None,
-        maybe_basis_group.clone()
-    ).await?;
+    provider
+        .save_basis_group(&acyclic_lineage, None, None, maybe_basis_group.clone())
+        .await?;
 
     if let Some(basis_group) = maybe_basis_group {
         return Ok(vec![basis_group]);
@@ -226,7 +250,10 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
             .or_insert_with(Vec::new)
             .push(context.clone());
     }
-    log::info!("Number of cyclic contexts in candidate group: {}", cyclic_contexts.len());
+    log::info!(
+        "Number of cyclic contexts in candidate group: {}",
+        cyclic_contexts.len()
+    );
 
     let mut handles = Vec::new();
 
@@ -264,7 +291,10 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
         .flatten()
         .map(|mut basis_group| {
             if let Some(ref metadata) = maybe_metadata {
-                basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+                basis_group
+                    .metadata
+                    .prompts
+                    .push(metadata.prompt_hash.clone());
             }
             basis_group
         })
@@ -281,13 +311,15 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
     lineage: Lineage,
     candidate_group: Vec<Arc<Context>>,
     options: Options,
-    stage_context: StageContext
+    stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
     stage_context.record_events("Group analysis", 0);
 
     let maybe_basis_groups = {
         if !options.regenerate {
-            provider.get_basis_groups_by_lineage(&acyclic_lineage, &lineage).await?
+            provider
+                .get_basis_groups_by_lineage(&acyclic_lineage, &lineage)
+                .await?
         } else {
             None
         }
@@ -307,8 +339,8 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
             lineage: Some(lineage.clone()),
             indexed_lineage: None,
             metadata: BasisGroupMetadata {
-                prompts: Vec::new()
-            }
+                prompts: Vec::new(),
+            },
         };
 
         return Ok(vec![basis_group]);
@@ -316,13 +348,15 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
 
     let (maybe_basis_group, maybe_metadata) = {
         if maybe_basis_groups.is_none() {
-            let (maybe_basis_group, metadata) = reasoner.basis_group(
-                Arc::clone(&normalization_context),
-                candidate_group.clone(),
-                acyclic_lineage.clone(),
-                Some(lineage.clone()),
-                None,
-            ).await?;
+            let (maybe_basis_group, metadata) = reasoner
+                .basis_group(
+                    Arc::clone(&normalization_context),
+                    candidate_group.clone(),
+                    acyclic_lineage.clone(),
+                    Some(lineage.clone()),
+                    None,
+                )
+                .await?;
 
             stage_context.record_events("Group analysis", metadata.tokens.into());
 
@@ -332,12 +366,14 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
         }
     };
 
-    provider.save_basis_group(
-        &acyclic_lineage,
-        Some(&lineage),
-        None,
-        maybe_basis_group.clone()
-    ).await?;
+    provider
+        .save_basis_group(
+            &acyclic_lineage,
+            Some(&lineage),
+            None,
+            maybe_basis_group.clone(),
+        )
+        .await?;
 
     if let Some(basis_group) = maybe_basis_group {
         return Ok(vec![basis_group]);
@@ -345,10 +381,8 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
 
     log::info!("Contexts with cyclic lineage: {} have been inferred to not match. Proceeding to recursively subgroup by indexed lineage", lineage.to_string());
 
-    let (indexed_contexts, singular_contexts, depth) = collect_indexed_subgroups(
-        candidate_group.clone(),
-        0
-    );
+    let (indexed_contexts, singular_contexts, depth) =
+        collect_indexed_subgroups(candidate_group.clone(), 0);
 
     if singular_contexts.len() == candidate_group.len() {
         //unimplemented!();
@@ -376,7 +410,7 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
                 candidate_subgroup,
                 depth,
                 cloned_options,
-                cloned_stage_context
+                cloned_stage_context,
             )
             .await
         });
@@ -392,7 +426,10 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
         .flatten()
         .map(|mut basis_group| {
             if let Some(ref metadata) = maybe_metadata {
-                basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+                basis_group
+                    .metadata
+                    .prompts
+                    .push(metadata.prompt_hash.clone());
             }
             basis_group
         })
@@ -415,14 +452,12 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
     stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
     stage_context.record_events("Group analysis", 0);
-    
+
     let maybe_basis_groups = {
         if !options.regenerate {
-            provider.get_basis_groups_by_indexed_lineage(
-                &acyclic_lineage,
-                &lineage,
-                &indexed_lineage
-            ).await?
+            provider
+                .get_basis_groups_by_indexed_lineage(&acyclic_lineage, &lineage, &indexed_lineage)
+                .await?
         } else {
             None
         }
@@ -443,7 +478,7 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
             indexed_lineage: Some(indexed_lineage.clone()),
             metadata: BasisGroupMetadata {
                 prompts: Vec::new(),
-            }
+            },
         };
 
         return Ok(vec![basis_group]);
@@ -451,13 +486,15 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
 
     let (maybe_basis_group, maybe_metadata) = {
         if maybe_basis_groups.is_none() {
-            let (maybe_basis_group, metadata) = reasoner.basis_group(
-                Arc::clone(&normalization_context),
-                candidate_group.clone(),
-                acyclic_lineage.clone(),
-                Some(lineage.clone()),
-                Some(indexed_lineage.clone())
-            ).await?;
+            let (maybe_basis_group, metadata) = reasoner
+                .basis_group(
+                    Arc::clone(&normalization_context),
+                    candidate_group.clone(),
+                    acyclic_lineage.clone(),
+                    Some(lineage.clone()),
+                    Some(indexed_lineage.clone()),
+                )
+                .await?;
 
             stage_context.record_events("Group analysis", metadata.tokens.into());
 
@@ -467,24 +504,23 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
         }
     };
 
-    provider.save_basis_group(
-        &acyclic_lineage,
-        Some(&lineage),
-        Some(&indexed_lineage),
-        maybe_basis_group.clone()
-    ).await?;
+    provider
+        .save_basis_group(
+            &acyclic_lineage,
+            Some(&lineage),
+            Some(&indexed_lineage),
+            maybe_basis_group.clone(),
+        )
+        .await?;
 
     if let Some(basis_group) = maybe_basis_group {
-
         return Ok(vec![basis_group]);
     }
 
     log::info!("Contexts with indexed lineage: {} have been inferred to not match. Proceeding to increase depth", indexed_lineage.to_string());
 
-    let (indexed_contexts, singular_contexts, next_depth) = collect_indexed_subgroups(
-        candidate_group.clone(),
-        depth + 1,
-    );
+    let (indexed_contexts, singular_contexts, next_depth) =
+        collect_indexed_subgroups(candidate_group.clone(), depth + 1);
 
     if singular_contexts.len() == candidate_group.len() {
         //unimplemented!();
@@ -518,7 +554,7 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
         });
         handles.push(handle);
     }
-    
+
     let results: Vec<Result<Vec<BasisGroup>, Errors>> = try_join_all(handles).await?;
 
     let flattened: Vec<BasisGroup> = results
@@ -528,7 +564,10 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
         .flatten()
         .map(|mut basis_group| {
             if let Some(ref metadata) = maybe_metadata {
-                basis_group.metadata.prompts.push(metadata.prompt_hash.clone());
+                basis_group
+                    .metadata
+                    .prompts
+                    .push(metadata.prompt_hash.clone());
             }
             basis_group
         })
@@ -539,11 +578,11 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
 
 fn collect_indexed_subgroups(
     candidate_group: Vec<Arc<Context>>,
-    start_depth: usize
+    start_depth: usize,
 ) -> (
-    HashMap<Lineage, Vec<Arc<Context>>>, 
+    HashMap<Lineage, Vec<Arc<Context>>>,
     Vec<Arc<Context>>, // singular contexts
-    usize // depth
+    usize,             // depth
 ) {
     let mut next_depth = start_depth;
     let mut indexed_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
@@ -578,14 +617,16 @@ fn collect_indexed_subgroups(
     (indexed_contexts, singular_contexts, next_depth)
 }
 
-fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext>>) -> Result<Vec<Arc<Context>>, Errors> {
+fn get_non_empty_contexts(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<Vec<Arc<Context>>, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Contexts not provided in normalization context".to_string())
-            })?
+        lock.meta_context.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Contexts not provided in normalization context".to_string(),
+            )
+        })?
     };
 
     let basis_fields: Vec<Arc<BasisField>> = {
@@ -593,7 +634,9 @@ fn get_non_empty_contexts(normalization_context: Arc<RwLock<NormalizationContext
         lock.basis_fields
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis fields not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis fields not provided in normalization context".to_string(),
+                )
             })?
             .values()
             .cloned()

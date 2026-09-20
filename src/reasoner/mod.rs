@@ -1,26 +1,26 @@
 use async_trait::async_trait;
-use std::sync::{Arc, RwLock};
 use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::hash::Hash;
-use crate::classification::Classification;
-use crate::prompt_registry::PromptRegistry;
 use crate::basis_field::BasisField;
-use crate::basis_group::BasisGroup;
-use crate::basis_node::BasisNode;
-use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_graph::{BasisGraph, NetworkRelationship};
+use crate::basis_group::BasisGroup;
+use crate::basis_network::{BasisNetwork, NodeRelationship};
+use crate::basis_node::BasisNode;
+use crate::classification::Classification;
+use crate::hash::Hash;
+use crate::prelude::*;
+use crate::prompt_registry::PromptRegistry;
 
 mod backend;
-mod classify;
 mod basis_field;
 mod basis_group;
-mod basis_node;
-mod sampling;
-mod node_relationship;
 mod basis_network;
+mod basis_node;
+mod classify;
 mod network_relationship;
+mod node_relationship;
+mod sampling;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -55,7 +55,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         capability: &Capability,
         system_prompt: &str,
         user_prompt: &str,
-        schema: serde_json::Value
+        schema: serde_json::Value,
     ) -> Result<(String, CompletionMetadata), Errors>;
 
     async fn execute<T: for<'de> serde::Deserialize<'de>>(
@@ -63,19 +63,17 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         capability: &Capability,
         system_prompt: &str,
         user_prompt: &str,
-        schema: serde_json::Value
+        schema: serde_json::Value,
     ) -> Result<(T, CompletionMetadata), Errors> {
         let mut backoff = std::time::Duration::from_millis(100);
         let max_backoff = std::time::Duration::from_secs(30);
         let max_retries = 5;
 
         for attempt in 0..=max_retries {
-            match self.complete(
-                capability,
-                system_prompt,
-                user_prompt,
-                schema.clone()
-            ).await {
+            match self
+                .complete(capability, system_prompt, user_prompt, schema.clone())
+                .await
+            {
                 Ok((content, metadata)) => {
                     let parsed = serde_json::from_str::<T>(&content).map_err(|e| {
                         log::error!("Failed to parse reasoner response: {}", e);
@@ -85,7 +83,11 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
                     return Ok((parsed, metadata));
                 }
                 Err(e) if is_retryable(&e) => {
-                    log::warn!("Retryable error on attempt {}, backing off: {:?}", attempt + 1, e);
+                    log::warn!(
+                        "Retryable error on attempt {}, backing off: {:?}",
+                        attempt + 1,
+                        e
+                    );
                     let jitter = std::time::Duration::from_millis(rand::random::<u64>() % 100);
                     tokio::time::sleep(backoff + jitter).await;
                     backoff = (backoff * 2).min(max_backoff);
@@ -93,13 +95,13 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
                 Err(e) => return Err(e),
             }
         }
-        
+
         unreachable!()
     }
 
     async fn embed(
         &self,
-        inputs: Vec<String>
+        inputs: Vec<String>,
     ) -> Result<(Vec<Vec<f32>>, EmbeddingMetadata), Errors>;
 
     async fn classify(
@@ -113,7 +115,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         group: Vec<Arc<Context>>,
-        candidate: String
+        candidate: String,
     ) -> Result<(Option<BasisField>, ReasonerMetadata), Errors> {
         Ok(basis_field::basis_field(self, normalization_context, group, candidate).await?)
     }
@@ -126,16 +128,15 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         lineage: Option<Lineage>,
         indexed_lineage: Option<Lineage>,
     ) -> Result<(Option<BasisGroup>, ReasonerMetadata), Errors> {
-        Ok(
-            basis_group::basis_group(
-                self,
-                normalization_context,
-                group,
-                acyclic_lineage,
-                lineage,
-                indexed_lineage,
-            ).await?
+        Ok(basis_group::basis_group(
+            self,
+            normalization_context,
+            group,
+            acyclic_lineage,
+            lineage,
+            indexed_lineage,
         )
+        .await?)
     }
 
     async fn basis_node(
@@ -144,14 +145,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         basis_group: Arc<BasisGroup>,
         context_group: Vec<Arc<Context>>,
     ) -> Result<(BasisNode, ReasonerMetadata), Errors> {
-        Ok(
-            basis_node::basis_node(
-                self,
-                normalization_context,
-                basis_group,
-                context_group
-            ).await?
-        )
+        Ok(basis_node::basis_node(self, normalization_context, basis_group, context_group).await?)
     }
 
     async fn node_relationship(
@@ -160,29 +154,18 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         left: Arc<BasisNode>,
         right: Arc<BasisNode>,
     ) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
-        Ok(
-            node_relationship::node_relationship(
-                self,
-                normalization_context,
-                left,
-                right
-            ).await?
-        )
+        Ok(node_relationship::node_relationship(self, normalization_context, left, right).await?)
     }
 
     async fn basis_network(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         basis_nodes: Vec<Arc<BasisNode>>,
-        relationships: Vec<Arc<NodeRelationship>>
+        relationships: Vec<Arc<NodeRelationship>>,
     ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
         Ok(
-            basis_network::basis_network(
-                self,
-                normalization_context,
-                basis_nodes,
-                relationships
-            ).await?
+            basis_network::basis_network(self, normalization_context, basis_nodes, relationships)
+                .await?,
         )
     }
 
@@ -193,20 +176,15 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         right: Arc<BasisNetwork>,
     ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
         Ok(
-            network_relationship::network_relationship(
-                self,
-                normalization_context,
-                left,
-                right
-            ).await?
+            network_relationship::network_relationship(self, normalization_context, left, right)
+                .await?,
         )
     }
 }
 
 fn is_retryable(error: &Errors) -> bool {
-    matches!(error,
-        Errors::RateLimitError(_)
-        | Errors::TransientBackendError(_)
-        | Errors::RequestTimeout(_)
+    matches!(
+        error,
+        Errors::RateLimitError(_) | Errors::TransientBackendError(_) | Errors::RequestTimeout(_)
     )
 }

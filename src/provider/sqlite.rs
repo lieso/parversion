@@ -6,15 +6,15 @@ use tokio::task;
 use crate::basis_field::BasisField;
 use crate::basis_graph::{BasisGraph, NetworkRelationship};
 use crate::basis_group::BasisGroup;
-use crate::classification::Classification;
 use crate::basis_network::{BasisNetwork, NodeRelationship};
 use crate::basis_node::BasisNode;
-use crate::translation_node::TranslationNode;
-use crate::translation_network::TranslationNetwork;
+use crate::classification::Classification;
+use crate::document::Document;
 use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::document::Document;
+use crate::translation_network::TranslationNetwork;
+use crate::translation_node::TranslationNode;
 
 #[cfg(feature = "sqlite-provider")]
 pub struct SqliteProvider {
@@ -96,8 +96,12 @@ impl SqliteProvider {
 }
 
 fn sorted_keys(a: &Hash, b: &Hash) -> Result<(String, String), Errors> {
-    let a = a.to_string().ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
-    let b = b.to_string().ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
+    let a = a
+        .to_string()
+        .ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
+    let b = b
+        .to_string()
+        .ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
     Ok(if a <= b { (a, b) } else { (b, a) })
 }
 
@@ -212,7 +216,9 @@ impl Provider for SqliteProvider {
 
     async fn get_basis_graph_by_hash(&self, hash: &Hash) -> Result<Option<BasisGraph>, Errors> {
         let conn = self.connection.clone();
-        let key = hash.to_string().ok_or(Errors::UnexpectedError("Database operation failed".to_string()))?;
+        let key = hash.to_string().ok_or(Errors::UnexpectedError(
+            "Database operation failed".to_string(),
+        ))?;
 
         task::spawn_blocking(move || {
             let conn = conn.lock().map_err(|_| lock_err())?;
@@ -372,18 +378,18 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO basis_groups
              (acyclic_lineage_hash, lineage_hash, indexed_lineage_hash, data)
              VALUES (?1, ?2, ?3, ?4)",
-             params![acyclic_key, lineage_key, indexed_key, data],
+                params![acyclic_key, lineage_key, indexed_key, data],
             )
-                .map_err(|e| db_err(e))?;
+            .map_err(|e| db_err(e))?;
             Ok(())
         })
         .await
-            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_basis_fields_by_acyclic_subgraph_hash(
         &self,
-        acyclic_subgraph_hash: &Hash
+        acyclic_subgraph_hash: &Hash,
     ) -> Result<Vec<BasisField>, Errors> {
         let conn = self.connection.clone();
         let key = acyclic_subgraph_hash.to_string();
@@ -393,8 +399,8 @@ impl Provider for SqliteProvider {
             match conn.query_row(
                 "SELECT data FROM basis_fields
                  WHERE acyclic_subgraph_hash = ?1",
-                 params![key],
-                 |row| row.get::<_, String>(0),
+                params![key],
+                |row| row.get::<_, String>(0),
             ) {
                 Ok(data) => deserialize(data),
                 Err(rusqlite::Error::QueryReturnedNoRows) => Ok(Vec::new()),
@@ -408,7 +414,7 @@ impl Provider for SqliteProvider {
     async fn save_basis_fields(
         &self,
         acyclic_subgraph_hash: &Hash,
-        basis_fields: Vec<BasisField>
+        basis_fields: Vec<BasisField>,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
         let key = acyclic_subgraph_hash.to_string();
@@ -420,7 +426,7 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO basis_fields
                 (acyclic_subgraph_hash, data)
                 VALUES (?1, ?2)",
-                params![key, data]
+                params![key, data],
             )
             .map_err(|e| db_err(e))?;
 
@@ -430,62 +436,62 @@ impl Provider for SqliteProvider {
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
-		async fn save_schema_instance_document(
-				&self,
-				hash: &Hash,
-				document: Document
-		) -> Result<(), Errors> {
-				let conn = self.connection.clone();
-				let key = hash.to_string();
-				let data = serialize(&document)?;
+    async fn save_schema_instance_document(
+        &self,
+        hash: &Hash,
+        document: Document,
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let key = hash.to_string();
+        let data = serialize(&document)?;
 
-				task::spawn_blocking(move || {
-						let conn = conn.lock().map_err(|_| lock_err())?;
-						conn.execute(
-								"INSERT OR REPLACE INTO documents
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            conn.execute(
+                "INSERT OR REPLACE INTO documents
 				 (hash, data)
 				 VALUES (?1, ?2)",
-				params![key, data]
-			)
-			.map_err(|e| db_err(e))?;
+                params![key, data],
+            )
+            .map_err(|e| db_err(e))?;
 
-								Ok(())
-				})
-				.await
-						.map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-		}
+            Ok(())
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
 
-		async fn get_instance_document_by_schema_hash(
-				&self,
-				hash: &Hash
-		) -> Result<Option<Document>, Errors> {
-				let conn = self.connection.clone();
-				let key = hash.to_string();
+    async fn get_instance_document_by_schema_hash(
+        &self,
+        hash: &Hash,
+    ) -> Result<Option<Document>, Errors> {
+        let conn = self.connection.clone();
+        let key = hash.to_string();
 
-				task::spawn_blocking(move || {
-						let conn = conn.lock().map_err(|_| lock_err())?;
-						match conn.query_row(
-								"SELECT data FROM documents
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM documents
              WHERE hash = ?1",
-             params![key],
-             |row| row.get::<_, String>(0),
-        ) {
-          Ok(data) => {
-            let doc = deserialize(data)?;
-            Ok(Some(doc))
-          },
-          Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-          Err(e) => Err(db_err(e)),
-        }
-      })
-      .await
-      .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+                params![key],
+                |row| row.get::<_, String>(0),
+            ) {
+                Ok(data) => {
+                    let doc = deserialize(data)?;
+                    Ok(Some(doc))
+                }
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_translation_node_by_lineages(
         &self,
         lineage_from: &Lineage,
-        lineage_to: &Lineage
+        lineage_to: &Lineage,
     ) -> Result<Option<Option<TranslationNode>>, Errors> {
         let conn = self.connection.clone();
         let key1 = lineage_from.to_string();
@@ -511,7 +517,7 @@ impl Provider for SqliteProvider {
     async fn save_translation_node(
         &self,
         lineages: (Lineage, Lineage),
-        translation_node: Option<TranslationNode>
+        translation_node: Option<TranslationNode>,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
         let key1 = lineages.0.to_string();
@@ -537,7 +543,7 @@ impl Provider for SqliteProvider {
     async fn get_translation_network_by_lineages(
         &self,
         lineage_from: &Lineage,
-        lineage_to: &Lineage
+        lineage_to: &Lineage,
     ) -> Result<Option<Option<TranslationNetwork>>, Errors> {
         let conn = self.connection.clone();
         let key1 = lineage_from.to_string();
@@ -563,7 +569,7 @@ impl Provider for SqliteProvider {
     async fn save_translation_network(
         &self,
         lineages: (Lineage, Lineage),
-        translation_network: Option<TranslationNetwork>
+        translation_network: Option<TranslationNetwork>,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
         let key1 = lineages.0.to_string();
@@ -655,13 +661,13 @@ impl Provider for SqliteProvider {
             }
         })
         .await
-            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn save_basis_network(
         &self,
         basis_nodes: Vec<Arc<BasisNode>>,
-        basis_network: BasisNetwork
+        basis_network: BasisNetwork,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
         let key = basis_basis_nodes(&basis_nodes)?;
@@ -673,11 +679,11 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO basis_networks (basis_nodes, data) VALUES (?1, ?2)",
                 params![key, data],
             )
-                .map_err(|e| db_err(e))?;
+            .map_err(|e| db_err(e))?;
             Ok(())
         })
         .await
-            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 
     async fn get_network_relationship(
@@ -737,10 +743,7 @@ fn basis_basis_nodes(basis_nodes: &[Arc<BasisNode>]) -> Result<String, Errors> {
     Ok(lineages.join("|"))
 }
 
-fn sorted_networks(
-    left: &BasisNetwork,
-    right: &BasisNetwork,
-) -> Result<(String, String), Errors> {
+fn sorted_networks(left: &BasisNetwork, right: &BasisNetwork) -> Result<(String, String), Errors> {
     let left_key = left.lineage.to_string();
     let right_key = right.lineage.to_string();
     Ok(if left_key <= right_key {

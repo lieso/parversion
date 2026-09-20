@@ -1,17 +1,14 @@
-use std::sync::{Arc, RwLock};
 use schemars::JsonSchema;
 use serde::Deserialize;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_node::{BasisNode, BasisNodeMetadata};
-use crate::basis_group::BasisGroup;
-use crate::data_node::DataNodeFields;
-use crate::transformation::{
-    FieldMetadata,
-    FieldTransformation
-};
 use super::sampling::{pre_sample_context_group, sample_most_different};
+use crate::basis_group::BasisGroup;
+use crate::basis_node::{BasisNode, BasisNodeMetadata};
+use crate::data_node::DataNodeFields;
+use crate::prelude::*;
+use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::transformation::{FieldMetadata, FieldTransformation};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisNodeResponseItem {
@@ -42,15 +39,9 @@ pub async fn basis_node<R: Reasoner>(
 ) -> Result<(BasisNode, ReasonerMetadata), Errors> {
     log::trace!("In basis_node");
 
-    let system_prompt = get_system_prompt(
-        reasoner,
-        Arc::clone(&normalization_context)
-    ).await?;
-    let user_prompt = get_user_prompt(
-        reasoner,
-        Arc::clone(&normalization_context),
-        context_group,
-    ).await?;
+    let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
+    let user_prompt =
+        get_user_prompt(reasoner, Arc::clone(&normalization_context), context_group).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisNodeResponse))
         .expect("Failed to serialise BasisNodeResponse schema");
     let capability = Capability::Fast;
@@ -73,54 +64,66 @@ pub async fn basis_node<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
     log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<BasisNodeResponse>(
-        &capability,
-        &system_prompt,
-        &user_prompt,
-        schema
-    ).await?;
+    let (result, metadata) = reasoner
+        .execute::<BasisNodeResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompt_hash: metadata.prompt_hash.clone(),
     };
 
-    let transformations: Vec<FieldTransformation> = result.fields.iter().map(|response_field| {
-        log::debug!("Field: {} (source: {})", response_field.field_name, response_field.source_field);
+    let transformations: Vec<FieldTransformation> = result
+        .fields
+        .iter()
+        .map(|response_field| {
+            log::debug!(
+                "Field: {} (source: {})",
+                response_field.field_name,
+                response_field.source_field
+            );
 
-        let field = {
-            if response_field.source_field.starts_with("TEXT") || response_field.source_field.starts_with("text") {
-                "text".to_string()
-            } else if let Some(attr_name) = response_field.source_field.strip_prefix("ATTRIBUTE=") {
-                attr_name.to_string()
-            } else {
-                panic!("TODO: parse responses from llm better");
-            }
-        };
+            let field = {
+                if response_field.source_field.starts_with("TEXT")
+                    || response_field.source_field.starts_with("text")
+                {
+                    "text".to_string()
+                } else if let Some(attr_name) =
+                    response_field.source_field.strip_prefix("ATTRIBUTE=")
+                {
+                    attr_name.to_string()
+                } else {
+                    panic!("TODO: parse responses from llm better");
+                }
+            };
 
-        FieldTransformation {
-            id: ID::new(),
-            description: response_field.description.clone(),
-            field,
-            image: response_field.field_name.clone(),
-            meta: FieldMetadata {
-                data_type: response_field.data_type.clone(),
-                format: response_field.format.clone(),
+            FieldTransformation {
+                id: ID::new(),
+                description: response_field.description.clone(),
+                field,
+                image: response_field.field_name.clone(),
+                meta: FieldMetadata {
+                    data_type: response_field.data_type.clone(),
+                    format: response_field.format.clone(),
+                },
             }
-        }
-    }).collect();
+        })
+        .collect();
 
     let basis_node = BasisNode {
         id: ID::new(),
         lineage: basis_group.get_basis_lineage(),
         transformations,
         metadata: BasisNodeMetadata {
-            prompts: vec![reasoner_metadata.prompt_hash.clone()]
-        }
+            prompts: vec![reasoner_metadata.prompt_hash.clone()],
+        },
     };
 
     Ok((basis_node, reasoner_metadata))
@@ -136,7 +139,9 @@ async fn get_user_prompt<R: Reasoner>(
         lock.basis_fields
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis fields not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis fields not provided in normalization context".to_string(),
+                )
             })?
             .values()
             .cloned()
@@ -146,11 +151,11 @@ async fn get_user_prompt<R: Reasoner>(
     let group: Vec<Arc<Context>> = group
         .into_iter()
         .filter(|context| {
-            basis_fields.iter().any(|field| {
-                context.data_node.fields.contains_key(&field.name)
-            })
+            basis_fields
+                .iter()
+                .any(|field| context.data_node.fields.contains_key(&field.name))
         })
-    .collect();
+        .collect();
 
     if group.is_empty() {
         panic!("empty group");
@@ -160,16 +165,21 @@ async fn get_user_prompt<R: Reasoner>(
 
     let context_strings: Vec<String> = group
         .iter()
-        .map(|context| context.generate_context_string_basis_node(Arc::clone(&normalization_context)))
+        .map(|context| {
+            context.generate_context_string_basis_node(Arc::clone(&normalization_context))
+        })
         .collect::<Result<Vec<String>, Errors>>()?;
     let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = sample_most_different(context_strings, &embeddings);
     let merged_samples = samples.join("\n\n---OCCURRENCE SEPARATOR---\n\n");
 
-    Ok(format!(r##"
+    Ok(format!(
+        r##"
 [OCCURRENCES]
 {}
-"##, merged_samples))
+"##,
+        merged_samples
+    ))
 }
 
 async fn get_system_prompt<R: Reasoner>(
@@ -178,14 +188,22 @@ async fn get_system_prompt<R: Reasoner>(
 ) -> Result<String, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
 
     let document_type = meta_context.document_type.to_string().to_lowercase();
 
     let paths_to_try: Vec<String> = vec![
-        format!("{}/{}", document_type, meta_context.acyclic_subgraph_hash.clone()),
-        format!("{}", document_type)
+        format!(
+            "{}/{}",
+            document_type,
+            meta_context.acyclic_subgraph_hash.clone()
+        ),
+        format!("{}", document_type),
     ];
 
     for path in paths_to_try {
@@ -195,5 +213,7 @@ async fn get_system_prompt<R: Reasoner>(
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt("Expected a basis_node.txt system prompt in prompts directory".to_string()))
+    Err(Errors::UnavailableSystemPrompt(
+        "Expected a basis_node.txt system prompt in prompts directory".to_string(),
+    ))
 }

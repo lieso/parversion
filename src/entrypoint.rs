@@ -1,26 +1,23 @@
 use atty::Stream;
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use log::LevelFilter;
 use std::env;
-use std::io::stdout;
+use std::fs;
 use std::io::{self, Read};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
-use std::fs;
-use std::str::FromStr;
 use tracing_subscriber::{fmt, EnvFilter};
 
 use crate::config::CONFIG;
-use crate::document::{DocumentType, DocumentRole};
+use crate::document::{DocumentRole, DocumentType};
 use crate::document_format;
 use crate::normalization;
 use crate::package::Package;
 use crate::prelude::*;
-use crate::provider::VoidProvider;
-use crate::provider::{Provider};
-use crate::translation;
 use crate::prompt_registry::PromptRegistry;
+use crate::provider::Provider;
+use crate::translation;
 
 #[cfg(feature = "sqlite-provider")]
 use crate::provider::sqlite::SqliteProvider;
@@ -58,12 +55,17 @@ pub async fn run() -> Result<(), Errors> {
         options,
         &document_format,
         execution_context.clone(),
-    ).await?;
+    )
+    .await?;
 
     log::info!("Successfully processed document");
 
     if matches.get_flag("output-metadata") {
-        println!("{}", serde_json::to_string(&package.document.metadata).expect("Failed to serialize document metadata"));
+        println!(
+            "{}",
+            serde_json::to_string(&package.document.metadata)
+                .expect("Failed to serialize document metadata")
+        );
     } else {
         println!("{}", package.to_string());
     }
@@ -226,7 +228,7 @@ async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadat
         if values.len() > 1 {
             return Err(Errors::TooManyTranslationDocuments);
         }
-        
+
         for raw_document in values {
             let (parsed_document, partial) = parse_document(raw_document).await?;
 
@@ -349,7 +351,10 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
             }
             "role" => {
                 log::debug!("role={}", value);
-                partial.role = Some(DocumentRole::from_str(value).map_err(|e| Errors::InvalidRole(e.to_string()))?);
+                partial.role = Some(
+                    DocumentRole::from_str(value)
+                        .map_err(|e| Errors::InvalidRole(e.to_string()))?,
+                );
             }
             _ => return Err(Errors::UnexpectedParameter(key.to_string())),
         }

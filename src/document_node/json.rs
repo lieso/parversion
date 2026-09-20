@@ -1,7 +1,7 @@
-use serde_json::{Value, Map};
+use serde_json::{Map, Value};
 
-use crate::prelude::*;
 use crate::data_node::DataNodeFields;
+use crate::prelude::*;
 
 pub struct Json;
 
@@ -24,7 +24,10 @@ impl Json {
     }
 
     pub fn get_description(map: &Map<String, Value>) -> String {
-        map.keys().map(|k| k.as_str()).collect::<Vec<_>>().join(", ")
+        map.keys()
+            .map(|k| k.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
     }
 
     pub fn get_fields(map: &Map<String, Value>) -> DataNodeFields {
@@ -38,7 +41,10 @@ impl Json {
                 Value::Null => Some((k.clone(), "null".to_string())),
                 Value::Array(arr) => Some((
                     k.clone(),
-                    arr.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(","),
+                    arr.iter()
+                        .map(|e| e.to_string())
+                        .collect::<Vec<_>>()
+                        .join(","),
                 )),
             })
             .collect()
@@ -49,7 +55,13 @@ impl Json {
             if let Some((_, Value::Array(arr))) = map.iter().next() {
                 return arr
                     .iter()
-                    .filter_map(|e| if let Value::Object(m) = e { Some(m.clone()) } else { None })
+                    .filter_map(|e| {
+                        if let Value::Object(m) = e {
+                            Some(m.clone())
+                        } else {
+                            None
+                        }
+                    })
                     .collect();
             }
 
@@ -64,7 +76,7 @@ impl Json {
                     let mut wrapper = Map::new();
                     wrapper.insert(k.clone(), v.clone());
                     vec![wrapper]
-                },
+                }
                 Value::Array(arr) if arr.iter().any(|e| e.is_object()) => {
                     let mut wrapper = Map::new();
                     wrapper.insert(k.clone(), Value::Array(arr.clone()));
@@ -78,7 +90,11 @@ impl Json {
     pub fn get_hash(map: &Map<String, Value>) -> Hash {
         let mut keys: Vec<&String> = map.keys().collect();
         keys.sort();
-        let key_str = keys.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(",");
+        let key_str = keys
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
         Hash::from_str(&format!("object:{}", key_str))
     }
 }

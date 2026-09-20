@@ -1,12 +1,12 @@
-use crate::prelude::*;
 use crate::data_node::DataNodeFields;
 use crate::document::DocumentType;
+use crate::prelude::*;
 
-mod xml;
 mod json;
+mod xml;
 
-use xml::Xml;
 use json::Json;
+use xml::Xml;
 
 #[derive(Clone, Debug)]
 pub enum DocumentNodeData {
@@ -69,14 +69,14 @@ impl DocumentNode {
             DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
         }
     }
-    
+
     pub fn get_description(&self) -> String {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_description(&node),
             DocumentNodeData::Json(value) => Json::get_description(&value),
         }
     }
-    
+
     pub fn get_children(&self) -> Vec<DocumentNode> {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_children(&node)
@@ -89,7 +89,7 @@ impl DocumentNode {
                 .collect(),
         }
     }
-    
+
     pub fn get_element_name(&self) -> String {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_element_name(&node),

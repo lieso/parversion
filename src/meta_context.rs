@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use crate::prelude::*;
 use crate::context::{Context, ContextID};
-use crate::graph_node::Graph;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
+use crate::graph_node::Graph;
+use crate::prelude::*;
 
 #[derive(Clone, Debug)]
 pub struct MetaContext {
@@ -25,10 +25,7 @@ impl MetaContext {
 
     fn generate_spatial_context(&self) -> Result<String, Errors> {
         let max_lineages: usize = 1;
-        let render_ids = get_render_ids(
-            self.graph_root.clone(),
-            &max_lineages
-        );
+        let render_ids = get_render_ids(self.graph_root.clone(), &max_lineages);
 
         let partial_document = Document::from_meta_context(
             self,
@@ -61,7 +58,7 @@ fn get_render_ids(start_node: Graph, max_lineages: &usize) -> HashSet<GraphNodeI
         let lineage = &lock.lineage;
 
         let count = lineage_counts.entry(lineage.clone()).or_insert(0);
-        
+
         if *count < *max_lineages {
             *count += 1;
             render_ids.insert(lock.id.clone());

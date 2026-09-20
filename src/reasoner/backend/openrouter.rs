@@ -1,22 +1,22 @@
 use async_trait::async_trait;
+use http::StatusCode;
+use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
 use openrouter_rs::{
     api::chat::*,
     api::embeddings::*,
     types::{ResponseFormat, Role},
     OpenRouterClient,
 };
-use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
-use http::StatusCode;
 use std::path::PathBuf;
-use tokio::sync::Semaphore;
 use std::sync::Arc;
+use tokio::sync::Semaphore;
 
-use crate::prelude::*;
-use crate::reasoner::{Reasoner, CompletionMetadata, Capability, EmbeddingMetadata};
-use crate::environment::get_env_variable;
-use crate::prompt_registry::PromptRegistry;
 use crate::config::CONFIG;
+use crate::environment::get_env_variable;
 use crate::hash::Hash;
+use crate::prelude::*;
+use crate::prompt_registry::PromptRegistry;
+use crate::reasoner::{Capability, CompletionMetadata, EmbeddingMetadata, Reasoner};
 
 #[cfg(feature = "openrouter-reasoner")]
 pub struct OpenRouterReasoner {
@@ -45,7 +45,9 @@ impl OpenRouterReasoner {
 #[async_trait]
 #[cfg(feature = "openrouter-reasoner")]
 impl Reasoner for OpenRouterReasoner {
-    fn prompts(&self) -> &PromptRegistry { &self.prompts }
+    fn prompts(&self) -> &PromptRegistry {
+        &self.prompts
+    }
 
     async fn complete(
         &self,
@@ -54,7 +56,10 @@ impl Reasoner for OpenRouterReasoner {
         user_prompt: &str,
         schema: serde_json::Value,
     ) -> Result<(String, CompletionMetadata), Errors> {
-        let _permit = self.concurrency_limit.acquire().await
+        let _permit = self
+            .concurrency_limit
+            .acquire()
+            .await
             .expect("Semaphore should never be closed");
 
         let combined_prompt = format!("{}{}", system_prompt, user_prompt);
@@ -69,11 +74,7 @@ impl Reasoner for OpenRouterReasoner {
         let mut schema = schema.clone();
         ensure_valid_json_schema(&mut schema);
 
-        let response_format = ResponseFormat::json_schema(
-            "structured_response",
-            true,
-            schema,
-        );
+        let response_format = ResponseFormat::json_schema("structured_response", true, schema);
 
         let request = ChatCompletionRequest::builder()
             .model(model)
@@ -131,9 +132,11 @@ impl Reasoner for OpenRouterReasoner {
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
+                    Err(Errors::UnexpectedError(
+                        "No content in LLM response".to_string(),
+                    ))
                 }
-            },
+            }
             Err(error) => {
                 log::error!("╔═══════════════════════════════════════════════════════════════╗");
                 log::error!("║                    REQUEST ERROR                              ║");
@@ -150,15 +153,31 @@ impl Reasoner for OpenRouterReasoner {
                                 log::error!("User prompt length: {} chars", user_prompt.len());
                                 log::error!("Raw error: {:?}", api_error);
                                 log::error!("└───────────────────────────────────────────────────────────────┘");
-                                Err(Errors::UnexpectedError("400 Bad Request from OpenRouter".to_string()))
-                            },
-                            StatusCode::PAYMENT_REQUIRED => Err(Errors::InsufficientBackendQuota(error.to_string())),
-                            StatusCode::TOO_MANY_REQUESTS => Err(Errors::RateLimitError(error.to_string())),
-                            StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => Err(Errors::TransientBackendError(error.to_string())),
-                            _ => Err(Errors::UnexpectedError(format!("Unexpected OpenRouter error: {}", api_error.status))),
+                                Err(Errors::UnexpectedError(
+                                    "400 Bad Request from OpenRouter".to_string(),
+                                ))
+                            }
+                            StatusCode::PAYMENT_REQUIRED => {
+                                Err(Errors::InsufficientBackendQuota(error.to_string()))
+                            }
+                            StatusCode::TOO_MANY_REQUESTS => {
+                                Err(Errors::RateLimitError(error.to_string()))
+                            }
+                            StatusCode::BAD_GATEWAY
+                            | StatusCode::SERVICE_UNAVAILABLE
+                            | StatusCode::GATEWAY_TIMEOUT => {
+                                Err(Errors::TransientBackendError(error.to_string()))
+                            }
+                            _ => Err(Errors::UnexpectedError(format!(
+                                "Unexpected OpenRouter error: {}",
+                                api_error.status
+                            ))),
                         }
                     }
-                    _ => Err(Errors::UnexpectedError(format!("OpenRouter error: {}", error))),
+                    _ => Err(Errors::UnexpectedError(format!(
+                        "OpenRouter error: {}",
+                        error
+                    ))),
                 }
             }
         }
@@ -166,15 +185,22 @@ impl Reasoner for OpenRouterReasoner {
 
     async fn embed(
         &self,
-        inputs: Vec<String>
+        inputs: Vec<String>,
     ) -> Result<(Vec<Vec<f32>>, EmbeddingMetadata), Errors> {
-        let _permit = self.concurrency_limit.acquire().await
+        let _permit = self
+            .concurrency_limit
+            .acquire()
+            .await
             .expect("Semaphore should never be closed");
 
         let input_count = inputs.len();
         let request = EmbeddingRequest::new("openai/text-embedding-3-small", inputs);
 
-        let response = self.client.models().create_embedding(&request).await
+        let response = self
+            .client
+            .models()
+            .create_embedding(&request)
+            .await
             .map_err(|e| {
                 log::error!("╔═══════════════════════════════════════════════════════════════╗");
                 log::error!("║              EMBEDDING REQUEST ERROR                         ║");
@@ -187,16 +213,23 @@ impl Reasoner for OpenRouterReasoner {
                         log::error!("Error: {:?}", api_error);
 
                         match api_error.status {
-                            StatusCode::PAYMENT_REQUIRED => Errors::InsufficientBackendQuota(e.to_string()),
+                            StatusCode::PAYMENT_REQUIRED => {
+                                Errors::InsufficientBackendQuota(e.to_string())
+                            }
                             StatusCode::TOO_MANY_REQUESTS => Errors::RateLimitError(e.to_string()),
                             StatusCode::BAD_REQUEST => Errors::EmbeddingError(format!(
-                                    "Embedding API 400 Bad Request: {:?}",
-                                    api_error 
+                                "Embedding API 400 Bad Request: {:?}",
+                                api_error
                             )),
-                            StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => {
+                            StatusCode::BAD_GATEWAY
+                            | StatusCode::SERVICE_UNAVAILABLE
+                            | StatusCode::GATEWAY_TIMEOUT => {
                                 Errors::TransientBackendError(e.to_string())
                             }
-                            _ => Errors::UnexpectedError(format!("Unexpected embedding API error: {}", api_error.status)),
+                            _ => Errors::UnexpectedError(format!(
+                                "Unexpected embedding API error: {}",
+                                api_error.status
+                            )),
                         }
                     }
                     _ => {
@@ -209,18 +242,23 @@ impl Reasoner for OpenRouterReasoner {
         let data = response.data;
 
         if data.len() != input_count {
-            log::error!("Embedding response count mismatch: expected {}, got {}", input_count, data.len());
+            log::error!(
+                "Embedding response count mismatch: expected {}, got {}",
+                input_count,
+                data.len()
+            );
             return Err(Errors::EmbeddingError(format!(
-                        "Embedding response count ({}) doesn't match input count ({})",
-                        data.len(),
-                        input_count
+                "Embedding response count ({}) doesn't match input count ({})",
+                data.len(),
+                input_count
             )));
         }
 
         let mut sorted_data = data;
         sorted_data.sort_by_key(|d| d.index.unwrap_or(0));
 
-        let vectors: Result<Vec<Vec<f32>>, Errors> = sorted_data.into_iter()
+        let vectors: Result<Vec<Vec<f32>>, Errors> = sorted_data
+            .into_iter()
             .enumerate()
             .map(|(idx, d)| match d.embedding {
                 EmbeddingVector::Float(v) => {
@@ -231,12 +269,12 @@ impl Reasoner for OpenRouterReasoner {
                 _ => {
                     log::error!("Unexpected embedding format at index {}", idx);
                     Err(Errors::EmbeddingError(format!(
-                                "Unexpected embedding format at index {}: expected Float vector",
-                                idx
+                        "Unexpected embedding format at index {}: expected Float vector",
+                        idx
                     )))
                 }
             })
-        .collect();
+            .collect();
 
         let vectors = vectors?;
 
@@ -244,13 +282,22 @@ impl Reasoner for OpenRouterReasoner {
             input_tokens: response.usage.map(|u| u.prompt_tokens).unwrap_or(0),
         };
 
-        log::debug!("Embedding succeeded: {} vectors, {} tokens", vectors.len(), metadata.input_tokens);
+        log::debug!(
+            "Embedding succeeded: {} vectors, {} tokens",
+            vectors.len(),
+            metadata.input_tokens
+        );
         Ok((vectors, metadata))
     }
 }
 
 #[cfg(debug_assertions)]
-fn write_debug_log<T: std::fmt::Debug>(system_prompt: &str, user_prompt: &str, response: &T, hash: &Hash) {
+fn write_debug_log<T: std::fmt::Debug>(
+    system_prompt: &str,
+    user_prompt: &str,
+    response: &T,
+    hash: &Hash,
+) {
     use std::fs;
 
     let debug_dir = {
@@ -262,9 +309,7 @@ fn write_debug_log<T: std::fmt::Debug>(system_prompt: &str, user_prompt: &str, r
 
     let content = format!(
         "=== SYSTEM PROMPT ===\n{}\n\n=== USER PROMPT ===\n{}\n\n=== LLM RESPONSE ===\n{:#?}",
-        system_prompt,
-        user_prompt,
-        response
+        system_prompt, user_prompt, response
     );
 
     if let Err(e) = fs::write(&file_path, content) {
@@ -284,7 +329,8 @@ fn ensure_valid_json_schema(schema: &mut serde_json::Value) {
                 // Ensure ALL properties are in required array
                 if let Some(serde_json::Value::Object(props)) = obj.get("properties") {
                     let prop_keys: Vec<String> = props.keys().cloned().collect();
-                    let required = obj.entry("required".to_string())
+                    let required = obj
+                        .entry("required".to_string())
                         .or_insert_with(|| serde_json::json!([]));
 
                     if let serde_json::Value::Array(required_arr) = required {

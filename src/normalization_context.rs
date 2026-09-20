@@ -2,18 +2,17 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::basis_field::BasisField;
+use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
-use crate::classification::Classification;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
-use crate::basis_graph::BasisGraph;
+use crate::classification::Classification;
 use crate::context::Context;
 use crate::document::Document;
 use crate::graph_node::Graph;
 use crate::meta_context::MetaContext;
-use crate::prelude::*;
-use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
+use crate::prelude::*;
 
 pub struct NormalizationContext {
     pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
@@ -77,11 +76,8 @@ impl NormalizationContext {
     pub fn update_meta_context(&mut self, meta_context: MetaContext) {
         self.meta_context = Some(Arc::new(meta_context));
     }
-    
-    pub fn update_normalized_graph(
-        &mut self,
-        normalized: NormalMetaContext,
-    ) {
+
+    pub fn update_normalized_graph(&mut self, normalized: NormalMetaContext) {
         self.normalized = Some(normalized);
     }
 
@@ -112,10 +108,7 @@ impl NormalizationContext {
         self.context_basis_node = Some(context_node);
     }
 
-    pub fn update_basis_networks(
-        &mut self,
-        networks: HashMap<BasisNetworkID, Arc<BasisNetwork>>,
-    ) {
+    pub fn update_basis_networks(&mut self, networks: HashMap<BasisNetworkID, Arc<BasisNetwork>>) {
         self.basis_networks = Some(networks);
     }
 
@@ -126,10 +119,9 @@ impl NormalizationContext {
     pub fn update_context_groups(
         &mut self,
         context_groups: HashMap<ID, Vec<Arc<Context>>>,
-        context_to_group: HashMap<ID, Arc<BasisGroup>>
+        context_to_group: HashMap<ID, Arc<BasisGroup>>,
     ) {
         self.context_groups = Some(context_groups);
         self.context_to_group = Some(context_to_group);
     }
-
 }

@@ -1,15 +1,15 @@
-use std::sync::{Arc, RwLock};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
+use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_network::{NodeRelationship, NodeRelationshipType};
 use crate::basis_node::BasisNode;
 use crate::graph_node::GraphNode;
+use crate::prelude::*;
+use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 use crate::xpath::XPath;
-use super::sampling::{pre_sample_context_group, sample_most_different};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -66,20 +66,16 @@ pub async fn node_relationship<R: Reasoner>(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
 ) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
-
     if left.id == right.id {
-        node_relationship_self(
-            reasoner,
-            Arc::clone(&normalization_context),
-            left.clone(),
-        ).await
+        node_relationship_self(reasoner, Arc::clone(&normalization_context), left.clone()).await
     } else {
         node_relationship_other(
             reasoner,
             Arc::clone(&normalization_context),
             left.clone(),
-            right.clone()
-        ).await
+            right.clone(),
+        )
+        .await
     }
 }
 
@@ -88,14 +84,13 @@ pub async fn node_relationship_self<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     node: Arc<BasisNode>,
 ) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
-
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
-        lock.basis_node_contexts
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis node contexts not provided in meta context".to_string())
-            })?
+        lock.basis_node_contexts.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis node contexts not provided in meta context".to_string(),
+            )
+        })?
     };
 
     let contexts: Vec<Arc<Context>> = basis_node_contexts
@@ -110,12 +105,11 @@ pub async fn node_relationship_self<R: Reasoner>(
         Arc::clone(&normalization_context),
         node.clone(),
         &contexts,
-    ).await?;
+    )
+    .await?;
 
-    let system_prompt = get_system_prompt_self(
-        reasoner,
-        Arc::clone(&normalization_context)
-    ).await?;
+    let system_prompt =
+        get_system_prompt_self(reasoner, Arc::clone(&normalization_context)).await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipSelfResponse))
         .expect("Failed to serialise NodeRelationshipSelfResponse schema");
@@ -139,16 +133,16 @@ pub async fn node_relationship_self<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
     log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<NodeRelationshipSelfResponse>(
-        &capability,
-        &system_prompt,
-        &user_prompt,
-        schema
-    ).await?;
+    let (result, metadata) = reasoner
+        .execute::<NodeRelationshipSelfResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
@@ -157,15 +151,11 @@ pub async fn node_relationship_self<R: Reasoner>(
 
     let mut relationship_type = {
         match result.relationship_type {
-            SelfRelationshipTypeResponse::Combine => {
-                NodeRelationshipType::Combine {
-                    xpath_ltr: ".".to_string(),
-                    xpath_rtl: ".".to_string()
-                }
+            SelfRelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
+                xpath_ltr: ".".to_string(),
+                xpath_rtl: ".".to_string(),
             },
-            SelfRelationshipTypeResponse::NoRelationship => {
-                NodeRelationshipType::NoRelationship
-            },
+            SelfRelationshipTypeResponse::NoRelationship => NodeRelationshipType::NoRelationship,
         }
     };
 
@@ -179,14 +169,14 @@ pub async fn node_relationship_self<R: Reasoner>(
                 log::info!("=====================================================================================================");
 
                 true
-            },
+            }
             CentralityResponse::Common => {
                 log::info!("=====================================================================================================");
                 log::info!("Received Common centrality response");
                 log::info!("=====================================================================================================");
 
                 false
-            },
+            }
             CentralityResponse::Occasional => {
                 log::info!("=====================================================================================================");
                 log::info!("Received Occasional centrality response");
@@ -219,18 +209,16 @@ pub async fn node_relationship_other<R: Reasoner>(
 ) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
     let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
 
-    let system_prompt = get_system_prompt_other(
-        reasoner,
-        Arc::clone(&normalization_context)
-    ).await?;
+    let system_prompt =
+        get_system_prompt_other(reasoner, Arc::clone(&normalization_context)).await?;
 
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
-        lock.basis_node_contexts
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis node contexts not provided in meta context".to_string())
-            })?
+        lock.basis_node_contexts.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis node contexts not provided in meta context".to_string(),
+            )
+        })?
     };
 
     let left_contexts: Vec<Arc<Context>> = basis_node_contexts
@@ -254,7 +242,8 @@ pub async fn node_relationship_other<R: Reasoner>(
         &left_contexts,
         right.clone(),
         &right_contexts,
-    ).await?;
+    )
+    .await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
         .expect("Failed to serialise NodeRelationshipOtherResponse schema");
@@ -278,16 +267,16 @@ pub async fn node_relationship_other<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
     log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<NodeRelationshipOtherResponse>(
-        &capability,
-        &system_prompt,
-        &user_prompt,
-        schema
-    ).await?;
+    let (result, metadata) = reasoner
+        .execute::<NodeRelationshipOtherResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
@@ -296,21 +285,15 @@ pub async fn node_relationship_other<R: Reasoner>(
 
     let mut relationship_type = {
         match result.relationship_type {
-            RelationshipTypeResponse::Combine => {
-                NodeRelationshipType::Combine {
-                    xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                    xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                }
+            RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
+                xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
             },
-            RelationshipTypeResponse::Equal => {
-                NodeRelationshipType::Equal {
-                    xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                    xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                }
+            RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
+                xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
             },
-            RelationshipTypeResponse::NoRelationship => {
-                NodeRelationshipType::NoRelationship
-            },
+            RelationshipTypeResponse::NoRelationship => NodeRelationshipType::NoRelationship,
         }
     };
 
@@ -334,11 +317,7 @@ async fn get_user_prompt_self<R: Reasoner>(
     node: Arc<BasisNode>,
     node_contexts: &Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
-    let node_contexts_sample: Vec<Arc<Context>> = node_contexts
-        .iter()
-        .take(10)
-        .cloned()
-        .collect();
+    let node_contexts_sample: Vec<Arc<Context>> = node_contexts.iter().take(10).cloned().collect();
 
     let node_context_string = make_context(
         Arc::clone(&normalization_context),
@@ -346,10 +325,13 @@ async fn get_user_prompt_self<R: Reasoner>(
         node_contexts_sample.clone(),
     )?;
 
-    Ok(format!(r##"
+    Ok(format!(
+        r##"
 [NODES]
 {}
-"##, node_context_string))
+"##,
+        node_context_string
+    ))
 }
 
 async fn get_user_prompt_other<R: Reasoner>(
@@ -360,8 +342,6 @@ async fn get_user_prompt_other<R: Reasoner>(
     right: Arc<BasisNode>,
     right_contexts: &Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
-
-
     let left_contexts_presample = pre_sample_context_group(left_contexts.clone());
 
     let left_context_strings: Vec<String> = left_contexts_presample
@@ -369,7 +349,7 @@ async fn get_user_prompt_other<R: Reasoner>(
         .map(|context| {
             context.generate_context_string_node_relationship(
                 Arc::clone(&normalization_context),
-                left.clone()
+                left.clone(),
             )
         })
         .collect::<Result<Vec<String>, Errors>>()?;
@@ -378,8 +358,6 @@ async fn get_user_prompt_other<R: Reasoner>(
     let samples = sample_most_different(left_context_strings, &embeddings);
     let left_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-
-
     let right_contexts_presample = pre_sample_context_group(right_contexts.clone());
 
     let right_context_strings: Vec<String> = right_contexts_presample
@@ -387,25 +365,25 @@ async fn get_user_prompt_other<R: Reasoner>(
         .map(|context| {
             context.generate_context_string_node_relationship(
                 Arc::clone(&normalization_context),
-                right.clone()
+                right.clone(),
             )
         })
         .collect::<Result<Vec<String>, Errors>>()?;
-
 
     let (embeddings, metadata) = reasoner.embed(right_context_strings.clone()).await?;
     let samples = sample_most_different(right_context_strings, &embeddings);
     let right_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-
-
-    Ok(format!(r##"
+    Ok(format!(
+        r##"
 [LEFT]
 {}
 
 [RIGHT]
 {}
-"##, left_context_string, right_context_string))
+"##,
+        left_context_string, right_context_string
+    ))
 }
 
 fn make_context(
@@ -433,24 +411,38 @@ async fn get_system_prompt_self<R: Reasoner>(
 ) -> Result<String, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
 
     let document_type = meta_context.document_type.to_string().to_lowercase();
 
     let paths_to_try: Vec<String> = vec![
-        format!("{}/{}", document_type, meta_context.acyclic_subgraph_hash.clone()),
-        format!("{}", document_type)
+        format!(
+            "{}/{}",
+            document_type,
+            meta_context.acyclic_subgraph_hash.clone()
+        ),
+        format!("{}", document_type),
     ];
 
     for path in paths_to_try {
         log::trace!("Searching for prompt with path: {}", path);
-        if let Some(system_prompt) = reasoner.prompts().get(&path, "node_relationship_self").await? {
+        if let Some(system_prompt) = reasoner
+            .prompts()
+            .get(&path, "node_relationship_self")
+            .await?
+        {
             return Ok(system_prompt);
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt("Expected a node_relationship_self.txt system prompt in prompts directory".to_string()))
+    Err(Errors::UnavailableSystemPrompt(
+        "Expected a node_relationship_self.txt system prompt in prompts directory".to_string(),
+    ))
 }
 
 async fn get_system_prompt_other<R: Reasoner>(
@@ -459,22 +451,36 @@ async fn get_system_prompt_other<R: Reasoner>(
 ) -> Result<String, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
 
     let document_type = meta_context.document_type.to_string().to_lowercase();
 
     let paths_to_try: Vec<String> = vec![
-        format!("{}/{}", document_type, meta_context.acyclic_subgraph_hash.clone()),
-        format!("{}", document_type)
+        format!(
+            "{}/{}",
+            document_type,
+            meta_context.acyclic_subgraph_hash.clone()
+        ),
+        format!("{}", document_type),
     ];
 
     for path in paths_to_try {
         log::trace!("Searching for prompt with path: {}", path);
-        if let Some(system_prompt) = reasoner.prompts().get(&path, "node_relationship_other").await? {
+        if let Some(system_prompt) = reasoner
+            .prompts()
+            .get(&path, "node_relationship_other")
+            .await?
+        {
             return Ok(system_prompt);
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt("Expected a node_relationship_other.txt system prompt in prompts directory".to_string()))
+    Err(Errors::UnavailableSystemPrompt(
+        "Expected a node_relationship_other.txt system prompt in prompts directory".to_string(),
+    ))
 }

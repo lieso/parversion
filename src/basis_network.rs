@@ -1,20 +1,20 @@
-use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
-use std::collections::{HashSet, HashMap, VecDeque};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::transformation::NetworkTransformation;
+use crate::basis_node::BasisNode;
+use crate::data_node::{DataNode, DataNodeFields};
 use crate::graph_node::{Graph, GraphNode};
 use crate::normal_context::NormalContext;
-use crate::data_node::{DataNode, DataNodeFields};
 use crate::normal_meta_context::NormalMetaContext;
-use crate::basis_node::BasisNode;
+use crate::prelude::*;
+use crate::transformation::NetworkTransformation;
 use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetworkMetadata {
-    pub prompts: Vec<Hash>
+    pub prompts: Vec<Hash>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -31,8 +31,14 @@ pub struct BasisNetwork {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum NodeRelationshipType {
-    Combine { xpath_ltr: String, xpath_rtl: String },
-    Equal { xpath_ltr: String, xpath_rtl: String },
+    Combine {
+        xpath_ltr: String,
+        xpath_rtl: String,
+    },
+    Equal {
+        xpath_ltr: String,
+        xpath_rtl: String,
+    },
     NoRelationship,
 }
 
@@ -50,7 +56,7 @@ impl BasisNetwork {
     pub fn apply(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        parent: Graph
+        parent: Graph,
     ) -> Result<NormalMetaContext, Errors> {
         log::trace!("In apply()");
 
@@ -72,15 +78,22 @@ impl BasisNetwork {
             contexts: Vec::new(),
         });
 
-        normal_contexts.insert(root_normal_context.id.clone(), Arc::clone(&root_normal_context));
+        normal_contexts.insert(
+            root_normal_context.id.clone(),
+            Arc::clone(&root_normal_context),
+        );
         normal_contexts_lookup.insert(
             read_lock!(root_normal_context.graph_node).id.clone(),
-            Arc::clone(&root_normal_context)
+            Arc::clone(&root_normal_context),
         );
 
         let meta_context = {
             let lock = read_lock!(normalization_context);
-            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+            lock.meta_context
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                ))?
         };
 
         self.traverse(
@@ -95,7 +108,7 @@ impl BasisNetwork {
         Ok(NormalMetaContext {
             contexts: normal_contexts,
             graph_root: parent,
-            contexts_lookup: normal_contexts_lookup
+            contexts_lookup: normal_contexts_lookup,
         })
     }
 
@@ -106,11 +119,15 @@ impl BasisNetwork {
         normal_contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
         processed_contexts: &mut HashSet<ContextID>,
         current: Graph,
-        parent: Graph
+        parent: Graph,
     ) -> Result<(), Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
-            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+            lock.meta_context
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                ))?
         };
 
         let lookup_context_basis_node = {
@@ -118,7 +135,10 @@ impl BasisNetwork {
             lock.context_basis_node.clone().unwrap()
         };
 
-        let context = meta_context.contexts_lookup.get(&read_lock!(current).id).unwrap();
+        let context = meta_context
+            .contexts_lookup
+            .get(&read_lock!(current).id)
+            .unwrap();
 
         if !processed_contexts.contains(&context.id) {
             if let Some(basis_node) = lookup_context_basis_node.get(&context.id) {
@@ -132,7 +152,7 @@ impl BasisNetwork {
                         (context.clone(), basis_node.clone()),
                         Arc::clone(&parent),
                         normal_contexts,
-                        normal_contexts_lookup
+                        normal_contexts_lookup,
                     )?;
 
                     for context in &normal_context.contexts {
@@ -149,7 +169,7 @@ impl BasisNetwork {
                 normal_contexts_lookup,
                 processed_contexts,
                 Arc::clone(&child),
-                Arc::clone(&parent)
+                Arc::clone(&parent),
             )?;
         }
 
@@ -168,10 +188,14 @@ impl BasisNetwork {
 
         let mut target_contexts: Vec<Arc<Context>> = Vec::new();
 
-        let actual_relationships: Vec<Arc<NodeRelationship>> = self.relationships
+        let actual_relationships: Vec<Arc<NodeRelationship>> = self
+            .relationships
             .iter()
             .filter(|relationship| {
-                !matches!(relationship.relationship_type, NodeRelationshipType::NoRelationship)
+                !matches!(
+                    relationship.relationship_type,
+                    NodeRelationshipType::NoRelationship
+                )
             })
             .cloned()
             .collect();
@@ -185,10 +209,9 @@ impl BasisNetwork {
             let current_relationships: Vec<Arc<NodeRelationship>> = actual_relationships
                 .iter()
                 .filter(|relationship| {
-                    !processed_relationships.contains(&relationship.id) && (
-                        relationship.left_basis_lineage == current_node.lineage ||
-                        relationship.right_basis_lineage == current_node.lineage
-                    )
+                    !processed_relationships.contains(&relationship.id)
+                        && (relationship.left_basis_lineage == current_node.lineage
+                            || relationship.right_basis_lineage == current_node.lineage)
                 })
                 .cloned()
                 .collect();
@@ -199,7 +222,7 @@ impl BasisNetwork {
                         Arc::clone(&normalization_context),
                         current_context.clone(),
                         current_node.clone(),
-                        &relationship
+                        &relationship,
                     )?;
 
                     for context in other_contexts {
@@ -210,7 +233,11 @@ impl BasisNetwork {
                 }
 
                 match &relationship.relationship_type {
-                    NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
+                    NodeRelationshipType::Combine {
+                        xpath_ltr,
+                        xpath_rtl,
+                        ..
+                    } => {
                         let next_contexts = self.apply_combine(
                             Arc::clone(&normalization_context),
                             current_context.clone(),
@@ -224,8 +251,12 @@ impl BasisNetwork {
                         }
 
                         processed_relationships.insert(relationship.id.clone());
-                    },
-                    NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
+                    }
+                    NodeRelationshipType::Equal {
+                        xpath_ltr,
+                        xpath_rtl,
+                        ..
+                    } => {
                         let next_contexts = self.apply_combine(
                             Arc::clone(&normalization_context),
                             current_context.clone(),
@@ -239,7 +270,7 @@ impl BasisNetwork {
                         }
 
                         processed_relationships.insert(relationship.id.clone());
-                    },
+                    }
                     NodeRelationshipType::NoRelationship => {
                         panic!("Did not expect a NoRelationship here..");
                     }
@@ -248,87 +279,64 @@ impl BasisNetwork {
         }
 
         log::info!("Number of relationships: {}", self.relationships.len());
-        log::info!("Number of processed relationships: {}", processed_relationships.len());
+        log::info!(
+            "Number of processed relationships: {}",
+            processed_relationships.len()
+        );
 
-
-
-        let existing_network: Option<Arc<NormalContext>> = target_contexts.iter().find_map(|context| {
-            normal_contexts_lookup.get(&context.id).cloned()
-        });
+        let existing_network: Option<Arc<NormalContext>> = target_contexts
+            .iter()
+            .find_map(|context| normal_contexts_lookup.get(&context.id).cloned());
 
         if let Some(ref existing_network) = existing_network {
             target_contexts.extend(existing_network.contexts.clone());
         }
 
-
-
-
-
-
-
         target_contexts.sort_by(|a, b| {
-            read_lock!(a.graph_node).preorder_position().cmp(&read_lock!(b.graph_node).preorder_position())
+            read_lock!(a.graph_node)
+                .preorder_position()
+                .cmp(&read_lock!(b.graph_node).preorder_position())
         });
 
+        let data_node = target_contexts.iter().try_fold(
+            DataNode {
+                id: ID::new(),
+                hash: Hash::new(),
+                lineage: Lineage::new(),
+                fields: DataNodeFields::new(),
+                description: "placeholder".to_string(),
+            },
+            |acc, context| -> Result<DataNode, Errors> {
+                let basis_node = {
+                    let lock = read_lock!(normalization_context);
+                    let lookup = lock.context_basis_node.as_ref().unwrap();
+                    lookup.get(&context.id).unwrap().clone()
+                };
 
-
-
-
-
-
-
-
-
-        let data_node = target_contexts.iter().try_fold(DataNode {
-            id: ID::new(),
-            hash: Hash::new(),
-            lineage: Lineage::new(),
-            fields: DataNodeFields::new(),
-            description: "placeholder".to_string()
-        }, |acc, context| -> Result<DataNode, Errors> {
-            let basis_node = {
-                let lock = read_lock!(normalization_context);
-                let lookup = lock.context_basis_node.as_ref().unwrap();
-                lookup.get(&context.id).unwrap().clone()
-            };
-
-            if let Some(next_data_node) = basis_node.apply(context.clone())? {
-                Ok(DataNode::from_data_nodes(vec![
-                    acc,
-                    next_data_node
-                ]))
-            } else {
-                Ok(acc)
-            }
-        })?;
-
-
-
-
-
+                if let Some(next_data_node) = basis_node.apply(context.clone())? {
+                    Ok(DataNode::from_data_nodes(vec![acc, next_data_node]))
+                } else {
+                    Ok(acc)
+                }
+            },
+        )?;
 
         let normal_context = NormalContext {
             id: ID::new(),
             network_name: Some(self.name.clone()),
             network_description: Some(self.description.clone()),
             data_node: Arc::new(data_node.clone()),
-            graph_node: Arc::new(RwLock::new(
-                GraphNode::from_data_node(
-                    Arc::new(data_node.clone()),
-                    vec![Arc::clone(&parent)]
-                )
-            )),
+            graph_node: Arc::new(RwLock::new(GraphNode::from_data_node(
+                Arc::new(data_node.clone()),
+                vec![Arc::clone(&parent)],
+            ))),
             contexts: target_contexts.clone(),
         };
 
-
         let normal_context = Arc::new(normal_context);
-
-
 
         if let Some(existing_network) = existing_network {
             normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
-
 
             for context in &normal_context.contexts {
                 normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
@@ -336,29 +344,22 @@ impl BasisNetwork {
 
             normal_contexts_lookup.insert(
                 read_lock!(&normal_context.graph_node).id.clone(),
-                Arc::clone(&normal_context)
+                Arc::clone(&normal_context),
             );
-
-
         } else {
-
             for context in &normal_context.contexts {
                 normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
             }
 
             normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
-            normal_contexts_lookup.insert(read_lock!(&normal_context.graph_node).id.clone(), Arc::clone(&normal_context));
+            normal_contexts_lookup.insert(
+                read_lock!(&normal_context.graph_node).id.clone(),
+                Arc::clone(&normal_context),
+            );
 
             let graph_node = Arc::clone(&normal_context.graph_node);
             write_lock!(parent).children.push(graph_node.clone());
-
         }
-
-
-
-
-
-
 
         Ok(normal_context.clone())
     }
@@ -372,11 +373,19 @@ impl BasisNetwork {
     ) -> Result<Vec<(Arc<Context>, Arc<BasisNode>)>, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
-            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+            lock.meta_context
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                ))?
         };
 
         let xpath_str = match &relationship.relationship_type {
-            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => {
+            NodeRelationshipType::Combine {
+                xpath_ltr,
+                xpath_rtl,
+                ..
+            } => {
                 if relationship.left_basis_lineage == basis_node.lineage {
                     xpath_ltr
                 } else {
@@ -384,14 +393,22 @@ impl BasisNetwork {
                 }
             }
             // TODO: Delete branch
-            NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => {
+            NodeRelationshipType::Equal {
+                xpath_ltr,
+                xpath_rtl,
+                ..
+            } => {
                 if relationship.left_basis_lineage == basis_node.lineage {
                     xpath_ltr
                 } else {
                     xpath_rtl
                 }
             }
-            _ => return Err(Errors::UnexpectedError("Expected Combine relationship".to_string())),
+            _ => {
+                return Err(Errors::UnexpectedError(
+                    "Expected Combine relationship".to_string(),
+                ))
+            }
         };
 
         let xpath: XPath = XPath::from_str(&xpath_str)?;
@@ -404,11 +421,15 @@ impl BasisNetwork {
         )?;
 
         if target_graph_nodes.is_empty() {
-            log::warn!("Could not find target graph nodes within current network: {}", xpath.to_string());
+            log::warn!(
+                "Could not find target graph nodes within current network: {}",
+                xpath.to_string()
+            );
         }
 
         for target_graph_node in target_graph_nodes {
-            let target_context = meta_context.contexts_lookup
+            let target_context = meta_context
+                .contexts_lookup
                 .get(&read_lock!(target_graph_node).id)
                 .cloned()
                 .unwrap();
@@ -421,7 +442,10 @@ impl BasisNetwork {
             };
 
             if let Some(target_basis_node) = target_basis_node {
-                let is_member = self.basis_nodes.iter().any(|basis_node| basis_node.id == target_basis_node.id);
+                let is_member = self
+                    .basis_nodes
+                    .iter()
+                    .any(|basis_node| basis_node.id == target_basis_node.id);
 
                 if is_member {
                     let expected_lineage = {
@@ -451,7 +475,6 @@ impl BasisNetwork {
     }
 }
 
-
 fn apply_self_combine(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     context: Arc<Context>,
@@ -460,7 +483,11 @@ fn apply_self_combine(
 ) -> Result<Vec<Arc<Context>>, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
 
     let xpath_str = relationship.scope_xpath.as_ref().unwrap();
@@ -489,7 +516,8 @@ fn apply_self_combine(
             }
             visited.insert(node_id);
 
-            let current_context = meta_context.contexts_lookup
+            let current_context = meta_context
+                .contexts_lookup
                 .get(&read_lock!(current_node).id)
                 .cloned();
 
@@ -509,4 +537,3 @@ fn apply_self_combine(
 
     Ok(matching_contexts)
 }
-

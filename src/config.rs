@@ -67,9 +67,7 @@ fn get_default_prompts_location() -> String {
 impl Default for Config {
     fn default() -> Self {
         let config = Config {
-            llm: LlmConfig {
-                max_concurrency: 1,
-            },
+            llm: LlmConfig { max_concurrency: 1 },
             dev: DevConfig::default(),
             reasoner: ReasonerConfig::default(),
         };

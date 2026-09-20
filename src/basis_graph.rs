@@ -1,6 +1,6 @@
-use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 

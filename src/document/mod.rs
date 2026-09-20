@@ -1,21 +1,21 @@
-use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashSet};
-use std::str::FromStr;
+use std::collections::HashSet;
 use std::fmt;
+use std::str::FromStr;
+use std::sync::{Arc, RwLock};
 
+mod html;
 mod json;
 mod xml;
-mod html;
 
-use crate::prelude::*;
 use crate::document_format::DocumentFormat;
-use crate::provider::Provider;
 use crate::llm::LLM;
 use crate::normal_meta_context::NormalMetaContext;
+use crate::prelude::*;
+use crate::provider::Provider;
 
-use json::Json;
 use html::Html;
+use json::Json;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum DocumentType {
@@ -78,7 +78,7 @@ impl Document {
         reasoner: Arc<R>,
         value: String,
         options: &Options,
-        metadata: &Metadata
+        metadata: &Metadata,
     ) -> Result<Self, Errors> {
         log::trace!("In from_schema_string");
 
@@ -109,10 +109,9 @@ impl Document {
             data: instance.clone(),
         };
 
-        provider.save_schema_instance_document(
-            &hash,
-            document.clone(),
-        ).await?;
+        provider
+            .save_schema_instance_document(&hash, document.clone())
+            .await?;
 
         Ok(document)
     }
@@ -149,17 +148,11 @@ impl Document {
         log::trace!("In to_meta_context");
 
         match self.document_type {
-            DocumentType::Json => Json::to_meta_context(
-                &self.metadata,
-                self.data.clone()
-            ),
+            DocumentType::Json => Json::to_meta_context(&self.metadata, self.data.clone()),
             DocumentType::PlainText => unimplemented!(),
             DocumentType::JavaScript => unimplemented!(),
             DocumentType::Xml => unimplemented!(),
-            DocumentType::Html => Html::to_meta_context(
-                &self.metadata,
-                self.data.clone()
-            ),
+            DocumentType::Html => Html::to_meta_context(&self.metadata, self.data.clone()),
         }
     }
 
@@ -232,11 +225,11 @@ impl Document {
 
         let classification = {
             let lock = read_lock!(normalization_context);
-            lock.classification
-                .clone()
-                .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError("Classification not provided in meta context".to_string())
-                })?
+            lock.classification.clone().ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(
+                    "Classification not provided in meta context".to_string(),
+                )
+            })?
         };
 
         match document_format.format_type {
@@ -270,7 +263,7 @@ impl Document {
 
     pub fn from_translation(
         translation_context: Arc<RwLock<TranslationContext>>,
-        document_format: &DocumentFormat
+        document_format: &DocumentFormat,
     ) -> Result<Self, Errors> {
         log::trace!("In from_translation");
 

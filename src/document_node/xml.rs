@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use xmltree::{Element, XMLNode};
 
-use crate::prelude::*;
 use crate::data_node::DataNodeFields;
+use crate::prelude::*;
 
 pub struct Xml;
 
@@ -37,18 +37,17 @@ impl Xml {
             XMLNode::Element(element_node) => {
                 DataNodeFields::from_hash_map(element_node.attributes.clone())
             }
-            XMLNode::Text(text_node) => {
-                DataNodeFields::from_hash_map(HashMap::from([("text".to_string(), text_node.trim().to_string())]))
-            }
+            XMLNode::Text(text_node) => DataNodeFields::from_hash_map(HashMap::from([(
+                "text".to_string(),
+                text_node.trim().to_string(),
+            )])),
             _ => panic!("Unexpected XML node type"),
         }
     }
 
     pub fn get_attribute_value(xml_node: &XMLNode, attribute: &str) -> Option<String> {
         match xml_node {
-            XMLNode::Element(element_node) => {
-                element_node.attributes.get(attribute).cloned()
-            }
+            XMLNode::Element(element_node) => element_node.attributes.get(attribute).cloned(),
             _ => panic!("Unexpected XML node type"),
         }
     }
@@ -97,7 +96,11 @@ impl Xml {
                 let mut attr_names: Vec<&String> = element_node.attributes.keys().collect();
                 attr_names.sort();
 
-                let attr_str = attr_names.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(",");
+                let attr_str = attr_names
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(",");
                 let combined = format!("{}:{}", element_node.name, attr_str);
                 Hash::from_str(&combined)
             }

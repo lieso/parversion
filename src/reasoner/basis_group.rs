@@ -1,11 +1,11 @@
-use std::sync::{Arc, RwLock};
 use schemars::JsonSchema;
 use serde::Deserialize;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 use super::sampling::{pre_sample_context_group, sample_most_different};
+use crate::basis_group::{BasisGroup, BasisGroupMetadata};
+use crate::prelude::*;
+use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisGroupResponse {
@@ -27,15 +27,8 @@ pub async fn basis_group<R: Reasoner>(
 
     let hash = group[0].data_node.hash.clone();
 
-    let system_prompt = get_system_prompt(
-        reasoner,
-        Arc::clone(&normalization_context)
-    ).await?;
-    let user_prompt = get_user_prompt(
-        reasoner,
-        Arc::clone(&normalization_context),
-        group,
-    ).await?;
+    let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
+    let user_prompt = get_user_prompt(reasoner, Arc::clone(&normalization_context), group).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisGroupResponse))
         .expect("Failed to serialise BasisGroupResponse schema");
     let capability = Capability::Fast;
@@ -58,16 +51,16 @@ pub async fn basis_group<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
     log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<BasisGroupResponse>(
-        &capability,
-        &system_prompt,
-        &user_prompt,
-        schema
-    ).await?;
+    let (result, metadata) = reasoner
+        .execute::<BasisGroupResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
@@ -87,8 +80,8 @@ pub async fn basis_group<R: Reasoner>(
             lineage,
             indexed_lineage,
             metadata: BasisGroupMetadata {
-                prompts: vec![reasoner_metadata.prompt_hash.clone()]
-            }
+                prompts: vec![reasoner_metadata.prompt_hash.clone()],
+            },
         };
 
         Ok((Some(basis_group), reasoner_metadata))
@@ -109,35 +102,46 @@ async fn get_user_prompt<R: Reasoner>(
     let group = pre_sample_context_group(group);
     let context_strings: Vec<String> = group
         .iter()
-        .map(|context| context.generate_context_string_basis_group(
-            Arc::clone(&normalization_context)
-        ))
+        .map(|context| {
+            context.generate_context_string_basis_group(Arc::clone(&normalization_context))
+        })
         .take(10)
         .collect::<Result<Vec<String>, Errors>>()?;
     //let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
     //let samples = sample_most_different(context_strings, &embeddings);
     let merged_samples = context_strings.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-    Ok(format!(r##""
+    Ok(format!(
+        r##""
 [Snippets]
 {}
-"##, merged_samples))
+"##,
+        merged_samples
+    ))
 }
 
 async fn get_system_prompt<R: Reasoner>(
     reasoner: &R,
-    normalization_context: Arc<RwLock<NormalizationContext>>
+    normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<String, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
 
     let document_type = meta_context.document_type.to_string().to_lowercase();
 
     let paths_to_try: Vec<String> = vec![
-        format!("{}/{}", document_type, meta_context.acyclic_subgraph_hash.clone()),
-        format!("{}", document_type)
+        format!(
+            "{}/{}",
+            document_type,
+            meta_context.acyclic_subgraph_hash.clone()
+        ),
+        format!("{}", document_type),
     ];
 
     for path in paths_to_try {
@@ -147,5 +151,7 @@ async fn get_system_prompt<R: Reasoner>(
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt("Expected a basis_group.txt system prompt in prompts directory".to_string()))
+    Err(Errors::UnavailableSystemPrompt(
+        "Expected a basis_group.txt system prompt in prompts directory".to_string(),
+    ))
 }

@@ -8,5 +8,5 @@ pub struct TranslationNode {
     pub id: ID,
     pub source_lineage: Lineage,
     pub target_lineage: Lineage,
-    pub transformations: Vec<FieldTranslationTransformation>
+    pub transformations: Vec<FieldTranslationTransformation>,
 }

@@ -6,8 +6,8 @@ use openrouter_rs::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::prelude::*;
 use crate::environment::get_env_variable;
+use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SchemaToInstanceResponseMetadata {
@@ -22,17 +22,22 @@ pub struct SchemaToInstanceResponse {
 pub struct Document;
 
 impl Document {
-    pub async fn schema_to_instance(document: String) -> Result<(SchemaToInstanceResponse, SchemaToInstanceResponseMetadata), Errors> {
+    pub async fn schema_to_instance(
+        document: String,
+    ) -> Result<(SchemaToInstanceResponse, SchemaToInstanceResponseMetadata), Errors> {
         log::trace!("In schema_to_instance");
 
         let system_prompt = r##"
 Your task is to convert a schema to an instance of that schema with several examples capturing everything the schema permits.
         "##;
 
-        let user_prompt = format!(r##"
+        let user_prompt = format!(
+            r##"
 [Schema]
 {}
-"##, document);
+"##,
+            document
+        );
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
         log::debug!("║                                                               ║");
@@ -134,8 +139,9 @@ Your task is to convert a schema to an instance of that schema with several exam
                                     "╚═══════════════════════════════════════════════════════════════╝"
                                 );
                                 log::error!("Failed to parse LLM response: {}", e);
-                                Err(Errors::UnexpectedError("Failed to parse LLM response".to_string()))
-
+                                Err(Errors::UnexpectedError(
+                                    "Failed to parse LLM response".to_string(),
+                                ))
                             }
                         }
                     }?;
@@ -146,9 +152,7 @@ Your task is to convert a schema to an instance of that schema with several exam
                                 tokens: usage.total_tokens.clone() as u64,
                             }
                         } else {
-                            SchemaToInstanceResponseMetadata {
-                                tokens: 0,
-                            }
+                            SchemaToInstanceResponseMetadata { tokens: 0 }
                         }
                     };
 
@@ -164,8 +168,9 @@ Your task is to convert a schema to an instance of that schema with several exam
                         "╚═══════════════════════════════════════════════════════════════╝"
                     );
                     log::error!("No content in LLM response");
-                    Err(Errors::UnexpectedError("No content in LLM response".to_string()))
-
+                    Err(Errors::UnexpectedError(
+                        "No content in LLM response".to_string(),
+                    ))
                 }
             }
             Err(e) => {
@@ -173,7 +178,9 @@ Your task is to convert a schema to an instance of that schema with several exam
                 log::error!("║                    REQUEST ERROR                              ║");
                 log::error!("╚═══════════════════════════════════════════════════════════════╝");
                 log::error!("Failed to get response from OpenRouter: {}", e);
-                Err(Errors::UnexpectedError("Failed to get response from OpenRouter".to_string()))
+                Err(Errors::UnexpectedError(
+                    "Failed to get response from OpenRouter".to_string(),
+                ))
             }
         }
     }

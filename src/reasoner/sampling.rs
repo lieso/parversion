@@ -1,6 +1,6 @@
-use std::sync::Arc;
-use rand::seq::SliceRandom;
 use rand::rng;
+use rand::seq::SliceRandom;
+use std::sync::Arc;
 
 use crate::context::Context;
 
@@ -16,7 +16,10 @@ pub(super) fn pre_sample_context_group(mut group: Vec<Arc<Context>>) -> Vec<Arc<
     group
 }
 
-pub(super) fn sample_most_different(candidates: Vec<String>, embeddings: &[Vec<f32>]) -> Vec<String> {
+pub(super) fn sample_most_different(
+    candidates: Vec<String>,
+    embeddings: &[Vec<f32>],
+) -> Vec<String> {
     let n = candidates.len();
 
     // *************************
@@ -30,13 +33,15 @@ pub(super) fn sample_most_different(candidates: Vec<String>, embeddings: &[Vec<f
     }
 
     let mut selected = vec![0usize];
-    let mut min_dists: Vec<f32> = embeddings.iter()
+    let mut min_dists: Vec<f32> = embeddings
+        .iter()
         .map(|e| cosine_distance(e, &embeddings[0]))
         .collect();
     min_dists[0] = 0.0;
-    
+
     loop {
-        let (next, &dist) = min_dists.iter()
+        let (next, &dist) = min_dists
+            .iter()
             .enumerate()
             .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap();
@@ -60,11 +65,13 @@ pub(super) fn sample_most_different(candidates: Vec<String>, embeddings: &[Vec<f
         min_dists[next] = 0.0;
     }
 
-    selected.iter().map(|index| candidates[*index].clone()).collect()
+    selected
+        .iter()
+        .map(|index| candidates[*index].clone())
+        .collect()
 }
 
 fn cosine_distance(a: &[f32], b: &[f32]) -> f32 {
     let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
     1.0 - dot
 }
-

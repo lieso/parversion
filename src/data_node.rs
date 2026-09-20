@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::prelude::*;
 use crate::json_node::{Json, JsonNode};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DataNodeFields {
@@ -103,12 +103,7 @@ pub struct DataNode {
 }
 
 impl DataNode {
-    pub fn new(
-        hash: Hash,
-        lineage: Lineage,
-        fields: DataNodeFields,
-        description: String,
-    ) -> Self {
+    pub fn new(hash: Hash, lineage: Lineage, fields: DataNodeFields, description: String) -> Self {
         DataNode {
             id: ID::new(),
             hash,
@@ -123,14 +118,13 @@ impl DataNode {
             id: ID::new(),
             hash: Hash::new(),
             lineage: Lineage::new(),
-            fields: data_nodes.into_iter().fold(
-                DataNodeFields::new(),
-                |mut acc, data_node| {
+            fields: data_nodes
+                .into_iter()
+                .fold(DataNodeFields::new(), |mut acc, data_node| {
                     acc.extend(data_node.fields);
                     acc
-                }
-            ),
-            description: "Placeholder description".to_string()
+                }),
+            description: "Placeholder description".to_string(),
         }
     }
 

@@ -42,7 +42,8 @@ impl Lineage {
 
     pub fn acyclic(&self) -> Self {
         let mut seen = std::collections::HashSet::new();
-        let source_hashes: Vec<Hash> = self.source_hashes
+        let source_hashes: Vec<Hash> = self
+            .source_hashes
             .iter()
             .filter(|h| seen.insert(h.to_string()))
             .cloned()

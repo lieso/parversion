@@ -1,8 +1,8 @@
-use std::sync::{Arc, RwLock};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
 use crate::data_node::DataNode;
+use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct BasisGroupMetadata {
@@ -24,7 +24,7 @@ impl BasisGroup {
     pub fn apply(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        context: Arc<Context>
+        context: Arc<Context>,
     ) -> Result<Option<DataNode>, Errors> {
         let basis_lineage = self.get_basis_lineage();
 
@@ -35,9 +35,7 @@ impl BasisGroup {
                 .unwrap()
         };
 
-        Ok(basis_node.apply(
-            Arc::clone(&context)
-        )?)
+        Ok(basis_node.apply(Arc::clone(&context))?)
     }
 
     pub fn get_basis_lineage(&self) -> BasisLineage {

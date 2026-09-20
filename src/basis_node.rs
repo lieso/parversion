@@ -1,13 +1,13 @@
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
+use crate::data_node::DataNode;
 use crate::prelude::*;
 use crate::transformation::FieldTransformation;
-use crate::data_node::DataNode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNodeMetadata {
-    pub prompts: Vec<Hash>
+    pub prompts: Vec<Hash>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -19,10 +19,7 @@ pub struct BasisNode {
 }
 
 impl BasisNode {
-    pub fn apply(
-        &self,
-        context: Arc<Context>
-    ) -> Result<Option<DataNode>, Errors> {
+    pub fn apply(&self, context: Arc<Context>) -> Result<Option<DataNode>, Errors> {
         let data_node = &context.data_node;
 
         let transformed: Vec<DataNode> = self

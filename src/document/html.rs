@@ -1,19 +1,19 @@
-use ego_tree::{Tree, NodeId, NodeRef, NodeMut};
+use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
+use rayon::prelude::*;
 use scraper::{Html as ScraperHtml, Node as ScraperNode};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::sync::{Arc, RwLock};
 use xmltree::Element;
-use rayon::prelude::*;
 
-use crate::prelude::*;
 use crate::context::Context;
 use crate::data_node::DataNode;
-use crate::meta_context::MetaContext;
+use crate::document::{Document, DocumentMetadata, DocumentType};
 use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::graph_node::{Graph, GraphNode};
 use crate::hash::Hash;
-use crate::document::{Document, DocumentType, DocumentMetadata};
+use crate::meta_context::MetaContext;
+use crate::prelude::*;
 
 const MAX_SUBTREE_SIZE: usize = 997;
 
@@ -22,7 +22,7 @@ pub struct Html;
 impl Html {
     pub fn to_meta_context(
         metadata: &DocumentMetadata,
-        data: String
+        data: String,
     ) -> Result<(Vec<MetaContext>, Vec<Document>), Errors> {
         log::trace!("In to_meta_context");
 
@@ -30,11 +30,13 @@ impl Html {
 
         let meta_contexts = document_roots
             .into_par_iter()
-            .map(|document_root| { 
+            .map(|document_root| {
                 let document_root = Arc::new(RwLock::new(document_root.clone()));
 
-                let contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
-                let contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>> = Arc::new(RwLock::new(HashMap::new()));
+                let contexts: Arc<RwLock<HashMap<ContextID, Arc<Context>>>> =
+                    Arc::new(RwLock::new(HashMap::new()));
+                let contexts_lookup: Arc<RwLock<HashMap<ID, Arc<Context>>>> =
+                    Arc::new(RwLock::new(HashMap::new()));
 
                 fn recurse(
                     document_node: Arc<RwLock<DocumentNode>>,
@@ -47,15 +49,17 @@ impl Html {
                         let lock = read_lock!(document_node);
                         let hash = lock.get_hash();
                         let lineage = parent_lineage.with_hash(hash.clone());
-                        (hash, lineage, lock.get_fields(), lock.get_description(), lock.get_name())
+                        (
+                            hash,
+                            lineage,
+                            lock.get_fields(),
+                            lock.get_description(),
+                            lock.get_name(),
+                        )
                     };
 
-                    let data_node = Arc::new(DataNode::new(
-                        hash,
-                        lineage.clone(),
-                        fields,
-                        description,
-                    ));
+                    let data_node =
+                        Arc::new(DataNode::new(hash, lineage.clone(), fields, description));
 
                     let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
                         Arc::clone(&data_node),
@@ -80,7 +84,7 @@ impl Html {
                         lock.insert(context.id.clone(), Arc::clone(&context));
                     }
 
-                    { 
+                    {
                         let mut lock = write_lock!(contexts_lookup);
                         lock.insert(data_node.id.clone(), Arc::clone(&context));
                         lock.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
@@ -185,12 +189,7 @@ impl Html {
             }
 
             for child in children {
-                recurse(
-                    meta_context,
-                    render_ids.clone(),
-                    Arc::clone(&child),
-                    result,
-                );
+                recurse(meta_context, render_ids.clone(), Arc::clone(&child), result);
             }
 
             if should_render {
@@ -203,7 +202,7 @@ impl Html {
             meta_context,
             render_ids.clone(),
             Arc::clone(&graph_root),
-            &mut result
+            &mut result,
         );
 
         Ok(result)
@@ -230,13 +229,9 @@ impl Html {
                     let reader = std::io::Cursor::new(xml);
 
                     let document_node = match Element::parse(reader) {
-                        Ok(element) => Ok(
-                            DocumentNode::new(
-                                DocumentNodeData::Xml(
-                                    xmltree::XMLNode::Element(element)
-                                )
-                            )
-                        ),
+                        Ok(element) => Ok(DocumentNode::new(DocumentNodeData::Xml(
+                            xmltree::XMLNode::Element(element),
+                        ))),
                         Err(e) => {
                             log::error!("Could not parse XML: {}", e);
 
@@ -248,11 +243,14 @@ impl Html {
                 })
                 .collect::<Result<Vec<_>, Errors>>()?
                 .into_iter()
-                .fold((Vec::new(), Vec::new()), |mut acc, (document_node, other_documents)| {
-                    acc.0.push(document_node);
-                    acc.1.extend(other_documents);
-                    acc
-                });
+                .fold(
+                    (Vec::new(), Vec::new()),
+                    |mut acc, (document_node, other_documents)| {
+                        acc.0.push(document_node);
+                        acc.1.extend(other_documents);
+                        acc
+                    },
+                );
 
             Ok(result)
         } else {
@@ -269,7 +267,7 @@ fn to_dom(data: String) -> Option<ScraperHtml> {
 fn find_cuts(
     node: NodeRef<ScraperNode>,
     sizes: &HashMap<NodeId, usize>,
-    cuts: &mut HashSet<NodeId>
+    cuts: &mut HashSet<NodeId>,
 ) -> bool {
     let mut already_cut = false;
 
@@ -336,16 +334,11 @@ fn build_cut_tree(cut_node: NodeRef<ScraperNode>) -> Tree<ScraperNode> {
 
 fn cut<'a>(
     tree: NodeRef<'a, ScraperNode>,
-    sizes: &HashMap<NodeId, usize>
+    sizes: &HashMap<NodeId, usize>,
 ) -> Vec<Tree<ScraperNode>> {
-
     let mut cuts: HashSet<NodeId> = HashSet::new();
 
-    find_cuts(
-        tree,
-        sizes,
-        &mut cuts
-    );
+    find_cuts(tree, sizes, &mut cuts);
 
     log::info!("Found {} cut(s) to make", cuts.len());
 
@@ -391,7 +384,6 @@ fn walk(
         }
         ScraperNode::Comment(_) => {
             // Ignoring HTML comments
-
         }
         ScraperNode::Element(_) => {
             let _ = process_element(node, xhtml, indent, extracted_docs);
@@ -402,7 +394,8 @@ fn walk(
 
 fn preprocess_element(tag_name: &str) -> Option<String> {
     match tag_name {
-        "svg" | "script" | "iframe" | "input" | "button" | "link" | "meta" | "style" | "noscript" => None,
+        "svg" | "script" | "iframe" | "input" | "button" | "link" | "meta" | "style"
+        | "noscript" => None,
         _ => Some(tag_name.to_string()),
     }
 }
@@ -548,7 +541,7 @@ fn escape_xml(data: &str) -> String {
 
 fn calculate_subtree_sizes(
     node: NodeRef<ScraperNode>,
-    sizes: &mut HashMap<NodeId, usize>
+    sizes: &mut HashMap<NodeId, usize>,
 ) -> usize {
     let mut count = match node.value() {
         ScraperNode::Element(_) => 1,

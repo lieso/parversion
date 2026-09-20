@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+use crate::basis_node::BasisNode;
 use crate::data_node::DataNode;
 use crate::prelude::*;
-use crate::xpath::{XPath, XPathAxis, XPathSegment, XPathPredicate};
-use crate::basis_node::BasisNode;
+use crate::xpath::{XPath, XPathAxis, XPathPredicate, XPathSegment};
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -43,7 +42,9 @@ impl GraphNode {
 
         while let Some(node) = current {
             ancestors.push(node.clone());
-            current = node.parents.first()
+            current = node
+                .parents
+                .first()
                 .map(|parent| read_lock!(parent).clone());
         }
 
@@ -71,11 +72,14 @@ impl GraphNode {
             let self_context = meta_context.contexts_lookup.get(&self.id)?;
             let self_element_name = read_lock!(self_context.document_node).get_element_name();
 
-            let same_type_siblings: Vec<_> = parent_lock.children.iter()
+            let same_type_siblings: Vec<_> = parent_lock
+                .children
+                .iter()
                 .filter(|child| {
                     let child_lock = read_lock!(child);
                     if let Some(child_context) = meta_context.contexts_lookup.get(&child_lock.id) {
-                        let child_element_name = read_lock!(child_context.document_node).get_element_name();
+                        let child_element_name =
+                            read_lock!(child_context.document_node).get_element_name();
                         child_element_name == self_element_name
                     } else {
                         false
@@ -83,7 +87,9 @@ impl GraphNode {
                 })
                 .collect();
 
-            same_type_siblings.iter().position(|child| read_lock!(child).id == self.id)
+            same_type_siblings
+                .iter()
+                .position(|child| read_lock!(child).id == self.id)
         })
     }
 
@@ -132,7 +138,11 @@ impl GraphNode {
         let mut remaining_parents = self.parents.clone();
         while !remaining_parents.is_empty() {
             let parent = read_lock!(remaining_parents[0]).clone();
-            ancestors.push((parent.id.clone(), parent.hash.clone(), parent.index_in_parent()));
+            ancestors.push((
+                parent.id.clone(),
+                parent.hash.clone(),
+                parent.index_in_parent(),
+            ));
             remaining_parents = parent.parents.clone();
         }
 
@@ -156,22 +166,27 @@ impl GraphNode {
 
     pub fn resolve_basis_node(
         &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>
+        normalization_context: Arc<RwLock<NormalizationContext>>,
     ) -> Result<Option<Arc<BasisNode>>, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
-            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+            lock.meta_context
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                ))?
         };
 
         let context_to_group = {
             let lock = read_lock!(normalization_context);
-            lock.context_to_group.clone().ok_or(Errors::DeficientNormalizationContextError("'context_to_group' not provided in normalization context".to_string()))?
+            lock.context_to_group
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "'context_to_group' not provided in normalization context".to_string(),
+                ))?
         };
 
-        let context = meta_context.contexts_lookup
-            .get(&self.id)
-            .cloned()
-            .unwrap();
+        let context = meta_context.contexts_lookup.get(&self.id).cloned().unwrap();
 
         if let Some(basis_group) = context_to_group.get(&context.id).cloned() {
             let basis_lineage = basis_group.get_basis_lineage();
@@ -193,18 +208,19 @@ impl GraphNode {
     pub fn traverse_using_xpath_axis(
         _meta_context: Arc<RwLock<NormalizationContext>>,
         graph: Graph,
-        xpath_axis: &XPathAxis
+        xpath_axis: &XPathAxis,
     ) -> Result<Vec<Graph>, Errors> {
         let lock = read_lock!(graph);
 
         if lock.parents.len() > 1 {
-            return Err(Errors::XPathTraverseError("Why are we traversing a graph using xpath if nodes have more than one parent?".to_string()));
+            return Err(Errors::XPathTraverseError(
+                "Why are we traversing a graph using xpath if nodes have more than one parent?"
+                    .to_string(),
+            ));
         }
 
         match xpath_axis {
-            XPathAxis::Child => {
-                Ok(lock.children.clone())
-            },
+            XPathAxis::Child => Ok(lock.children.clone()),
             XPathAxis::Parent => Ok(lock.parents.clone()),
             XPathAxis::Self_ => Ok(vec![graph.clone()]),
             XPathAxis::Descendant => {
@@ -218,7 +234,7 @@ impl GraphNode {
                 }
 
                 Ok(descendants)
-            },
+            }
             XPathAxis::Ancestor => {
                 let mut ancestors = Vec::new();
                 let mut current_parents = lock.parents.clone();
@@ -231,35 +247,52 @@ impl GraphNode {
                 }
 
                 Ok(ancestors)
-            },
+            }
             XPathAxis::FollowingSibling => {
                 if let Some(parent) = lock.parents.first() {
-                    if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
-                        read_lock!(child).id == lock.id
-                    }) {
-                        let siblings: Vec<Graph> = read_lock!(parent).children[index_current + 1..].to_vec();
+                    if let Some(index_current) = read_lock!(parent)
+                        .children
+                        .iter()
+                        .position(|child| read_lock!(child).id == lock.id)
+                    {
+                        let siblings: Vec<Graph> =
+                            read_lock!(parent).children[index_current + 1..].to_vec();
                         Ok(siblings)
                     } else {
-                        Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
+                        Err(Errors::XPathTraverseError(
+                            "Could not find index of current node as a child of parent".to_string(),
+                        ))
                     }
                 } else {
-                    Err(Errors::XPathTraverseError("Trying to visit following sibling on a root node".to_string()))
+                    Err(Errors::XPathTraverseError(
+                        "Trying to visit following sibling on a root node".to_string(),
+                    ))
                 }
-            },
+            }
             XPathAxis::PrecedingSibling => {
                 if let Some(parent) = lock.parents.first() {
-                    if let Some(index_current) = read_lock!(parent).children.iter().position(|child| {
-                        read_lock!(child).id == lock.id
-                    }) {
-                        let siblings: Vec<Graph> = read_lock!(parent).children[..index_current].iter().rev().cloned().collect();
+                    if let Some(index_current) = read_lock!(parent)
+                        .children
+                        .iter()
+                        .position(|child| read_lock!(child).id == lock.id)
+                    {
+                        let siblings: Vec<Graph> = read_lock!(parent).children[..index_current]
+                            .iter()
+                            .rev()
+                            .cloned()
+                            .collect();
                         Ok(siblings)
                     } else {
-                        Err(Errors::XPathTraverseError("Could not find index of current node as a child of parent".to_string()))
+                        Err(Errors::XPathTraverseError(
+                            "Could not find index of current node as a child of parent".to_string(),
+                        ))
                     }
                 } else {
-                    Err(Errors::XPathTraverseError("Trying to visit preceding sibling on a root node".to_string()))
+                    Err(Errors::XPathTraverseError(
+                        "Trying to visit preceding sibling on a root node".to_string(),
+                    ))
                 }
-            },
+            }
             XPathAxis::Following => {
                 let mut result = Vec::new();
                 let mut current_id = lock.id.clone();
@@ -272,15 +305,22 @@ impl GraphNode {
 
                     let (next_id, next_parents, following_siblings) = {
                         let parent_lock = read_lock!(parent);
-                        let Some(index) = parent_lock.children.iter().position(|child| {
-                            read_lock!(child).id == current_id
-                        }) else {
+                        let Some(index) = parent_lock
+                            .children
+                            .iter()
+                            .position(|child| read_lock!(child).id == current_id)
+                        else {
                             return Err(Errors::XPathTraverseError(
-                                "Could not find index of current node as a child of parent".to_string()
+                                "Could not find index of current node as a child of parent"
+                                    .to_string(),
                             ));
                         };
                         let following_siblings = parent_lock.children[index + 1..].to_vec();
-                        (parent_lock.id.clone(), parent_lock.parents.clone(), following_siblings)
+                        (
+                            parent_lock.id.clone(),
+                            parent_lock.parents.clone(),
+                            following_siblings,
+                        )
                     };
 
                     for sibling in following_siblings {
@@ -298,7 +338,7 @@ impl GraphNode {
                 }
 
                 Ok(result)
-            },
+            }
             XPathAxis::Preceding => {
                 let mut result = Vec::new();
                 let mut current_id = lock.id.clone();
@@ -311,15 +351,26 @@ impl GraphNode {
 
                     let (next_id, next_parents, preceding_siblings) = {
                         let parent_lock = read_lock!(parent);
-                        let Some(index) = parent_lock.children.iter().position(|child| {
-                            read_lock!(child).id == current_id
-                        }) else {
+                        let Some(index) = parent_lock
+                            .children
+                            .iter()
+                            .position(|child| read_lock!(child).id == current_id)
+                        else {
                             return Err(Errors::XPathTraverseError(
-                                    "Could not find index of current node as a child of parent".to_string()
+                                "Could not find index of current node as a child of parent"
+                                    .to_string(),
                             ));
                         };
-                        let preceding_siblings: Vec<Graph> = parent_lock.children[..index].iter().rev().cloned().collect();
-                        (parent_lock.id.clone(), parent_lock.parents.clone(), preceding_siblings)
+                        let preceding_siblings: Vec<Graph> = parent_lock.children[..index]
+                            .iter()
+                            .rev()
+                            .cloned()
+                            .collect();
+                        (
+                            parent_lock.id.clone(),
+                            parent_lock.parents.clone(),
+                            preceding_siblings,
+                        )
                     };
 
                     for sibling in preceding_siblings {
@@ -337,14 +388,14 @@ impl GraphNode {
                 }
 
                 Ok(result)
-            },
+            }
         }
     }
 
     pub fn traverse_using_xpath_node_test(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         graph: Graph,
-        node_test: &String
+        node_test: &String,
     ) -> Result<Vec<Graph>, Errors> {
         if node_test == "node()" {
             panic!("Received node_test 'node()'");
@@ -358,7 +409,11 @@ impl GraphNode {
             panic!("Received node_test '*'");
         }
 
-        let node_test = if node_test == "text()" { "#text" } else { node_test.as_str() };
+        let node_test = if node_test == "text()" {
+            "#text"
+        } else {
+            node_test.as_str()
+        };
 
         let contexts_lookup = {
             let lock = read_lock!(normalization_context);
@@ -378,7 +433,7 @@ impl GraphNode {
     pub fn traverse_using_xpath_predicate(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         graphs: Vec<Graph>,
-        predicate: &XPathPredicate
+        predicate: &XPathPredicate,
     ) -> Result<Vec<Graph>, Errors> {
         match predicate {
             XPathPredicate::Position(index) => {
@@ -419,7 +474,8 @@ impl GraphNode {
                             let text_vals = context.data_node.fields.get("text");
                             if !text_vals.is_empty() {
                                 let text_str = text_vals[0].to_string();
-                                let normalized = text_str.split_whitespace().collect::<Vec<_>>().join(" ");
+                                let normalized =
+                                    text_str.split_whitespace().collect::<Vec<_>>().join(" ");
                                 return normalized.contains(value.trim());
                             }
                             false
@@ -444,8 +500,8 @@ impl GraphNode {
                         contexts_lookup
                             .get(&graph_id)
                             .and_then(|context| {
-                                let _foo = read_lock!(&context.document_node)
-                                    .get_attribute_value(name);
+                                let _foo =
+                                    read_lock!(&context.document_node).get_attribute_value(name);
 
                                 read_lock!(&context.document_node)
                                     .get_attribute_value(name)
@@ -471,8 +527,8 @@ impl GraphNode {
                         contexts_lookup
                             .get(&graph_id)
                             .and_then(|context| {
-                                let _foo = read_lock!(&context.document_node)
-                                    .get_attribute_value(name);
+                                let _foo =
+                                    read_lock!(&context.document_node).get_attribute_value(name);
 
                                 read_lock!(&context.document_node)
                                     .get_attribute_value(name)
@@ -504,7 +560,7 @@ impl GraphNode {
                                         .is_some()
                                 })
                             })
-                        .unwrap_or(false)
+                            .unwrap_or(false)
                     })
                     .cloned()
                     .collect();
@@ -528,7 +584,7 @@ impl GraphNode {
                                     .get_attribute_value(name)
                                     .map(|attr_value| attr_value.trim().starts_with(value.trim()))
                             })
-                        .unwrap_or(false)
+                            .unwrap_or(false)
                     })
                     .cloned()
                     .collect();
@@ -540,17 +596,25 @@ impl GraphNode {
                     .into_iter()
                     .filter(|graph| {
                         matches!(
-                            Self::traverse_using_xpath(Arc::clone(&normalization_context), Arc::clone(graph), path),
+                            Self::traverse_using_xpath(
+                                Arc::clone(&normalization_context),
+                                Arc::clone(graph),
+                                path
+                            ),
                             Ok(Some(_))
                         )
                     })
-                .collect();
+                    .collect();
 
                 Ok(filtered)
             }
             XPathPredicate::And(predicates) => {
                 predicates.iter().try_fold(graphs, |acc, predicate| {
-                    Self::traverse_using_xpath_predicate(Arc::clone(&normalization_context), acc, predicate)
+                    Self::traverse_using_xpath_predicate(
+                        Arc::clone(&normalization_context),
+                        acc,
+                        predicate,
+                    )
                 })
             }
         }
@@ -559,42 +623,44 @@ impl GraphNode {
     pub fn traverse_using_xpath_segment(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         graph: Graph,
-        xpath_segment: &XPathSegment
+        xpath_segment: &XPathSegment,
     ) -> Result<Vec<Graph>, Errors> {
         let next_graphs: Vec<Graph> = Self::traverse_using_xpath_axis(
             Arc::clone(&normalization_context),
             Arc::clone(&graph),
-            &xpath_segment.axis
+            &xpath_segment.axis,
         )?;
 
-        let next_graphs: Vec<Graph> = if matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent) {
-            next_graphs
-        } else {
-            next_graphs
+        let next_graphs: Vec<Graph> =
+            if matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent) {
+                next_graphs
+            } else {
+                next_graphs
+                    .iter()
+                    .map(|graph| {
+                        Self::traverse_using_xpath_node_test(
+                            Arc::clone(&normalization_context),
+                            Arc::clone(&graph),
+                            &xpath_segment.node_test,
+                        )
+                    })
+                    .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
+                    .into_iter()
+                    .flatten()
+                    .collect()
+            };
+
+        let next_graphs =
+            xpath_segment
+                .predicates
                 .iter()
-                .map(|graph| {
-                    Self::traverse_using_xpath_node_test(
+                .try_fold(next_graphs, |graphs, predicate| {
+                    Self::traverse_using_xpath_predicate(
                         Arc::clone(&normalization_context),
-                        Arc::clone(&graph),
-                        &xpath_segment.node_test
+                        graphs,
+                        predicate,
                     )
-                })
-                .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
-                .into_iter()
-                .flatten()
-                .collect()
-        };
-
-        let next_graphs = xpath_segment.predicates.iter().try_fold(
-            next_graphs,
-            |graphs, predicate| {
-                Self::traverse_using_xpath_predicate(
-                    Arc::clone(&normalization_context),
-                    graphs,
-                    predicate,
-                )
-            },
-        )?;
+                })?;
 
         Ok(next_graphs)
     }
@@ -602,7 +668,7 @@ impl GraphNode {
     pub fn traverse_using_xpath(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
-        xpath: &XPath
+        xpath: &XPath,
     ) -> Result<Option<Graph>, Errors> {
         let segments = &xpath.segments;
 
@@ -612,7 +678,11 @@ impl GraphNode {
             current = current
                 .iter()
                 .map(|graph| {
-                    Self::traverse_using_xpath_segment(Arc::clone(&normalization_context), Arc::clone(graph), segment)
+                    Self::traverse_using_xpath_segment(
+                        Arc::clone(&normalization_context),
+                        Arc::clone(graph),
+                        segment,
+                    )
                 })
                 .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
                 .into_iter()
@@ -633,10 +703,7 @@ impl GraphNode {
         Ok(current.first().cloned())
     }
 
-    pub fn to_xpath(
-        &self,
-        meta_context: &MetaContext
-    ) -> Result<XPath, Errors> {
+    pub fn to_xpath(&self, meta_context: &MetaContext) -> Result<XPath, Errors> {
         let ancestors = {
             let mut ancestors: Vec<Graph> = Vec::new();
             let mut current_parents = self.parents.clone();
@@ -651,31 +718,34 @@ impl GraphNode {
             ancestors
         };
 
-        let segments: Vec<XPathSegment> = ancestors.iter().map(|graph| {
-            let lock = read_lock!(graph);
-            let context = meta_context.contexts_lookup.get(&lock.id).unwrap();
-            let document_node = read_lock!(context.document_node);
+        let segments: Vec<XPathSegment> = ancestors
+            .iter()
+            .map(|graph| {
+                let lock = read_lock!(graph);
+                let context = meta_context.contexts_lookup.get(&lock.id).unwrap();
+                let document_node = read_lock!(context.document_node);
 
-            let predicate = {
-                if lock.parents.len() > 0 {
-                    let position = lock.index_in_parent_by_type(meta_context).unwrap();
+                let predicate = {
+                    if lock.parents.len() > 0 {
+                        let position = lock.index_in_parent_by_type(meta_context).unwrap();
 
-                    if position > 0 {
-                        Some(XPathPredicate::Position(position + 1))
+                        if position > 0 {
+                            Some(XPathPredicate::Position(position + 1))
+                        } else {
+                            None
+                        }
                     } else {
                         None
                     }
-                } else {
-                    None
-                }
-            };
+                };
 
-            XPathSegment {
-                axis: XPathAxis::Child,
-                node_test: document_node.get_element_name(),
-                predicates: predicate.into_iter().collect()
-            }
-        }).collect();
+                XPathSegment {
+                    axis: XPathAxis::Child,
+                    node_test: document_node.get_element_name(),
+                    predicates: predicate.into_iter().collect(),
+                }
+            })
+            .collect();
 
         let final_context = meta_context.contexts_lookup.get(&self.id).unwrap();
 
@@ -701,12 +771,16 @@ impl GraphNode {
                 }
             } else {
                 let document_node = read_lock!(final_context.document_node);
-                let attributes: Vec<String> = final_context.data_node.fields.keys().cloned().collect();
+                let attributes: Vec<String> =
+                    final_context.data_node.fields.keys().cloned().collect();
 
                 XPathSegment {
                     axis: XPathAxis::Child,
                     node_test: document_node.get_element_name(),
-                    predicates: position.or(Some(XPathPredicate::AttributePresence(attributes))).into_iter().collect(),
+                    predicates: position
+                        .or(Some(XPathPredicate::AttributePresence(attributes)))
+                        .into_iter()
+                        .collect(),
                 }
             }
         };
@@ -717,9 +791,7 @@ impl GraphNode {
             .chain(std::iter::once(final_segment))
             .collect();
 
-        let xpath = XPath {
-            segments,
-        };
+        let xpath = XPath { segments };
 
         Ok(xpath)
     }

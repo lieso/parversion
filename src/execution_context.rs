@@ -1,4 +1,7 @@
-use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 use tokio::sync::mpsc;
 
 #[derive(Debug)]
@@ -20,7 +23,9 @@ pub struct StageContext {
 
 impl StageContext {
     pub fn record_events(&self, event_name: &'static str, tokens: u64) {
-        self.parent.total_tokens.fetch_add(tokens, Ordering::Relaxed);
+        self.parent
+            .total_tokens
+            .fetch_add(tokens, Ordering::Relaxed);
 
         if let Some(tx) = &self.parent.progress_tx {
             let _ = tx.send(ProgressEvent::Event {

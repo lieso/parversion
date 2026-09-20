@@ -1,9 +1,9 @@
-use tokio::task::{self, JoinError};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::collections::{HashMap};
+use tokio::task::{self, JoinError};
 
-use crate::prelude::*;
 use crate::basis_field::{BasisField, BasisFieldMetadata};
+use crate::prelude::*;
 
 pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -18,17 +18,23 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
 
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
 
     if !options.regenerate {
         let basis_fields: Vec<BasisField> = provider
-            .get_basis_fields_by_acyclic_subgraph_hash(&meta_context.acyclic_subgraph_hash).await?
+            .get_basis_fields_by_acyclic_subgraph_hash(&meta_context.acyclic_subgraph_hash)
+            .await?
             .into_iter()
             .collect();
 
         if !basis_fields.is_empty() {
-            let field_map: HashMap<ID, Arc<BasisField>> = basis_fields.into_iter()
+            let field_map: HashMap<ID, Arc<BasisField>> = basis_fields
+                .into_iter()
                 .map(|basis_field| {
                     let basis_field = Arc::new(basis_field);
                     let id = basis_field.id.clone();
@@ -66,11 +72,9 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
         let cloned_stage_context = stage_context.clone();
 
         let handle = task::spawn(async move {
-            let result = cloned_reasoner.basis_field(
-                cloned_normalization_context,
-                contexts_in_group,
-                field
-            ).await;
+            let result = cloned_reasoner
+                .basis_field(cloned_normalization_context, contexts_in_group, field)
+                .await;
 
             match result {
                 Ok((maybe_basis_field, metadata)) => {
@@ -84,22 +88,29 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
         handles.push(handle);
     }
 
-    let results: Vec<Result<Result<Option<BasisField>, Errors>, JoinError>> = futures::future::join_all(handles).await;
+    let results: Vec<Result<Result<Option<BasisField>, Errors>, JoinError>> =
+        futures::future::join_all(handles).await;
 
-    let mut basis_fields: Vec<BasisField> = results.into_iter()
+    let mut basis_fields: Vec<BasisField> = results
+        .into_iter()
         .enumerate()
-        .filter_map(|(idx, res)| {
-            match res {
-                Ok(Ok(Some(basis_field))) => Some(Ok(basis_field)),
-                Ok(Ok(None)) => None,
-                Ok(Err(e)) => {
-                    log::error!("Field analysis task {} failed: {:?}", idx, e);
-                    Some(Err(e))
-                },
-                Err(join_err) => {
-                    log::error!("Field analysis task {} panicked or was cancelled: {}", idx, join_err);
-                    Some(Err(Errors::TaskJoinError(format!("Field analysis task {} failed: {}", idx, join_err))))
-                }
+        .filter_map(|(idx, res)| match res {
+            Ok(Ok(Some(basis_field))) => Some(Ok(basis_field)),
+            Ok(Ok(None)) => None,
+            Ok(Err(e)) => {
+                log::error!("Field analysis task {} failed: {:?}", idx, e);
+                Some(Err(e))
+            }
+            Err(join_err) => {
+                log::error!(
+                    "Field analysis task {} panicked or was cancelled: {}",
+                    idx,
+                    join_err
+                );
+                Some(Err(Errors::TaskJoinError(format!(
+                    "Field analysis task {} failed: {}",
+                    idx, join_err
+                ))))
             }
         })
         .collect::<Result<Vec<BasisField>, Errors>>()?;
@@ -110,16 +121,16 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
         acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
         name: "text".to_string(),
         metadata: BasisFieldMetadata {
-            prompts: Vec::new()
-        }
+            prompts: Vec::new(),
+        },
     });
 
-    provider.save_basis_fields(
-        &meta_context.acyclic_subgraph_hash,
-        basis_fields.clone()
-    ).await?;
+    provider
+        .save_basis_fields(&meta_context.acyclic_subgraph_hash, basis_fields.clone())
+        .await?;
 
-    let field_map: HashMap<ID, Arc<BasisField>> = basis_fields.into_iter()
+    let field_map: HashMap<ID, Arc<BasisField>> = basis_fields
+        .into_iter()
         .map(|basis_field| {
             let basis_field = Arc::new(basis_field);
             let id = basis_field.id.clone();

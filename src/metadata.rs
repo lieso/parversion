@@ -1,4 +1,4 @@
-use crate::document::{DocumentType, DocumentRole};
+use crate::document::{DocumentRole, DocumentType};
 
 #[derive(Clone, Debug)]
 pub struct Metadata {

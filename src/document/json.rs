@@ -1,25 +1,25 @@
-use std::sync::{Arc, RwLock};
-use serde_json::{json, Value, Map};
+use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::graph_node::{Graph, GraphNode};
-use crate::json_node::JsonNode;
 use crate::context::Context;
+use crate::data_node::DataNode;
 use crate::document::{Document, DocumentMetadata, DocumentType};
 use crate::document_node::{DocumentNode, DocumentNodeData};
-use crate::data_node::DataNode;
+use crate::graph_node::{Graph, GraphNode};
+use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
-use crate::translation_node::TranslationNode;
-use crate::translation_network::TranslationNetwork;
 use crate::normal_meta_context::NormalMetaContext;
+use crate::prelude::*;
+use crate::translation_network::TranslationNetwork;
+use crate::translation_node::TranslationNode;
 
 pub struct Json {}
 
 impl Json {
     pub fn to_meta_context(
         metadata: &DocumentMetadata,
-        data: String
+        data: String,
     ) -> Result<(Vec<MetaContext>, Vec<Document>), Errors> {
         log::trace!("In to_meta_context");
 
@@ -40,15 +40,16 @@ impl Json {
                 let lock = read_lock!(document_node);
                 let hash = lock.get_hash();
                 let lineage = parent_lineage.with_hash(hash.clone());
-                (hash, lineage, lock.get_fields(), lock.get_description(), lock.get_name())
+                (
+                    hash,
+                    lineage,
+                    lock.get_fields(),
+                    lock.get_description(),
+                    lock.get_name(),
+                )
             };
 
-            let data_node = Arc::new(DataNode::new(
-                hash,
-                lineage.clone(),
-                fields,
-                description,
-            ));
+            let data_node = Arc::new(DataNode::new(hash, lineage.clone(), fields, description));
 
             let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
                 Arc::clone(&data_node),
@@ -65,7 +66,7 @@ impl Json {
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
-                network_name
+                network_name,
             });
 
             contexts.insert(context.id.clone(), Arc::clone(&context));
@@ -124,13 +125,16 @@ impl Json {
             lock.acyclic_subgraph_hash()
         };
 
-        Ok((vec![MetaContext {
-            contexts,
-            graph_root,
-            contexts_lookup: Arc::new(contexts_lookup),
-            document_type: DocumentType::Json,
-            acyclic_subgraph_hash,
-        }], Vec::new()))
+        Ok((
+            vec![MetaContext {
+                contexts,
+                graph_root,
+                contexts_lookup: Arc::new(contexts_lookup),
+                document_type: DocumentType::Json,
+                acyclic_subgraph_hash,
+            }],
+            Vec::new(),
+        ))
     }
 
     pub fn from_normal_meta_context(
@@ -140,12 +144,11 @@ impl Json {
 
         let mut result: Value = Value::Object(Map::new());
 
-        fn recurse(
-            normal_meta_context: &NormalMetaContext,
-            graph_node: Graph,
-            result: &mut Value
-        ) {
-            let context = normal_meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap();
+        fn recurse(normal_meta_context: &NormalMetaContext, graph_node: Graph, result: &mut Value) {
+            let context = normal_meta_context
+                .contexts_lookup
+                .get(&read_lock!(graph_node).id)
+                .unwrap();
             let data_node = &context.data_node;
             let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
             for json_node in json_nodes {
@@ -169,16 +172,15 @@ impl Json {
             }
 
             for child in &read_lock!(graph_node).children {
-                let child_context = normal_meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap();
+                let child_context = normal_meta_context
+                    .contexts_lookup
+                    .get(&read_lock!(child).id)
+                    .unwrap();
 
                 if let Some(network_name) = &child_context.network_name {
                     let mut inner_result: Value = Value::Object(Map::new());
 
-                    recurse(
-                        normal_meta_context,
-                        Arc::clone(&child),
-                        &mut inner_result,
-                    );
+                    recurse(normal_meta_context, Arc::clone(&child), &mut inner_result);
 
                     let inner_result_value = inner_result.clone();
 
@@ -197,20 +199,12 @@ impl Json {
                         }
                     }
                 } else {
-                    recurse(
-                        normal_meta_context,
-                        Arc::clone(&child),
-                        result
-                    );
+                    recurse(normal_meta_context, Arc::clone(&child), result);
                 }
             }
         }
 
-        recurse(
-            normal_meta_context,
-            Arc::clone(&graph_root),
-            &mut result
-        );
+        recurse(normal_meta_context, Arc::clone(&graph_root), &mut result);
 
         let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
 
@@ -221,7 +215,6 @@ impl Json {
         meta_context: &MetaContext,
         render_ids: Option<&HashSet<GraphNodeID>>,
     ) -> Result<String, Errors> {
-
         let graph_root = meta_context.graph_root.clone();
 
         let mut result: Value = Value::Object(Map::new());
@@ -231,7 +224,7 @@ impl Json {
             render_ids: Option<&HashSet<GraphNodeID>>,
             graph_node: Graph,
             network_name: &str,
-            result: &mut Value
+            result: &mut Value,
         ) {
             let should_render = if let Some(render_ids) = render_ids {
                 render_ids.contains(&read_lock!(graph_node).id)
@@ -239,7 +232,10 @@ impl Json {
                 true
             };
 
-            let context = meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap();
+            let context = meta_context
+                .contexts_lookup
+                .get(&read_lock!(graph_node).id)
+                .unwrap();
 
             if should_render {
                 if !result.is_object() {
@@ -257,7 +253,10 @@ impl Json {
             }
 
             for child in &read_lock!(graph_node).children {
-                let child_context = meta_context.contexts_lookup.get(&read_lock!(child).id).unwrap();
+                let child_context = meta_context
+                    .contexts_lookup
+                    .get(&read_lock!(child).id)
+                    .unwrap();
                 let next_network_name = if child_context.network_name.is_empty() {
                     network_name
                 } else {
@@ -279,7 +278,7 @@ impl Json {
                             render_ids.clone(),
                             Arc::clone(&child),
                             next_network_name,
-                            &mut inner_result
+                            &mut inner_result,
                         );
 
                         let inner_result_value = inner_result.clone();
@@ -291,12 +290,8 @@ impl Json {
                                 arr.push(inner_result_value.clone());
                             }
                         } else {
-                            *result = json!(vec![
-                                result.clone(),
-                                inner_result_value.clone()
-                            ]);
+                            *result = json!(vec![result.clone(), inner_result_value.clone()]);
                         }
-
                     } else {
                         let mut inner_result: Value = Value::Object(Map::new());
 
@@ -305,7 +300,7 @@ impl Json {
                             render_ids.clone(),
                             Arc::clone(&child),
                             next_network_name,
-                            &mut inner_result
+                            &mut inner_result,
                         );
 
                         let inner_result_value = inner_result.clone();
@@ -358,7 +353,7 @@ impl Json {
     }
 
     pub fn from_translation(
-        translation_context: Arc<RwLock<TranslationContext>>
+        translation_context: Arc<RwLock<TranslationContext>>,
     ) -> Result<String, Errors> {
         log::trace!("In from_translation");
 
@@ -373,12 +368,16 @@ impl Json {
         fn recurse(
             translation_context: Arc<RwLock<TranslationContext>>,
             graph_node: Graph,
-            result: &mut Value
+            result: &mut Value,
         ) {
             let current_context = {
                 let lock = read_lock!(translation_context);
                 let meta_context = lock.input_meta_context.as_ref().unwrap();
-                meta_context.contexts_lookup.get(&read_lock!(graph_node).id).unwrap().clone()
+                meta_context
+                    .contexts_lookup
+                    .get(&read_lock!(graph_node).id)
+                    .unwrap()
+                    .clone()
             };
 
             let translation_node: Option<Arc<TranslationNode>> = {
@@ -397,7 +396,11 @@ impl Json {
                 let translated: Vec<DataNode> = translation_node
                     .transformations
                     .iter()
-                    .map(|transformation| transformation.transform(data_node.clone()).expect("Could not transform"))
+                    .map(|transformation| {
+                        transformation
+                            .transform(data_node.clone())
+                            .expect("Could not transform")
+                    })
                     .collect();
 
                 for node in translated {
@@ -430,7 +433,7 @@ impl Json {
                         recurse(
                             Arc::clone(&translation_context),
                             Arc::clone(&child),
-                            &mut inner_result
+                            &mut inner_result,
                         );
 
                         if let Value::Object(ref mut map) = result {
@@ -454,7 +457,7 @@ impl Json {
                         recurse(
                             Arc::clone(&translation_context),
                             Arc::clone(&child),
-                            &mut inner_result
+                            &mut inner_result,
                         );
                     }
 
@@ -462,14 +465,9 @@ impl Json {
                         map.insert(transformation.image.clone(), inner_result);
                     }
                 }
-
             } else {
                 for child in &read_lock!(graph_node).children {
-                    recurse(
-                        Arc::clone(&translation_context),
-                        Arc::clone(&child),
-                        result
-                    );
+                    recurse(Arc::clone(&translation_context), Arc::clone(&child), result);
                 }
             }
         }
@@ -477,21 +475,21 @@ impl Json {
         recurse(
             Arc::clone(&translation_context),
             Arc::clone(&graph_root),
-            &mut result
+            &mut result,
         );
 
         Ok(serde_json::to_string_pretty(&result).expect("Could not make a JSON string"))
     }
 
     fn get_document_node(data: String) -> Result<DocumentNode, Errors> {
-        let value: Value = serde_json::from_str(&data)
-            .map_err(|e| {
-                Errors::JsonParseError(e.to_string())
-            })?;
+        let value: Value =
+            serde_json::from_str(&data).map_err(|e| Errors::JsonParseError(e.to_string()))?;
 
         match value {
             serde_json::Value::Object(map) => Ok(DocumentNode::new(DocumentNodeData::Json(map))),
-            _ => Err(Errors::JsonParseError("JSON root must be an object".to_string())),
+            _ => Err(Errors::JsonParseError(
+                "JSON root must be an object".to_string(),
+            )),
         }
     }
 }

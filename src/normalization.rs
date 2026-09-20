@@ -1,37 +1,31 @@
-use std::sync::{Arc, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
+use crate::basis_graph::BasisGraph;
+use crate::basis_group::BasisGroup;
+use crate::basis_network::BasisNetwork;
+use crate::classification::Classification;
+use crate::data_node::{DataNode, DataNodeFields};
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
-use crate::normalization_context::NormalizationContext;
 use crate::field_analysis::generate_basis_fields;
-use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
-use crate::node_analysis::{generate_basis_nodes};
-use crate::network_analysis::{
-    get_classification,
-    generate_basis_networks
-};
 use crate::graph_analysis::generate_basis_graph;
-use crate::reports::{
-    report_basis_groups,
-    report_basis_fields,
-    report_basis_nodes,
-    report_basis_networks,
-    report_basis_graph
-};
+use crate::graph_node::Graph;
+use crate::graph_node::GraphNode;
+use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
+use crate::network_analysis::{generate_basis_networks, get_classification};
+use crate::node_analysis::generate_basis_nodes;
+use crate::normal_context::NormalContext;
+use crate::normal_meta_context::NormalMetaContext;
+use crate::normalization_context::NormalizationContext;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::graph_node::Graph;
-use crate::graph_node::GraphNode;
-use crate::basis_network::BasisNetwork;
-use crate::basis_graph::BasisGraph;
-use crate::basis_group::BasisGroup;
-use crate::normal_context::NormalContext;
-use crate::data_node::{DataNode, DataNodeFields};
-use crate::classification::Classification;
-use crate::normal_meta_context::NormalMetaContext;
+use crate::reports::{
+    report_basis_fields, report_basis_graph, report_basis_groups, report_basis_networks,
+    report_basis_nodes,
+};
 
 pub async fn normalize<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -61,15 +55,14 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         let start = Instant::now();
         let stage = execution_context.enter_stage("Document classification");
 
-        let classification =
-            get_classification(
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
-                normalization_context.clone(),
-                &options,
-                &stage,
-            )
-            .await?;
+        let classification = get_classification(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            normalization_context.clone(),
+            &options,
+            &stage,
+        )
+        .await?;
 
         {
             let mut lock = write_lock!(normalization_context);
@@ -83,15 +76,14 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         let start = Instant::now();
         let stage = execution_context.enter_stage("Field analysis");
 
-        let basis_fields =
-            generate_basis_fields(
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
-                Arc::clone(&normalization_context),
-                &options,
-                &stage,
-            )
-            .await?;
+        let basis_fields = generate_basis_fields(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            Arc::clone(&normalization_context),
+            &options,
+            &stage,
+        )
+        .await?;
 
         {
             let mut lock = write_lock!(normalization_context);
@@ -111,24 +103,22 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         let start = Instant::now();
         let stage = execution_context.enter_stage("Group analysis");
 
-        let basis_groups =
-            generate_basis_groups(
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
-                Arc::clone(&normalization_context),
-                &options,
-                &stage,
-            )
-            .await?;
+        let basis_groups = generate_basis_groups(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            Arc::clone(&normalization_context),
+            &options,
+            &stage,
+        )
+        .await?;
 
         {
             let mut lock = write_lock!(normalization_context);
             lock.update_basis_groups(basis_groups);
         }
 
-        let (context_groups, context_to_group) = resolve_context_groups(
-            Arc::clone(&normalization_context)
-        )?;
+        let (context_groups, context_to_group) =
+            resolve_context_groups(Arc::clone(&normalization_context))?;
 
         {
             let mut lock = write_lock!(normalization_context);
@@ -149,15 +139,14 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         let stage = execution_context.enter_stage("Node analysis");
 
         log::info!("Getting basis nodes");
-        let (basis_nodes, basis_node_contexts, context_basis_node) =
-            generate_basis_nodes(
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
-                normalization_context.clone(),
-                &options,
-                &stage,
-            )
-            .await?;
+        let (basis_nodes, basis_node_contexts, context_basis_node) = generate_basis_nodes(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            normalization_context.clone(),
+            &options,
+            &stage,
+        )
+        .await?;
 
         {
             let mut lock = write_lock!(normalization_context);
@@ -178,15 +167,14 @@ pub async fn normalize<P: Provider, R: Reasoner>(
         let stage = execution_context.enter_stage("Network analysis");
 
         log::info!("Generating basis networks");
-        let (basis_networks,) =
-            generate_basis_networks(
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
-                normalization_context.clone(),
-                &options,
-                &stage,
-            )
-            .await?;
+        let (basis_networks,) = generate_basis_networks(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            normalization_context.clone(),
+            &options,
+            &stage,
+        )
+        .await?;
 
         {
             let mut lock = write_lock!(normalization_context);
@@ -208,13 +196,13 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
         log::info!("Generating basis graph");
         let basis_graph = generate_basis_graph(
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
-                Arc::clone(&normalization_context),
-                &options,
-                &stage,
-            )
-            .await?;
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            Arc::clone(&normalization_context),
+            &options,
+            &stage,
+        )
+        .await?;
 
         {
             let mut lock = write_lock!(normalization_context);
@@ -293,16 +281,17 @@ pub async fn normalize_document<P: Provider, R: Reasoner>(
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_document");
 
-    let normalization_context =
-        normalize(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            document,
-            _options,
-            execution_context
-        ).await?;
+    let normalization_context = normalize(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        document,
+        _options,
+        execution_context,
+    )
+    .await?;
 
-    let normalized_document = Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)?;
+    let normalized_document =
+        Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)?;
 
     Ok(Package {
         document: normalized_document,
@@ -366,15 +355,15 @@ pub async fn normalize_text_to_document<P: Provider, R: Reasoner>(
 ) -> Result<Document, Errors> {
     log::trace!("In normalize_text_to_document");
 
-    let normalization_context =
-        normalize_text(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            text,
-            _options,
-            metadata,
-            execution_context
-        ).await?;
+    let normalization_context = normalize_text(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        text,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await?;
 
     Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
 }
@@ -418,15 +407,15 @@ pub async fn normalize_file_to_document<P: Provider, R: Reasoner>(
     log::trace!("In normalize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let normalization_context =
-        normalize_file(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            path,
-            _options,
-            metadata,
-            execution_context
-        ).await?;
+    let normalization_context = normalize_file(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        path,
+        _options,
+        metadata,
+        execution_context,
+    )
+    .await?;
 
     Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
 }
@@ -493,13 +482,15 @@ async fn init_normalization_context<P: Provider, R: Reasoner>(
 fn build_normalized_graph<P: Provider>(
     provider: Arc<P>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    options: &Options
+    options: &Options,
 ) -> Result<NormalMetaContext, Errors> {
     log::trace!("In build_normalized_graph");
 
     let classification: Arc<Classification> = {
         let lock = read_lock!(normalization_context);
-        lock.classification.clone().ok_or(Errors::ClassificationNotFound)?
+        lock.classification
+            .clone()
+            .ok_or(Errors::ClassificationNotFound)?
     };
 
     let root = Arc::new(RwLock::new(GraphNode {
@@ -517,25 +508,28 @@ fn build_normalized_graph<P: Provider>(
         lock.basis_networks
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis networks not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis networks not provided in normalization context".to_string(),
+                )
             })?
             .clone()
     };
 
     let mut normalized = basis_networks
         .values()
-        .try_fold(None, |acc, basis_network| -> Result<Option<NormalMetaContext>, Errors> {
-            let normal_meta_context = basis_network.apply(
-                Arc::clone(&normalization_context),
-                Arc::clone(&root)
-            )?;
+        .try_fold(
+            None,
+            |acc, basis_network| -> Result<Option<NormalMetaContext>, Errors> {
+                let normal_meta_context =
+                    basis_network.apply(Arc::clone(&normalization_context), Arc::clone(&root))?;
 
-            if let Some(result) = acc {
-                Ok(Some(result.merge(normal_meta_context)?))
-            } else {
-                Ok(Some(normal_meta_context))
-            }
-        })?
+                if let Some(result) = acc {
+                    Ok(Some(result.merge(normal_meta_context)?))
+                } else {
+                    Ok(Some(normal_meta_context))
+                }
+            },
+        )?
         .unwrap();
 
     let root_context = Arc::new(NormalContext {
@@ -548,13 +542,17 @@ fn build_normalized_graph<P: Provider>(
             hash: Hash::new(),
             lineage: Lineage::new(),
             fields: DataNodeFields::new(),
-            description: "Root node".to_string()
+            description: "Root node".to_string(),
         }),
         contexts: Vec::new(),
     });
 
-    normalized.contexts.insert(read_lock!(root).id.clone(), root_context.clone());
-    normalized.contexts_lookup.insert(read_lock!(root).id.clone(), root_context);
+    normalized
+        .contexts
+        .insert(read_lock!(root).id.clone(), root_context.clone());
+    normalized
+        .contexts_lookup
+        .insert(read_lock!(root).id.clone(), root_context);
 
     Ok(normalized)
 }

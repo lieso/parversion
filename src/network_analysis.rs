@@ -4,18 +4,20 @@ use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
 
-use crate::classification::Classification;
-use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NodeRelationship, NodeRelationshipType};
 use crate::basis_graph::BasisGraph;
+use crate::basis_network::{
+    BasisNetwork, BasisNetworkMetadata, NodeRelationship, NodeRelationshipType,
+};
+use crate::basis_node::BasisNode;
+use crate::classification::Classification;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
+use crate::group_analysis::resolve_context_groups;
 use crate::llm::LLM;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_network::TranslationNetwork;
-use crate::group_analysis::{resolve_context_groups};
-use crate::basis_node::BasisNode;
 
 pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -23,9 +25,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<(
-    HashMap<BasisNetworkID, Arc<BasisNetwork>>,
-), Errors> {
+) -> Result<(HashMap<BasisNetworkID, Arc<BasisNetwork>>,), Errors> {
     log::trace!("In generate_basis_networks");
 
     let basis_nodes: Vec<Arc<BasisNode>> = {
@@ -34,7 +34,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             .as_ref()
             .ok_or_else(|| {
                 Errors::DeficientNormalizationContextError(
-                    "Basis nodes not provided in normalization context".to_string()
+                    "Basis nodes not provided in normalization context".to_string(),
                 )
             })?
             .values()
@@ -45,11 +45,11 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
-        lock.basis_node_contexts
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis node contexts not provided in normalization context".to_string())
-            })?
+        lock.basis_node_contexts.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis node contexts not provided in normalization context".to_string(),
+            )
+        })?
     };
 
     let mut non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
@@ -60,15 +60,12 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     non_empty_basis_nodes.sort_by(|a, b| a.lineage.to_string().cmp(&b.lineage.to_string()));
 
-    log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
-
-
-
+    log::info!(
+        "Number of non-empty basis nodes: {}",
+        non_empty_basis_nodes.len()
+    );
 
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
-
-
-
 
     let mut handles = Vec::new();
 
@@ -88,7 +85,8 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 &cloned_stage_context,
                 basis_node.clone(),
                 basis_node.clone(),
-            ).await
+            )
+            .await
         });
 
         handles.push(handle);
@@ -96,18 +94,11 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     let results = try_join_all(handles).await?;
 
-
     let mut central_basis_nodes: Vec<Arc<BasisNode>> = Vec::new();
 
     central_basis_nodes.sort_by(|a, b| {
-        let count_a = basis_node_contexts
-            .get(&a.id)
-            .unwrap()
-            .len();
-        let count_b = basis_node_contexts
-            .get(&b.id)
-            .unwrap()
-            .len();
+        let count_a = basis_node_contexts.get(&a.id).unwrap().len();
+        let count_b = basis_node_contexts.get(&b.id).unwrap().len();
 
         count_b.cmp(&count_a)
     });
@@ -132,17 +123,26 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         }
     }
 
-    log::info!("Number of non-empty basis nodes: {}", non_empty_basis_nodes.len());
-    log::info!("Number of central basis nodes: {}", central_basis_nodes.len());
+    log::info!(
+        "Number of non-empty basis nodes: {}",
+        non_empty_basis_nodes.len()
+    );
+    log::info!(
+        "Number of central basis nodes: {}",
+        central_basis_nodes.len()
+    );
 
-    let pairwise_comparisons = central_basis_nodes.len() * non_empty_basis_nodes.len() - central_basis_nodes.len();
+    let pairwise_comparisons =
+        central_basis_nodes.len() * non_empty_basis_nodes.len() - central_basis_nodes.len();
 
     if pairwise_comparisons > 10000 {
-        panic!("Would be doing {} pairwise comparisons. Aborting...", pairwise_comparisons);
+        panic!(
+            "Would be doing {} pairwise comparisons. Aborting...",
+            pairwise_comparisons
+        );
     }
 
     for (index, left) in central_basis_nodes.iter().cloned().enumerate() {
-
         log::debug!("index: {}", index);
         log::debug!("total: {}", central_basis_nodes.len());
 
@@ -156,19 +156,22 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 continue;
             }
 
-            if let Some(transitive_relationship) = has_reachability(
-                &node_relationships,
-                &left.lineage,
-                &right.lineage,
-            ) {
+            if let Some(transitive_relationship) =
+                has_reachability(&node_relationships, &left.lineage, &right.lineage)
+            {
                 let first = transitive_relationship.first();
                 let last = transitive_relationship.last();
 
                 match (first, last) {
                     (Some(first), Some(last)) => {
-                        if matches!(first.relationship_type, NodeRelationshipType::NoRelationship) &&
-                           matches!(last.relationship_type, NodeRelationshipType::NoRelationship) {
-                               // no-op
+                        if matches!(
+                            first.relationship_type,
+                            NodeRelationshipType::NoRelationship
+                        ) && matches!(
+                            last.relationship_type,
+                            NodeRelationshipType::NoRelationship
+                        ) {
+                            // no-op
                         } else {
                             continue;
                         }
@@ -200,7 +203,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         }
 
         let results = try_join_all(handles).await?;
-        
+
         for result in results {
             for relationship in result? {
                 node_relationships.push(Arc::new(relationship));
@@ -215,8 +218,9 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         options,
         stage_context,
         non_empty_basis_nodes.clone(),
-        node_relationships
-    ).await?;
+        node_relationships,
+    )
+    .await?;
 
     let hashmap: HashMap<BasisNetworkID, Arc<BasisNetwork>> = basis_networks
         .into_iter()
@@ -238,7 +242,10 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
     let actual_relationships: Vec<Arc<NodeRelationship>> = relationships
         .iter()
         .filter(|rel| {
-            matches!(rel.relationship_type, NodeRelationshipType::Equal { .. } | NodeRelationshipType::Combine { .. })
+            matches!(
+                rel.relationship_type,
+                NodeRelationshipType::Equal { .. } | NodeRelationshipType::Combine { .. }
+            )
         })
         .cloned()
         .collect();
@@ -252,15 +259,16 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
             continue;
         }
 
-        let current_relationships = get_node_relationships(
-            actual_relationships.clone(),
-            &basis_node.lineage
-        );
+        let current_relationships =
+            get_node_relationships(actual_relationships.clone(), &basis_node.lineage);
 
         let mut basis_network_nodes: Vec<Arc<BasisNode>> = Vec::new();
 
         for relationship in &current_relationships {
-            let lineages = vec![relationship.left_basis_lineage.clone(), relationship.right_basis_lineage.clone()];
+            let lineages = vec![
+                relationship.left_basis_lineage.clone(),
+                relationship.right_basis_lineage.clone(),
+            ];
 
             for lineage in lineages {
                 if placed.contains(&lineage) {
@@ -297,7 +305,8 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
                 &cloned_stage_context,
                 basis_network_nodes,
                 current_relationships.clone(),
-            ).await
+            )
+            .await
         });
         handles.push(handle);
     }
@@ -308,9 +317,7 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
-        .map(|basis_network| {
-            Arc::new(basis_network)
-        })
+        .map(|basis_network| Arc::new(basis_network))
         .collect();
 
     Ok(basis_networks)
@@ -323,31 +330,28 @@ async fn generate_basis_network<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
     basis_nodes: Vec<Arc<BasisNode>>,
-    relationships: Vec<Arc<NodeRelationship>>
+    relationships: Vec<Arc<NodeRelationship>>,
 ) -> Result<BasisNetwork, Errors> {
     stage_context.record_events("Network analysis", 0);
 
     if !options.regenerate {
-        if let Some(basis_network) = provider.get_basis_network(
-            basis_nodes.clone()
-        ).await? {
+        if let Some(basis_network) = provider.get_basis_network(basis_nodes.clone()).await? {
             return Ok(basis_network);
         }
     }
 
-    let (basis_network, metadata) = reasoner.basis_network(
-        Arc::clone(&normalization_context),
-        basis_nodes.clone(),
-        relationships,
-    ).await?;
+    let (basis_network, metadata) = reasoner
+        .basis_network(
+            Arc::clone(&normalization_context),
+            basis_nodes.clone(),
+            relationships,
+        )
+        .await?;
 
     stage_context.record_events("Network analysis", metadata.tokens.into());
 
     provider
-        .save_basis_network(
-            basis_nodes.clone(),
-            basis_network.clone()
-        )
+        .save_basis_network(basis_nodes.clone(), basis_network.clone())
         .await?;
 
     Ok(basis_network)
@@ -365,19 +369,21 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
     stage_context.record_events("Node relationship", 0);
 
     if !options.regenerate {
-        if let Some(node_relationships) = provider.get_node_relationships(
-            &left.lineage,
-            &right.lineage,
-        ).await? {
+        if let Some(node_relationships) = provider
+            .get_node_relationships(&left.lineage, &right.lineage)
+            .await?
+        {
             return Ok(node_relationships);
         }
     }
 
-    let results = reasoner.node_relationship(
-        Arc::clone(&normalization_context),
-        left.clone(),
-        right.clone(),
-    ).await?;
+    let results = reasoner
+        .node_relationship(
+            Arc::clone(&normalization_context),
+            left.clone(),
+            right.clone(),
+        )
+        .await?;
 
     let total_tokens: u32 = results.iter().map(|(_, metadata)| metadata.tokens).sum();
     stage_context.record_events("Node relationship", total_tokens.into());
@@ -388,7 +394,7 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
         .save_node_relationships(
             left.lineage.clone(),
             right.lineage.clone(),
-            relationships.clone()
+            relationships.clone(),
         )
         .await?;
 
@@ -407,32 +413,14 @@ pub async fn get_translation_networks<P: Provider, R: Reasoner>(
     let target_contexts = {
         let lock = read_lock!(translation_context);
         let meta_context = lock.target_meta_context.as_ref().ok_or_else(|| {
-            Errors::DeficientTranslationContextError("Target meta context missing in translation context".to_string())
+            Errors::DeficientTranslationContextError(
+                "Target meta context missing in translation context".to_string(),
+            )
         })?;
 
-        let contexts: Vec<Arc<Context>> = meta_context.contexts.values()
-            .filter(|context| !context.network_name.is_empty())
-            .cloned()
-            .collect();
-
-        let mut seen: HashSet<Lineage> = HashSet::new();
-        let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
-        for context in contexts {
-            if seen.insert(context.lineage.clone()) {
-                unique_contexts.push(context);
-            }
-        }
-
-        unique_contexts
-};
-
-    let input_contexts = {
-        let lock = read_lock!(translation_context);
-        let meta_context = lock.input_meta_context.as_ref().ok_or_else(|| {
-            Errors::DeficientTranslationContextError("Input meta context missing in translation context".to_string())
-        })?;
-
-        let contexts: Vec<Arc<Context>> = meta_context.contexts.values()
+        let contexts: Vec<Arc<Context>> = meta_context
+            .contexts
+            .values()
             .filter(|context| !context.network_name.is_empty())
             .cloned()
             .collect();
@@ -448,10 +436,39 @@ pub async fn get_translation_networks<P: Provider, R: Reasoner>(
         unique_contexts
     };
 
-    let context_pairs: Vec<(Arc<Context>, Arc<Context>)> = input_contexts.iter()
-        .flat_map(|context_a| target_contexts.iter().map(move |context_b| {
-            (context_a.clone(), context_b.clone())
-        }))
+    let input_contexts = {
+        let lock = read_lock!(translation_context);
+        let meta_context = lock.input_meta_context.as_ref().ok_or_else(|| {
+            Errors::DeficientTranslationContextError(
+                "Input meta context missing in translation context".to_string(),
+            )
+        })?;
+
+        let contexts: Vec<Arc<Context>> = meta_context
+            .contexts
+            .values()
+            .filter(|context| !context.network_name.is_empty())
+            .cloned()
+            .collect();
+
+        let mut seen: HashSet<Lineage> = HashSet::new();
+        let mut unique_contexts: Vec<Arc<Context>> = Vec::new();
+        for context in contexts {
+            if seen.insert(context.lineage.clone()) {
+                unique_contexts.push(context);
+            }
+        }
+
+        unique_contexts
+    };
+
+    let context_pairs: Vec<(Arc<Context>, Arc<Context>)> = input_contexts
+        .iter()
+        .flat_map(|context_a| {
+            target_contexts
+                .iter()
+                .map(move |context_b| (context_a.clone(), context_b.clone()))
+        })
         .collect();
 
     log::info!("Number of context pairs: {}", context_pairs.len());
@@ -480,7 +497,7 @@ pub async fn get_translation_networks<P: Provider, R: Reasoner>(
                 &cloned_stage_context,
             )
             .await?;
-            
+
             Ok(maybe_translation_network)
         });
         handles.push(handle);
@@ -488,17 +505,17 @@ pub async fn get_translation_networks<P: Provider, R: Reasoner>(
 
     let results: Vec<Result<Option<TranslationNetwork>, Errors>> = try_join_all(handles).await?;
 
-    let translation_networks: Vec<TranslationNetwork> = results.into_iter()
-        .filter_map(|res| {
-            match res {
-                Ok(Some(translation_network)) => Some(Ok(translation_network)),
-                Ok(None) => None,
-                Err(e) => Some(Err(e)),
-            }
+    let translation_networks: Vec<TranslationNetwork> = results
+        .into_iter()
+        .filter_map(|res| match res {
+            Ok(Some(translation_network)) => Some(Ok(translation_network)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
         })
         .collect::<Result<Vec<TranslationNetwork>, Errors>>()?;
 
-    let hashmap: HashMap<ID, Arc<TranslationNetwork>> = translation_networks.into_iter()
+    let hashmap: HashMap<ID, Arc<TranslationNetwork>> = translation_networks
+        .into_iter()
         .map(|translation_network| {
             let translation_network = Arc::new(translation_network);
             let id = translation_network.id.clone();
@@ -515,15 +532,15 @@ async fn get_translation_network<P: Provider, R: Reasoner>(
     translation_context: Arc<RwLock<TranslationContext>>,
     context_pair: (Arc<Context>, Arc<Context>),
     options: &Options,
-    stage_context: &StageContext
+    stage_context: &StageContext,
 ) -> Result<Option<TranslationNetwork>, Errors> {
     let (input_context, target_context) = context_pair;
 
     if !options.regenerate {
-        if let Some(maybe_translation_network) = provider.get_translation_network_by_lineages(
-            &input_context.lineage,
-            &target_context.lineage,
-        ).await? {
+        if let Some(maybe_translation_network) = provider
+            .get_translation_network_by_lineages(&input_context.lineage, &target_context.lineage)
+            .await?
+        {
             return Ok(maybe_translation_network);
         }
     }
@@ -532,7 +549,8 @@ async fn get_translation_network<P: Provider, R: Reasoner>(
         Arc::clone(&translation_context),
         Arc::clone(&input_context),
         Arc::clone(&target_context),
-    ).await?;
+    )
+    .await?;
 
     if let Some(transformation) = transformation {
         let translation_network = TranslationNetwork {
@@ -542,17 +560,27 @@ async fn get_translation_network<P: Provider, R: Reasoner>(
             transformation: transformation.clone(),
         };
 
-        provider.save_translation_network(
-            (input_context.lineage.clone(), target_context.lineage.clone()),
-            Some(translation_network.clone())
-        ).await?;
+        provider
+            .save_translation_network(
+                (
+                    input_context.lineage.clone(),
+                    target_context.lineage.clone(),
+                ),
+                Some(translation_network.clone()),
+            )
+            .await?;
 
         Ok(Some(translation_network))
     } else {
-        provider.save_translation_network(
-            (input_context.lineage.clone(), target_context.lineage.clone()),
-            None
-        ).await?;
+        provider
+            .save_translation_network(
+                (
+                    input_context.lineage.clone(),
+                    target_context.lineage.clone(),
+                ),
+                None,
+            )
+            .await?;
 
         Ok(None)
     }
@@ -571,7 +599,11 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
 
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
     let lineage = read_lock!(meta_context.graph_root).lineage.clone();
 
@@ -583,9 +615,7 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
         };
     }
 
-    let (classification, metadata) = reasoner.classify(
-        Arc::clone(&meta_context)
-    ).await?;
+    let (classification, metadata) = reasoner.classify(Arc::clone(&meta_context)).await?;
 
     provider
         .save_classification(&lineage, classification.clone())
@@ -598,7 +628,7 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
 
 fn get_node_relationships(
     relationships: Vec<Arc<NodeRelationship>>,
-    basis_lineage: &Lineage
+    basis_lineage: &Lineage,
 ) -> Vec<Arc<NodeRelationship>> {
     let mut visited_lineages: HashSet<Lineage> = HashSet::new();
     let mut queue: VecDeque<Lineage> = VecDeque::new();
@@ -609,8 +639,12 @@ fn get_node_relationships(
 
     while let Some(current) = queue.pop_front() {
         for relationship in &relationships {
-            if relationship.left_basis_lineage == current || relationship.right_basis_lineage == current {
-                collected.entry(relationship.id.clone()).or_insert_with(|| Arc::clone(relationship));
+            if relationship.left_basis_lineage == current
+                || relationship.right_basis_lineage == current
+            {
+                collected
+                    .entry(relationship.id.clone())
+                    .or_insert_with(|| Arc::clone(relationship));
 
                 let neighbour = if relationship.left_basis_lineage == current {
                     relationship.right_basis_lineage.clone()
@@ -638,7 +672,7 @@ fn has_reachability(
         current: &Lineage,
         target: &Lineage,
         visited: &mut HashSet<Lineage>,
-        path: Vec<Arc<NodeRelationship>>
+        path: Vec<Arc<NodeRelationship>>,
     ) -> Option<Vec<Arc<NodeRelationship>>> {
         if current == target {
             return Some(path);
@@ -662,13 +696,9 @@ fn has_reachability(
                     let mut next_path = path.clone();
                     next_path.push(Arc::clone(relationship));
 
-                    if let Some(full_path) = recurse(
-                        relationships,
-                        neighbour,
-                        target,
-                        visited,
-                        next_path
-                    ) {
+                    if let Some(full_path) =
+                        recurse(relationships, neighbour, target, visited, next_path)
+                    {
                         return Some(full_path);
                     }
                 }
@@ -683,6 +713,6 @@ fn has_reachability(
         left_basis_lineage,
         right_basis_lineage,
         &mut HashSet::new(),
-        Vec::new()
+        Vec::new(),
     )
 }

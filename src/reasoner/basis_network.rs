@@ -1,11 +1,11 @@
-use std::sync::{Arc, RwLock};
 use schemars::JsonSchema;
 use serde::Deserialize;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_node::BasisNode;
 use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NodeRelationship};
+use crate::basis_node::BasisNode;
+use crate::prelude::*;
+use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct BasisNetworkResponse {
@@ -21,15 +21,13 @@ pub async fn basis_network<R: Reasoner>(
     basis_nodes: Vec<Arc<BasisNode>>,
     relationships: Vec<Arc<NodeRelationship>>,
 ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
-    let system_prompt = get_system_prompt(
-        reasoner,
-        Arc::clone(&normalization_context),
-    ).await?;
+    let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&normalization_context),
         basis_nodes.clone(),
-    ).await?;
+    )
+    .await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(BasisNetworkResponse))
         .expect("Failed to serialize BasisNetworkResponse schema");
@@ -53,22 +51,22 @@ pub async fn basis_network<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
     log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-    log::debug!("{}", serde_json::to_string_pretty(&schema).unwrap_or_default());
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    let (result, metadata) = reasoner.execute::<BasisNetworkResponse>(
-        &capability,
-        &system_prompt,
-        &user_prompt,
-        schema
-    ).await?;
+    let (result, metadata) = reasoner
+        .execute::<BasisNetworkResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompt_hash: metadata.prompt_hash.clone(),
     };
-    
+
     let hashes: Vec<Hash> = basis_nodes
         .iter()
         .map(|basis_node| basis_node.lineage.identity_hash.clone())
@@ -84,8 +82,8 @@ pub async fn basis_network<R: Reasoner>(
         relationships: relationships.clone(),
         transformations: Vec::new(),
         metadata: BasisNetworkMetadata {
-            prompts: vec![reasoner_metadata.prompt_hash.clone()]
-        }
+            prompts: vec![reasoner_metadata.prompt_hash.clone()],
+        },
     };
 
     Ok((basis_network, reasoner_metadata))
@@ -97,14 +95,22 @@ async fn get_system_prompt<R: Reasoner>(
 ) -> Result<String, Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
     };
 
     let document_type = meta_context.document_type.to_string().to_lowercase();
 
     let paths_to_try: Vec<String> = vec![
-        format!("{}/{}", document_type, meta_context.acyclic_subgraph_hash.clone()),
-        format!("{}", document_type)
+        format!(
+            "{}/{}",
+            document_type,
+            meta_context.acyclic_subgraph_hash.clone()
+        ),
+        format!("{}", document_type),
     ];
 
     for path in paths_to_try {
@@ -114,26 +120,28 @@ async fn get_system_prompt<R: Reasoner>(
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt("Expected a basis_network.txt system prompt in prompts directory".to_string()))
+    Err(Errors::UnavailableSystemPrompt(
+        "Expected a basis_network.txt system prompt in prompts directory".to_string(),
+    ))
 }
 
 async fn get_user_prompt<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    basis_nodes: Vec<Arc<BasisNode>>
+    basis_nodes: Vec<Arc<BasisNode>>,
 ) -> Result<String, Errors> {
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
-        lock.basis_node_contexts
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis node contexts not provided in normalization context".to_string())
-            })?
+        lock.basis_node_contexts.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis node contexts not provided in normalization context".to_string(),
+            )
+        })?
     };
 
-    let result = basis_nodes
-        .iter()
-        .try_fold(String::new(), |acc, basis_node| -> Result<String, Errors> {
+    let result = basis_nodes.iter().try_fold(
+        String::new(),
+        |acc, basis_node| -> Result<String, Errors> {
             let context = basis_node_contexts
                 .get(&basis_node.id)
                 .unwrap()
@@ -144,7 +152,7 @@ async fn get_user_prompt<R: Reasoner>(
 
             let context_string = context.generate_context_string_node_relationship(
                 Arc::clone(&normalization_context),
-                basis_node.clone()
+                basis_node.clone(),
             )?;
 
             let new_acc = if acc.is_empty() {
@@ -154,7 +162,8 @@ async fn get_user_prompt<R: Reasoner>(
             };
 
             Ok(new_acc)
-        })?;
+        },
+    )?;
 
     Ok(result)
 }

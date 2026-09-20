@@ -1,22 +1,22 @@
+use async_recursion::async_recursion;
 use futures::future::try_join_all;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 use tokio::sync::Semaphore;
 use tokio::task;
-use async_recursion::async_recursion;
 
 use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::config::CONFIG;
-use crate::llm::{LLM};
+use crate::context::Context;
+use crate::group_analysis::resolve_context_groups;
+use crate::llm::LLM;
 use crate::normalization_context::NormalizationContext;
-use crate::translation_context::TranslationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::context::Context;
+use crate::translation_context::TranslationContext;
 use crate::translation_node::TranslationNode;
-use crate::group_analysis::resolve_context_groups;
 
 pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -47,10 +47,13 @@ pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
         }
     }
 
-    let context_pairs: Vec<(Arc<Context>, Arc<Context>)> = unique_input_contexts.iter()
-        .flat_map(|context_a| unique_target_contexts.iter().map(move |context_b| {
-            (context_a.clone(), context_b.clone())
-        }))
+    let context_pairs: Vec<(Arc<Context>, Arc<Context>)> = unique_input_contexts
+        .iter()
+        .flat_map(|context_a| {
+            unique_target_contexts
+                .iter()
+                .map(move |context_b| (context_a.clone(), context_b.clone()))
+        })
         .collect();
 
     log::info!("Number of context pairs: {}", context_pairs.len());
@@ -86,18 +89,18 @@ pub async fn get_translation_nodes<P: Provider, R: Reasoner>(
     }
 
     let results: Vec<Result<Option<TranslationNode>, Errors>> = try_join_all(handles).await?;
-    
-    let translation_nodes: Vec<TranslationNode> = results.into_iter()
-        .filter_map(|res| {
-            match res {
-                Ok(Some(translation_node)) => Some(Ok(translation_node)),
-                Ok(None) => None,
-                Err(e) => Some(Err(e)),
-            }
+
+    let translation_nodes: Vec<TranslationNode> = results
+        .into_iter()
+        .filter_map(|res| match res {
+            Ok(Some(translation_node)) => Some(Ok(translation_node)),
+            Ok(None) => None,
+            Err(e) => Some(Err(e)),
         })
         .collect::<Result<Vec<TranslationNode>, Errors>>()?;
 
-    let hashmap: HashMap<ID, Arc<TranslationNode>> = translation_nodes.into_iter()
+    let hashmap: HashMap<ID, Arc<TranslationNode>> = translation_nodes
+        .into_iter()
         .map(|translation_node| {
             let translation_node = Arc::new(translation_node);
             let id = translation_node.id.clone();
@@ -119,10 +122,10 @@ async fn get_translation_node<P: Provider, R: Reasoner>(
     let (input_context, target_context) = context_pair;
 
     if !options.regenerate {
-        if let Some(maybe_translation_node) = provider.get_translation_node_by_lineages(
-            &input_context.lineage,
-            &target_context.lineage,
-        ).await? {
+        if let Some(maybe_translation_node) = provider
+            .get_translation_node_by_lineages(&input_context.lineage, &target_context.lineage)
+            .await?
+        {
             return Ok(maybe_translation_node);
         }
     }
@@ -130,14 +133,20 @@ async fn get_translation_node<P: Provider, R: Reasoner>(
     let (transformations, (tokens,)) = LLM::get_node_translation(
         Arc::clone(&translation_context),
         Arc::clone(&input_context),
-        Arc::clone(&target_context)
-    ).await?;
+        Arc::clone(&target_context),
+    )
+    .await?;
 
     if transformations.is_empty() {
-        provider.save_translation_node(
-            (input_context.lineage.clone(), target_context.lineage.clone()),
-            None
-        ).await?;
+        provider
+            .save_translation_node(
+                (
+                    input_context.lineage.clone(),
+                    target_context.lineage.clone(),
+                ),
+                None,
+            )
+            .await?;
 
         Ok(None)
     } else {
@@ -148,10 +157,15 @@ async fn get_translation_node<P: Provider, R: Reasoner>(
             transformations: transformations.clone(),
         };
 
-        provider.save_translation_node(
-            (input_context.lineage.clone(), target_context.lineage.clone()),
-            Some(translation_node.clone())
-        ).await?;
+        provider
+            .save_translation_node(
+                (
+                    input_context.lineage.clone(),
+                    target_context.lineage.clone(),
+                ),
+                Some(translation_node.clone()),
+            )
+            .await?;
 
         Ok(Some(translation_node))
     }
@@ -163,24 +177,26 @@ pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<(
-    HashMap<ID, Arc<BasisNode>>,
-    HashMap<ID, Vec<Arc<Context>>>,
-    HashMap<ID, Arc<BasisNode>>
-), Errors> {
+) -> Result<
+    (
+        HashMap<ID, Arc<BasisNode>>,
+        HashMap<ID, Vec<Arc<Context>>>,
+        HashMap<ID, Arc<BasisNode>>,
+    ),
+    Errors,
+> {
     log::trace!("In generate_basis_nodes");
 
     let basis_groups = {
         let lock = read_lock!(normalization_context);
-        lock.basis_groups
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
-            })?
+        lock.basis_groups.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis groups not provided in meta context".to_string(),
+            )
+        })?
     };
-    let (context_groups, _context_to_group) = resolve_context_groups(
-        Arc::clone(&normalization_context)
-    )?;
+    let (context_groups, _context_to_group) =
+        resolve_context_groups(Arc::clone(&normalization_context))?;
 
     log::info!("Number of groups: {}", context_groups.len());
 
@@ -232,7 +248,11 @@ pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
         }
     }
 
-    Ok((basis_nodes, basis_node_to_context_group, context_to_basis_node))
+    Ok((
+        basis_nodes,
+        basis_node_to_context_group,
+        context_to_basis_node,
+    ))
 }
 
 async fn generate_basis_node<P: Provider, R: Reasoner>(
@@ -254,17 +274,19 @@ async fn generate_basis_node<P: Provider, R: Reasoner>(
         }
     }
 
-    let (basis_node, metadata) = reasoner.basis_node(
-        Arc::clone(&normalization_context),
-        basis_group,
-        context_group,
-    ).await?;
+    let (basis_node, metadata) = reasoner
+        .basis_node(
+            Arc::clone(&normalization_context),
+            basis_group,
+            context_group,
+        )
+        .await?;
 
     stage_context.record_events("Node analysis", metadata.tokens.into());
 
     provider
         .save_basis_node(&basis_lineage, basis_node.clone())
         .await?;
-    
+
     Ok(basis_node)
 }

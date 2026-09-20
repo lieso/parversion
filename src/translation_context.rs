@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::prelude::*;
 use crate::context::Context;
-use crate::translation_node::TranslationNode;
+use crate::prelude::*;
 use crate::translation_network::TranslationNetwork;
+use crate::translation_node::TranslationNode;
 
 pub struct TranslationContext {
     pub input_meta_context: Option<Arc<MetaContext>>,
@@ -40,20 +40,32 @@ impl TranslationContext {
         self.target_meta_context = Some(Arc::new(target_meta_context));
     }
 
-    pub fn update_translation_nodes(&mut self, nodes: HashMap<TranslationNodeID, Arc<TranslationNode>>) {
+    pub fn update_translation_nodes(
+        &mut self,
+        nodes: HashMap<TranslationNodeID, Arc<TranslationNode>>,
+    ) {
         self.translation_nodes = Some(nodes);
     }
 
-    pub fn update_translation_networks(&mut self, networks: HashMap<TranslationNetworkID, Arc<TranslationNetwork>>) {
+    pub fn update_translation_networks(
+        &mut self,
+        networks: HashMap<TranslationNetworkID, Arc<TranslationNetwork>>,
+    ) {
         self.translation_networks = Some(networks);
     }
 
-    fn unique_contexts_from(maybe_meta_context: &Option<Arc<MetaContext>>) -> Result<Vec<Arc<Context>>, Errors> {
+    fn unique_contexts_from(
+        maybe_meta_context: &Option<Arc<MetaContext>>,
+    ) -> Result<Vec<Arc<Context>>, Errors> {
         let meta_context = maybe_meta_context.as_ref().ok_or_else(|| {
-            Errors::DeficientTranslationContextError("Meta context missing in translation context".to_string())
+            Errors::DeficientTranslationContextError(
+                "Meta context missing in translation context".to_string(),
+            )
         })?;
 
-        let contexts = meta_context.contexts.values()
+        let contexts = meta_context
+            .contexts
+            .values()
             .filter(|c| !c.data_node.fields.is_empty())
             .cloned()
             .collect();

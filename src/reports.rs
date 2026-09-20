@@ -1,13 +1,13 @@
 use std::sync::{Arc, RwLock};
 
+use crate::basis_network::BasisNetwork;
+use crate::document::{Document, DocumentType};
+use crate::document_format::DocumentFormat;
+use crate::graph_node::GraphNode;
 use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::basis_network::BasisNetwork;
-use crate::graph_node::GraphNode;
-use crate::document::{Document, DocumentType};
-use crate::document_format::DocumentFormat;
 
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
@@ -23,7 +23,9 @@ pub async fn report_basis_fields<P: Provider>(
         lock.basis_fields
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis fields not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis fields not provided in normalization context".to_string(),
+                )
             })?
             .values()
             .cloned()
@@ -35,13 +37,25 @@ pub async fn report_basis_fields<P: Provider>(
         lock.meta_context
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                )
             })?
             .clone()
     };
 
-    println!("{}=== Basis Field Report ({} fields) ==={}", CYAN, basis_fields.len(), RESET);
-    println!("{}Total contexts analyzed: {}{}", CYAN, meta_context.contexts.len(), RESET);
+    println!(
+        "{}=== Basis Field Report ({} fields) ==={}",
+        CYAN,
+        basis_fields.len(),
+        RESET
+    );
+    println!(
+        "{}Total contexts analyzed: {}{}",
+        CYAN,
+        meta_context.contexts.len(),
+        RESET
+    );
 
     for field in &basis_fields {
         let contexts_with_field: usize = meta_context
@@ -59,8 +73,18 @@ pub async fn report_basis_fields<P: Provider>(
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
         println!("{}--- Field [{}] ---{}", CYAN, field.name, RESET);
         println!("{}  id: {}{}", CYAN, field.id.to_string(), RESET);
-        println!("{}  contexts with field: {} / {} ({:.1}%){}", CYAN, contexts_with_field, meta_context.contexts.len(), percentage, RESET);
-        println!("{}  subgraph_hash: {}{}", CYAN, field.acyclic_subgraph_hash, RESET);
+        println!(
+            "{}  contexts with field: {} / {} ({:.1}%){}",
+            CYAN,
+            contexts_with_field,
+            meta_context.contexts.len(),
+            percentage,
+            RESET
+        );
+        println!(
+            "{}  subgraph_hash: {}{}",
+            CYAN, field.acyclic_subgraph_hash, RESET
+        );
         println!("{}  prompts: {:?}{}", CYAN, field.metadata.prompts, RESET);
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
     }
@@ -77,25 +101,32 @@ pub async fn report_basis_groups<P: Provider>(
 ) -> Result<(), Errors> {
     let context_groups = {
         let lock = read_lock!(normalization_context);
-        lock.context_groups
-            .clone()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Context groups not provided in meta context".to_string())
-            })?
+        lock.context_groups.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Context groups not provided in meta context".to_string(),
+            )
+        })?
     };
     let basis_groups = {
         let lock = read_lock!(normalization_context);
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis groups not provided in meta context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis groups not provided in meta context".to_string(),
+                )
             })?
             .values()
             .cloned()
             .collect::<Vec<_>>()
     };
 
-    println!("{}=== Basis Group Report ({} groups) ==={}", MAGENTA, basis_groups.len(), RESET);
+    println!(
+        "{}=== Basis Group Report ({} groups) ==={}",
+        MAGENTA,
+        basis_groups.len(),
+        RESET
+    );
 
     for group in &basis_groups {
         let acyclic = group.acyclic_lineage.to_string();
@@ -110,12 +141,18 @@ pub async fn report_basis_groups<P: Provider>(
             (None, _) => format!("acyclic={}", acyclic),
         };
 
-        let contexts = context_groups.get(&group.id).map(|v| v.as_slice()).unwrap_or(&[]);
+        let contexts = context_groups
+            .get(&group.id)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[]);
 
         println!("{}{}{}", MAGENTA, "-----------------------------------------------------------------------------------------------------", RESET);
         println!("{}--- Group [{}] ---{}", MAGENTA, lineage_desc, RESET);
         println!("{}  total contexts: {}{}", MAGENTA, contexts.len(), RESET);
-        println!("{}  prompts: {:?}{}", MAGENTA, group.metadata.prompts, RESET);
+        println!(
+            "{}  prompts: {:?}{}",
+            MAGENTA, group.metadata.prompts, RESET
+        );
         println!("{}{}{}", MAGENTA, "-----------------------------------------------------------------------------------------------------", RESET);
 
         for (i, context) in contexts.iter().take(10).enumerate() {
@@ -140,16 +177,17 @@ pub async fn report_basis_nodes<P: Provider>(
     provider: Arc<P>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
-    let (context_groups, _context_to_group) = resolve_context_groups(
-        Arc::clone(&normalization_context)
-    )?;
+    let (context_groups, _context_to_group) =
+        resolve_context_groups(Arc::clone(&normalization_context))?;
 
     let basis_groups = {
         let lock = read_lock!(normalization_context);
         lock.basis_groups
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis groups not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis groups not provided in normalization context".to_string(),
+                )
             })?
             .clone()
     };
@@ -159,7 +197,9 @@ pub async fn report_basis_nodes<P: Provider>(
         lock.basis_nodes
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis nodes not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis nodes not provided in normalization context".to_string(),
+                )
             })?
             .clone()
     };
@@ -167,11 +207,19 @@ pub async fn report_basis_nodes<P: Provider>(
     let mut covered_nodes = std::collections::HashSet::new();
 
     println!("{}=== Basis Node Report ==={}", GREEN, RESET);
-    println!("{}Number of basis nodes: {}{}", GREEN, basis_nodes.len(), RESET);
+    println!(
+        "{}Number of basis nodes: {}{}",
+        GREEN,
+        basis_nodes.len(),
+        RESET
+    );
 
     for (group_id, contexts) in &context_groups {
         let basis_group = basis_groups.get(group_id).ok_or_else(|| {
-            Errors::DeficientNormalizationContextError(format!("Basis group not found for id {}", group_id.to_string()))
+            Errors::DeficientNormalizationContextError(format!(
+                "Basis group not found for id {}",
+                group_id.to_string()
+            ))
         })?;
 
         let basis_lineage = basis_group.get_basis_lineage();
@@ -180,7 +228,10 @@ pub async fn report_basis_nodes<P: Provider>(
             .values()
             .find(|node| node.lineage == basis_lineage)
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError(format!("Basis node not found for lineage {}", basis_lineage.to_string()))
+                Errors::DeficientNormalizationContextError(format!(
+                    "Basis node not found for lineage {}",
+                    basis_lineage.to_string()
+                ))
             })?;
 
         if covered_nodes.contains(&basis_node.id) {
@@ -189,21 +240,51 @@ pub async fn report_basis_nodes<P: Provider>(
         covered_nodes.insert(basis_node.id.clone());
 
         println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
-        println!("{}--- Node [{}] ---{}", GREEN, basis_node.id.to_string(), RESET);
-        println!("{}  lineage: {}{}", GREEN, basis_node.lineage.to_string(), RESET);
-        println!("{}  transformations: {} count{}", GREEN, basis_node.transformations.len(), RESET);
-        println!("{}  prompts: {:?}{}", GREEN, basis_node.metadata.prompts, RESET);
+        println!(
+            "{}--- Node [{}] ---{}",
+            GREEN,
+            basis_node.id.to_string(),
+            RESET
+        );
+        println!(
+            "{}  lineage: {}{}",
+            GREEN,
+            basis_node.lineage.to_string(),
+            RESET
+        );
+        println!(
+            "{}  transformations: {} count{}",
+            GREEN,
+            basis_node.transformations.len(),
+            RESET
+        );
+        println!(
+            "{}  prompts: {:?}{}",
+            GREEN, basis_node.metadata.prompts, RESET
+        );
         println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
 
         let sample_contexts: Vec<_> = contexts.iter().take(20).collect();
 
         for (ctx_idx, context) in sample_contexts.iter().enumerate() {
             println!("{}  [Context {}]{}", GREEN, ctx_idx + 1, RESET);
-            println!("{}    Before: {:?}{}", GREEN, context.data_node.fields, RESET);
+            println!(
+                "{}    Before: {:?}{}",
+                GREEN, context.data_node.fields, RESET
+            );
 
             for (txn_idx, transformation) in basis_node.transformations.iter().enumerate() {
-                println!("{}    [Transformation {}] {}{}", GREEN, txn_idx + 1, transformation.description, RESET);
-                println!("{}      field: {}, image: {}{}", GREEN, transformation.field, transformation.image, RESET);
+                println!(
+                    "{}    [Transformation {}] {}{}",
+                    GREEN,
+                    txn_idx + 1,
+                    transformation.description,
+                    RESET
+                );
+                println!(
+                    "{}      field: {}, image: {}{}",
+                    GREEN, transformation.field, transformation.image, RESET
+                );
 
                 match transformation.transform(Arc::clone(&context.data_node)) {
                     Ok(transformed) => {
@@ -234,14 +315,21 @@ pub async fn report_basis_networks(
         lock.basis_networks
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis networks not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis networks not provided in normalization context".to_string(),
+                )
             })?
             .values()
             .cloned()
             .collect::<Vec<Arc<BasisNetwork>>>()
     };
 
-    println!("{}=== Basis Network Report ({} networks) ==={}", CYAN, basis_networks.len(), RESET);
+    println!(
+        "{}=== Basis Network Report ({} networks) ==={}",
+        CYAN,
+        basis_networks.len(),
+        RESET
+    );
 
     for network in basis_networks {
         let parent = Arc::new(RwLock::new(GraphNode {
@@ -255,16 +343,36 @@ pub async fn report_basis_networks(
         }));
 
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
-        println!("{}--- Network [{}] ---{}", CYAN, network.id.to_string(), RESET);
-        println!("{}  basis nodes: {}{}", CYAN, network.basis_nodes.len(), RESET);
-        println!("{}  relationships: {}{}", CYAN, network.relationships.len(), RESET);
+        println!(
+            "{}--- Network [{}] ---{}",
+            CYAN,
+            network.id.to_string(),
+            RESET
+        );
+        println!(
+            "{}  basis nodes: {}{}",
+            CYAN,
+            network.basis_nodes.len(),
+            RESET
+        );
+        println!(
+            "{}  relationships: {}{}",
+            CYAN,
+            network.relationships.len(),
+            RESET
+        );
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
 
         match network.apply(Arc::clone(&normalization_context), Arc::clone(&parent)) {
             Ok(normal_meta_context) => {
-
-                log::debug!("normal_meta_context contexts: {}", normal_meta_context.contexts.len());
-                log::debug!("normal_meta_context contexts_lookup: {}", normal_meta_context.contexts_lookup.len());
+                log::debug!(
+                    "normal_meta_context contexts: {}",
+                    normal_meta_context.contexts.len()
+                );
+                log::debug!(
+                    "normal_meta_context contexts_lookup: {}",
+                    normal_meta_context.contexts_lookup.len()
+                );
 
                 let format = DocumentFormat {
                     format_type: DocumentType::Json,
@@ -299,7 +407,7 @@ pub async fn report_basis_networks(
 }
 
 pub async fn report_basis_graph(
-    normalization_context: Arc<RwLock<NormalizationContext>>
+    normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
     unimplemented!()
 }

@@ -1,20 +1,14 @@
-use std::sync::{Arc, RwLock};
-use std::collections::{HashMap};
 use rand::prelude::*;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use crate::basis_field::BasisField;
 use crate::basis_network::BasisNetwork;
 use crate::config::CONFIG;
-use crate::prelude::*;
-use crate::transformation::{
-    FieldTransformation,
-    FieldMetadata,
-    NetworkTransformation,
-    FieldTranslationTransformation,
-    NetworkTranslationTransformation
-};
 use crate::context::Context;
+use crate::prelude::*;
+use crate::transformation::{FieldTranslationTransformation, NetworkTranslationTransformation};
 
 mod document;
 mod translation;
@@ -25,9 +19,7 @@ use translation::Translation;
 pub struct LLM {}
 
 impl LLM {
-    pub async fn schema_to_instance(
-        schema: String
-    ) -> Result<(String, (u64,)), Errors> {
+    pub async fn schema_to_instance(schema: String) -> Result<(String, (u64,)), Errors> {
         log::trace!("In schema_to_instance");
 
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -46,11 +38,8 @@ impl LLM {
     pub async fn get_node_translation(
         translation_context: Arc<RwLock<TranslationContext>>,
         input_context: Arc<Context>,
-        target_context: Arc<Context>
-    ) -> Result<(
-        Vec<FieldTranslationTransformation>,
-        (u64,)
-    ), Errors> {
+        target_context: Arc<Context>,
+    ) -> Result<(Vec<FieldTranslationTransformation>, (u64,)), Errors> {
         log::trace!("In get_node_translation");
 
         tokio::time::sleep(Duration::from_millis(50)).await;
@@ -58,57 +47,47 @@ impl LLM {
         let input_context_string = {
             let lock = read_lock!(translation_context);
             let meta_context = lock.input_meta_context.as_ref().unwrap();
-            input_context.generate_context_string(
-                &meta_context,
-                Vec::new()
-            )?
+            input_context.generate_context_string(&meta_context, Vec::new())?
         };
 
         let target_context_string = {
             let lock = read_lock!(translation_context);
             let meta_context = lock.target_meta_context.as_ref().unwrap();
-            target_context.generate_context_string(
-                &meta_context,
-                Vec::new()
-            )?
+            target_context.generate_context_string(&meta_context, Vec::new())?
         };
 
-        let user_prompt = format!(r##"
+        let user_prompt = format!(
+            r##"
             [FIRST DOCUMENT]
             {}
             
             [SECOND DOCUMENT]
             {}
-        "##, input_context_string, target_context_string);
+        "##,
+            input_context_string, target_context_string
+        );
 
-        let (response, metadata) = Translation::translate_nodes(
-            &user_prompt
-        ).await?;
+        let (response, metadata) = Translation::translate_nodes(&user_prompt).await?;
 
         let transformations: Vec<FieldTranslationTransformation> = response
             .matches
             .iter()
-            .map(|node_match| {
-                FieldTranslationTransformation {
-                    id: ID::new(),
-                    field: node_match.source_key.clone(),
-                    image: node_match.target_key.clone(),
-                    code: node_match.transform_code.clone()
-                }
+            .map(|node_match| FieldTranslationTransformation {
+                id: ID::new(),
+                field: node_match.source_key.clone(),
+                image: node_match.target_key.clone(),
+                code: node_match.transform_code.clone(),
             })
             .collect();
 
         Ok((transformations, (metadata.tokens,)))
     }
-    
+
     pub async fn get_network_translation(
         translation_context: Arc<RwLock<TranslationContext>>,
         input_context: Arc<Context>,
         target_context: Arc<Context>,
-    ) -> Result<(
-        Option<NetworkTranslationTransformation>,
-        (u64,)
-    ), Errors> {
+    ) -> Result<(Option<NetworkTranslationTransformation>, (u64,)), Errors> {
         log::trace!("In get_network_translation");
 
         tokio::time::sleep(Duration::from_millis(50)).await;
@@ -116,32 +95,27 @@ impl LLM {
         let input_context_string = {
             let lock = read_lock!(translation_context);
             let meta_context = lock.input_meta_context.as_ref().unwrap();
-            input_context.generate_context_string(
-                &meta_context,
-                Vec::new()
-            )?
+            input_context.generate_context_string(&meta_context, Vec::new())?
         };
 
         let target_context_string = {
             let lock = read_lock!(translation_context);
             let meta_context = lock.target_meta_context.as_ref().unwrap();
-            target_context.generate_context_string(
-                &meta_context,
-                Vec::new()
-            )?
+            target_context.generate_context_string(&meta_context, Vec::new())?
         };
 
-        let user_prompt = format!(r##"
+        let user_prompt = format!(
+            r##"
             [FIRST DOCUMENT]
             {}
             
             [SECOND DOCUMENT]
             {}
-        "##, input_context_string, target_context_string);
+        "##,
+            input_context_string, target_context_string
+        );
 
-        let (response, metadata) = Translation::translate_networks(
-            &user_prompt
-        ).await?;
+        let (response, metadata) = Translation::translate_networks(&user_prompt).await?;
 
         let transformation = if response.is_match {
             Some(NetworkTranslationTransformation {

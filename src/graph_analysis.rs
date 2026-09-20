@@ -3,9 +3,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 
-use crate::prelude::*;
 use crate::basis_graph::{BasisGraph, NetworkRelationship};
 use crate::basis_network::BasisNetwork;
+use crate::prelude::*;
 
 pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -19,15 +19,14 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
         lock.basis_networks
             .as_ref()
             .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError("Basis networks not provided in normalization context".to_string())
+                Errors::DeficientNormalizationContextError(
+                    "Basis networks not provided in normalization context".to_string(),
+                )
             })?
             .clone()
     };
 
-    let basis_networks: Vec<Arc<BasisNetwork>> = basis_networks
-        .values()
-        .cloned()
-        .collect();
+    let basis_networks: Vec<Arc<BasisNetwork>> = basis_networks.values().cloned().collect();
 
     let mut handles = Vec::new();
 
@@ -47,7 +46,8 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
                 &cloned_stage_context,
                 basis_network.clone(),
                 basis_network.clone(),
-            ).await
+            )
+            .await
         });
 
         handles.push(handle);
@@ -70,33 +70,31 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
     left: Arc<BasisNetwork>,
-    right: Arc<BasisNetwork>
+    right: Arc<BasisNetwork>,
 ) -> Result<NetworkRelationship, Errors> {
     stage_context.record_events("Network relationship", 0);
 
     if !options.regenerate {
-        if let Some(network_relationship) = provider.get_network_relationship(
-            left.clone(),
-            right.clone()
-        ).await? {
+        if let Some(network_relationship) = provider
+            .get_network_relationship(left.clone(), right.clone())
+            .await?
+        {
             return Ok(network_relationship);
         }
     }
 
-    let (network_relationship, metadata) = reasoner.network_relationship(
-        Arc::clone(&normalization_context),
-        left.clone(),
-        right.clone(),
-    ).await?;
+    let (network_relationship, metadata) = reasoner
+        .network_relationship(
+            Arc::clone(&normalization_context),
+            left.clone(),
+            right.clone(),
+        )
+        .await?;
 
     stage_context.record_events("Network relationship", metadata.tokens.into());
 
     provider
-        .save_network_relationship(
-            left.clone(),
-            right.clone(),
-            network_relationship.clone(),
-        )
+        .save_network_relationship(left.clone(), right.clone(), network_relationship.clone())
         .await?;
 
     Ok(network_relationship)

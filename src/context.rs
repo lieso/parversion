@@ -1,15 +1,15 @@
-use std::collections::{HashMap, HashSet, BinaryHeap};
-use std::sync::{Arc, RwLock};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::sync::{Arc, RwLock};
 
+use crate::basis_node::BasisNode;
 use crate::data_node::DataNode;
+use crate::document::{Document, DocumentType};
+use crate::document_format::DocumentFormat;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode, GraphNodeID};
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
-use crate::document::{Document, DocumentType};
-use crate::document_format::DocumentFormat;
-use crate::basis_node::BasisNode;
 
 pub type ContextID = ID;
 
@@ -35,7 +35,9 @@ impl Context {
             lock.meta_context
                 .as_ref()
                 .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
                 })?
                 .clone()
         };
@@ -45,7 +47,9 @@ impl Context {
             lock.basis_fields
                 .as_ref()
                 .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError("Basis fields not provided in normalization context".to_string())
+                    Errors::DeficientNormalizationContextError(
+                        "Basis fields not provided in normalization context".to_string(),
+                    )
                 })?
                 .values()
                 .cloned()
@@ -62,7 +66,8 @@ impl Context {
             if values.is_empty() {
                 acc
             } else {
-                let values_context = values.iter()
+                let values_context = values
+                    .iter()
                     .map(|v| {
                         let s = v.to_string();
                         if s.len() > 400 {
@@ -87,8 +92,8 @@ impl Context {
             }
         });
 
-
-        let result = format!(r##"
+        let result = format!(
+            r##"
 [SPATIAL CONTEXT]
 {}
 
@@ -97,10 +102,11 @@ impl Context {
 
 [EXTRACTED FIELDS]
 {}
-"##, spatial_context, positional_context, fields_context);
+"##,
+            spatial_context, positional_context, fields_context
+        );
 
         Ok(result)
-
     }
 
     pub fn generate_context_string_node_relationship(
@@ -113,7 +119,9 @@ impl Context {
             lock.meta_context
                 .as_ref()
                 .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
                 })?
                 .clone()
         };
@@ -135,7 +143,8 @@ impl Context {
             }
         }
 
-        let result = format!(r##"
+        let result = format!(
+            r##"
 [SPATIAL CONTEXT]
 {}
 
@@ -144,21 +153,25 @@ impl Context {
 
 [TRANSFORMED FIELDS]
 {}
-"##, spatial_context, positional_context, transformed_context);
+"##,
+            spatial_context, positional_context, transformed_context
+        );
 
         Ok(result)
     }
 
     pub fn generate_context_string_basis_group(
         &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>
+        normalization_context: Arc<RwLock<NormalizationContext>>,
     ) -> Result<String, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
             lock.meta_context
                 .as_ref()
                 .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
                 })?
                 .clone()
         };
@@ -166,16 +179,16 @@ impl Context {
         let spatial_context: String = self.generate_spatial_context(&meta_context)?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
-
-        let fields_context: String = self.data_node
+        let fields_context: String = self
+            .data_node
             .fields
             .iter()
             .fold(String::new(), |acc, (field, value)| {
                 format!("{}\nFIELD: {}, VALUE: {}", acc, field, value)
             });
 
-
-        let result = format!(r##"
+        let result = format!(
+            r##"
 [SPATIAL CONTEXT]
 {}
 
@@ -183,7 +196,9 @@ impl Context {
 {}
 
 [EXTRACTED FIELDS]{}
-"##, spatial_context, positional_context, fields_context);
+"##,
+            spatial_context, positional_context, fields_context
+        );
 
         Ok(result)
     }
@@ -198,17 +213,20 @@ impl Context {
             lock.meta_context
                 .as_ref()
                 .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string())
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
                 })?
                 .clone()
         };
 
-        let mut context_string = self.generate_context_string(&meta_context, relevant_contexts.clone())?;
+        let mut context_string =
+            self.generate_context_string(&meta_context, relevant_contexts.clone())?;
 
         if read_lock!(normalization_context).basis_nodes.is_some() {
             let basis_nodes_context_string = self.generate_basis_nodes_context(
                 Arc::clone(&normalization_context),
-                relevant_contexts.clone()
+                relevant_contexts.clone(),
             )?;
 
             context_string.push_str(&basis_nodes_context_string);
@@ -217,17 +235,24 @@ impl Context {
         Ok(context_string)
     }
 
-    pub fn generate_context_string(&self, meta_context: &MetaContext, relevant_contexts: Vec<Arc<Context>>) -> Result<String, Errors> {
+    pub fn generate_context_string(
+        &self,
+        meta_context: &MetaContext,
+        relevant_contexts: Vec<Arc<Context>>,
+    ) -> Result<String, Errors> {
         let spatial_context: String = self.generate_spatial_context(meta_context)?;
         let positional_context: String = self.generate_positional_context(meta_context)?;
 
-        let result = format!(r##"
+        let result = format!(
+            r##"
 [SPATIAL CONTEXT]
 {}
 
 [POSITIONAL CONTEXT]
 {}
-"##, spatial_context, positional_context);
+"##,
+            spatial_context, positional_context
+        );
 
         Ok(result)
     }
@@ -236,11 +261,14 @@ impl Context {
         match meta_context.document_type {
             DocumentType::Json => self.generate_positional_context_json(meta_context),
             DocumentType::Html => self.generate_positional_context_html(meta_context),
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 
-    fn generate_positional_context_html(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+    fn generate_positional_context_html(
+        &self,
+        meta_context: &MetaContext,
+    ) -> Result<String, Errors> {
         let xpath = {
             let lock = read_lock!(self.graph_node);
             lock.to_xpath(meta_context)?
@@ -249,10 +277,16 @@ impl Context {
         Ok(xpath.to_string())
     }
 
-    fn generate_positional_context_json(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+    fn generate_positional_context_json(
+        &self,
+        meta_context: &MetaContext,
+    ) -> Result<String, Errors> {
         let root_to_target = get_path_to_target(Arc::clone(&self.graph_node));
         let context_string = root_to_target.iter().fold(String::new(), |acc, graph| {
-            let current_context = meta_context.contexts_lookup.get(&read_lock!(graph).id).unwrap();
+            let current_context = meta_context
+                .contexts_lookup
+                .get(&read_lock!(graph).id)
+                .unwrap();
 
             if current_context.network_name.is_empty() {
                 acc
@@ -278,9 +312,12 @@ impl Context {
             }
         }
 
-        let context_strings: Vec<String> = self.data_node.fields.keys().map(|key| {
-            format!("{} -> {}", context_string, key)
-        }).collect();
+        let context_strings: Vec<String> = self
+            .data_node
+            .fields
+            .keys()
+            .map(|key| format!("{} -> {}", context_string, key))
+            .collect();
 
         Ok(context_strings.join("\n"))
     }
@@ -288,10 +325,7 @@ impl Context {
     fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
 
-        traverse_structural_envelope(
-            self.clone(),
-            &mut neighbourhood
-        );
+        traverse_structural_envelope(self.clone(), &mut neighbourhood);
 
         let partial_document = Document::from_meta_context(
             meta_context,
@@ -305,7 +339,7 @@ impl Context {
                 exclude_nulls: None,
                 custom_delimiter: None,
             },
-            Some(&neighbourhood)
+            Some(&neighbourhood),
         )?;
 
         Ok(partial_document.to_string())
@@ -314,47 +348,52 @@ impl Context {
     fn generate_basis_nodes_context(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        relevant_contexts: Vec<Arc<Context>>
+        relevant_contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {
-
         let mut result: String = String::new();
 
         fn recurse(
             normalization_context: Arc<RwLock<NormalizationContext>>,
             graph: Graph,
             result: &mut String,
-            relevant_contexts: &Vec<Arc<Context>>
+            relevant_contexts: &Vec<Arc<Context>>,
         ) -> Result<(), Errors> {
             let lock = read_lock!(graph);
 
             let meta_context = {
                 let lock = read_lock!(normalization_context);
-                lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError("Meta context not provided in normalization context".to_string()))?
+                lock.meta_context
+                    .clone()
+                    .ok_or(Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    ))?
             };
 
-            let context = meta_context.contexts_lookup
-                .get(&lock.id)
-                .cloned()
-                .unwrap();
+            let context = meta_context.contexts_lookup.get(&lock.id).cloned().unwrap();
 
             if relevant_contexts.iter().any(|c| c.id == context.id) {
-                if let Some(basis_node) = lock.resolve_basis_node(Arc::clone(&normalization_context))? {
+                if let Some(basis_node) =
+                    lock.resolve_basis_node(Arc::clone(&normalization_context))?
+                {
                     for transformation in &basis_node.transformations {
                         let transformed = transformation.transform(context.data_node.clone())?;
 
                         for value in transformed.fields.get(&transformation.image) {
-                            result.push_str(&format!("{} => {} (value = {})\n", transformation.field, transformation.image, value));
+                            result.push_str(&format!(
+                                "{} => {} (value = {})\n",
+                                transformation.field, transformation.image, value
+                            ));
                         }
                     }
                 }
             }
-            
+
             for child in &lock.children {
                 recurse(
                     Arc::clone(&normalization_context),
                     Arc::clone(&child),
                     result,
-                    relevant_contexts
+                    relevant_contexts,
                 );
             }
 
@@ -365,14 +404,16 @@ impl Context {
             Arc::clone(&normalization_context),
             self.graph_node.clone(),
             &mut result,
-            &relevant_contexts
+            &relevant_contexts,
         )?;
 
-
-        let result = format!(r##"
+        let result = format!(
+            r##"
 [TRANSFORMED NODES]
 {}
-"##, result);
+"##,
+            result
+        );
 
         Ok(result)
     }
@@ -412,58 +453,6 @@ fn get_path_to_target(target_node: Graph) -> Vec<Graph> {
     ancestors
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[derive(Clone)]
 struct QueueItem {
     cost: usize,
@@ -472,7 +461,9 @@ struct QueueItem {
 }
 
 impl PartialEq for QueueItem {
-    fn eq(&self, other: &Self) -> bool { self.cost == other.cost }
+    fn eq(&self, other: &Self) -> bool {
+        self.cost == other.cost
+    }
 }
 impl Eq for QueueItem {}
 impl PartialOrd for QueueItem {
@@ -481,7 +472,9 @@ impl PartialOrd for QueueItem {
     }
 }
 impl Ord for QueueItem {
-    fn cmp(&self, other: &Self) -> Ordering { other.cost.cmp(&self.cost) }
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.cost.cmp(&self.cost)
+    }
 }
 
 fn traverse_structural_envelope(context: Context, neighbourhood: &mut HashSet<GraphNodeID>) {
@@ -537,7 +530,6 @@ fn traverse_structural_envelope(context: Context, neighbourhood: &mut HashSet<Gr
         for (idx, child) in lock.children.iter().enumerate() {
             let child_lock = read_lock!(child);
             if !neighbourhood.contains(&child_lock.id) {
-
                 // Calculate how much distance to add
                 let step_cost = match source_index {
                     // We are radiating outwards from a sibling!

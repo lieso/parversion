@@ -1,35 +1,33 @@
-use std::sync::{Arc, RwLock};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
+use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::reasoner::{Reasoner, ReasonerMetadata, Capability, CompletionMetadata};
-use crate::basis_network::BasisNetwork;
 use crate::basis_graph::NetworkRelationship;
-use crate::graph_node::GraphNode;
+use crate::basis_network::BasisNetwork;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
+use crate::graph_node::GraphNode;
+use crate::prelude::*;
+use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 
 pub async fn network_relationship<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNetwork>,
-    right: Arc<BasisNetwork>
+    right: Arc<BasisNetwork>,
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
     if left.id == right.id {
-        network_relationship_reflexive(
-            reasoner,
-            Arc::clone(&normalization_context),
-            left.clone()
-        ).await
+        network_relationship_reflexive(reasoner, Arc::clone(&normalization_context), left.clone())
+            .await
     } else {
         network_relationship_comparative(
             reasoner,
             Arc::clone(&normalization_context),
             left.clone(),
-            right.clone()
-        ).await
+            right.clone(),
+        )
+        .await
     }
 }
 
@@ -38,11 +36,10 @@ async fn network_relationship_reflexive<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     network: Arc<BasisNetwork>,
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
-
     let user_prompt = get_user_prompt_reflexive(
         reasoner,
         Arc::clone(&normalization_context),
-        network.clone()
+        network.clone(),
     )?;
 
     log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
@@ -56,7 +53,7 @@ async fn network_relationship_comparative<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNetwork>,
-    right: Arc<BasisNetwork>
+    right: Arc<BasisNetwork>,
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
     unimplemented!()
 }
@@ -66,7 +63,6 @@ fn get_user_prompt_reflexive<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     network: Arc<BasisNetwork>,
 ) -> Result<String, Errors> {
-
     let parent = Arc::new(RwLock::new(GraphNode {
         id: ID::new(),
         parents: Vec::new(),
@@ -77,7 +73,8 @@ fn get_user_prompt_reflexive<R: Reasoner>(
         children: Vec::new(),
     }));
 
-    let normal_meta_context = network.apply(Arc::clone(&normalization_context), Arc::clone(&parent))?;
+    let normal_meta_context =
+        network.apply(Arc::clone(&normalization_context), Arc::clone(&parent))?;
 
     let format = DocumentFormat {
         format_type: DocumentType::Json,
@@ -93,14 +90,15 @@ fn get_user_prompt_reflexive<R: Reasoner>(
     let document = Document::from_normal_meta_context(&normal_meta_context, &format)?;
 
     let truncated = if document.data.len() > 3089 {
-        format!("{}\n...", document.data.chars().take(3086).collect::<String>())
+        format!(
+            "{}\n...",
+            document.data.chars().take(3086).collect::<String>()
+        )
     } else {
         document.data.to_string()
     };
 
     log::debug!("truncated: {}", truncated);
-
-
 
     unimplemented!()
 }
