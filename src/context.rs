@@ -1,15 +1,12 @@
-use serde_json::{json, Value, Map};
-use std::collections::{HashMap, HashSet, VecDeque, BinaryHeap};
+use std::collections::{HashMap, HashSet, BinaryHeap};
 use std::sync::{Arc, RwLock};
 use std::cmp::Ordering;
 
 use crate::data_node::DataNode;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode, GraphNodeID};
-use crate::json_node::JsonNode;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
-use crate::basis_group::BasisGroup;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::basis_node::BasisNode;

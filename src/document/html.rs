@@ -248,7 +248,7 @@ impl Html {
                 })
                 .collect::<Result<Vec<_>, Errors>>()?
                 .into_iter()
-                .fold((Vec::new(), Vec::new()), |(mut acc), (document_node, other_documents)| {
+                .fold((Vec::new(), Vec::new()), |mut acc, (document_node, other_documents)| {
                     acc.0.push(document_node);
                     acc.1.extend(other_documents);
                     acc

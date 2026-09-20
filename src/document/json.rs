@@ -12,7 +12,6 @@ use crate::data_node::DataNode;
 use crate::meta_context::MetaContext;
 use crate::translation_node::TranslationNode;
 use crate::translation_network::TranslationNetwork;
-use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
 
 pub struct Json {}
