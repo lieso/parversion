@@ -15,7 +15,6 @@ use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
 
 pub struct NormalizationContext {
-    pub document_versions: HashMap<DocumentVersion, Arc<Document>>,
     pub meta_context: Option<Arc<MetaContext>>,
     pub basis_fields: Option<HashMap<ID, Arc<BasisField>>>,
     pub basis_groups: Option<HashMap<ID, Arc<BasisGroup>>>,
@@ -33,7 +32,6 @@ pub struct NormalizationContext {
 impl NormalizationContext {
     pub fn new() -> Self {
         NormalizationContext {
-            document_versions: HashMap::new(),
             meta_context: None,
             basis_fields: None,
             basis_groups: None,
@@ -47,15 +45,6 @@ impl NormalizationContext {
             context_to_group: None,
             normalized: None,
         }
-    }
-
-    pub fn add_document_version(&mut self, document_version: DocumentVersion, document: Document) {
-        self.document_versions
-            .insert(document_version, Arc::new(document));
-    }
-
-    pub fn get_document(&self, version: DocumentVersion) -> Option<Arc<Document>> {
-        self.document_versions.get(&version).cloned()
     }
 
     pub fn get_basis_node_by_lineage(

@@ -1,11 +1,5 @@
 use tokio::task::JoinError;
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum DocumentVersion {
-    InputDocument,
-    OrganizedDocument,
-}
-
 #[derive(Clone, Debug)]
 pub enum Errors {
     FileInputError,
@@ -24,7 +18,6 @@ pub enum Errors {
     DeficientMetaContextError(String),
     DeficientNormalizationContextError(String),
     DeficientTranslationContextError(String),
-    DocumentVersionNotFound,
     ClassificationNotFound,
     OriginNotProvidedError,
     InsufficientPrerequisites(String),
