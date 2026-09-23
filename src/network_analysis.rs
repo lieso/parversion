@@ -61,17 +61,19 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 .as_ref()
                 .and_then(|lookup| lookup.get(&context.id).cloned())
         } {
-            let neighbours = get_basis_node_neighbours(
-                Arc::clone(&normalization_context),
-                Arc::clone(&current),
-            )?;
+            if !basis_node.transformations.is_empty() {
+                let neighbours = get_basis_node_neighbours(
+                    Arc::clone(&normalization_context),
+                    Arc::clone(&current),
+                )?;
 
-            let next_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = neighbours
-                .into_iter()
-                .map(|neighbour| (basis_node.clone(), neighbour))
-                .collect();
+                let next_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = neighbours
+                    .into_iter()
+                    .map(|neighbour| (basis_node.clone(), neighbour))
+                    .collect();
 
-            comparisons.extend(next_comparisons);
+                comparisons.extend(next_comparisons);
+            }
         }
 
         for child in &read_lock!(current).children {
