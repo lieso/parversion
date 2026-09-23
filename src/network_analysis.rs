@@ -36,10 +36,10 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             ))?
     };
 
-
     fn recurse(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         current: Graph,
+        comparisons: &mut Vec<(Arc<BasisNode>, Arc<BasisNode>)>,
     ) -> Result<(), Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -61,10 +61,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 .as_ref()
                 .and_then(|lookup| lookup.get(&context.id).cloned())
         } {
-            log::info!("Context corresponds to a basis node");
-
-
-
             let neighbours = get_basis_node_neighbours(
                 Arc::clone(&normalization_context),
                 Arc::clone(&current),
@@ -72,55 +68,34 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
             log::debug!("neighbours: {}", neighbours.len());
 
-
-
-
-            let edges: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = read_lock!(current)
-                .children
-                .clone()
-                .iter()
-                .map(|child| {
-                    let child_context = meta_context
-                        .contexts_lookup
-                        .get(&read_lock!(child).id)
-                        .unwrap();
-
-                    let lock = read_lock!(normalization_context);
-                    lock.context_basis_node
-                        .as_ref()
-                        .and_then(|lookup| lookup.get(&child_context.id).cloned())
-                })
-                .filter_map(|x| x)
-                .zip(std::iter::repeat(basis_node.clone()))
+            let next_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = neighbours
+                .into_iter()
+                .map(|neighbour| (basis_node.clone(), neighbour))
                 .collect();
 
+            comparisons.extend(next_comparisons);
+        }
 
-
-
-
-
-
-
-
-
-            //unimplemented!()
-
-        } else {
-            for child in &read_lock!(current).children {
-                recurse(
-                    Arc::clone(&normalization_context),
-                    Arc::clone(&child),
-                )?;
-            }
+        for child in &read_lock!(current).children {
+            recurse(
+                Arc::clone(&normalization_context),
+                Arc::clone(&child),
+                comparisons,
+            )?;
         }
 
         Ok(())
     }
 
+    let mut comparisons = Vec::new();
+
     recurse(
         Arc::clone(&normalization_context),
         Arc::clone(&meta_context.graph_root),
+        &mut comparisons
     )?;
+
+    log::debug!("comparisons: {}", comparisons.len());
 
     unimplemented!()
 }
