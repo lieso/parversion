@@ -41,13 +41,74 @@ instance pairs to compare directly.
   account balance, for the same account). The correct outcome is to merge
   fields together so each resulting record has the union of both sides.
 
+- **CONTAINS**: One extraction pattern represents a parent record and the other
+  represents child records, nested values, or repeated subordinate entities
+  associated with that parent.
+
+  The two patterns are related, but they do not have the same entity grain.
+  One parent may contain zero, one, or multiple children, while each child
+  normally belongs to one parent.
+
+  Set `containment_direction` to identify the parent side:
+
+  - `LEFT_CONTAINS_RIGHT`: a LEFT instance is the parent of associated RIGHT
+    instances.
+  - `RIGHT_CONTAINS_LEFT`: a RIGHT instance is the parent of associated LEFT
+    instances.
+
+  Examples:
+  - A comment record contains zero or more external-link records.
+  - An order contains multiple line items.
+  - A product contains multiple image records.
+  - A section contains multiple article cards.
+
+  CONTAINS describes logical data-model containment. The child will often be a
+  DOM descendant of the parent record, but literal DOM containment is not
+  required if the surrounding structure clearly establishes ownership.
+
+  Do not return NO_RELATIONSHIP merely because one direction can match
+  multiple instances.
+
+
+**MIXED_CONTENT**: The left and right extraction patterns produce ordered
+  fragments of one logical value. Their outputs must be interleaved according
+  to DOM document order rather than merged as unordered fields.
+
+  This commonly occurs when an element contains direct text interrupted by
+  inline elements such as `<i>`, `<b>`, `<em>`, `<strong>`, `<a>`, `<code>`,
+  `<span>`, or similar markup.
+
+  Example source:
+
+      <div>
+        The <i>quick</i> brown fox jumps over the lazy dog
+      </div>
+
+  Possible extraction outputs:
+
+      LEFT:
+      comment_body => "The brown fox jumps over the lazy dog"
+
+      RIGHT:
+      comment_text => "quick"
+
+  MIXED_CONTENT means:
+
+  - Both patterns contribute fragments to one logical value.
+  - Fragment order is determined by DOM document order.
+  - Fragment boundaries and source field identities must be preserved.
+  - The right-side fragments must not simply be appended before or after the
+    complete left-side value.
+  - The extraction pipeline may need to retain individual text nodes rather
+    than concatenating them before relationship resolution.
+
 - **NO_RELATIONSHIP**: The two extraction patterns represent conceptually
   unrelated things (e.g. one is order line items, the other is site
   navigation links).
 
-**IF AND ONLY IF you choose COMBINE or EQUAL**, also provide relative XPaths that
-locate an instance of the other extraction pattern, anchored at the node
-identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
+**IF AND ONLY IF you choose COMBINE, EQUAL, CONTAINS, or MIXED_CONTENT**, also provide
+relative XPaths that locate an instance of the other extraction pattern, anchored at the
+node identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
 
 - `left_to_right_xpath`: relative XPath from a left instance's node to the
   corresponding right instance's node.
@@ -67,7 +128,8 @@ Leave both null for NO_RELATIONSHIP.
 
 Respond with strictly valid JSON:
 {
-  "relationship_type": "EQUAL" | "COMBINE" | "NO_RELATIONSHIP",
+  "relationship_type": "EQUAL" | "COMBINE" | "CONTAINS" | "MIXED_CONTENT" | "NO_RELATIONSHIP",
   "left_to_right_xpath": string | null,
-  "right_to_left_xpath": string | null
+  "right_to_left_xpath": string | null,
+  "containment_direction": "LEFT_CONTAINS_RIGHT" | "RIGHT_CONTAINS_LEFT" | null
 }
