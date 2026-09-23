@@ -39,6 +39,15 @@ pub enum NodeRelationshipType {
         xpath_ltr: String,
         xpath_rtl: String,
     },
+    Contains {
+        xpath_ltr: String,
+        xpath_rtl: String,
+        containment_direction: String, // "LEFT_CONTAINS_RIGHT" or "RIGHT_CONTAINS_LEFT"
+    },
+    MixedContent {
+        xpath_ltr: String,
+        xpath_rtl: String,
+    },
     NoRelationship,
 }
 
@@ -270,6 +279,20 @@ impl BasisNetwork {
                         }
 
                         processed_relationships.insert(relationship.id.clone());
+                    }
+                    NodeRelationshipType::Contains {
+                        xpath_ltr,
+                        xpath_rtl,
+                        ..
+                    } => {
+                        unimplemented!()
+                    }
+                    NodeRelationshipType::MixedContent {
+                        xpath_ltr,
+                        xpath_rtl,
+                        ..
+                    } => {
+                        unimplemented!()
                     }
                     NodeRelationshipType::NoRelationship => {
                         panic!("Did not expect a NoRelationship here..");

@@ -16,6 +16,8 @@ use crate::xpath::XPath;
 pub enum RelationshipTypeResponse {
     Combine,
     Equal,
+    Contains,
+    MixedContent,
     NoRelationship,
 }
 
@@ -35,13 +37,22 @@ pub enum CentralityResponse {
 }
 
 #[derive(Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ContainmentDirectionResponse {
+    LeftContainsRight,
+    RightContainsLeft,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
 pub struct NodeRelationshipOtherResponse {
-    // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "NO_RELATIONSHIP")
+    // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "CONTAINS", "MIXED_CONTENT", "NO_RELATIONSHIP")
     pub relationship_type: RelationshipTypeResponse,
     // The XPath to get from LEFT to RIGHT, if applicable
     pub left_to_right_xpath: Option<String>,
     // The XPath to get from RIGHT to LEFT, if applicable
     pub right_to_left_xpath: Option<String>,
+    // For CONTAINS relationships: which side is the parent
+    pub containment_direction: Option<ContainmentDirectionResponse>,
 }
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -290,6 +301,15 @@ pub async fn node_relationship_other<R: Reasoner>(
                 xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
             },
             RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
+                xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+            },
+            RelationshipTypeResponse::Contains => NodeRelationshipType::Contains {
+                xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+                containment_direction: format!("{:?}", result.containment_direction.unwrap()),
+            },
+            RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent {
                 xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
                 xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
             },
