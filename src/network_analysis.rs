@@ -63,6 +63,16 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         } {
             log::info!("Context corresponds to a basis node");
 
+
+
+            let neighbours = get_basis_node_neighbours(
+                Arc::clone(&normalization_context),
+                Arc::clone(&current),
+            )?;
+
+
+
+
             let edges: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = read_lock!(current)
                 .children
                 .clone()
@@ -85,6 +95,12 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
 
 
+
+
+
+
+
+
             unimplemented!()
 
         } else {
@@ -102,7 +118,54 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     recurse(
         Arc::clone(&normalization_context),
         Arc::clone(&meta_context.graph_root),
-    );
+    )?;
+
+    unimplemented!()
+}
+
+fn get_basis_node_neighbours(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    graph: Graph
+) -> Result<Vec<BasisNode>, Errors> {
+    let mut queue = VecDeque::new();
+    queue.push_back(Arc::clone(&graph));
+
+    while let Some(current) = queue.pop_front() {
+
+        for child in &read_lock!(current).children {
+            queue.push_back(Arc::clone(&child));
+        }
+
+        if let Some(parent) = read_lock!(current).parents.first() {
+            if let Some(index_in_parent) = read_lock!(current).index_in_parent() {
+                let siblings = &read_lock!(parent).children;
+
+                let mut nearest_siblings = Vec::new();
+                let mut left = if index_in_parent > 0 { index_in_parent - 1 } else { 0 };
+                let mut right = index_in_parent + 1;
+
+                while left >= 0 || right < siblings.len() {
+                    if left >= 0 {
+                        nearest_siblings.push(siblings[left].clone());
+                        left -= 1;
+                    }
+                    if right < siblings.len() {
+                        nearest_siblings.push(siblings[right].clone());
+                        right += 1;
+                    }
+                }
+                
+                for sibling in nearest_siblings {
+                    queue.push_back(Arc::clone(&sibling));
+                }
+            }
+        }
+
+        for parent in &read_lock!(current).parents {
+            queue.push_back(Arc::clone(&parent));
+        }
+
+    }
 
     unimplemented!()
 }
