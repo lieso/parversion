@@ -140,6 +140,8 @@ pub async fn node_relationship_self<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
+    panic!();
+
     let (result, metadata) = reasoner
         .execute::<NodeRelationshipSelfResponse>(&capability, &system_prompt, &user_prompt, schema)
         .await?;
@@ -273,6 +275,8 @@ pub async fn node_relationship_other<R: Reasoner>(
     );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
+
+    panic!();
 
     let (result, metadata) = reasoner
         .execute::<NodeRelationshipOtherResponse>(&capability, &system_prompt, &user_prompt, schema)
