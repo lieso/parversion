@@ -66,8 +66,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 Arc::clone(&current),
             )?;
 
-            log::debug!("neighbours: {}", neighbours.len());
-
             let next_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = neighbours
                 .into_iter()
                 .map(|neighbour| (basis_node.clone(), neighbour))
@@ -96,6 +94,31 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     )?;
 
     log::debug!("comparisons: {}", comparisons.len());
+
+
+
+    let mut seen: HashSet<(String, String)> = HashSet::new();
+
+    let mut unique_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = Vec::new();
+
+    for (a, b) in comparisons {
+        let key_a = a.id.to_string();
+        let key_b = b.id.to_string();
+
+        let key = if key_a < key_b {
+            (key_a, key_b)
+        } else {
+            (key_b, key_a)
+        };
+
+        if seen.insert(key) {
+            unique_comparisons.push((a, b));
+        }
+    }
+
+    log::debug!("unique_comparisons: {}", unique_comparisons.len());
+
+
 
     unimplemented!()
 }
