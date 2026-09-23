@@ -70,6 +70,8 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 Arc::clone(&current),
             )?;
 
+            log::debug!("neighbours: {}", neighbours.len());
+
 
 
 
@@ -101,7 +103,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
 
 
-            unimplemented!()
+            //unimplemented!()
 
         } else {
             for child in &read_lock!(current).children {
@@ -126,14 +128,45 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 fn get_basis_node_neighbours(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     graph: Graph
-) -> Result<Vec<BasisNode>, Errors> {
+) -> Result<Vec<Arc<BasisNode>>, Errors> {
+    let mut result: Vec<Arc<BasisNode>> = Vec::new();
+
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
+    };
+
     let mut queue = VecDeque::new();
+    let mut visited: HashSet<ID> = HashSet::new();
     queue.push_back(Arc::clone(&graph));
+    visited.insert(read_lock!(graph).id.clone());
 
     while let Some(current) = queue.pop_front() {
+        let context = meta_context
+            .contexts_lookup
+            .get(&read_lock!(current).id)
+            .unwrap();
+
+        if let Some(basis_node) = {
+            let lock = read_lock!(normalization_context);
+            lock.context_basis_node
+                .as_ref()
+                .and_then(|lookup| lookup.get(&context.id).cloned())
+        } {
+            if read_lock!(current).id != read_lock!(graph).id {
+                result.push(basis_node.clone());
+                continue;
+            }
+        }
 
         for child in &read_lock!(current).children {
-            queue.push_back(Arc::clone(&child));
+            if visited.insert(read_lock!(child).id.clone()) {
+                queue.push_back(Arc::clone(&child));
+            }
         }
 
         if let Some(parent) = read_lock!(current).parents.first() {
@@ -141,12 +174,12 @@ fn get_basis_node_neighbours(
                 let siblings = &read_lock!(parent).children;
 
                 let mut nearest_siblings = Vec::new();
-                let mut left = if index_in_parent > 0 { index_in_parent - 1 } else { 0 };
+                let mut left: i32 = index_in_parent as i32 - 1;
                 let mut right = index_in_parent + 1;
 
                 while left >= 0 || right < siblings.len() {
                     if left >= 0 {
-                        nearest_siblings.push(siblings[left].clone());
+                        nearest_siblings.push(siblings[left as usize].clone());
                         left -= 1;
                     }
                     if right < siblings.len() {
@@ -156,18 +189,21 @@ fn get_basis_node_neighbours(
                 }
                 
                 for sibling in nearest_siblings {
-                    queue.push_back(Arc::clone(&sibling));
+                    if visited.insert(read_lock!(sibling).id.clone()) {
+                        queue.push_back(Arc::clone(&sibling));
+                    }
                 }
             }
         }
 
         for parent in &read_lock!(current).parents {
-            queue.push_back(Arc::clone(&parent));
+            if visited.insert(read_lock!(parent).id.clone()) {
+                queue.push_back(Arc::clone(&parent));
+            }
         }
-
     }
 
-    unimplemented!()
+    Ok(result)
 }
 
 pub async fn _generate_basis_networks<P: Provider, R: Reasoner>(
