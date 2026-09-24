@@ -65,7 +65,10 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 let neighbours = get_basis_node_neighbours(
                     Arc::clone(&normalization_context),
                     Arc::clone(&current),
+                    Arc::clone(&basis_node),
                 )?;
+
+                log::debug!("neighbours: {}", neighbours.len());
 
                 let next_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = neighbours
                     .into_iter()
@@ -208,7 +211,8 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
 fn get_basis_node_neighbours(
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    graph: Graph
+    graph: Graph,
+    target_basis_node: Arc<BasisNode>
 ) -> Result<Vec<Arc<BasisNode>>, Errors> {
     let mut result: Vec<Arc<BasisNode>> = Vec::new();
 
@@ -222,11 +226,14 @@ fn get_basis_node_neighbours(
     };
 
     let mut queue = VecDeque::new();
-    let mut visited: HashSet<ID> = HashSet::new();
+    let mut enqueued: HashSet<ID> = HashSet::new();
+    let mut processed: HashSet<ID> = HashSet::new();
     queue.push_back(Arc::clone(&graph));
-    visited.insert(read_lock!(graph).id.clone());
+    enqueued.insert(read_lock!(graph).id.clone());
 
     while let Some(current) = queue.pop_front() {
+        processed.insert(read_lock!(current).id.clone());
+
         let context = meta_context
             .contexts_lookup
             .get(&read_lock!(current).id)
@@ -239,15 +246,17 @@ fn get_basis_node_neighbours(
                 .and_then(|lookup| lookup.get(&context.id).cloned())
         } {
             if read_lock!(current).id != read_lock!(graph).id {
-                if !basis_node.transformations.is_empty() {
-                    result.push(basis_node.clone());
-                    continue;
+                if target_basis_node.id != basis_node.id {
+                    if !basis_node.transformations.is_empty() {
+                        result.push(basis_node.clone());
+                        continue;
+                    }
                 }
             }
         }
 
         for child in &read_lock!(current).children {
-            if visited.insert(read_lock!(child).id.clone()) {
+            if enqueued.insert(read_lock!(child).id.clone()) {
                 queue.push_back(Arc::clone(&child));
             }
         }
@@ -256,32 +265,35 @@ fn get_basis_node_neighbours(
             if let Some(index_in_parent) = read_lock!(current).index_in_parent() {
                 let siblings = &read_lock!(parent).children;
 
-                if siblings.len() == 1 {
-                    for parent in &read_lock!(current).parents {
-                        if visited.insert(read_lock!(parent).id.clone()) {
-                            queue.push_back(Arc::clone(&parent));
-                        }
-                    }
-                } else {
-                    let mut nearest_siblings = Vec::new();
-                    let mut left: i32 = index_in_parent as i32 - 1;
-                    let mut right = index_in_parent + 1;
+                let all_siblings_processed = read_lock!(parent)
+                    .children
+                    .iter()
+                    .all(|c| processed.contains(&read_lock!(c).id));
 
-                    while left >= 0 || right < siblings.len() {
-                        if left >= 0 {
-                            nearest_siblings.push(siblings[left as usize].clone());
-                            left -= 1;
-                        }
-                        if right < siblings.len() {
-                            nearest_siblings.push(siblings[right].clone());
-                            right += 1;
-                        }
+                if all_siblings_processed {
+                    if enqueued.insert(read_lock!(parent).id.clone()) {
+                        queue.push_back(Arc::clone(parent));
                     }
-                    
-                    for sibling in nearest_siblings {
-                        if visited.insert(read_lock!(sibling).id.clone()) {
-                            queue.push_back(Arc::clone(&sibling));
-                        }
+                }
+
+                let mut nearest_siblings = Vec::new();
+                let mut left: i32 = index_in_parent as i32 - 1;
+                let mut right = index_in_parent + 1;
+
+                while left >= 0 || right < siblings.len() {
+                    if left >= 0 {
+                        nearest_siblings.push(siblings[left as usize].clone());
+                        left -= 1;
+                    }
+                    if right < siblings.len() {
+                        nearest_siblings.push(siblings[right].clone());
+                        right += 1;
+                    }
+                }
+                
+                for sibling in nearest_siblings {
+                    if enqueued.insert(read_lock!(sibling).id.clone()) {
+                        queue.push_back(Arc::clone(&sibling));
                     }
                 }
             }
