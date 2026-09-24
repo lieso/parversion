@@ -266,18 +266,6 @@ impl BasisNetwork {
                         xpath_rtl,
                         ..
                     } => {
-                        let next_contexts = self.apply_combine(
-                            Arc::clone(&normalization_context),
-                            current_context.clone(),
-                            current_node.clone(),
-                            &relationship,
-                        )?;
-
-                        for (next_context, next_node) in next_contexts {
-                            target_contexts.push(next_context.clone());
-                            queue.push_back((next_context.clone(), next_node));
-                        }
-
                         processed_relationships.insert(relationship.id.clone());
                     }
                     NodeRelationshipType::Contains {
@@ -405,18 +393,6 @@ impl BasisNetwork {
 
         let xpath_str = match &relationship.relationship_type {
             NodeRelationshipType::Combine {
-                xpath_ltr,
-                xpath_rtl,
-                ..
-            } => {
-                if relationship.left_basis_lineage == basis_node.lineage {
-                    xpath_ltr
-                } else {
-                    xpath_rtl
-                }
-            }
-            // TODO: Delete branch
-            NodeRelationshipType::Equal {
                 xpath_ltr,
                 xpath_rtl,
                 ..
