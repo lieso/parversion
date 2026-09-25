@@ -55,18 +55,46 @@ impl XPath {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
     ) -> Result<Vec<Graph>, Errors> {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let traversal_id = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos() % 100000)
+            .unwrap_or(0);
+
         let start_id = read_lock!(start).id.clone();
+
+        log::error!("");
+        log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
+        log::error!("║                 ▶ XPATH TRAVERSE (XPath.rs) START [ID: {}]                   ║", traversal_id);
+        log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
+        log::error!("[{}] Starting node ID: {}", traversal_id, start_id.to_string());
+        log::error!("[{}] XPath: {}", traversal_id, self.to_string());
+        log::error!("[{}] Total segments: {}", traversal_id, self.segments.len());
+        log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
+
         let mut current: Vec<Graph> = vec![Arc::clone(&start)];
 
         for (index, segment) in self.segments.iter().enumerate() {
+            log::error!("[{}]", traversal_id);
+            log::error!("[{}] ┌─ SEGMENT {}/{}: {}", traversal_id, index + 1, self.segments.len(), segment.to_string());
+            log::error!("[{}] │  Current graphs: {}", traversal_id, current.len());
+
             let cache_key = (start_id.clone(), self.segments[0..=index].to_vec());
 
             if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned())
             {
+                log::info!("[{}] │  Cache HIT for segments 0..{}", traversal_id, index);
                 current = cached;
                 if current.is_empty() {
+                    log::error!("[{}] └─ After segment: 0 graphs (cached, empty)", traversal_id);
+                    log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
+                    log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
+                    log::error!("║                 ✗ XPATH TRAVERSE FAILED [ID: {}]                              ║", traversal_id);
+                    log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
+                    log::error!("");
                     return Ok(Vec::new());
                 }
+                log::error!("[{}] │  Restored {} graphs from cache", traversal_id, current.len());
                 continue;
             }
 
@@ -84,12 +112,27 @@ impl XPath {
                 .flatten()
                 .collect();
 
+            log::error!("[{}] └─ After segment: {} graph(s) remaining", traversal_id, current.len());
+
             if current.is_empty() {
+                log::error!("[{}] ✗ NO MATCHES after segment {}", traversal_id, index + 1);
+                log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
+                log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
+                log::error!("║                 ✗ XPATH TRAVERSE FAILED [ID: {}]                              ║", traversal_id);
+                log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
+                log::error!("");
                 return Ok(Vec::new());
             }
 
             XPATH_CACHE.with(|cache| cache.borrow_mut().insert(cache_key, current.clone()));
         }
+
+        log::error!("[{}] ✓ SUCCESS - {} graph(s) matched", traversal_id, current.len());
+        log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
+        log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
+        log::error!("║                 ✓ XPATH TRAVERSE SUCCESS [ID: {}]                             ║", traversal_id);
+        log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
+        log::error!("");
 
         Ok(current.clone())
     }
