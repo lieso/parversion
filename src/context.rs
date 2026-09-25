@@ -334,8 +334,10 @@ impl Context {
 
     fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
-
         traverse_structural_envelope(self.clone(), &mut neighbourhood);
+
+        let target_id = read_lock!(self.graph_node).id.clone();
+        let target_ids: HashSet<GraphNodeID> = HashSet::from([target_id]);
 
         let partial_document = Document::from_meta_context(
             meta_context,
@@ -350,6 +352,7 @@ impl Context {
                 custom_delimiter: None,
             },
             Some(&neighbourhood),
+            Some(&target_ids)
         )?;
 
         Ok(partial_document.to_string())

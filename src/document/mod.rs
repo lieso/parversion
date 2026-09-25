@@ -160,16 +160,17 @@ impl Document {
         meta_context: &MetaContext,
         document_format: &DocumentFormat,
         render_ids: Option<&HashSet<GraphNodeID>>,
+        context_string_target_ids: Option<&HashSet<GraphNodeID>>,
     ) -> Result<Self, Errors> {
         log::trace!("In from_meta_context");
 
         let data = {
             match document_format.format_type {
-                DocumentType::Json => Json::from_meta_context(meta_context, render_ids)?,
+                DocumentType::Json => Json::from_meta_context(meta_context, render_ids, context_string_target_ids)?,
                 DocumentType::PlainText => unimplemented!(),
                 DocumentType::JavaScript => unimplemented!(),
                 DocumentType::Xml => unimplemented!(),
-                DocumentType::Html => Html::from_meta_context(meta_context, render_ids)?,
+                DocumentType::Html => Html::from_meta_context(meta_context, render_ids, context_string_target_ids)?,
             }
         };
 

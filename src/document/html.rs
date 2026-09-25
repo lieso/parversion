@@ -161,6 +161,7 @@ impl Html {
     pub fn from_meta_context(
         meta_context: &MetaContext,
         render_ids: Option<&HashSet<GraphNodeID>>,
+        context_string_target_ids: Option<&HashSet<GraphNodeID>>,
     ) -> Result<String, Errors> {
         let graph_root = meta_context.graph_root.clone();
 
@@ -169,6 +170,7 @@ impl Html {
         fn recurse(
             meta_context: &MetaContext,
             render_ids: Option<&HashSet<GraphNodeID>>,
+            context_string_target_ids: Option<&HashSet<GraphNodeID>>,
             graph_node: Graph,
             result: &mut String,
         ) {
@@ -183,24 +185,35 @@ impl Html {
                 true
             };
 
+            let is_target = context_string_target_ids
+                .map(|ids| ids.contains(&current_id))
+                .unwrap_or(false);
+
             if should_render {
+                if is_target {
+                    result.push_str("<!-- TARGET_START -->");
+                }
                 let (a, _b) = read_lock!(document_node).to_string_components();
                 result.push_str(&a);
             }
 
             for child in children {
-                recurse(meta_context, render_ids.clone(), Arc::clone(&child), result);
+                recurse(meta_context, render_ids, context_string_target_ids, Arc::clone(&child), result);
             }
 
             if should_render {
                 let (_a, b) = read_lock!(document_node).to_string_components();
                 result.push_str(b.as_deref().unwrap_or(""));
+                if is_target {
+                    result.push_str("<!-- TARGET_END -->");
+                }
             }
         }
 
         recurse(
             meta_context,
-            render_ids.clone(),
+            render_ids,
+            context_string_target_ids,
             Arc::clone(&graph_root),
             &mut result,
         );

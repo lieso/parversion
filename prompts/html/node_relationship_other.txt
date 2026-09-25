@@ -14,7 +14,9 @@ extraction pattern, separated by ---SNIPPET SEPARATOR---. Each sample has:
 
 1. [SPATIAL CONTEXT]: an HTML snippet showing the structural neighbourhood
    around this instance on the actual page. Use it to judge whether left
-   and right instances belong to the same underlying record.
+   and right instances belong to the same underlying record. The instance you
+   are analyzing will be found inside <!-- TARGET_START --> and <!-- TARGET_END -->
+   delimiters.
 
 2. [POSITIONAL CONTEXT]: the XPath locating this instance within the page.
 

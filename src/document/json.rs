@@ -214,6 +214,7 @@ impl Json {
     pub fn from_meta_context(
         meta_context: &MetaContext,
         render_ids: Option<&HashSet<GraphNodeID>>,
+        context_string_target_ids: Option<&HashSet<GraphNodeID>>,
     ) -> Result<String, Errors> {
         let graph_root = meta_context.graph_root.clone();
 

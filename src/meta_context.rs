@@ -40,6 +40,7 @@ impl MetaContext {
                 custom_delimiter: None,
             },
             Some(&render_ids),
+            None,
         )?;
 
         Ok(partial_document.to_string())
