@@ -181,6 +181,11 @@ impl Context {
                 } else {
                     value.to_string()
                 };
+
+                if truncated.is_empty() {
+                    return Err(Errors::UnexpectedError("Basis node transformation resulting in an empty value during context string generation".to_string()));
+                }
+
                 transformed_context.push_str(&format!("{} => {}", transformation.image, truncated));
             }
         }

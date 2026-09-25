@@ -189,7 +189,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         .cloned()
         .collect();
 
-
     let basis_networks = resolve_basis_networks(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
@@ -246,11 +245,9 @@ fn get_basis_node_neighbours(
                 .and_then(|lookup| lookup.get(&context.id).cloned())
         } {
             if read_lock!(current).id != read_lock!(graph).id {
-                if target_basis_node.id != basis_node.id {
-                    if !basis_node.transformations.is_empty() {
-                        result.push(basis_node.clone());
-                        continue;
-                    }
+                if !basis_node.transformations.is_empty() {
+                    result.push(basis_node.clone());
+                    continue;
                 }
             }
         }

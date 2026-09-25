@@ -124,7 +124,7 @@ pub async fn node_relationship_self<R: Reasoner>(
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipSelfResponse))
         .expect("Failed to serialise NodeRelationshipSelfResponse schema");
-    let capability = Capability::Capable;
+    let capability = Capability::Fast;
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -258,7 +258,7 @@ pub async fn node_relationship_other<R: Reasoner>(
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
         .expect("Failed to serialise NodeRelationshipOtherResponse schema");
-    let capability = Capability::Capable;
+    let capability = Capability::Fast;
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -326,9 +326,62 @@ pub async fn node_relationship_other<R: Reasoner>(
         centrality_hint: None,
     };
 
-    relationships.push((node_relationship.clone(), reasoner_metadata));
+    if validate_node_relationship(
+        Arc::clone(&normalization_context),
+        left.clone(),
+        right.clone(),
+        &node_relationship,
+    ) {
+        relationships.push((node_relationship.clone(), reasoner_metadata));
 
-    Ok(relationships)
+        Ok(relationships)
+    } else {
+        log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
+
+        unimplemented!()
+
+    }
+}
+
+fn validate_node_relationship(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    left: Arc<BasisNode>,
+    right: Arc<BasisNode>,
+    node_relationship: &NodeRelationship
+) -> bool {
+    match node_relationship.relationship_type {
+        NodeRelationshipType::Combine {
+            xpath_ltr,
+            xpath_rtl,
+            ..
+        } => {
+            unimplemented!()
+        }
+        NodeRelationshipType::Equal {
+            xpath_ltr,
+            xpath_rtl,
+            ..
+        } => {
+            true
+        }
+        NodeRelationshipType::Contains {
+            xpath_ltr,
+            xpath_rtl,
+            ..
+        } => {
+            true
+        }
+        NodeRelationshipType::MixedContent {
+            xpath_ltr,
+            xpath_rtl,
+            ..
+        } => {
+            true
+        }
+        NodeRelationshipType::NoRelationship => {
+            true
+        }
+    }
 }
 
 async fn get_user_prompt_self<R: Reasoner>(
