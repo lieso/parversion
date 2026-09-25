@@ -240,6 +240,10 @@ impl GraphNode {
                 }
                 Ok(lock.parents.clone())
             },
+            XPathAxis::Attribute => {
+                log::info!("Applying XPATH AXIS::Attribute - staying on current node");
+                Ok(vec![Arc::clone(&graph)])
+            },
             XPathAxis::Self_ => {
                 log::info!("Applying XPATH AXIS::Self_ - returning current node");
                 Ok(vec![graph.clone()])
@@ -852,7 +856,7 @@ impl GraphNode {
                   format!("{:?}", xpath_segment.axis), next_graphs.len());
 
         let mut next_graphs: Vec<Graph> =
-            if matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent) {
+            if matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent | XPathAxis::Attribute) {
                 log::info!("XPATH SEGMENT - skipping node_test for Self_/Parent axis");
                 next_graphs
             } else {

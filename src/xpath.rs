@@ -27,6 +27,7 @@ pub enum XPathAxis {
     Child,
     Parent,
     Self_,
+    Attribute,
     Descendant,
     Ancestor,
     FollowingSibling,
@@ -236,6 +237,8 @@ impl XPathSegment {
         let (axis, node_test) = if let Some(axis_end) = node_part.find("::") {
             let axis = XPathAxis::from_str(&node_part[..axis_end])?;
             (axis, &node_part[axis_end + 2..])
+        } else if let Some(attr_name) = node_part.strip_prefix('@') {
+            (XPathAxis::Attribute, attr_name)
         } else {
             (XPathAxis::Child, node_part)
         };
@@ -275,6 +278,7 @@ impl XPathAxis {
             "child" => Ok(XPathAxis::Child),
             "parent" => Ok(XPathAxis::Parent),
             "self" => Ok(XPathAxis::Self_),
+            "attribute" => Ok(XPathAxis::Attribute),
             "descendant" => Ok(XPathAxis::Descendant),
             "ancestor" => Ok(XPathAxis::Ancestor),
             "following-sibling" => Ok(XPathAxis::FollowingSibling),
@@ -290,6 +294,7 @@ impl XPathAxis {
             XPathAxis::Child => "child",
             XPathAxis::Parent => "parent",
             XPathAxis::Self_ => "self",
+            XPathAxis::Attribute => "attribute",
             XPathAxis::Descendant => "descendant",
             XPathAxis::Ancestor => "ancestor",
             XPathAxis::FollowingSibling => "following-sibling",
