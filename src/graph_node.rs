@@ -328,23 +328,6 @@ impl GraphNode {
                             .collect();
                         log::info!("XPATH AXIS::PrecedingSibling - current at index {}, found {} preceding siblings", index_current, siblings.len());
 
-                        // Get context for current node and log it
-                        let meta_context_ref = {
-                            let norm_lock = read_lock!(_meta_context);
-                            norm_lock.meta_context.as_ref().unwrap().clone()
-                        };
-                        let contexts_lookup = meta_context_ref.contexts_lookup.clone();
-                        if let Some(context) = contexts_lookup.get(&lock.id) {
-                            match context.generate_context_string(&meta_context_ref, Vec::new()) {
-                                Ok(context_string) => {
-                                    log::info!("XPATH AXIS::PrecedingSibling - Current node context:\n{}", context_string);
-                                }
-                                Err(e) => {
-                                    log::error!("XPATH AXIS::PrecedingSibling - Error generating context string: {:?}", e);
-                                }
-                            }
-                        }
-
                         Ok(siblings)
                     } else {
                         log::error!("XPATH AXIS::PrecedingSibling - Could not find current node in parent's children");

@@ -125,6 +125,18 @@ Use the simplest and most robust XPath 1.0 grammar possible to ensure a strict 1
 * Use single direct-child slashes (`/`) for exact paths; do not use double slashes (`//`) unless searching an unknown depth.
 * Target nodes using their structural attributes (e.g., `@class='xyz'`, `@id`) rather than brittle positional indexes (like `td[3]`)."
 * If a [POSITIONAL CONTEXT] you are targeting ends in /text(), your generated xpath must also end with a trailing /text() step (with no predicates) to land on that exact text node, not its containing element.
+* The XPath traversal engine models only HTML element nodes and text nodes
+* Attribute nodes are not represented and must never be returned by a generated relative XPath.
+* The starting node is always the exact element or text node selected by `[POSITIONAL CONTEXT]`:
+  - A positional context ending in `a[@href]` selects the `<a>` **element**. The `[@href]` expression is only a predicate requiring the attribute to exist; it does not select the attribute.
+  - A positional context ending in `a/text()` selects a text node.
+  - Positional contexts will not end in `/@attribute`.
+* Attributes may be used only inside predicates to identify or filter elements.
+* Do not generate an attribute-selection step such as:
+  - `@href`
+  - `/@href`
+  - `attribute::href`
+* Relative XPaths must terminate at an HTML element node or a text node. If a transformed field was derived from an attribute, navigate to the owning element rather than to the attribute itself.
 
 Leave both null for NO_RELATIONSHIP.
 
