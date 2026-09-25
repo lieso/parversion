@@ -215,6 +215,8 @@ impl BasisNetwork {
         let mut processed_relationships: HashSet<ID> = HashSet::new();
 
         while let Some((current_context, current_node)) = queue.pop_front() {
+            target_contexts.push(current_context.clone());
+
             let current_relationships: Vec<Arc<NodeRelationship>> = actual_relationships
                 .iter()
                 .filter(|relationship| {
