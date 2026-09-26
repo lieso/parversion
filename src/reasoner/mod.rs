@@ -39,6 +39,7 @@ pub struct EmbeddingMetadata {
 pub enum Capability {
     Fast,
     Capable,
+    Strong,
 }
 
 pub struct ReasonerMetadata {

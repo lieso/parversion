@@ -68,6 +68,7 @@ impl Reasoner for OpenRouterReasoner {
         let model = match capability {
             Capability::Fast => "gpt-5.6-luna",
             Capability::Capable => "gpt-5.6-sol",
+            Capability::Strong => "gpt-6-astra",
         };
 
         // Clone and fix the schema - additionalProperties causes problems
