@@ -80,6 +80,20 @@ pub async fn basis_node<R: Reasoner>(
         prompt_hash: metadata.prompt_hash.clone(),
     };
 
+    let basis_fields = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_fields
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(
+                    "Basis fields not provided in normalization context".to_string(),
+                )
+            })?
+            .values()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
     let transformations: Vec<FieldTransformation> = result
         .fields
         .iter()
@@ -91,18 +105,32 @@ pub async fn basis_node<R: Reasoner>(
             );
 
             let field = {
-                if response_field.source_field.starts_with("TEXT")
-                    || response_field.source_field.starts_with("text")
-                {
+                let source = response_field.source_field.trim();
+                let after_field_marker = source
+                    .strip_prefix("FIELD:")
+                    .or_else(|| source.strip_prefix("FIELD="))
+                    .unwrap_or(source);
+                let field_token = after_field_marker
+                    .split(',')
+                    .next()
+                    .unwrap_or(after_field_marker)
+                    .trim();
+
+                if field_token.eq_ignore_ascii_case("text") {
                     "text".to_string()
-                } else if let Some(attr_name) =
-                    response_field.source_field.strip_prefix("FIELD=")
-                {
-                    attr_name.to_string()
                 } else {
-                    response_field.source_field.to_string()
+                    field_token.to_string()
                 }
             };
+
+            if !basis_fields.iter().any(|basis_field| basis_field.name == field) {
+                panic!(
+                    "Invalid source field in LLM response: parsed field '{}' (raw source_field: '{}') not found in basis_fields: {:?}",
+                    field,
+                    response_field.source_field,
+                    basis_fields.iter().map(|f| &f.name).collect::<Vec<_>>()
+                );
+            }
 
             FieldTransformation {
                 id: ID::new(),

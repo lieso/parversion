@@ -82,7 +82,9 @@ For meaningful fields, provide exactly one mapping per source field:
 
 **Important:** Each source field should map to exactly one output field_name. Do not provide multiple mappings for the same source field.
 
-Note on field notation: In EXTRACTED FIELDS, href attributes are shown as "FIELD: href, VALUE: ..." and text nodes as "FIELD: text, VALUE: ..."
+Note on field notation: In EXTRACTED FIELDS, href attributes are shown as "FIELD: href, VALUE: ..." and text nodes as "FIELD: text, VALUE: ...".
+
+When reporting `source_field` in your response, copy ONLY the field name token that follows "FIELD:" — do not include the "FIELD:" prefix, the "VALUE: ..." portion, or any surrounding punctuation. For example, given "FIELD: href, VALUE: /page", report source_field as exactly "href". For the text node's own content, report source_field as exactly "text".
 
 **Response Format:**
 Respond with valid JSON. Return one entry per meaningful field identified:
