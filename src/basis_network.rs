@@ -306,12 +306,6 @@ impl BasisNetwork {
             target_contexts.extend(existing_network.contexts.clone());
         }
 
-        target_contexts.sort_by(|a, b| {
-            read_lock!(a.graph_node)
-                .preorder_position()
-                .cmp(&read_lock!(b.graph_node).preorder_position())
-        });
-
         let data_node = target_contexts.iter().try_fold(
             DataNode {
                 id: ID::new(),
