@@ -43,31 +43,6 @@ instance pairs to compare directly.
   account balance, for the same account). The correct outcome is to merge
   fields together so each resulting record has the union of both sides.
 
-- **CONTAINS**: One extraction pattern represents a parent record and the other
-  represents child records, nested values, or repeated subordinate entities
-  associated with that parent.
-
-  The two patterns are related, but they do not have the same entity grain.
-  One parent may contain zero, one, or multiple children, while each child
-  normally belongs to one parent.
-
-  Set `containment_direction` to identify the parent side:
-
-  - `LEFT_CONTAINS_RIGHT`: a LEFT instance is the parent of associated RIGHT
-    instances.
-  - `RIGHT_CONTAINS_LEFT`: a RIGHT instance is the parent of associated LEFT
-    instances.
-
-  Examples:
-  - A comment record contains zero or more external-link records.
-  - An order contains multiple line items.
-  - A product contains multiple image records.
-  - A section contains multiple article cards.
-
-  CONTAINS describes logical data-model containment. The child will often be a
-  DOM descendant of the parent record, but literal DOM containment is not
-  required if the surrounding structure clearly establishes ownership.
-
   Do not return NO_RELATIONSHIP merely because one direction can match
   multiple instances.
 
@@ -108,7 +83,7 @@ instance pairs to compare directly.
   unrelated things (e.g. one is order line items, the other is site
   navigation links).
 
-**IF AND ONLY IF you choose COMBINE, EQUAL, CONTAINS, or MIXED_CONTENT**, also provide
+**IF AND ONLY IF you choose COMBINE, EQUAL, or MIXED_CONTENT**, also provide
 relative XPaths that locate an instance of the other extraction pattern, anchored at the
 node identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
 
@@ -142,8 +117,7 @@ Leave both null for NO_RELATIONSHIP.
 
 Respond with strictly valid JSON:
 {
-  "relationship_type": "EQUAL" | "COMBINE" | "CONTAINS" | "MIXED_CONTENT" | "NO_RELATIONSHIP",
+  "relationship_type": "EQUAL" | "COMBINE" | "MIXED_CONTENT" | "NO_RELATIONSHIP"
   "left_to_right_xpath": string | null,
-  "right_to_left_xpath": string | null,
-  "containment_direction": "LEFT_CONTAINS_RIGHT" | "RIGHT_CONTAINS_LEFT" | null
+  "right_to_left_xpath": string | null
 }

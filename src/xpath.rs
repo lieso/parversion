@@ -139,6 +139,7 @@ impl XPath {
     }
 
     pub fn from_str(s: &str) -> Result<Self, Errors> {
+        log::debug!("xpath: {}", s);
         let s = s.replace("//", "/descendant::");
 
         let mut parts: Vec<&str> = Vec::new();

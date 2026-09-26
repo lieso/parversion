@@ -39,11 +39,6 @@ pub enum NodeRelationshipType {
         xpath_ltr: String,
         xpath_rtl: String,
     },
-    Contains {
-        xpath_ltr: String,
-        xpath_rtl: String,
-        containment_direction: String, // "LEFT_CONTAINS_RIGHT" or "RIGHT_CONTAINS_LEFT"
-    },
     MixedContent {
         xpath_ltr: String,
         xpath_rtl: String,
@@ -68,6 +63,8 @@ impl BasisNetwork {
         parent: Graph,
     ) -> Result<NormalMetaContext, Errors> {
         log::trace!("In apply()");
+
+        log::debug!("relationships: {:?}", self.relationships);
 
         let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
         let mut normal_contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
@@ -195,6 +192,8 @@ impl BasisNetwork {
     ) -> Result<Arc<NormalContext>, Errors> {
         log::trace!("In process_network");
 
+        let lineage_a = "2d6e17651282bf8bf5d7fc73248458785f39990220872cbe216910d5b3622b73";
+
         let mut target_contexts: Vec<Arc<Context>> = Vec::new();
 
         let actual_relationships: Vec<Arc<NodeRelationship>> = self
@@ -240,6 +239,7 @@ impl BasisNetwork {
                         target_contexts.push(context.clone());
                     }
 
+                    processed_relationships.insert(relationship.id.clone());
                     continue;
                 }
 
@@ -270,19 +270,24 @@ impl BasisNetwork {
                     } => {
                         processed_relationships.insert(relationship.id.clone());
                     }
-                    NodeRelationshipType::Contains {
-                        xpath_ltr,
-                        xpath_rtl,
-                        ..
-                    } => {
-                        unimplemented!()
-                    }
                     NodeRelationshipType::MixedContent {
                         xpath_ltr,
                         xpath_rtl,
                         ..
                     } => {
-                        unimplemented!()
+                        let next_contexts = self.apply_combine(
+                            Arc::clone(&normalization_context),
+                            current_context.clone(),
+                            current_node.clone(),
+                            &relationship,
+                        )?;
+
+                        for (next_context, next_node) in next_contexts {
+                            target_contexts.push(next_context.clone());
+                            queue.push_back((next_context.clone(), next_node));
+                        }
+
+                        processed_relationships.insert(relationship.id.clone());
                     }
                     NodeRelationshipType::NoRelationship => {
                         panic!("Did not expect a NoRelationship here..");
@@ -296,14 +301,6 @@ impl BasisNetwork {
             "Number of processed relationships: {}",
             processed_relationships.len()
         );
-
-        let existing_network: Option<Arc<NormalContext>> = target_contexts
-            .iter()
-            .find_map(|context| normal_contexts_lookup.get(&context.id).cloned());
-
-        if let Some(ref existing_network) = existing_network {
-            target_contexts.extend(existing_network.contexts.clone());
-        }
 
         target_contexts.sort_by(|a, b| {
             read_lock!(a.graph_node)
@@ -320,6 +317,10 @@ impl BasisNetwork {
                 description: "placeholder".to_string(),
             },
             |acc, context| -> Result<DataNode, Errors> {
+
+
+                log::debug!("document_node: {}", read_lock!(context.document_node).to_string());
+
                 let basis_node = {
                     let lock = read_lock!(normalization_context);
                     let lookup = lock.context_basis_node.as_ref().unwrap();
@@ -348,31 +349,18 @@ impl BasisNetwork {
 
         let normal_context = Arc::new(normal_context);
 
-        if let Some(existing_network) = existing_network {
-            normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
-
-            for context in &normal_context.contexts {
-                normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
-            }
-
-            normal_contexts_lookup.insert(
-                read_lock!(&normal_context.graph_node).id.clone(),
-                Arc::clone(&normal_context),
-            );
-        } else {
-            for context in &normal_context.contexts {
-                normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
-            }
-
-            normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
-            normal_contexts_lookup.insert(
-                read_lock!(&normal_context.graph_node).id.clone(),
-                Arc::clone(&normal_context),
-            );
-
-            let graph_node = Arc::clone(&normal_context.graph_node);
-            write_lock!(parent).children.push(graph_node.clone());
+        for context in &normal_context.contexts {
+            normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
         }
+
+        normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
+        normal_contexts_lookup.insert(
+            read_lock!(&normal_context.graph_node).id.clone(),
+            Arc::clone(&normal_context),
+        );
+
+        let graph_node = Arc::clone(&normal_context.graph_node);
+        write_lock!(parent).children.push(graph_node.clone());
 
         Ok(normal_context.clone())
     }
@@ -395,6 +383,17 @@ impl BasisNetwork {
 
         let xpath_str = match &relationship.relationship_type {
             NodeRelationshipType::Combine {
+                xpath_ltr,
+                xpath_rtl,
+                ..
+            } => {
+                if relationship.left_basis_lineage == basis_node.lineage {
+                    xpath_ltr
+                } else {
+                    xpath_rtl
+                }
+            }
+            NodeRelationshipType::MixedContent {
                 xpath_ltr,
                 xpath_rtl,
                 ..
