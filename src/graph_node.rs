@@ -652,7 +652,7 @@ impl GraphNode {
                 Ok(filtered)
             },
             XPathPredicate::Attribute { name, value } => {
-                log::info!("XPATH PREDICATE::Attribute - filtering for exact attribute match: {}='{}'", name, value);
+                log::info!("XPATH PREDICATE::Attribute - filtering for attribute match: {}='{}'", name, value);
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
                     lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
@@ -670,14 +670,33 @@ impl GraphNode {
                                 log::trace!("XPATH PREDICATE::Attribute - checking node {} ({})", graph_id.to_string(), doc_node.to_string());
                                 doc_node
                                     .get_attribute_value(name)
-                                    .map(|attr_value| attr_value.trim() == value.trim())
+                                    .map(|attr_value| {
+                                        let attr_value = attr_value.trim();
+                                        let value = value.trim();
+
+                                        // Preserve original exact-match semantics unconditionally.
+                                        if attr_value == value {
+                                            return true;
+                                        }
+
+                                        // Additionally treat single-token values as matching
+                                        // any whitespace-separated token in the attribute
+                                        // (e.g. @class='commtext' matching class="commtext c00").
+                                        // Skip this for multi-word values, since a multi-word
+                                        // value can never equal a single token anyway.
+                                        if !value.is_empty() && !value.contains(char::is_whitespace) {
+                                            attr_value.split_whitespace().any(|token| token == value)
+                                        } else {
+                                            false
+                                        }
+                                    })
                             })
-                            .unwrap_or(false);
+                        .unwrap_or(false);
                         if matches {
                             if let Some(context) = contexts_lookup.get(&graph_id) {
                                 let doc_node = read_lock!(&context.document_node);
                                 log::debug!("XPATH PREDICATE::Attribute - MATCH on node {} ({}, {}='{}')",
-                                           graph_id.to_string(), doc_node.get_element_name(), name, value);
+                                graph_id.to_string(), doc_node.get_element_name(), name, value);
                             }
                             matched_count += 1;
                         }
