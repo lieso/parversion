@@ -311,10 +311,10 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
 ) -> Result<Vec<Arc<BasisNetwork>>, Errors> {
     let actual_relationships: Vec<Arc<NodeRelationship>> = relationships
         .iter()
-        .filter(|rel| {
-            matches!(
-                rel.relationship_type,
-                NodeRelationshipType::Equal { .. } | NodeRelationshipType::Combine { .. }
+        .filter(|relationship| {
+            !matches!(
+                relationship.relationship_type,
+                NodeRelationshipType::NoRelationship
             )
         })
         .cloned()
