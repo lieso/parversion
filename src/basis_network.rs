@@ -64,8 +64,6 @@ impl BasisNetwork {
     ) -> Result<NormalMetaContext, Errors> {
         log::trace!("In apply()");
 
-        log::debug!("relationships: {:?}", self.relationships);
-
         let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
         let mut normal_contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
 
@@ -192,8 +190,6 @@ impl BasisNetwork {
     ) -> Result<Arc<NormalContext>, Errors> {
         log::trace!("In process_network");
 
-        let lineage_a = "2d6e17651282bf8bf5d7fc73248458785f39990220872cbe216910d5b3622b73";
-
         let mut target_contexts: Vec<Arc<Context>> = Vec::new();
 
         let actual_relationships: Vec<Arc<NodeRelationship>> = self
@@ -317,10 +313,6 @@ impl BasisNetwork {
                 description: "placeholder".to_string(),
             },
             |acc, context| -> Result<DataNode, Errors> {
-
-
-                log::debug!("document_node: {}", read_lock!(context.document_node).to_string());
-
                 let basis_node = {
                     let lock = read_lock!(normalization_context);
                     let lookup = lock.context_basis_node.as_ref().unwrap();
