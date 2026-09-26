@@ -326,20 +326,134 @@ pub async fn node_relationship_other<R: Reasoner>(
         centrality_hint: None,
     };
 
-    if validate_node_relationship(
+    match validate_node_relationship(
         Arc::clone(&normalization_context),
         left.clone(),
         right.clone(),
         &node_relationship,
     ) {
-        relationships.push((node_relationship.clone(), reasoner_metadata));
+        Ok(true) => {
+            log::info!("Relationship valid");
+            relationships.push((node_relationship.clone(), reasoner_metadata));
 
-        Ok(relationships)
-    } else {
-        log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
+            Ok(relationships)
+        }
+        result => {
+            log::warn!("Relationship invalid or error: {:?}", result);
+            log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
 
-        unimplemented!()
+            let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
 
+            let system_prompt =
+                get_system_prompt_other(reasoner, Arc::clone(&normalization_context)).await?;
+
+            let basis_node_contexts = {
+                let lock = read_lock!(normalization_context);
+                lock.basis_node_contexts.clone().ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Basis node contexts not provided in meta context".to_string(),
+                    )
+                })?
+            };
+
+            let left_contexts: Vec<Arc<Context>> = basis_node_contexts
+                .get(&left.id)
+                .unwrap()
+                .iter()
+                .cloned()
+                .collect();
+
+            let right_contexts: Vec<Arc<Context>> = basis_node_contexts
+                .get(&right.id)
+                .unwrap()
+                .iter()
+                .cloned()
+                .collect();
+
+            let user_prompt = get_user_prompt_other(
+                reasoner,
+                Arc::clone(&normalization_context),
+                left.clone(),
+                &left_contexts,
+                right.clone(),
+                &right_contexts,
+            )
+                .await?;
+
+            let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
+                .expect("Failed to serialise NodeRelationshipOtherResponse schema");
+            let capability = Capability::Capable;
+
+            log::debug!("");
+            log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+            log::debug!("║                                                               ║");
+            log::debug!("║                   NODE RELATIONSHIP (OTHER)                   ║");
+            log::debug!("║                                                               ║");
+            log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+            log::debug!("");
+            log::debug!("  Capability : {:?}", capability);
+            log::debug!("");
+            log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+            log::debug!("{}", system_prompt);
+            log::debug!("└───────────────────────────────────────────────────────────────┘");
+            log::debug!("");
+            log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+            log::debug!("{}", user_prompt);
+            log::debug!("└───────────────────────────────────────────────────────────────┘");
+            log::debug!("");
+            log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+            log::debug!(
+                "{}",
+                serde_json::to_string_pretty(&schema).unwrap_or_default()
+            );
+            log::debug!("└───────────────────────────────────────────────────────────────┘");
+            log::debug!("");
+
+            let (result, metadata) = reasoner
+                .execute::<NodeRelationshipOtherResponse>(&capability, &system_prompt, &user_prompt, schema)
+                .await?;
+
+            let reasoner_metadata = ReasonerMetadata {
+                tokens: metadata.input_tokens + metadata.output_tokens,
+                prompt_hash: metadata.prompt_hash.clone(),
+            };
+
+            let mut relationship_type = {
+                match result.relationship_type {
+                    RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
+                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+                    },
+                    RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
+                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+                    },
+                    RelationshipTypeResponse::Contains => NodeRelationshipType::Contains {
+                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+                        containment_direction: format!("{:?}", result.containment_direction.unwrap()),
+                    },
+                    RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent {
+                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
+                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
+                    },
+                    RelationshipTypeResponse::NoRelationship => NodeRelationshipType::NoRelationship,
+                }
+            };
+
+            let node_relationship = NodeRelationship {
+                id: ID::new(),
+                left_basis_lineage: left.lineage.clone(),
+                right_basis_lineage: right.lineage.clone(),
+                relationship_type,
+                scope_xpath: None,
+                centrality_hint: None,
+            };
+
+            relationships.push((node_relationship.clone(), reasoner_metadata));
+
+            Ok(relationships)
+        }
     }
 }
 
@@ -348,38 +462,123 @@ fn validate_node_relationship(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
     node_relationship: &NodeRelationship
-) -> bool {
-    match node_relationship.relationship_type {
+) -> Result<bool, Errors> {
+    log::trace!("In validate_node_relationship");
+
+    let basis_node_contexts = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_node_contexts.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis node contexts not provided in meta context".to_string(),
+            )
+        })?
+    };
+
+    let left_contexts: Vec<Arc<Context>> = basis_node_contexts
+        .get(&left.id)
+        .unwrap()
+        .iter()
+        .cloned()
+        .collect();
+
+    let right_contexts: Vec<Arc<Context>> = basis_node_contexts
+        .get(&right.id)
+        .unwrap()
+        .iter()
+        .cloned()
+        .collect();
+
+    match &node_relationship.relationship_type {
         NodeRelationshipType::Combine {
             xpath_ltr,
             xpath_rtl,
             ..
         } => {
-            unimplemented!()
+            let xpath: XPath = XPath::from_str(&xpath_ltr)?;
+
+            let coverage_ltr = left_contexts.iter().try_fold(0, |acc, item| -> Result<i32, Errors> {
+                let target_graph_nodes = xpath.traverse(
+                    Arc::clone(&normalization_context),
+                    Arc::clone(&item.graph_node)
+                )?;
+
+                if target_graph_nodes.is_empty() {
+                    log::warn!(
+                        "Could not find target graph nodes within current network: {}",
+                        xpath.to_string()
+                    );
+
+                    return Ok(acc);
+                }
+
+                // TODO: continue validation of target basis nodes and lineages
+
+                Ok(acc + 1)
+            })? as f64 / left_contexts.len() as f64;
+
+
+            log::info!("coverage_ltr: {}", coverage_ltr);
+
+            if coverage_ltr == 0.0 {
+                return Ok(false);
+            }
+
+
+
+            let xpath: XPath = XPath::from_str(&xpath_rtl)?;
+
+            let coverage_rtl = right_contexts.iter().try_fold(0, |acc, item| -> Result<i32, Errors> {
+                let target_graph_nodes = xpath.traverse(
+                    Arc::clone(&normalization_context),
+                    Arc::clone(&item.graph_node)
+                )?;
+
+                if target_graph_nodes.is_empty() {
+                    log::warn!(
+                        "Could not find target graph nodes within current network: {}",
+                        xpath.to_string()
+                    );
+
+                    return Ok(acc);
+                }
+
+                // TODO: continue validation of target basis nodes and lineages
+
+                Ok(acc + 1)
+            })? as f64 / right_contexts.len() as f64;
+
+
+            log::info!("coverage_rtl: {}", coverage_rtl);
+
+            if coverage_rtl == 0.0 {
+                return Ok(false);
+            }
+
+            Ok(true)
         }
         NodeRelationshipType::Equal {
             xpath_ltr,
             xpath_rtl,
             ..
         } => {
-            true
+            Ok(true)
         }
         NodeRelationshipType::Contains {
             xpath_ltr,
             xpath_rtl,
             ..
         } => {
-            true
+            Ok(true)
         }
         NodeRelationshipType::MixedContent {
             xpath_ltr,
             xpath_rtl,
             ..
         } => {
-            true
+            Ok(true)
         }
         NodeRelationshipType::NoRelationship => {
-            true
+            Ok(true)
         }
     }
 }
