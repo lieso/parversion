@@ -220,6 +220,52 @@ pub async fn node_relationship_other<R: Reasoner>(
 ) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
     let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
 
+    let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
+        reasoner,
+        Arc::clone(&normalization_context),
+        Arc::clone(&left),
+        Arc::clone(&right),
+        Capability::Fast,
+    ).await?;
+
+    match validate_node_relationship(
+        Arc::clone(&normalization_context),
+        left.clone(),
+        right.clone(),
+        &node_relationship,
+    ) {
+        Ok(true) => {
+            log::info!("Relationship valid");
+            relationships.push((node_relationship.clone(), reasoner_metadata));
+
+            Ok(relationships)
+        }
+        result => {
+            log::warn!("Relationship invalid or error: {:?}", result);
+            log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
+
+            let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
+                reasoner,
+                Arc::clone(&normalization_context),
+                Arc::clone(&left),
+                Arc::clone(&right),
+                Capability::Capable,
+            ).await?;
+
+            relationships.push((node_relationship.clone(), reasoner_metadata));
+
+            Ok(relationships)
+        }
+    }
+}
+
+async fn determine_node_relationship_other<R: Reasoner>(
+    reasoner: &R,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    left: Arc<BasisNode>,
+    right: Arc<BasisNode>,
+    capability: Capability,
+) -> Result<(NodeRelationship, ReasonerMetadata), Errors> {
     let system_prompt =
         get_system_prompt_other(reasoner, Arc::clone(&normalization_context)).await?;
 
@@ -258,7 +304,6 @@ pub async fn node_relationship_other<R: Reasoner>(
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
         .expect("Failed to serialise NodeRelationshipOtherResponse schema");
-    let capability = Capability::Fast;
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -326,135 +371,7 @@ pub async fn node_relationship_other<R: Reasoner>(
         centrality_hint: None,
     };
 
-    match validate_node_relationship(
-        Arc::clone(&normalization_context),
-        left.clone(),
-        right.clone(),
-        &node_relationship,
-    ) {
-        Ok(true) => {
-            log::info!("Relationship valid");
-            relationships.push((node_relationship.clone(), reasoner_metadata));
-
-            Ok(relationships)
-        }
-        result => {
-            log::warn!("Relationship invalid or error: {:?}", result);
-            log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
-
-            let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
-
-            let system_prompt =
-                get_system_prompt_other(reasoner, Arc::clone(&normalization_context)).await?;
-
-            let basis_node_contexts = {
-                let lock = read_lock!(normalization_context);
-                lock.basis_node_contexts.clone().ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError(
-                        "Basis node contexts not provided in meta context".to_string(),
-                    )
-                })?
-            };
-
-            let left_contexts: Vec<Arc<Context>> = basis_node_contexts
-                .get(&left.id)
-                .unwrap()
-                .iter()
-                .cloned()
-                .collect();
-
-            let right_contexts: Vec<Arc<Context>> = basis_node_contexts
-                .get(&right.id)
-                .unwrap()
-                .iter()
-                .cloned()
-                .collect();
-
-            let user_prompt = get_user_prompt_other(
-                reasoner,
-                Arc::clone(&normalization_context),
-                left.clone(),
-                &left_contexts,
-                right.clone(),
-                &right_contexts,
-            )
-                .await?;
-
-            let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
-                .expect("Failed to serialise NodeRelationshipOtherResponse schema");
-            let capability = Capability::Capable;
-
-            log::debug!("");
-            log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-            log::debug!("║                                                               ║");
-            log::debug!("║                   NODE RELATIONSHIP (OTHER)                   ║");
-            log::debug!("║                                                               ║");
-            log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-            log::debug!("");
-            log::debug!("  Capability : {:?}", capability);
-            log::debug!("");
-            log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
-            log::debug!("{}", system_prompt);
-            log::debug!("└───────────────────────────────────────────────────────────────┘");
-            log::debug!("");
-            log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
-            log::debug!("{}", user_prompt);
-            log::debug!("└───────────────────────────────────────────────────────────────┘");
-            log::debug!("");
-            log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-            log::debug!(
-                "{}",
-                serde_json::to_string_pretty(&schema).unwrap_or_default()
-            );
-            log::debug!("└───────────────────────────────────────────────────────────────┘");
-            log::debug!("");
-
-            let (result, metadata) = reasoner
-                .execute::<NodeRelationshipOtherResponse>(&capability, &system_prompt, &user_prompt, schema)
-                .await?;
-
-            let reasoner_metadata = ReasonerMetadata {
-                tokens: metadata.input_tokens + metadata.output_tokens,
-                prompt_hash: metadata.prompt_hash.clone(),
-            };
-
-            let mut relationship_type = {
-                match result.relationship_type {
-                    RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
-                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                    },
-                    RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
-                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                    },
-                    RelationshipTypeResponse::Contains => NodeRelationshipType::Contains {
-                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                        containment_direction: format!("{:?}", result.containment_direction.unwrap()),
-                    },
-                    RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent {
-                        xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                        xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-                    },
-                    RelationshipTypeResponse::NoRelationship => NodeRelationshipType::NoRelationship,
-                }
-            };
-
-            let node_relationship = NodeRelationship {
-                id: ID::new(),
-                left_basis_lineage: left.lineage.clone(),
-                right_basis_lineage: right.lineage.clone(),
-                relationship_type,
-                scope_xpath: None,
-                centrality_hint: None,
-            };
-
-            relationships.push((node_relationship.clone(), reasoner_metadata));
-
-            Ok(relationships)
-        }
-    }
+    Ok((node_relationship, reasoner_metadata))
 }
 
 fn validate_node_relationship(
