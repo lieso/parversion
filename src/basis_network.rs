@@ -298,6 +298,14 @@ impl BasisNetwork {
             processed_relationships.len()
         );
 
+        let existing_network: Option<Arc<NormalContext>> = target_contexts
+            .iter()
+            .find_map(|context| normal_contexts_lookup.get(&context.id).cloned());
+
+        if let Some(ref existing_network) = existing_network {
+            target_contexts.extend(existing_network.contexts.clone());
+        }
+
         target_contexts.sort_by(|a, b| {
             read_lock!(a.graph_node)
                 .preorder_position()
@@ -339,20 +347,34 @@ impl BasisNetwork {
             contexts: target_contexts.clone(),
         };
 
+        
         let normal_context = Arc::new(normal_context);
 
-        for context in &normal_context.contexts {
-            normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
+        if let Some(existing_network) = existing_network {
+            normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
+
+            for context in &normal_context.contexts {
+                normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
+            }
+
+            normal_contexts_lookup.insert(
+                read_lock!(&normal_context.graph_node).id.clone(),
+                Arc::clone(&normal_context),
+            );
+        } else {
+            for context in &normal_context.contexts {
+                normal_contexts_lookup.insert(context.id.clone(), Arc::clone(&normal_context));
+            }
+
+            normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
+            normal_contexts_lookup.insert(
+                read_lock!(&normal_context.graph_node).id.clone(),
+                Arc::clone(&normal_context),
+            );
+
+            let graph_node = Arc::clone(&normal_context.graph_node);
+            write_lock!(parent).children.push(graph_node.clone());
         }
-
-        normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
-        normal_contexts_lookup.insert(
-            read_lock!(&normal_context.graph_node).id.clone(),
-            Arc::clone(&normal_context),
-        );
-
-        let graph_node = Arc::clone(&normal_context.graph_node);
-        write_lock!(parent).children.push(graph_node.clone());
 
         Ok(normal_context.clone())
     }

@@ -281,7 +281,9 @@ pub async fn node_relationship_other<R: Reasoner>(
                         result => {
                             log::warn!("Relationship invalid or error: {:?}", result);
                             log::info!("Node relationship did not validate ");
-                            panic!();
+                            relationships.push((node_relationship.clone(), reasoner_metadata));
+
+                            Ok(relationships)
                         }
                     }
 
