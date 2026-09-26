@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing_subscriber::{fmt, EnvFilter};
+use dotenv::dotenv;
 
 use crate::config::CONFIG;
 use crate::document::{DocumentRole, DocumentType};
@@ -31,6 +32,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROGRAM_NAME: &str = "parversion";
 
 pub async fn run() -> Result<(), Errors> {
+    dotenv::dotenv().ok();
+
     let start = Instant::now();
 
     let _ = ensure_prerequisites()?;
@@ -103,7 +106,9 @@ fn load_stdin() -> io::Result<String> {
 }
 
 fn init_logging() {
-    let filter = EnvFilter::new(format!("off,{}=trace", PROGRAM_NAME));
+    let default_filter = format!("off,{}=trace", PROGRAM_NAME);
+    let filter_str = env::var("RUST_LOG").unwrap_or(default_filter);
+    let filter = EnvFilter::new(filter_str);
 
     fmt()
         .with_env_filter(filter)
