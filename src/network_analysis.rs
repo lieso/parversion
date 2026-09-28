@@ -322,6 +322,44 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
 
     let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
     let mut placed: HashSet<Lineage> = HashSet::new();
+
+    for basis_node in &basis_nodes {
+        if placed.contains(&basis_node.lineage) {
+            continue;
+        }
+
+        let mixed_content_relationships =
+            get_mixed_content_relationships(actual_relationships.clone(), &basis_node.lineage);
+
+        log::debug!("mixed_content_relationships: {:?}", mixed_content_relationships);
+
+    }
+
+    unimplemented!();
+}
+
+async fn _resolve_basis_networks<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+    basis_nodes: Vec<Arc<BasisNode>>,
+    relationships: Vec<Arc<NodeRelationship>>,
+) -> Result<Vec<Arc<BasisNetwork>>, Errors> {
+    let actual_relationships: Vec<Arc<NodeRelationship>> = relationships
+        .iter()
+        .filter(|relationship| {
+            !matches!(
+                relationship.relationship_type,
+                NodeRelationshipType::NoRelationship
+            )
+        })
+        .cloned()
+        .collect();
+
+    let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
+    let mut placed: HashSet<Lineage> = HashSet::new();
     let mut handles = Vec::new();
 
     for basis_node in &basis_nodes {
@@ -695,6 +733,44 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
     stage_context.record_events("Document classification", metadata.tokens.into());
 
     Ok(Arc::new(classification))
+}
+
+fn get_mixed_content_relationships(
+    relationships: Vec<Arc<NodeRelationship>>,
+    basis_lineage: &Lineage,
+) -> Vec<Arc<NodeRelationship>> {
+    let mut visited_lineages: HashSet<Lineage> = HashSet::new();
+    let mut queue: VecDeque<Lineage> = VecDeque::new();
+    let mut collected: HashMap<ID, Arc<NodeRelationship>> = HashMap::new();
+
+    visited_lineages.insert(basis_lineage.clone());
+    queue.push_back(basis_lineage.clone());
+
+    while let Some(current) = queue.pop_front() {
+        for relationship in &relationships {
+            if relationship.left_basis_lineage == current
+                || relationship.right_basis_lineage == current
+            {
+                if matches!(relationship.relationship_type, NodeRelationshipType::MixedContent { .. }) {
+                    collected
+                        .entry(relationship.id.clone())
+                        .or_insert_with(|| Arc::clone(relationship));
+
+                    let neighbour = if relationship.left_basis_lineage == current {
+                        relationship.right_basis_lineage.clone()
+                    } else {
+                        relationship.left_basis_lineage.clone()
+                    };
+
+                    if visited_lineages.insert(neighbour.clone()) {
+                        queue.push_back(neighbour);
+                    }
+                }
+            }
+        }
+    }
+
+    collected.into_values().collect()
 }
 
 fn get_node_relationships(
