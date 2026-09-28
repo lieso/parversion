@@ -322,6 +322,7 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
 
     let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
     let mut placed: HashSet<Lineage> = HashSet::new();
+    let mut handles = Vec::new();
 
     for basis_node in &basis_nodes {
         if placed.contains(&basis_node.lineage) {
@@ -331,48 +332,9 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
         let mixed_content_relationships =
             get_mixed_content_relationships(actual_relationships.clone(), &basis_node.lineage);
 
-        log::debug!("mixed_content_relationships: {:?}", mixed_content_relationships);
-
-    }
-
-    unimplemented!();
-}
-
-async fn _resolve_basis_networks<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    options: &Options,
-    stage_context: &StageContext,
-    basis_nodes: Vec<Arc<BasisNode>>,
-    relationships: Vec<Arc<NodeRelationship>>,
-) -> Result<Vec<Arc<BasisNetwork>>, Errors> {
-    let actual_relationships: Vec<Arc<NodeRelationship>> = relationships
-        .iter()
-        .filter(|relationship| {
-            !matches!(
-                relationship.relationship_type,
-                NodeRelationshipType::NoRelationship
-            )
-        })
-        .cloned()
-        .collect();
-
-    let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
-    let mut placed: HashSet<Lineage> = HashSet::new();
-    let mut handles = Vec::new();
-
-    for basis_node in &basis_nodes {
-        if placed.contains(&basis_node.lineage) {
-            continue;
-        }
-
-        let current_relationships =
-            get_node_relationships(actual_relationships.clone(), &basis_node.lineage);
-
         let mut basis_network_nodes: Vec<Arc<BasisNode>> = Vec::new();
 
-        for relationship in &current_relationships {
+        for relationship in &mixed_content_relationships {
             let lineages = vec![
                 relationship.left_basis_lineage.clone(),
                 relationship.right_basis_lineage.clone(),
@@ -395,7 +357,6 @@ async fn _resolve_basis_networks<P: Provider, R: Reasoner>(
         }
 
         if basis_network_nodes.is_empty() {
-            log::error!("Basis network nodes is empty");
             continue;
         }
 
@@ -413,7 +374,65 @@ async fn _resolve_basis_networks<P: Provider, R: Reasoner>(
                 &cloned_options,
                 &cloned_stage_context,
                 basis_network_nodes,
-                current_relationships.clone(),
+                mixed_content_relationships.clone(),
+            )
+            .await
+        });
+        handles.push(handle);
+    }
+
+    for basis_node in &basis_nodes {
+        if placed.contains(&basis_node.lineage) {
+            continue;
+        }
+
+        let core_relationships =
+            get_core_relationships(actual_relationships.clone(), &basis_node.lineage);
+
+        let mut basis_network_nodes: Vec<Arc<BasisNode>> = Vec::new();
+
+        for relationship in &core_relationships {
+            let lineages = vec![
+                relationship.left_basis_lineage.clone(),
+                relationship.right_basis_lineage.clone(),
+            ];
+
+            for lineage in lineages {
+                if placed.contains(&lineage) {
+                    continue;
+                }
+
+                let node: Arc<BasisNode> = basis_nodes
+                    .iter()
+                    .find(|item| item.lineage == lineage)
+                    .unwrap()
+                    .clone();
+
+                if placed.insert(lineage.clone()) {
+                    basis_network_nodes.push(node);
+                }
+            }
+        }
+
+        if basis_network_nodes.is_empty() {
+            continue;
+        }
+
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
+        let cloned_normalization_context = Arc::clone(&normalization_context);
+        let cloned_stage_context = stage_context.clone();
+        let cloned_options = options.clone();
+
+        let handle = task::spawn(async move {
+            generate_basis_network(
+                cloned_provider,
+                cloned_reasoner,
+                cloned_normalization_context,
+                &cloned_options,
+                &cloned_stage_context,
+                basis_network_nodes,
+                core_relationships.clone(),
             )
             .await
         });
@@ -733,6 +752,44 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
     stage_context.record_events("Document classification", metadata.tokens.into());
 
     Ok(Arc::new(classification))
+}
+
+fn get_core_relationships(
+    relationships: Vec<Arc<NodeRelationship>>,
+    basis_lineage: &Lineage,
+) -> Vec<Arc<NodeRelationship>> {
+    let mut visited_lineages: HashSet<Lineage> = HashSet::new();
+    let mut queue: VecDeque<Lineage> = VecDeque::new();
+    let mut collected: HashMap<ID, Arc<NodeRelationship>> = HashMap::new();
+
+    visited_lineages.insert(basis_lineage.clone());
+    queue.push_back(basis_lineage.clone());
+
+    while let Some(current) = queue.pop_front() {
+        for relationship in &relationships {
+            if relationship.left_basis_lineage == current
+                || relationship.right_basis_lineage == current
+            {
+                if matches!(relationship.relationship_type, NodeRelationshipType::Combine { .. } | NodeRelationshipType::Equal { .. } ) {
+                    collected
+                        .entry(relationship.id.clone())
+                        .or_insert_with(|| Arc::clone(relationship));
+
+                    let neighbour = if relationship.left_basis_lineage == current {
+                        relationship.right_basis_lineage.clone()
+                    } else {
+                        relationship.left_basis_lineage.clone()
+                    };
+
+                    if visited_lineages.insert(neighbour.clone()) {
+                        queue.push_back(neighbour);
+                    }
+                }
+            }
+        }
+    }
+
+    collected.into_values().collect()
 }
 
 fn get_mixed_content_relationships(
