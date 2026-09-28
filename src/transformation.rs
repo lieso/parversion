@@ -94,14 +94,6 @@ impl FieldTransformation {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NetworkTransformation {
-    pub id: ID,
-    pub description: String,
-    pub image: String,
-    pub keys: HashSet<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RelationshipTransformation {
     pub id: ID,
 }

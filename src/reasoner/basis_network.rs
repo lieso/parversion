@@ -80,7 +80,6 @@ pub async fn basis_network<R: Reasoner>(
         basis_nodes: basis_nodes.clone(),
         lineage,
         relationships: relationships.clone(),
-        transformations: Vec::new(),
         metadata: BasisNetworkMetadata {
             prompts: vec![reasoner_metadata.prompt_hash.clone()],
         },

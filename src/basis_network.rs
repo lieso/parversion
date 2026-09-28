@@ -9,7 +9,6 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
-use crate::transformation::NetworkTransformation;
 use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -25,7 +24,6 @@ pub struct BasisNetwork {
     pub lineage: Lineage,
     pub basis_nodes: Vec<Arc<BasisNode>>,
     pub relationships: Vec<Arc<NodeRelationship>>,
-    pub transformations: Vec<NetworkTransformation>,
     pub metadata: BasisNetworkMetadata,
 }
 
