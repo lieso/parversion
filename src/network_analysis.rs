@@ -771,7 +771,7 @@ fn get_core_relationships(
             if relationship.left_basis_lineage == current
                 || relationship.right_basis_lineage == current
             {
-                if matches!(relationship.relationship_type, NodeRelationshipType::Combine { .. } | NodeRelationshipType::Equal { .. } ) {
+                if matches!(relationship.relationship_type, NodeRelationshipType::Combine { .. } ) {
                     collected
                         .entry(relationship.id.clone())
                         .or_insert_with(|| Arc::clone(relationship));
