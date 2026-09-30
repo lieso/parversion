@@ -16,14 +16,29 @@ pub struct BasisNetworkMetadata {
     pub prompts: Vec<Hash>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Traversal {
+    pub left_basis_lineage: Lineage,
+    pub right_basis_lineage: Lineage,
+    pub xpath_ltr: String,
+    pub xpath_rtl: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum NetworkShape {
+    Reduction,
+    Enumeration,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetwork {
     pub id: ID,
     pub name: String,
     pub description: String,
     pub lineage: Lineage,
+    pub shape: NetworkShape,
     pub basis_nodes: Vec<Arc<BasisNode>>,
-    pub relationships: Vec<Arc<NodeRelationship>>,
+    pub traversals: HashSet<Traversal>,
     pub metadata: BasisNetworkMetadata,
 }
 
