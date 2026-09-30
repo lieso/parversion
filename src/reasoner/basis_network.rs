@@ -2,8 +2,8 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
-use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
-use crate::node_relationship::NodeRelationship;
+use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NetworkShape};
+use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::basis_node::BasisNode;
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
@@ -75,9 +75,50 @@ pub async fn basis_network<R: Reasoner>(
         .collect();
     let lineage = Lineage::from_hashes(hashes);
 
-    let traversals: Vec<Traversal> = relationships.iter().map(|relationship| {
-        Traversal::from_node_relationship(&relationship)
-    }).collect();
+    let network_shape: NetworkShape = {
+        let mut shape: Option<NetworkShape> = None;
+
+        for relationship in relationships {
+            let relationship_shape = match &relationship.relationship_type {
+                NodeRelationshipType::Combine { .. } => {
+                    NetworkShape::Reduction
+                }
+                NodeRelationshipType::MixedContent { .. } => {
+                    NetworkShape::Enumeration
+                }
+                NodeRelationshipType::Equal { .. } | NodeRelationshipType::NoRelationship => continue,
+            };
+
+            match shape {
+                None => shape = Some(relationship_shape),
+                Some(existing) if existing != relationship_shape => {
+                    return Err(Errors::UnexpectedError(
+                        "Basis network relationships must not mix Combine and MixedContent".to_string(),
+                    ));
+                }
+                Some(_) => {}
+            }
+        }
+
+        shape.ok_or_else(|| {
+            Errors::UnexpectedError(
+                "Basis network has no Combine or MixedContent relationships".to_string(),
+            )
+        })?
+    };
+
+    let traversals: Vec<Traversal> = relationships
+        .iter()
+        .filter(|relationship| {
+            !matches!(
+                relationship.relationship_type,
+                NodeRelationshipType::NoRelationship | NodeRelationshipType::Equal { .. }
+            )
+        })
+        .map(|relationship| {
+            Traversal::from_node_relationship(&relationship)
+        })
+        .collect();
 
     let basis_network = BasisNetwork {
         id: ID::new(),
@@ -85,6 +126,7 @@ pub async fn basis_network<R: Reasoner>(
         description: result.network_description.clone(),
         basis_nodes: basis_nodes.clone(),
         lineage,
+        shape: network_shape,
         traversals,
         metadata: BasisNetworkMetadata {
             prompts: vec![reasoner_metadata.prompt_hash.clone()],
