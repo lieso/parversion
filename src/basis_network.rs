@@ -9,8 +9,8 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
-use crate::xpath::XPath;
 use crate::traversal::Traversal;
+use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetworkMetadata {
@@ -331,7 +331,7 @@ impl BasisNetwork {
     //        contexts: target_contexts.clone(),
     //    };
 
-    //    
+    //
     //    let normal_context = Arc::new(normal_context);
 
     //    if let Some(existing_network) = existing_network {

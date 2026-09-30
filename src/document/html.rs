@@ -198,7 +198,13 @@ impl Html {
             }
 
             for child in children {
-                recurse(meta_context, render_ids, context_string_target_ids, Arc::clone(&child), result);
+                recurse(
+                    meta_context,
+                    render_ids,
+                    context_string_target_ids,
+                    Arc::clone(&child),
+                    result,
+                );
             }
 
             if should_render {

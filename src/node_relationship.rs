@@ -26,4 +26,3 @@ pub struct NodeRelationship {
     pub right_basis_lineage: Lineage,
     pub relationship_type: NodeRelationshipType,
 }
-

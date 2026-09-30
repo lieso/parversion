@@ -1,5 +1,6 @@
 use atty::Stream;
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use dotenv::dotenv;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
@@ -8,7 +9,6 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing_subscriber::{fmt, EnvFilter};
-use dotenv::dotenv;
 
 use crate::config::CONFIG;
 use crate::document::{DocumentRole, DocumentType};

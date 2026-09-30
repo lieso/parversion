@@ -361,12 +361,7 @@ pub async fn report_basis_networks(
             network.traversals.len(),
             RESET
         );
-        println!(
-            "{}  shape: {:?}{}",
-            CYAN,
-            network.shape,
-            RESET
-        );
+        println!("{}  shape: {:?}{}", CYAN, network.shape, RESET);
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
 
         match network.apply(Arc::clone(&normalization_context), Arc::clone(&parent)) {

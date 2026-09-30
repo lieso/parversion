@@ -27,6 +27,7 @@ mod meta_context;
 mod metadata;
 mod network_analysis;
 mod node_analysis;
+mod node_relationship;
 mod normal_context;
 mod normal_meta_context;
 mod normalization;
@@ -43,12 +44,11 @@ mod translation;
 mod translation_context;
 mod translation_network;
 mod translation_node;
+mod traversal;
 mod types;
 #[allow(dead_code)]
 mod utility;
 mod xpath;
-mod node_relationship;
-mod traversal;
 
 use crate::entrypoint::run;
 

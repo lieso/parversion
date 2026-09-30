@@ -357,7 +357,7 @@ impl Context {
                 custom_delimiter: None,
             },
             Some(&neighbourhood),
-            Some(&target_ids)
+            Some(&target_ids),
         )?;
 
         Ok(partial_document.to_string())

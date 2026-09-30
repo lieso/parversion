@@ -3,8 +3,8 @@ use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
 use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NetworkShape};
-use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::basis_node::BasisNode;
+use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 use crate::traversal::Traversal;
@@ -80,20 +80,19 @@ pub async fn basis_network<R: Reasoner>(
 
         for relationship in &relationships {
             let relationship_shape = match &relationship.relationship_type {
-                NodeRelationshipType::Combine { .. } => {
-                    NetworkShape::Reduction
+                NodeRelationshipType::Combine { .. } => NetworkShape::Reduction,
+                NodeRelationshipType::MixedContent { .. } => NetworkShape::Enumeration,
+                NodeRelationshipType::Equal { .. } | NodeRelationshipType::NoRelationship => {
+                    continue
                 }
-                NodeRelationshipType::MixedContent { .. } => {
-                    NetworkShape::Enumeration
-                }
-                NodeRelationshipType::Equal { .. } | NodeRelationshipType::NoRelationship => continue,
             };
 
             match shape {
                 None => shape = Some(relationship_shape),
                 Some(existing) if existing != relationship_shape => {
                     return Err(Errors::UnexpectedError(
-                        "Basis network relationships must not mix Combine and MixedContent".to_string(),
+                        "Basis network relationships must not mix Combine and MixedContent"
+                            .to_string(),
                     ));
                 }
                 Some(_) => {}
@@ -115,9 +114,7 @@ pub async fn basis_network<R: Reasoner>(
                 NodeRelationshipType::NoRelationship | NodeRelationshipType::Equal { .. }
             )
         })
-        .map(|relationship| {
-            Traversal::from_node_relationship(&relationship)
-        })
+        .map(|relationship| Traversal::from_node_relationship(&relationship))
         .collect::<Result<Vec<_>, _>>()?;
 
     let basis_network = BasisNetwork {

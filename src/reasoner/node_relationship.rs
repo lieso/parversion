@@ -6,10 +6,10 @@ use std::sync::{Arc, RwLock};
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_node::BasisNode;
 use crate::graph_node::GraphNode;
+use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 use crate::xpath::XPath;
-use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -169,7 +169,7 @@ pub async fn node_relationship_self<R: Reasoner>(
                         xpath_rtl: pair.right_to_left_xpath,
                     },
                 })
-            .collect()
+                .collect()
         }
     };
 
@@ -190,7 +190,8 @@ pub async fn node_relationship_other<R: Reasoner>(
         Arc::clone(&left),
         Arc::clone(&right),
         Capability::Fast,
-    ).await?;
+    )
+    .await?;
 
     match validate_node_relationship(
         Arc::clone(&normalization_context),
@@ -206,7 +207,9 @@ pub async fn node_relationship_other<R: Reasoner>(
         }
         result => {
             log::warn!("Relationship invalid or error: {:?}", result);
-            log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
+            log::info!(
+                "Node relationship did not validate. Escalating to a more advanced model... "
+            );
 
             let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
                 reasoner,
@@ -214,7 +217,8 @@ pub async fn node_relationship_other<R: Reasoner>(
                 Arc::clone(&left),
                 Arc::clone(&right),
                 Capability::Capable,
-            ).await?;
+            )
+            .await?;
 
             match validate_node_relationship(
                 Arc::clone(&normalization_context),
@@ -238,7 +242,8 @@ pub async fn node_relationship_other<R: Reasoner>(
                         Arc::clone(&left),
                         Arc::clone(&right),
                         Capability::Strong,
-                    ).await?;
+                    )
+                    .await?;
 
                     match validate_node_relationship(
                         Arc::clone(&normalization_context),
@@ -378,7 +383,7 @@ fn validate_node_relationship(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
-    node_relationship: &NodeRelationship
+    node_relationship: &NodeRelationship,
 ) -> Result<bool, Errors> {
     log::trace!("In validate_node_relationship");
 
@@ -422,46 +427,49 @@ fn validate_node_relationship(
         } => {
             let xpath: XPath = XPath::from_str(&xpath_ltr)?;
 
-            let coverage_ltr = left_contexts.iter().try_fold(0, |acc, item| -> Result<i32, Errors> {
-                let target_graph_nodes = xpath.traverse(
-                    Arc::clone(&normalization_context),
-                    Arc::clone(&item.graph_node)
-                )?;
+            let coverage_ltr =
+                left_contexts
+                    .iter()
+                    .try_fold(0, |acc, item| -> Result<i32, Errors> {
+                        let target_graph_nodes = xpath.traverse(
+                            Arc::clone(&normalization_context),
+                            Arc::clone(&item.graph_node),
+                        )?;
 
-                if target_graph_nodes.is_empty() {
-                    log::warn!(
-                        "Could not find target graph nodes within current network: {}",
-                        xpath.to_string()
-                    );
+                        if target_graph_nodes.is_empty() {
+                            log::warn!(
+                                "Could not find target graph nodes within current network: {}",
+                                xpath.to_string()
+                            );
 
-                    return Ok(acc);
-                }
-
-                for target_graph_node in target_graph_nodes {
-                    let target_context = meta_context
-                        .contexts_lookup
-                        .get(&read_lock!(target_graph_node).id)
-                        .cloned()
-                        .unwrap();
-
-                    let target_basis_node = {
-                        let lock = read_lock!(normalization_context);
-                        let lookup = lock.context_basis_node.as_ref().unwrap();
-
-                        lookup.get(&target_context.id).cloned()
-                    };
-
-                    if let Some(target_basis_node) = target_basis_node {
-                        if target_basis_node.id != right.id {
-                            log::info!("XPATH LTR did not find the 'right' basis node");
                             return Ok(acc);
                         }
-                    }
-                }
 
-                Ok(acc + 1)
-            })? as f64 / left_contexts.len() as f64;
+                        for target_graph_node in target_graph_nodes {
+                            let target_context = meta_context
+                                .contexts_lookup
+                                .get(&read_lock!(target_graph_node).id)
+                                .cloned()
+                                .unwrap();
 
+                            let target_basis_node = {
+                                let lock = read_lock!(normalization_context);
+                                let lookup = lock.context_basis_node.as_ref().unwrap();
+
+                                lookup.get(&target_context.id).cloned()
+                            };
+
+                            if let Some(target_basis_node) = target_basis_node {
+                                if target_basis_node.id != right.id {
+                                    log::info!("XPATH LTR did not find the 'right' basis node");
+                                    return Ok(acc);
+                                }
+                            }
+                        }
+
+                        Ok(acc + 1)
+                    })? as f64
+                    / left_contexts.len() as f64;
 
             log::info!("coverage_ltr: {}", coverage_ltr);
 
@@ -469,50 +477,51 @@ fn validate_node_relationship(
                 return Ok(false);
             }
 
-
-
             let xpath: XPath = XPath::from_str(&xpath_rtl)?;
 
-            let coverage_rtl = right_contexts.iter().try_fold(0, |acc, item| -> Result<i32, Errors> {
-                let target_graph_nodes = xpath.traverse(
-                    Arc::clone(&normalization_context),
-                    Arc::clone(&item.graph_node)
-                )?;
+            let coverage_rtl =
+                right_contexts
+                    .iter()
+                    .try_fold(0, |acc, item| -> Result<i32, Errors> {
+                        let target_graph_nodes = xpath.traverse(
+                            Arc::clone(&normalization_context),
+                            Arc::clone(&item.graph_node),
+                        )?;
 
-                if target_graph_nodes.is_empty() {
-                    log::warn!(
-                        "Could not find target graph nodes within current network: {}",
-                        xpath.to_string()
-                    );
+                        if target_graph_nodes.is_empty() {
+                            log::warn!(
+                                "Could not find target graph nodes within current network: {}",
+                                xpath.to_string()
+                            );
 
-                    return Ok(acc);
-                }
-
-                for target_graph_node in target_graph_nodes {
-                    let target_context = meta_context
-                        .contexts_lookup
-                        .get(&read_lock!(target_graph_node).id)
-                        .cloned()
-                        .unwrap();
-
-                    let target_basis_node = {
-                        let lock = read_lock!(normalization_context);
-                        let lookup = lock.context_basis_node.as_ref().unwrap();
-
-                        lookup.get(&target_context.id).cloned()
-                    };
-
-                    if let Some(target_basis_node) = target_basis_node {
-                        if target_basis_node.id != left.id {
-                            log::info!("XPATH RTL did not find the 'left' basis node");
                             return Ok(acc);
                         }
-                    }
-                }
 
-                Ok(acc + 1)
-            })? as f64 / right_contexts.len() as f64;
+                        for target_graph_node in target_graph_nodes {
+                            let target_context = meta_context
+                                .contexts_lookup
+                                .get(&read_lock!(target_graph_node).id)
+                                .cloned()
+                                .unwrap();
 
+                            let target_basis_node = {
+                                let lock = read_lock!(normalization_context);
+                                let lookup = lock.context_basis_node.as_ref().unwrap();
+
+                                lookup.get(&target_context.id).cloned()
+                            };
+
+                            if let Some(target_basis_node) = target_basis_node {
+                                if target_basis_node.id != left.id {
+                                    log::info!("XPATH RTL did not find the 'left' basis node");
+                                    return Ok(acc);
+                                }
+                            }
+                        }
+
+                        Ok(acc + 1)
+                    })? as f64
+                    / right_contexts.len() as f64;
 
             log::info!("coverage_rtl: {}", coverage_rtl);
 
@@ -526,19 +535,13 @@ fn validate_node_relationship(
             xpath_ltr,
             xpath_rtl,
             ..
-        } => {
-            Ok(true)
-        }
+        } => Ok(true),
         NodeRelationshipType::MixedContent {
             xpath_ltr,
             xpath_rtl,
             ..
-        } => {
-            Ok(true)
-        }
-        NodeRelationshipType::NoRelationship => {
-            Ok(true)
-        }
+        } => Ok(true),
+        NodeRelationshipType::NoRelationship => Ok(true),
     }
 }
 

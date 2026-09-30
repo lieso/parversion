@@ -5,20 +5,18 @@ use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::basis_graph::BasisGraph;
-use crate::basis_network::{
-    BasisNetwork, BasisNetworkMetadata
-};
+use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
 use crate::basis_node::BasisNode;
 use crate::classification::Classification;
 use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::group_analysis::resolve_context_groups;
 use crate::llm::LLM;
+use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_network::TranslationNetwork;
-use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 
 pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -27,7 +25,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<(HashMap<BasisNetworkID, Arc<BasisNetwork>>,), Errors> {
-
     let meta_context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context
@@ -96,7 +93,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     recurse(
         Arc::clone(&normalization_context),
         Arc::clone(&meta_context.graph_root),
-        &mut comparisons
+        &mut comparisons,
     )?;
 
     log::debug!("comparisons: {}", comparisons.len());
@@ -212,7 +209,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 fn get_basis_node_neighbours(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     graph: Graph,
-    target_basis_node: Arc<BasisNode>
+    target_basis_node: Arc<BasisNode>,
 ) -> Result<Vec<Arc<BasisNode>>, Errors> {
     let mut result: Vec<Arc<BasisNode>> = Vec::new();
 
@@ -288,7 +285,7 @@ fn get_basis_node_neighbours(
                         right += 1;
                     }
                 }
-                
+
                 for sibling in nearest_siblings {
                     if enqueued.insert(read_lock!(sibling).id.clone()) {
                         queue.push_back(Arc::clone(&sibling));
@@ -768,7 +765,10 @@ fn get_core_relationships(
             if relationship.left_basis_lineage == current
                 || relationship.right_basis_lineage == current
             {
-                if matches!(relationship.relationship_type, NodeRelationshipType::Combine { .. } ) {
+                if matches!(
+                    relationship.relationship_type,
+                    NodeRelationshipType::Combine { .. }
+                ) {
                     collected
                         .entry(relationship.id.clone())
                         .or_insert_with(|| Arc::clone(relationship));
@@ -806,7 +806,10 @@ fn get_mixed_content_relationships(
             if relationship.left_basis_lineage == current
                 || relationship.right_basis_lineage == current
             {
-                if matches!(relationship.relationship_type, NodeRelationshipType::MixedContent { .. }) {
+                if matches!(
+                    relationship.relationship_type,
+                    NodeRelationshipType::MixedContent { .. }
+                ) {
                     collected
                         .entry(relationship.id.clone())
                         .or_insert_with(|| Arc::clone(relationship));

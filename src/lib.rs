@@ -27,6 +27,7 @@ pub mod meta_context;
 pub mod metadata;
 pub mod network_analysis;
 pub mod node_analysis;
+pub mod node_relationship;
 pub mod normal_context;
 pub mod normal_meta_context;
 pub mod normalization;
@@ -43,9 +44,8 @@ pub mod translation;
 pub mod translation_context;
 pub mod translation_network;
 pub mod translation_node;
+pub mod traversal;
 pub mod types;
 #[allow(dead_code)]
 pub mod utility;
 pub mod xpath;
-pub mod node_relationship;
-pub mod traversal;

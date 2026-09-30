@@ -193,10 +193,17 @@ impl GraphNode {
         log::warn!("===== XPATH AXIS TRAVERSAL =====");
         log::warn!("XPATH AXIS: {:?}", xpath_axis);
         log::warn!("Current node ID: {}", lock.id.to_string());
-        log::warn!("Current node has {} children, {} parents", lock.children.len(), lock.parents.len());
+        log::warn!(
+            "Current node has {} children, {} parents",
+            lock.children.len(),
+            lock.parents.len()
+        );
 
         if lock.parents.len() > 1 {
-            log::error!("ERROR: Node has multiple parents ({}) - xpath requires single parent", lock.parents.len());
+            log::error!(
+                "ERROR: Node has multiple parents ({}) - xpath requires single parent",
+                lock.parents.len()
+            );
             return Err(Errors::XPathTraverseError(
                 "Why are we traversing a graph using xpath if nodes have more than one parent?"
                     .to_string(),
@@ -205,27 +212,33 @@ impl GraphNode {
 
         let result = match xpath_axis {
             XPathAxis::Child => {
-                log::info!("Applying XPATH AXIS::Child - returning {} children", lock.children.len());
+                log::info!(
+                    "Applying XPATH AXIS::Child - returning {} children",
+                    lock.children.len()
+                );
                 for (idx, child) in lock.children.iter().enumerate() {
                     log::debug!("  Child {}: {}", idx, read_lock!(child).id.to_string());
                 }
                 Ok(lock.children.clone())
-            },
+            }
             XPathAxis::Parent => {
-                log::info!("Applying XPATH AXIS::Parent - returning {} parents", lock.parents.len());
+                log::info!(
+                    "Applying XPATH AXIS::Parent - returning {} parents",
+                    lock.parents.len()
+                );
                 for (idx, parent) in lock.parents.iter().enumerate() {
                     log::debug!("  Parent {}: {}", idx, read_lock!(parent).id.to_string());
                 }
                 Ok(lock.parents.clone())
-            },
+            }
             XPathAxis::Attribute => {
                 log::info!("Applying XPATH AXIS::Attribute - staying on current node");
                 Ok(vec![Arc::clone(&graph)])
-            },
+            }
             XPathAxis::Self_ => {
                 log::info!("Applying XPATH AXIS::Self_ - returning current node");
                 Ok(vec![graph.clone()])
-            },
+            }
             XPathAxis::Descendant => {
                 log::info!("Applying XPATH AXIS::Descendant - traversing all descendants");
                 let mut descendants = Vec::new();
@@ -237,14 +250,22 @@ impl GraphNode {
                     let node = queue.remove(0);
                     let node_lock = read_lock!(node);
                     descendants.push(node.clone());
-                    log::debug!("  [Descendant depth {}] Added node {}, has {} children", depth, node_lock.id.to_string(), node_lock.children.len());
+                    log::debug!(
+                        "  [Descendant depth {}] Added node {}, has {} children",
+                        depth,
+                        node_lock.id.to_string(),
+                        node_lock.children.len()
+                    );
                     queue.extend(node_lock.children.clone());
                     depth += 1;
                 }
 
-                log::info!("XPATH AXIS::Descendant - found {} total descendants", descendants.len());
+                log::info!(
+                    "XPATH AXIS::Descendant - found {} total descendants",
+                    descendants.len()
+                );
                 Ok(descendants)
-            },
+            }
             XPathAxis::Ancestor => {
                 log::info!("Applying XPATH AXIS::Ancestor - traversing all ancestors");
                 let mut ancestors = Vec::new();
@@ -255,14 +276,22 @@ impl GraphNode {
                     let parent = current_parents[0].clone();
                     let parent_lock = read_lock!(parent);
                     ancestors.push(parent.clone());
-                    log::debug!("  [Ancestor depth {}] Added ancestor {}, has {} parents", depth, parent_lock.id.to_string(), parent_lock.parents.len());
+                    log::debug!(
+                        "  [Ancestor depth {}] Added ancestor {}, has {} parents",
+                        depth,
+                        parent_lock.id.to_string(),
+                        parent_lock.parents.len()
+                    );
                     current_parents = parent_lock.parents.clone();
                     depth += 1;
                 }
 
-                log::info!("XPATH AXIS::Ancestor - found {} total ancestors", ancestors.len());
+                log::info!(
+                    "XPATH AXIS::Ancestor - found {} total ancestors",
+                    ancestors.len()
+                );
                 Ok(ancestors)
-            },
+            }
             XPathAxis::FollowingSibling => {
                 log::info!("Applying XPATH AXIS::FollowingSibling");
                 if let Some(parent) = lock.parents.first() {
@@ -288,7 +317,7 @@ impl GraphNode {
                         "Trying to visit following sibling on a root node".to_string(),
                     ))
                 }
-            },
+            }
             XPathAxis::PrecedingSibling => {
                 log::info!("Applying XPATH AXIS::PrecedingSibling");
                 if let Some(parent) = lock.parents.first() {
@@ -319,7 +348,7 @@ impl GraphNode {
                         "Trying to visit preceding sibling on a root node".to_string(),
                     ))
                 }
-            },
+            }
             XPathAxis::Following => {
                 log::info!("Applying XPATH AXIS::Following - collecting all following nodes");
                 let mut result = Vec::new();
@@ -329,7 +358,10 @@ impl GraphNode {
 
                 loop {
                     let Some(parent) = current_parents.first().cloned() else {
-                        log::debug!("  [Following iteration {}] Reached root (no parent)", iteration);
+                        log::debug!(
+                            "  [Following iteration {}] Reached root (no parent)",
+                            iteration
+                        );
                         break;
                     };
 
@@ -359,13 +391,19 @@ impl GraphNode {
                     for sibling in following_siblings {
                         let sibling_lock = read_lock!(sibling);
                         result.push(sibling.clone());
-                        log::trace!("    [Following] Added sibling {}", sibling_lock.id.to_string());
+                        log::trace!(
+                            "    [Following] Added sibling {}",
+                            sibling_lock.id.to_string()
+                        );
                         let mut queue = sibling_lock.children.clone();
                         while !queue.is_empty() {
                             let desc = queue.remove(0);
                             let desc_lock = read_lock!(desc);
                             result.push(desc.clone());
-                            log::trace!("    [Following] Added descendant {}", desc_lock.id.to_string());
+                            log::trace!(
+                                "    [Following] Added descendant {}",
+                                desc_lock.id.to_string()
+                            );
                             queue.extend(desc_lock.children.clone());
                         }
                     }
@@ -375,9 +413,12 @@ impl GraphNode {
                     iteration += 1;
                 }
 
-                log::info!("XPATH AXIS::Following - collected {} total following nodes", result.len());
+                log::info!(
+                    "XPATH AXIS::Following - collected {} total following nodes",
+                    result.len()
+                );
                 Ok(result)
-            },
+            }
             XPathAxis::Preceding => {
                 log::info!("Applying XPATH AXIS::Preceding - collecting all preceding nodes");
                 let mut result = Vec::new();
@@ -387,7 +428,10 @@ impl GraphNode {
 
                 loop {
                     let Some(parent) = current_parents.first().cloned() else {
-                        log::debug!("  [Preceding iteration {}] Reached root (no parent)", iteration);
+                        log::debug!(
+                            "  [Preceding iteration {}] Reached root (no parent)",
+                            iteration
+                        );
                         break;
                     };
 
@@ -421,13 +465,19 @@ impl GraphNode {
                     for sibling in preceding_siblings {
                         let sibling_lock = read_lock!(sibling);
                         result.push(sibling.clone());
-                        log::trace!("    [Preceding] Added sibling {}", sibling_lock.id.to_string());
+                        log::trace!(
+                            "    [Preceding] Added sibling {}",
+                            sibling_lock.id.to_string()
+                        );
                         let mut queue = sibling_lock.children.clone();
                         while !queue.is_empty() {
                             let desc = queue.remove(0);
                             let desc_lock = read_lock!(desc);
                             result.push(desc.clone());
-                            log::trace!("    [Preceding] Added descendant {}", desc_lock.id.to_string());
+                            log::trace!(
+                                "    [Preceding] Added descendant {}",
+                                desc_lock.id.to_string()
+                            );
                             queue.extend(desc_lock.children.clone());
                         }
                     }
@@ -437,9 +487,12 @@ impl GraphNode {
                     iteration += 1;
                 }
 
-                log::info!("XPATH AXIS::Preceding - collected {} total preceding nodes", result.len());
+                log::info!(
+                    "XPATH AXIS::Preceding - collected {} total preceding nodes",
+                    result.len()
+                );
                 Ok(result)
-            },
+            }
         };
 
         log::warn!("===== END XPATH AXIS TRAVERSAL =====");
@@ -497,10 +550,16 @@ impl GraphNode {
                   node_test.trim(), name.trim());
 
         let result = if node_test.trim() == name.trim() {
-            log::info!("XPATH NODE TEST: MATCH - node_test matches element name, returning current node");
+            log::info!(
+                "XPATH NODE TEST: MATCH - node_test matches element name, returning current node"
+            );
             Ok(vec![graph.clone()])
         } else {
-            log::info!("XPATH NODE TEST: NO MATCH - node_test '{}' != element name '{}'", node_test.trim(), name.trim());
+            log::info!(
+                "XPATH NODE TEST: NO MATCH - node_test '{}' != element name '{}'",
+                node_test.trim(),
+                name.trim()
+            );
             Ok(vec![])
         };
 
@@ -519,7 +578,10 @@ impl GraphNode {
 
         let result = match predicate {
             XPathPredicate::Position(index) => {
-                log::info!("XPATH PREDICATE::Position - filtering for position {}", index);
+                log::info!(
+                    "XPATH PREDICATE::Position - filtering for position {}",
+                    index
+                );
                 // XPath positions are 1-indexed
                 if *index < 1 || *index as usize > graphs.len() {
                     log::info!("XPATH PREDICATE::Position {} - OUT OF BOUNDS (graphs.len={}), returning empty", index, graphs.len());
@@ -527,17 +589,27 @@ impl GraphNode {
                 }
 
                 let selected_graph = graphs.get(*index as usize - 1).cloned().unwrap();
-                log::info!("XPATH PREDICATE::Position {} - MATCH found, selecting node {}", index, read_lock!(selected_graph).id.to_string());
+                log::info!(
+                    "XPATH PREDICATE::Position {} - MATCH found, selecting node {}",
+                    index,
+                    read_lock!(selected_graph).id.to_string()
+                );
                 Ok(vec![selected_graph])
-            },
+            }
             XPathPredicate::Last => {
-                log::info!("XPATH PREDICATE::Last - selecting last graph from {} graphs", graphs.len());
+                log::info!(
+                    "XPATH PREDICATE::Last - selecting last graph from {} graphs",
+                    graphs.len()
+                );
                 let result = graphs.last().cloned().into_iter().collect();
                 if let Some(last_graph) = graphs.last() {
-                    log::info!("XPATH PREDICATE::Last - selected node {}", read_lock!(last_graph).id.to_string());
+                    log::info!(
+                        "XPATH PREDICATE::Last - selected node {}",
+                        read_lock!(last_graph).id.to_string()
+                    );
                 }
                 Ok(result)
-            },
+            }
             XPathPredicate::Not(inner) => {
                 log::info!("XPATH PREDICATE::Not - applying inner predicate to filter");
                 let mut filtered = Vec::new();
@@ -554,9 +626,13 @@ impl GraphNode {
                         matched_count += 1;
                     }
                 }
-                log::info!("XPATH PREDICATE::Not - filtered {} matched, kept {} unmatched", matched_count, filtered.len());
+                log::info!(
+                    "XPATH PREDICATE::Not - filtered {} matched, kept {} unmatched",
+                    matched_count,
+                    filtered.len()
+                );
                 Ok(filtered)
-            },
+            }
             XPathPredicate::ContainsNormalized { value } => {
                 log::info!("XPATH PREDICATE::ContainsNormalized - filtering for normalized text containing '{}'", value);
                 let contexts_lookup = {
@@ -589,11 +665,19 @@ impl GraphNode {
                     })
                     .cloned()
                     .collect();
-                log::info!("XPATH PREDICATE::ContainsNormalized - matched {} out of {} graphs", matched_count, graphs.len());
+                log::info!(
+                    "XPATH PREDICATE::ContainsNormalized - matched {} out of {} graphs",
+                    matched_count,
+                    graphs.len()
+                );
                 Ok(filtered)
-            },
+            }
             XPathPredicate::Contains { name, value } => {
-                log::info!("XPATH PREDICATE::Contains - filtering for attribute '{}' containing '{}'", name, value);
+                log::info!(
+                    "XPATH PREDICATE::Contains - filtering for attribute '{}' containing '{}'",
+                    name,
+                    value
+                );
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
                     lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
@@ -608,7 +692,11 @@ impl GraphNode {
                             .get(&graph_id)
                             .and_then(|context| {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::trace!("XPATH PREDICATE::Contains - checking node {} ({})", graph_id.to_string(), doc_node.to_string());
+                                log::trace!(
+                                    "XPATH PREDICATE::Contains - checking node {} ({})",
+                                    graph_id.to_string(),
+                                    doc_node.to_string()
+                                );
                                 doc_node
                                     .get_attribute_value(name)
                                     .map(|attr_value| attr_value.trim().contains(value.trim()))
@@ -617,7 +705,11 @@ impl GraphNode {
                         if matches {
                             if let Some(context) = contexts_lookup.get(&graph_id) {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::debug!("XPATH PREDICATE::Contains - MATCH on node {} ({})", graph_id.to_string(), doc_node.to_string());
+                                log::debug!(
+                                    "XPATH PREDICATE::Contains - MATCH on node {} ({})",
+                                    graph_id.to_string(),
+                                    doc_node.to_string()
+                                );
                             }
                             matched_count += 1;
                         }
@@ -626,11 +718,19 @@ impl GraphNode {
                     .cloned()
                     .collect();
 
-                log::info!("XPATH PREDICATE::Contains - matched {} out of {} graphs", matched_count, graphs.len());
+                log::info!(
+                    "XPATH PREDICATE::Contains - matched {} out of {} graphs",
+                    matched_count,
+                    graphs.len()
+                );
                 Ok(filtered)
-            },
+            }
             XPathPredicate::Attribute { name, value } => {
-                log::info!("XPATH PREDICATE::Attribute - filtering for attribute match: {}='{}'", name, value);
+                log::info!(
+                    "XPATH PREDICATE::Attribute - filtering for attribute match: {}='{}'",
+                    name,
+                    value
+                );
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
                     lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
@@ -645,36 +745,43 @@ impl GraphNode {
                             .get(&graph_id)
                             .and_then(|context| {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::trace!("XPATH PREDICATE::Attribute - checking node {} ({})", graph_id.to_string(), doc_node.to_string());
-                                doc_node
-                                    .get_attribute_value(name)
-                                    .map(|attr_value| {
-                                        let attr_value = attr_value.trim();
-                                        let value = value.trim();
+                                log::trace!(
+                                    "XPATH PREDICATE::Attribute - checking node {} ({})",
+                                    graph_id.to_string(),
+                                    doc_node.to_string()
+                                );
+                                doc_node.get_attribute_value(name).map(|attr_value| {
+                                    let attr_value = attr_value.trim();
+                                    let value = value.trim();
 
-                                        // Preserve original exact-match semantics unconditionally.
-                                        if attr_value == value {
-                                            return true;
-                                        }
+                                    // Preserve original exact-match semantics unconditionally.
+                                    if attr_value == value {
+                                        return true;
+                                    }
 
-                                        // Additionally treat single-token values as matching
-                                        // any whitespace-separated token in the attribute
-                                        // (e.g. @class='commtext' matching class="commtext c00").
-                                        // Skip this for multi-word values, since a multi-word
-                                        // value can never equal a single token anyway.
-                                        if !value.is_empty() && !value.contains(char::is_whitespace) {
-                                            attr_value.split_whitespace().any(|token| token == value)
-                                        } else {
-                                            false
-                                        }
-                                    })
+                                    // Additionally treat single-token values as matching
+                                    // any whitespace-separated token in the attribute
+                                    // (e.g. @class='commtext' matching class="commtext c00").
+                                    // Skip this for multi-word values, since a multi-word
+                                    // value can never equal a single token anyway.
+                                    if !value.is_empty() && !value.contains(char::is_whitespace) {
+                                        attr_value.split_whitespace().any(|token| token == value)
+                                    } else {
+                                        false
+                                    }
+                                })
                             })
-                        .unwrap_or(false);
+                            .unwrap_or(false);
                         if matches {
                             if let Some(context) = contexts_lookup.get(&graph_id) {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::debug!("XPATH PREDICATE::Attribute - MATCH on node {} ({}, {}='{}')",
-                                graph_id.to_string(), doc_node.get_element_name(), name, value);
+                                log::debug!(
+                                    "XPATH PREDICATE::Attribute - MATCH on node {} ({}, {}='{}')",
+                                    graph_id.to_string(),
+                                    doc_node.get_element_name(),
+                                    name,
+                                    value
+                                );
                             }
                             matched_count += 1;
                         }
@@ -683,9 +790,13 @@ impl GraphNode {
                     .cloned()
                     .collect();
 
-                log::info!("XPATH PREDICATE::Attribute - matched {} out of {} graphs", matched_count, graphs.len());
+                log::info!(
+                    "XPATH PREDICATE::Attribute - matched {} out of {} graphs",
+                    matched_count,
+                    graphs.len()
+                );
                 Ok(filtered)
-            },
+            }
             XPathPredicate::AttributePresence(names) => {
                 log::info!("XPATH PREDICATE::AttributePresence - filtering for presence of {} attributes: {:?}", names.len(), names);
                 let contexts_lookup = {
@@ -702,18 +813,24 @@ impl GraphNode {
                             .get(&graph_id)
                             .map(|context| {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::trace!("XPATH PREDICATE::AttributePresence - checking node {} ({})", graph_id.to_string(), doc_node.to_string());
-                                names.iter().all(|name| {
-                                    doc_node
-                                        .get_attribute_value(name)
-                                        .is_some()
-                                })
+                                log::trace!(
+                                    "XPATH PREDICATE::AttributePresence - checking node {} ({})",
+                                    graph_id.to_string(),
+                                    doc_node.to_string()
+                                );
+                                names
+                                    .iter()
+                                    .all(|name| doc_node.get_attribute_value(name).is_some())
                             })
                             .unwrap_or(false);
                         if matches {
                             if let Some(context) = contexts_lookup.get(&graph_id) {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::debug!("XPATH PREDICATE::AttributePresence - MATCH on node {} ({})", graph_id.to_string(), doc_node.get_element_name());
+                                log::debug!(
+                                    "XPATH PREDICATE::AttributePresence - MATCH on node {} ({})",
+                                    graph_id.to_string(),
+                                    doc_node.get_element_name()
+                                );
                             }
                             matched_count += 1;
                         }
@@ -722,11 +839,19 @@ impl GraphNode {
                     .cloned()
                     .collect();
 
-                log::info!("XPATH PREDICATE::AttributePresence - matched {} out of {} graphs", matched_count, graphs.len());
+                log::info!(
+                    "XPATH PREDICATE::AttributePresence - matched {} out of {} graphs",
+                    matched_count,
+                    graphs.len()
+                );
                 Ok(filtered)
-            },
+            }
             XPathPredicate::StartsWith { name, value } => {
-                log::info!("XPATH PREDICATE::StartsWith - filtering for attribute '{}' starting with '{}'", name, value);
+                log::info!(
+                    "XPATH PREDICATE::StartsWith - filtering for attribute '{}' starting with '{}'",
+                    name,
+                    value
+                );
                 let contexts_lookup = {
                     let lock = read_lock!(normalization_context);
                     lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
@@ -741,7 +866,11 @@ impl GraphNode {
                             .get(&graph_id)
                             .and_then(|context| {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::trace!("XPATH PREDICATE::StartsWith - checking node {} ({})", graph_id.to_string(), doc_node.to_string());
+                                log::trace!(
+                                    "XPATH PREDICATE::StartsWith - checking node {} ({})",
+                                    graph_id.to_string(),
+                                    doc_node.to_string()
+                                );
                                 doc_node
                                     .get_attribute_value(name)
                                     .map(|attr_value| attr_value.trim().starts_with(value.trim()))
@@ -750,7 +879,11 @@ impl GraphNode {
                         if matches {
                             if let Some(context) = contexts_lookup.get(&graph_id) {
                                 let doc_node = read_lock!(&context.document_node);
-                                log::debug!("XPATH PREDICATE::StartsWith - MATCH on node {} ({})", graph_id.to_string(), doc_node.get_element_name());
+                                log::debug!(
+                                    "XPATH PREDICATE::StartsWith - MATCH on node {} ({})",
+                                    graph_id.to_string(),
+                                    doc_node.get_element_name()
+                                );
                             }
                             matched_count += 1;
                         }
@@ -759,9 +892,13 @@ impl GraphNode {
                     .cloned()
                     .collect();
 
-                log::info!("XPATH PREDICATE::StartsWith - matched {} out of {} graphs", matched_count, graphs.len());
+                log::info!(
+                    "XPATH PREDICATE::StartsWith - matched {} out of {} graphs",
+                    matched_count,
+                    graphs.len()
+                );
                 Ok(filtered)
-            },
+            }
             XPathPredicate::Path(path) => {
                 log::info!("XPATH PREDICATE::Path - filtering based on path traversal");
                 let mut matched_count = 0;
@@ -778,20 +915,32 @@ impl GraphNode {
                             Ok(Some(_))
                         );
                         if path_match {
-                            log::debug!("XPATH PREDICATE::Path - MATCH on node {}", graph_id.to_string());
+                            log::debug!(
+                                "XPATH PREDICATE::Path - MATCH on node {}",
+                                graph_id.to_string()
+                            );
                             matched_count += 1;
                         }
                         path_match
                     })
                     .collect();
 
-                log::info!("XPATH PREDICATE::Path - matched {} graphs via path traversal", matched_count);
+                log::info!(
+                    "XPATH PREDICATE::Path - matched {} graphs via path traversal",
+                    matched_count
+                );
                 Ok(filtered)
-            },
+            }
             XPathPredicate::And(predicates) => {
-                log::info!("XPATH PREDICATE::And - applying {} predicates sequentially", predicates.len());
+                log::info!(
+                    "XPATH PREDICATE::And - applying {} predicates sequentially",
+                    predicates.len()
+                );
                 predicates.iter().try_fold(graphs, |acc, predicate| {
-                    log::debug!("XPATH PREDICATE::And - applying predicate to {} graphs", acc.len());
+                    log::debug!(
+                        "XPATH PREDICATE::And - applying predicate to {} graphs",
+                        acc.len()
+                    );
                     Self::traverse_using_xpath_predicate(
                         Arc::clone(&normalization_context),
                         acc,
@@ -813,8 +962,12 @@ impl GraphNode {
         let graph_id = read_lock!(graph).id.clone();
 
         log::warn!("===== XPATH SEGMENT =====");
-        log::warn!("SEGMENT - axis: {:?}, node_test: '{}', predicates: {}",
-                  xpath_segment.axis, xpath_segment.node_test, xpath_segment.predicates.len());
+        log::warn!(
+            "SEGMENT - axis: {:?}, node_test: '{}', predicates: {}",
+            xpath_segment.axis,
+            xpath_segment.node_test,
+            xpath_segment.predicates.len()
+        );
         log::warn!("Starting node ID: {}", graph_id.to_string());
 
         let contexts_lookup = {
@@ -832,46 +985,72 @@ impl GraphNode {
             &xpath_segment.axis,
         )?;
 
-        log::info!("XPATH SEGMENT - after axis '{}', have {} graphs",
-                  format!("{:?}", xpath_segment.axis), next_graphs.len());
+        log::info!(
+            "XPATH SEGMENT - after axis '{}', have {} graphs",
+            format!("{:?}", xpath_segment.axis),
+            next_graphs.len()
+        );
 
-        let mut next_graphs: Vec<Graph> =
-            if matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent | XPathAxis::Attribute) {
-                log::info!("XPATH SEGMENT - skipping node_test for Self_/Parent axis");
-                next_graphs
-            } else {
-                log::info!("XPATH SEGMENT - applying node_test '{}' to {} graphs", xpath_segment.node_test, next_graphs.len());
-                let tested: Vec<Vec<Graph>> = next_graphs
-                    .iter()
-                    .map(|graph| {
-                        Self::traverse_using_xpath_node_test(
-                            Arc::clone(&normalization_context),
-                            Arc::clone(&graph),
-                            &xpath_segment.node_test,
-                        )
-                    })
-                    .collect::<Result<Vec<Vec<Graph>>, Errors>>()?;
+        let mut next_graphs: Vec<Graph> = if matches!(
+            xpath_segment.axis,
+            XPathAxis::Self_ | XPathAxis::Parent | XPathAxis::Attribute
+        ) {
+            log::info!("XPATH SEGMENT - skipping node_test for Self_/Parent axis");
+            next_graphs
+        } else {
+            log::info!(
+                "XPATH SEGMENT - applying node_test '{}' to {} graphs",
+                xpath_segment.node_test,
+                next_graphs.len()
+            );
+            let tested: Vec<Vec<Graph>> = next_graphs
+                .iter()
+                .map(|graph| {
+                    Self::traverse_using_xpath_node_test(
+                        Arc::clone(&normalization_context),
+                        Arc::clone(&graph),
+                        &xpath_segment.node_test,
+                    )
+                })
+                .collect::<Result<Vec<Vec<Graph>>, Errors>>()?;
 
-                let flattened: Vec<Graph> = tested.into_iter().flatten().collect();
-                log::info!("XPATH SEGMENT - after node_test, have {} graphs", flattened.len());
-                flattened
-            };
+            let flattened: Vec<Graph> = tested.into_iter().flatten().collect();
+            log::info!(
+                "XPATH SEGMENT - after node_test, have {} graphs",
+                flattened.len()
+            );
+            flattened
+        };
 
-        log::info!("XPATH SEGMENT - applying {} predicates", xpath_segment.predicates.len());
+        log::info!(
+            "XPATH SEGMENT - applying {} predicates",
+            xpath_segment.predicates.len()
+        );
         let mut predicate_count = 0;
-        let result = xpath_segment
+        let result =
+            xpath_segment
                 .predicates
                 .iter()
                 .try_fold(next_graphs, |graphs, predicate| {
                     predicate_count += 1;
-                    log::debug!("XPATH SEGMENT - predicate {}/{}: {} graphs before", predicate_count, xpath_segment.predicates.len(), graphs.len());
+                    log::debug!(
+                        "XPATH SEGMENT - predicate {}/{}: {} graphs before",
+                        predicate_count,
+                        xpath_segment.predicates.len(),
+                        graphs.len()
+                    );
                     let result = Self::traverse_using_xpath_predicate(
                         Arc::clone(&normalization_context),
                         graphs,
                         predicate,
                     );
                     if let Ok(ref filtered) = result {
-                        log::debug!("XPATH SEGMENT - predicate {}/{}: {} graphs after", predicate_count, xpath_segment.predicates.len(), filtered.len());
+                        log::debug!(
+                            "XPATH SEGMENT - predicate {}/{}: {} graphs after",
+                            predicate_count,
+                            xpath_segment.predicates.len(),
+                            filtered.len()
+                        );
                     }
                     result
                 })?;
@@ -893,12 +1072,30 @@ impl GraphNode {
             .unwrap_or(0);
 
         log::error!("");
-        log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
-        log::error!("║                    ▶ XPATH TRAVERSAL START [ID: {}]                          ║", traversal_id);
-        log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
-        log::error!("[{}] Starting node ID: {}", traversal_id, read_lock!(start).id.to_string());
-        log::error!("[{}] Total segments: {}", traversal_id, xpath.segments.len());
-        log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
+        log::error!(
+            "╔════════════════════════════════════════════════════════════════════════════════╗"
+        );
+        log::error!(
+            "║                    ▶ XPATH TRAVERSAL START [ID: {}]                          ║",
+            traversal_id
+        );
+        log::error!(
+            "╚════════════════════════════════════════════════════════════════════════════════╝"
+        );
+        log::error!(
+            "[{}] Starting node ID: {}",
+            traversal_id,
+            read_lock!(start).id.to_string()
+        );
+        log::error!(
+            "[{}] Total segments: {}",
+            traversal_id,
+            xpath.segments.len()
+        );
+        log::error!(
+            "[{}] ─────────────────────────────────────────────────────────────────────────────",
+            traversal_id
+        );
 
         let segments = &xpath.segments;
 
@@ -906,8 +1103,17 @@ impl GraphNode {
 
         for (index, segment) in segments.iter().enumerate() {
             log::error!("[{}]", traversal_id);
-            log::error!("[{}] ┌─ SEGMENT {}/{}", traversal_id, index + 1, segments.len());
-            log::error!("[{}] │  Processing {} current graph(s)", traversal_id, current.len());
+            log::error!(
+                "[{}] ┌─ SEGMENT {}/{}",
+                traversal_id,
+                index + 1,
+                segments.len()
+            );
+            log::error!(
+                "[{}] │  Processing {} current graph(s)",
+                traversal_id,
+                current.len()
+            );
 
             current = current
                 .iter()
@@ -923,13 +1129,24 @@ impl GraphNode {
                 .flatten()
                 .collect();
 
-            log::error!("[{}] └─ After segment: {} graph(s) remaining", traversal_id, current.len());
+            log::error!(
+                "[{}] └─ After segment: {} graph(s) remaining",
+                traversal_id,
+                current.len()
+            );
 
             if current.is_empty() {
                 if index == segments.len() - 1 {
-                    log::error!("[{}] ╳ TRAVERSAL COMPLETE (all segments processed, no matches)", traversal_id);
+                    log::error!(
+                        "[{}] ╳ TRAVERSAL COMPLETE (all segments processed, no matches)",
+                        traversal_id
+                    );
                 } else {
-                    log::error!("[{}] ╳ TRAVERSAL STOPPED EARLY (no matches after segment {})", traversal_id, index);
+                    log::error!(
+                        "[{}] ╳ TRAVERSAL STOPPED EARLY (no matches after segment {})",
+                        traversal_id,
+                        index
+                    );
                 }
 
                 log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
@@ -943,12 +1160,26 @@ impl GraphNode {
 
         let result_node = current.first().cloned();
         if let Some(ref node) = result_node {
-            log::error!("[{}] ✓ SUCCESS - Selected node: {}", traversal_id, read_lock!(node).id.to_string());
+            log::error!(
+                "[{}] ✓ SUCCESS - Selected node: {}",
+                traversal_id,
+                read_lock!(node).id.to_string()
+            );
         }
-        log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
-        log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
-        log::error!("║                  ✓ XPATH TRAVERSAL SUCCESS [ID: {}]                          ║", traversal_id);
-        log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
+        log::error!(
+            "[{}] ─────────────────────────────────────────────────────────────────────────────",
+            traversal_id
+        );
+        log::error!(
+            "╔════════════════════════════════════════════════════════════════════════════════╗"
+        );
+        log::error!(
+            "║                  ✓ XPATH TRAVERSAL SUCCESS [ID: {}]                          ║",
+            traversal_id
+        );
+        log::error!(
+            "╚════════════════════════════════════════════════════════════════════════════════╝"
+        );
         log::error!("");
 
         Ok(result_node)
@@ -996,8 +1227,12 @@ impl GraphNode {
                 };
 
                 let element_name = document_node.get_element_name();
-                log::debug!("XPATH GENERATION - ancestor segment {}: element='{}', position={:?}",
-                           idx, element_name, predicate);
+                log::debug!(
+                    "XPATH GENERATION - ancestor segment {}: element='{}', position={:?}",
+                    idx,
+                    element_name,
+                    predicate
+                );
 
                 XPathSegment {
                     axis: XPathAxis::Child,
@@ -1059,7 +1294,10 @@ impl GraphNode {
         let segment_count = segments.len();
         let xpath = XPath { segments };
 
-        log::info!("XPATH GENERATION - created xpath with {} total segments", segment_count);
+        log::info!(
+            "XPATH GENERATION - created xpath with {} total segments",
+            segment_count
+        );
         log::warn!("===== END XPATH GENERATION =====");
 
         Ok(xpath)
