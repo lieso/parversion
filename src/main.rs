@@ -48,6 +48,7 @@ mod types;
 mod utility;
 mod xpath;
 mod node_relationship;
+mod traversal;
 
 use crate::entrypoint::run;
 

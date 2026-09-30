@@ -2,10 +2,12 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
-use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NodeRelationship};
+use crate::basis_network::{BasisNetwork, BasisNetworkMetadata};
+use crate::node_relationship::NodeRelationship;
 use crate::basis_node::BasisNode;
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::traversal::Traversal;
 
 #[derive(Deserialize, JsonSchema, Debug)]
 pub struct BasisNetworkResponse {
@@ -73,13 +75,17 @@ pub async fn basis_network<R: Reasoner>(
         .collect();
     let lineage = Lineage::from_hashes(hashes);
 
+    let traversals: Vec<Traversal> = relationships.iter().map(|relationship| {
+        Traversal::from_node_relationship(&relationship)
+    }).collect();
+
     let basis_network = BasisNetwork {
         id: ID::new(),
         name: result.network_name.clone(),
         description: result.network_description.clone(),
         basis_nodes: basis_nodes.clone(),
         lineage,
-        relationships: relationships.clone(),
+        traversals,
         metadata: BasisNetworkMetadata {
             prompts: vec![reasoner_metadata.prompt_hash.clone()],
         },

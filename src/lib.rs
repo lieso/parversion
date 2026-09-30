@@ -48,3 +48,4 @@ pub mod types;
 pub mod utility;
 pub mod xpath;
 pub mod node_relationship;
+pub mod traversal;

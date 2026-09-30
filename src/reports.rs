@@ -356,9 +356,9 @@ pub async fn report_basis_networks(
             RESET
         );
         println!(
-            "{}  relationships: {}{}",
+            "{}  traversals: {}{}",
             CYAN,
-            network.relationships.len(),
+            network.traversals.len(),
             RESET
         );
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
