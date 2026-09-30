@@ -47,3 +47,4 @@ pub mod types;
 #[allow(dead_code)]
 pub mod utility;
 pub mod xpath;
+pub mod node_relationship;

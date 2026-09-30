@@ -47,6 +47,7 @@ mod types;
 #[allow(dead_code)]
 mod utility;
 mod xpath;
+mod node_relationship;
 
 use crate::entrypoint::run;
 

@@ -4,12 +4,12 @@ use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use super::sampling::{pre_sample_context_group, sample_most_different};
-use crate::basis_network::{NodeRelationship, NodeRelationshipType};
 use crate::basis_node::BasisNode;
 use crate::graph_node::GraphNode;
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 use crate::xpath::XPath;
+use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

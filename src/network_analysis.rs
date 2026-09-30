@@ -6,7 +6,7 @@ use tokio::task;
 
 use crate::basis_graph::BasisGraph;
 use crate::basis_network::{
-    BasisNetwork, BasisNetworkMetadata, NodeRelationship, NodeRelationshipType,
+    BasisNetwork, BasisNetworkMetadata
 };
 use crate::basis_node::BasisNode;
 use crate::classification::Classification;
@@ -18,6 +18,7 @@ use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_network::TranslationNetwork;
+use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 
 pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
     provider: Arc<P>,
