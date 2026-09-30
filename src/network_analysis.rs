@@ -506,7 +506,7 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
         }
     }
 
-    let results = reasoner
+    let (relationships, metadata) = reasoner
         .node_relationship(
             Arc::clone(&normalization_context),
             left.clone(),
@@ -514,10 +514,7 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    let total_tokens: u32 = results.iter().map(|(_, metadata)| metadata.tokens).sum();
-    stage_context.record_events("Node relationship", total_tokens.into());
-
-    let relationships: Vec<NodeRelationship> = results.into_iter().map(|(r, _)| r).collect();
+    stage_context.record_events("Node relationship", metadata.tokens.into());
 
     provider
         .save_node_relationships(

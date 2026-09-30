@@ -155,7 +155,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         left: Arc<BasisNode>,
         right: Arc<BasisNode>,
-    ) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
+    ) -> Result<(Vec<NodeRelationship>, ReasonerMetadata), Errors> {
         Ok(node_relationship::node_relationship(self, normalization_context, left, right).await?)
     }
 

@@ -28,14 +28,6 @@ pub enum SelfRelationshipTypeResponse {
 }
 
 #[derive(Deserialize, JsonSchema, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum CentralityResponse {
-    Core,
-    Common,
-    Occasional,
-}
-
-#[derive(Deserialize, JsonSchema, Debug)]
 pub struct NodeRelationshipOtherResponse {
     // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "MIXED_CONTENT", "NO_RELATIONSHIP")
     pub relationship_type: RelationshipTypeResponse,
@@ -46,19 +38,20 @@ pub struct NodeRelationshipOtherResponse {
 }
 
 #[derive(Deserialize, JsonSchema, Debug)]
+pub struct XPathPairResponse {
+    // Relative XPath from one instance to other instances of this pattern in the same record
+    pub left_to_right_xpath: String,
+    // Relative XPath in the opposite direction
+    pub right_to_left_xpath: String,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
 pub struct NodeRelationshipSelfResponse {
-    // A short description of the record/entity this field is a member of (e.g. "forum comment", "job listing")
-    pub entity_description: String,
     // Whether multiple instances of this field can occur within one record and must be combined ("COMBINE"), or whether at most one instance occurs per record ("NO_RELATIONSHIP")
     pub relationship_type: SelfRelationshipTypeResponse,
-    // Brief justification for the relationship_type call
-    pub relationship_reasoning: String,
-    // Relative XPath from the sampled node up to the smallest ancestor that bounds exactly one record. Required if relationship_type is COMBINE, otherwise null
-    pub record_scope_xpath: Option<String>,
-    // How essential this field is to its entity: present in virtually every instance ("CORE"), most but not all ("COMMON"), or a minority ("OCCASIONAL")
-    pub centrality: CentralityResponse,
-    // Brief justification for the centrality call
-    pub centrality_reasoning: String,
+    // One or more xpath pairs if COMBINE, otherwise an empty list
+    #[serde(default)]
+    pub xpath_pairs: Vec<XPathPairResponse>,
 }
 
 pub async fn node_relationship<R: Reasoner>(
@@ -66,7 +59,7 @@ pub async fn node_relationship<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
-) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
+) -> Result<(Vec<NodeRelationship>, ReasonerMetadata), Errors> {
     if left.id == right.id {
         node_relationship_self(reasoner, Arc::clone(&normalization_context), left.clone()).await
     } else {
@@ -84,7 +77,7 @@ pub async fn node_relationship_self<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     node: Arc<BasisNode>,
-) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
+) -> Result<(Vec<NodeRelationship>, ReasonerMetadata), Errors> {
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
         lock.basis_node_contexts.clone().ok_or_else(|| {
@@ -150,56 +143,37 @@ pub async fn node_relationship_self<R: Reasoner>(
         prompt_hash: metadata.prompt_hash.clone(),
     };
 
-    let mut relationship_type = {
-        match result.relationship_type {
-            SelfRelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
-                xpath_ltr: ".".to_string(),
-                xpath_rtl: ".".to_string(),
-            },
-            SelfRelationshipTypeResponse::NoRelationship => NodeRelationshipType::NoRelationship,
+    let relationships: Vec<NodeRelationship> = match result.relationship_type {
+        SelfRelationshipTypeResponse::NoRelationship => vec![NodeRelationship {
+            id: ID::new(),
+            left_basis_lineage: node.lineage.clone(),
+            right_basis_lineage: node.lineage.clone(),
+            relationship_type: NodeRelationshipType::NoRelationship,
+        }],
+        SelfRelationshipTypeResponse::Combine => {
+            if result.xpath_pairs.is_empty() {
+                return Err(Errors::UnexpectedError(
+                    "COMBINE requires at least one xpath pair".to_string(),
+                ));
+            }
+
+            result
+                .xpath_pairs
+                .into_iter()
+                .map(|pair| NodeRelationship {
+                    id: ID::new(),
+                    left_basis_lineage: node.lineage.clone(),
+                    right_basis_lineage: node.lineage.clone(),
+                    relationship_type: NodeRelationshipType::Combine {
+                        xpath_ltr: pair.left_to_right_xpath,
+                        xpath_rtl: pair.right_to_left_xpath,
+                    },
+                })
+            .collect()
         }
     };
 
-    let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
-
-    let centrality_hint = {
-        match result.centrality {
-            CentralityResponse::Core => {
-                log::info!("=====================================================================================================");
-                log::info!("Received Core centrality response");
-                log::info!("=====================================================================================================");
-
-                true
-            }
-            CentralityResponse::Common => {
-                log::info!("=====================================================================================================");
-                log::info!("Received Common centrality response");
-                log::info!("=====================================================================================================");
-
-                false
-            }
-            CentralityResponse::Occasional => {
-                log::info!("=====================================================================================================");
-                log::info!("Received Occasional centrality response");
-                log::info!("=====================================================================================================");
-
-                false
-            }
-        }
-    };
-
-    let node_relationship = NodeRelationship {
-        id: ID::new(),
-        left_basis_lineage: node.lineage.clone(),
-        right_basis_lineage: node.lineage.clone(),
-        relationship_type,
-        scope_xpath: result.record_scope_xpath.clone(),
-        centrality_hint: Some(centrality_hint.clone()),
-    };
-
-    relationships.push((node_relationship.clone(), reasoner_metadata));
-
-    Ok(relationships)
+    Ok((relationships, reasoner_metadata))
 }
 
 pub async fn node_relationship_other<R: Reasoner>(
@@ -207,8 +181,8 @@ pub async fn node_relationship_other<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
-) -> Result<Vec<(NodeRelationship, ReasonerMetadata)>, Errors> {
-    let mut relationships: Vec<(NodeRelationship, ReasonerMetadata)> = Vec::new();
+) -> Result<(Vec<NodeRelationship>, ReasonerMetadata), Errors> {
+    let mut relationships: Vec<NodeRelationship> = Vec::new();
 
     let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
         reasoner,
@@ -226,9 +200,9 @@ pub async fn node_relationship_other<R: Reasoner>(
     ) {
         Ok(true) => {
             log::info!("Relationship valid");
-            relationships.push((node_relationship.clone(), reasoner_metadata));
+            relationships.push(node_relationship.clone());
 
-            Ok(relationships)
+            Ok((relationships, reasoner_metadata))
         }
         result => {
             log::warn!("Relationship invalid or error: {:?}", result);
@@ -250,9 +224,9 @@ pub async fn node_relationship_other<R: Reasoner>(
             ) {
                 Ok(true) => {
                     log::info!("Relationship valid");
-                    relationships.push((node_relationship.clone(), reasoner_metadata));
+                    relationships.push(node_relationship.clone());
 
-                    Ok(relationships)
+                    Ok((relationships, reasoner_metadata))
                 }
                 result => {
                     log::warn!("Relationship invalid or error: {:?}", result);
@@ -274,20 +248,18 @@ pub async fn node_relationship_other<R: Reasoner>(
                     ) {
                         Ok(true) => {
                             log::info!("Relationship valid");
-                            relationships.push((node_relationship.clone(), reasoner_metadata));
+                            relationships.push(node_relationship.clone());
 
-                            Ok(relationships)
+                            Ok((relationships, reasoner_metadata))
                         }
                         result => {
                             log::warn!("Relationship invalid or error: {:?}", result);
                             log::info!("Node relationship did not validate ");
-                            relationships.push((node_relationship.clone(), reasoner_metadata));
+                            relationships.push(node_relationship.clone());
 
-                            Ok(relationships)
+                            Ok((relationships, reasoner_metadata))
                         }
                     }
-
-
                 }
             }
         }
@@ -397,8 +369,6 @@ async fn determine_node_relationship_other<R: Reasoner>(
         left_basis_lineage: left.lineage.clone(),
         right_basis_lineage: right.lineage.clone(),
         relationship_type,
-        scope_xpath: None,
-        centrality_hint: None,
     };
 
     Ok((node_relationship, reasoner_metadata))
