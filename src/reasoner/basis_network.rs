@@ -78,7 +78,7 @@ pub async fn basis_network<R: Reasoner>(
     let network_shape: NetworkShape = {
         let mut shape: Option<NetworkShape> = None;
 
-        for relationship in relationships {
+        for relationship in &relationships {
             let relationship_shape = match &relationship.relationship_type {
                 NodeRelationshipType::Combine { .. } => {
                     NetworkShape::Reduction
@@ -118,7 +118,7 @@ pub async fn basis_network<R: Reasoner>(
         .map(|relationship| {
             Traversal::from_node_relationship(&relationship)
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
 
     let basis_network = BasisNetwork {
         id: ID::new(),
