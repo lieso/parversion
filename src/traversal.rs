@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Traversal {
+    pub id: ID,
     pub left_basis_lineage: Lineage,
     pub right_basis_lineage: Lineage,
     pub xpath_ltr: String,
@@ -37,6 +38,7 @@ impl Traversal {
         };
 
         Ok(Traversal {
+            id: ID::new(),
             left_basis_lineage: relationship.left_basis_lineage.clone(),
             right_basis_lineage: relationship.right_basis_lineage.clone(),
             xpath_ltr,
