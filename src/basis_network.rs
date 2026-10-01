@@ -178,6 +178,7 @@ impl BasisNetwork {
         }));
 
         let mut network_contexts: Vec<Arc<Context>> = vec![leader.0.clone()];
+        processed_contexts.insert(leader.0.id.clone());
 
         let mut queue: VecDeque<(Arc<Context>, Arc<BasisNode>)> = VecDeque::new();
         queue.push_back(leader.clone());
