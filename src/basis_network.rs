@@ -270,6 +270,9 @@ impl BasisNetwork {
             network_contexts.extend(existing_network.contexts.clone());
         }
 
+        let mut seen: HashSet<ContextID> = HashSet::new();
+        network_contexts.retain(|c| seen.insert(c.id.clone()));
+
         match self.shape {
             NetworkShape::Reduction => {
                 Ok(self.reduce(
