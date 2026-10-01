@@ -42,6 +42,9 @@ instance pairs to compare directly.
   without the other (e.g. one produces a customer's name, the other their
   account balance, for the same account). The correct outcome is to merge
   fields together so each resulting record has the union of both sides.
+  COMBINE applies only to record-level properties that can be merged without regard to their relative DOM order.
+  Do not use COMBINE for text nodes, inline markup, links, code spans, emphasized text, 
+  or other fragments whose placement within a rich-text value is semantically significant.
 
   Do not return NO_RELATIONSHIP merely because one direction can match
   multiple instances.
@@ -78,6 +81,8 @@ instance pairs to compare directly.
     complete left-side value.
   - The extraction pipeline may need to retain individual text nodes rather
     than concatenating them before relationship resolution.
+
+    MIXED_CONTENT is not limited to visible text extracted with `text()`. A value derived from an inline element—such as the `href` of an `<a>`—counts as an ordered fragment when that element is embedded in the logical rich-text value. Use the element’s DOM position to order the resulting field.
 
 - **NO_RELATIONSHIP**: The two extraction patterns represent conceptually
   unrelated things (e.g. one is order line items, the other is site
