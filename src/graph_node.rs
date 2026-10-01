@@ -35,6 +35,23 @@ impl GraphNode {
         }
     }
 
+    pub fn document_path(&self) -> Vec<usize> {
+        let mut path: Vec<usize> = Vec::new();
+        let mut index = self.index_in_parent();
+        let mut parent = self.parents.first().cloned();
+
+        while let Some(p) = parent {
+            path.push(index.unwrap_or(0));
+
+            let lock = read_lock!(p);
+            index = lock.index_in_parent();
+            parent = lock.parents.first().cloned();
+        }
+
+        path.reverse();
+        path
+    }
+
     pub fn index_in_parent(&self) -> Option<usize> {
         self.parents.first().and_then(|parent| {
             read_lock!(parent)

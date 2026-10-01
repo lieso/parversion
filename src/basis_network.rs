@@ -334,8 +334,13 @@ impl BasisNetwork {
         );
 
         write_lock!(parent).children.push(container_context.graph_node.clone());
+
+        let mut network_contexts = network_contexts.clone();
+
+        network_contexts.sort_by_cached_key(|context| {
+            read_lock!(context.graph_node).document_path()
+        });
         
-        // TODO: sort by document order 
         for (index, network_context) in network_contexts.into_iter().enumerate() {
             let basis_node = {
                 let lock = read_lock!(normalization_context);
