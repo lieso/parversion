@@ -325,6 +325,10 @@ impl BasisNetwork {
             read_lock!(&container_context.graph_node).id.clone(),
             Arc::clone(&container_context),
         );
+        normal_contexts_lookup.insert(
+            container_context.id.clone(),
+            Arc::clone(&container_context),
+        );
 
         write_lock!(parent).children.push(container_context.graph_node.clone());
         
