@@ -10,9 +10,8 @@ same one. Each instance was produced by applying this pattern at a different
 location on the page. Your job is to determine how this pattern behaves
 *within a single record* (one instance of whatever entity this field belongs
 to — a comment, a row, a listing, an article, etc.): can multiple instances
-of this pattern occur inside the same record and need to be combined to
-reconstruct that field's full value, or does each matched instance already
-stand alone as one complete value per record?
+of this pattern occur inside the same record, and if so, are they independent
+members of a collection, or ordered fragments of one logical value?
 
 **INPUT CONTEXT EXPLAINED:**
 
@@ -28,12 +27,31 @@ pattern, separated by ---SNIPPET SEPARATOR---. Each sample has:
 **DECISION CRITERIA FOR relationship_type:**
 
 - **COMBINE**: A single record can legitimately contain more than one
-  occurrence of this pattern, and those occurrences need to be joined
-  together to reconstruct that field's full value. This applies whenever a
-  field is naturally repeatable or open-ended within one record — not only
-  free-text broken across paragraphs, but also things like a list of tags
-  on one item, multiple images in one gallery, or several line items making
-  up one order.
+  occurrence of this pattern, and the occurrences are independent members of
+  a collection whose order does not change the meaning — for example a list
+  of tags on one item, multiple images in one gallery, or several line items
+  making up one order.
+
+- **MIXED_CONTENT**: A single record contains more than one occurrence of
+  this pattern, and the occurrences are consecutive fragments of one logical
+  value whose meaning depends on their order — for example the paragraphs of
+  a single comment, or pieces of text interrupted by inline elements such as
+  `<i>`, `<b>`, `<em>`, `<strong>`, `<a>`, `<code>` or `<span>`. Reading the
+  fragments out of document order, or as an unordered list, would change or
+  destroy the value.
+
+  Example source:
+
+      <div>
+        The <i>quick</i> brown fox jumps over the lazy dog
+      </div>
+
+  Here the text pieces "The " and " brown fox jumps over the lazy dog" are
+  two occurrences of the same pattern within one record. They are fragments
+  of one sentence and must be kept in document order.
+
+  A useful test: if the instances within one record were shuffled, would the
+  record's value change? If yes, choose MIXED_CONTENT. If no, choose COMBINE.
 
 - **NO_RELATIONSHIP**: A single record contains at most one occurrence of
   this pattern. Each matched instance is already the complete value for
@@ -48,10 +66,10 @@ particular domain or repetition style — infer it from the structure shown.
 
 **XPATHS:**
 
-**IF AND ONLY IF you choose COMBINE**, also provide one or more pairs of
-relative XPaths that locate the *other* occurrences of this same pattern
-belonging to the *same record*, anchored at the node identified in
-[POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample. Each pair has:
+**IF AND ONLY IF you choose COMBINE or MIXED_CONTENT**, also provide one or
+more pairs of relative XPaths that locate the *other* occurrences of this
+same pattern belonging to the *same record*, anchored at the node identified
+in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample. Each pair has:
 
 - `left_to_right_xpath`: relative XPath from one instance to other instances
   of this pattern within the same record.
@@ -99,7 +117,7 @@ For NO_RELATIONSHIP, return an empty `xpath_pairs` list.
 
 Respond with strictly valid JSON:
 {
-  "relationship_type": "COMBINE" | "NO_RELATIONSHIP",
+  "relationship_type": "COMBINE" | "MIXED_CONTENT" | "NO_RELATIONSHIP",
   "xpath_pairs": [
     {
       "left_to_right_xpath": string,

@@ -24,6 +24,7 @@ pub enum RelationshipTypeResponse {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SelfRelationshipTypeResponse {
     Combine,
+    MixedContent,
     NoRelationship,
 }
 
@@ -150,26 +151,36 @@ pub async fn node_relationship_self<R: Reasoner>(
             right_basis_lineage: node.lineage.clone(),
             relationship_type: NodeRelationshipType::NoRelationship,
         }],
-        SelfRelationshipTypeResponse::Combine => {
+        SelfRelationshipTypeResponse::Combine | SelfRelationshipTypeResponse::MixedContent => {
             if result.xpath_pairs.is_empty() {
                 return Err(Errors::UnexpectedError(
-                    "COMBINE requires at least one xpath pair".to_string(),
+                    "COMBINE or MIXED_CONTENT requires at least one xpath pair".to_string(),
                 ));
             }
+
+            let mixed_content = matches!(
+                result.relationship_type,
+                SelfRelationshipTypeResponse::MixedContent
+            );
 
             result
                 .xpath_pairs
                 .into_iter()
-                .map(|pair| NodeRelationship {
-                    id: ID::new(),
-                    left_basis_lineage: node.lineage.clone(),
-                    right_basis_lineage: node.lineage.clone(),
-                    relationship_type: NodeRelationshipType::Combine {
-                        xpath_ltr: pair.left_to_right_xpath,
-                        xpath_rtl: pair.right_to_left_xpath,
-                    },
+                .map(|pair| {
+                    let (xpath_ltr, xpath_rtl) = (pair.left_to_right_xpath, pair.right_to_left_xpath);
+
+                    NodeRelationship {
+                        id: ID::new(),
+                        left_basis_lineage: node.lineage.clone(),
+                        right_basis_lineage: node.lineage.clone(),
+                        relationship_type: if mixed_content {
+                            NodeRelationshipType::MixedContent { xpath_ltr, xpath_rtl }
+                        } else {
+                            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl }
+                        },
+                    }
                 })
-                .collect()
+            .collect()
         }
     };
 
