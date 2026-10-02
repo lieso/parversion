@@ -28,6 +28,12 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
 
     let basis_networks: Vec<Arc<BasisNetwork>> = basis_networks.values().cloned().collect();
 
+    // delete me
+    let basis_networks: Vec<Arc<BasisNetwork>> = basis_networks
+            .into_iter()
+            .filter(|n| n.name == "user_profile")
+            .collect();
+
     let mut handles = Vec::new();
 
     for basis_network in basis_networks {

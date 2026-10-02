@@ -10,6 +10,7 @@ use crate::document_format::DocumentFormat;
 use crate::graph_node::GraphNode;
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::normal_context::NormalContext;
 
 pub async fn network_relationship<R: Reasoner>(
     reasoner: &R,
@@ -76,29 +77,35 @@ fn get_user_prompt_reflexive<R: Reasoner>(
     let normal_meta_context =
         network.apply(Arc::clone(&normalization_context), Arc::clone(&parent))?;
 
-    let format = DocumentFormat {
-        format_type: DocumentType::Json,
-        encoding: None,
-        indent: Some(2),
-        line_ending: None,
-        headers: None,
-        wrap_text: None,
-        exclude_nulls: None,
-        custom_delimiter: None,
+    let normal_contexts: Vec<Arc<NormalContext>> = {
+        let root = read_lock!(normal_meta_context.graph_root);
+        root.children
+            .iter()
+            .take(5)
+            .map(|child| {
+                let id = read_lock!(child).id.clone();
+                normal_meta_context
+                    .contexts_lookup
+                    .get(&id)
+                    .cloned()
+                    .ok_or(Errors::DeficientNormalizationContextError(format!(
+                        "No normal context found for graph node {}",
+                        id.to_string()
+                    )))
+            })
+            .collect::<Result<Vec<_>, Errors>>()?
     };
 
-    let document = Document::from_normal_meta_context(&normal_meta_context, &format)?;
+    for normal_context in normal_contexts {
+        log::debug!("-----------------------------------------------------------------------------------------------------");
+        let context_string = Context::generate_context_string_network_relationship(
+            Arc::clone(&normalization_context),
+            normal_context.contexts.clone()
+        )?;
 
-    let truncated = if document.data.len() > 3089 {
-        format!(
-            "{}\n...",
-            document.data.chars().take(3086).collect::<String>()
-        )
-    } else {
-        document.data.to_string()
-    };
+        log::debug!("context_string: {}", context_string);
 
-    log::debug!("truncated: {}", truncated);
+    }
 
     unimplemented!()
 }
