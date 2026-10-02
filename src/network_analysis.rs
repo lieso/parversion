@@ -66,8 +66,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                     Arc::clone(&basis_node),
                 )?;
 
-                log::debug!("neighbours: {}", neighbours.len());
-
                 let next_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = neighbours
                     .into_iter()
                     .map(|neighbour| (basis_node.clone(), neighbour))
@@ -95,8 +93,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         Arc::clone(&meta_context.graph_root),
         &mut comparisons,
     )?;
-
-    log::debug!("comparisons: {}", comparisons.len());
 
     let mut seen: HashSet<(String, String)> = HashSet::new();
 
@@ -170,7 +166,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             .cloned()
             .collect()
     };
-    log::info!("Number of basis nodes: {}", basis_nodes.len());
 
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
@@ -593,8 +588,6 @@ pub async fn get_translation_networks<P: Provider, R: Reasoner>(
                 .map(move |context_b| (context_a.clone(), context_b.clone()))
         })
         .collect();
-
-    log::info!("Number of context pairs: {}", context_pairs.len());
 
     let max_concurrency = read_lock!(CONFIG).llm.max_concurrency;
     let semaphore = Arc::new(Semaphore::new(max_concurrency));
