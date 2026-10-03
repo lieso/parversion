@@ -49,6 +49,7 @@ mod types;
 #[allow(dead_code)]
 mod utility;
 mod xpath;
+mod xslt;
 
 use crate::entrypoint::run;
 

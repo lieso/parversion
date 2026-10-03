@@ -99,6 +99,43 @@ async fn network_relationship_reflexive<R: Reasoner>(
 
     log::debug!("result: {:?}", result);
 
+//child_to_parent_xslt
+//<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+//  <xsl:output method="xml" omit-xml-declaration="yes"/>
+//
+//  <xsl:template match="a[contains(concat(' ', normalize-space(@class), ' '), ' hnuser ')]">
+//    <xsl:variable name="row"
+//      select="ancestor::tr[contains(concat(' ', normalize-space(@class), ' '), ' comtr ')][1]"/>
+//    <xsl:variable name="depth"
+//      select="number(($row//td[contains(concat(' ', normalize-space(@class), ' '), ' ind ')]/@indent)[1])"/>
+//    <xsl:copy-of select="
+//      $row/preceding-sibling::tr[contains(concat(' ', normalize-space(@class), ' '), ' comtr ')]
+//          [number((.//td[contains(concat(' ', normalize-space(@class), ' '), ' ind ')]/@indent)[1]) = $depth - 1]
+//          [1]
+//        //a[contains(concat(' ', normalize-space(@class), ' '), ' hnuser ')][1]"/>
+//  </xsl:template>
+//</xsl:stylesheet>
+//
+//parent_to_child_xslt
+//<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+//  <xsl:output method="xml" omit-xml-declaration="yes"/>
+//
+//  <xsl:template match="a[contains(concat(' ', normalize-space(@class), ' '), ' hnuser ')]">
+//    <xsl:variable name="row"
+//      select="ancestor::tr[contains(concat(' ', normalize-space(@class), ' '), ' comtr ')][1]"/>
+//    <xsl:variable name="depth"
+//      select="number(($row//td[contains(concat(' ', normalize-space(@class), ' '), ' ind ')]/@indent)[1])"/>
+//    <xsl:copy-of select="
+//      $row/following-sibling::tr[contains(concat(' ', normalize-space(@class), ' '), ' comtr ')]
+//          [number((.//td[contains(concat(' ', normalize-space(@class), ' '), ' ind ')]/@indent)[1]) = $depth + 1]
+//          [generate-id(
+//             preceding-sibling::tr[contains(concat(' ', normalize-space(@class), ' '), ' comtr ')]
+//               [number((.//td[contains(concat(' ', normalize-space(@class), ' '), ' ind ')]/@indent)[1]) = $depth][1]
+//           ) = generate-id($row)]
+//        //a[contains(concat(' ', normalize-space(@class), ' '), ' hnuser ')][1]"/>
+//  </xsl:template>
+//</xsl:stylesheet>
+
     unimplemented!()
 }
 
