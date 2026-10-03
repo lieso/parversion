@@ -15,7 +15,7 @@ pub use traverse::{
 };
 
 thread_local! {
-    static XPATH_CACHE: RefCell<HashMap<(ID, Vec<XPathSegment>), Vec<Graph>>> = RefCell::new(HashMap::new());
+    static XPATH_CACHE: RefCell<HashMap<(ID, Vec<XPathSegment>), Vec<Value>>> = RefCell::new(HashMap::new());
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
@@ -59,13 +59,17 @@ pub enum XPathPredicate {
     ContainsToken { name: String, value: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Value {
     pub graph: Graph,
     pub selection: Option<Selection>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+impl Value {
+    pub fn from_graph(graph: Graph) -> Self { Value { graph, selection: None } }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum Selection {
     Attribute { name: String, value: String },
     String(String),
@@ -78,7 +82,7 @@ impl XPath {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
-    ) -> Result<Vec<Graph>, Errors> {
+    ) -> Result<Vec<Value>, Errors> {
         use std::time::{SystemTime, UNIX_EPOCH};
         let traversal_id = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -110,7 +114,7 @@ impl XPath {
             traversal_id
         );
 
-        let mut current: Vec<Graph> = vec![Arc::clone(&start)];
+        let mut current: Vec<Value> = vec![Value::from_graph(Arc::clone(&start))];
 
         for (index, segment) in self.segments.iter().enumerate() {
             log::error!("[{}]", traversal_id);
@@ -151,20 +155,20 @@ impl XPath {
 
             current = current
                 .iter()
-                .map(|graph| {
+                .map(|value| {
                     traverse::traverse_using_xpath_segment(
                         Arc::clone(&normalization_context),
-                        Arc::clone(graph),
+                        &value,
                         segment,
                     )
                 })
-                .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
+                .collect::<Result<Vec<Vec<Value>>, Errors>>()?
                 .into_iter()
                 .flatten()
                 .collect();
 
             log::error!(
-                "[{}] └─ After segment: {} graph(s) remaining",
+                "[{}] └─ After segment: {} values(s) remaining",
                 traversal_id,
                 current.len()
             );

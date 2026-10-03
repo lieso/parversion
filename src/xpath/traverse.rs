@@ -2,13 +2,14 @@ use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::graph_node::{Graph, GraphNode};
-use super::{XPath, XPathAxis, XPathPredicate, XPathSegment};
+use super::{XPath, XPathAxis, XPathPredicate, XPathSegment, Value, Selection};
 
 pub fn traverse_using_xpath_axis(
     _meta_context: Arc<RwLock<NormalizationContext>>,
-    graph: Graph,
+    value: &Value,
     xpath_axis: &XPathAxis,
-) -> Result<Vec<Graph>, Errors> {
+) -> Result<Vec<Value>, Errors> {
+    let graph = value.graph.clone();
     let lock = read_lock!(graph);
 
     log::warn!("===== XPATH AXIS TRAVERSAL =====");
@@ -317,14 +318,15 @@ pub fn traverse_using_xpath_axis(
     };
 
     log::warn!("===== END XPATH AXIS TRAVERSAL =====");
-    result
+    result.map(|graphs| graphs.into_iter().map(Value::from_graph).collect())
 }
 
 pub fn traverse_using_xpath_node_test(
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    graph: Graph,
+    value: &Value,
     node_test: &String,
-) -> Result<Vec<Graph>, Errors> {
+) -> Result<Vec<Value>, Errors> {
+    let graph = value.graph.clone();
     let graph_id = read_lock!(graph).id.clone();
 
     log::warn!("===== XPATH NODE TEST =====");
@@ -374,7 +376,7 @@ pub fn traverse_using_xpath_node_test(
         log::info!(
             "XPATH NODE TEST: MATCH - node_test matches element name, returning current node"
         );
-        Ok(vec![graph.clone()])
+        Ok(vec![value.clone()])
     } else {
         log::info!(
             "XPATH NODE TEST: NO MATCH - node_test '{}' != element name '{}'",
@@ -390,12 +392,12 @@ pub fn traverse_using_xpath_node_test(
 
 pub fn traverse_using_xpath_predicate(
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    graphs: Vec<Graph>,
+    values: Vec<Value>,
     predicate: &XPathPredicate,
-) -> Result<Vec<Graph>, Errors> {
+) -> Result<Vec<Value>, Errors> {
     log::warn!("===== XPATH PREDICATE =====");
     log::warn!("PREDICATE: {:?}", predicate);
-    log::warn!("Input graph count: {}", graphs.len());
+    log::warn!("Input values count: {}", values.len());
 
     let result = match predicate {
         XPathPredicate::Position(index) => {
@@ -404,29 +406,29 @@ pub fn traverse_using_xpath_predicate(
                 index
             );
             // XPath positions are 1-indexed
-            if *index < 1 || *index as usize > graphs.len() {
-                log::info!("XPATH PREDICATE::Position {} - OUT OF BOUNDS (graphs.len={}), returning empty", index, graphs.len());
+            if *index < 1 || *index as usize > values.len() {
+                log::info!("XPATH PREDICATE::Position {} - OUT OF BOUNDS (values.len={}), returning empty", index, values.len());
                 return Ok(vec![]);
             }
 
-            let selected_graph = graphs.get(*index as usize - 1).cloned().unwrap();
+            let selected = values.get(*index as usize - 1).cloned().unwrap();
             log::info!(
                 "XPATH PREDICATE::Position {} - MATCH found, selecting node {}",
                 index,
-                read_lock!(selected_graph).id.to_string()
+                read_lock!(selected.graph).id.to_string()
             );
-            Ok(vec![selected_graph])
+            Ok(vec![selected])
         }
         XPathPredicate::Last => {
             log::info!(
-                "XPATH PREDICATE::Last - selecting last graph from {} graphs",
-                graphs.len()
+                "XPATH PREDICATE::Last - selecting last value from {} values",
+                values.len()
             );
-            let result = graphs.last().cloned().into_iter().collect();
-            if let Some(last_graph) = graphs.last() {
+            let result = values.last().cloned().into_iter().collect();
+            if let Some(last_value) = values.last() {
                 log::info!(
                     "XPATH PREDICATE::Last - selected node {}",
-                    read_lock!(last_graph).id.to_string()
+                    read_lock!(last_value.graph).id.to_string()
                 );
             }
             Ok(result)
@@ -435,14 +437,14 @@ pub fn traverse_using_xpath_predicate(
             log::info!("XPATH PREDICATE::Not - applying inner predicate to filter");
             let mut filtered = Vec::new();
             let mut matched_count = 0;
-            for graph in graphs {
+            for value in values {
                 let matched = traverse_using_xpath_predicate(
                     Arc::clone(&normalization_context),
-                    vec![Arc::clone(&graph)],
+                    vec![value.clone()],
                     inner,
                 )?;
                 if matched.is_empty() {
-                    filtered.push(graph);
+                    filtered.push(value);
                 } else {
                     matched_count += 1;
                 }
@@ -462,9 +464,10 @@ pub fn traverse_using_xpath_predicate(
             };
 
             let mut matched_count = 0;
-            let filtered: Vec<Graph> = graphs
+            let filtered: Vec<Value> = values
                 .iter()
-                .filter(|graph| {
+                .filter(|v| {
+                    let graph = v.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     if let Some(context) = contexts_lookup.get(&graph_id) {
                         let text_vals = context.data_node.fields.get("text");
@@ -487,9 +490,9 @@ pub fn traverse_using_xpath_predicate(
                 .cloned()
                 .collect();
             log::info!(
-                "XPATH PREDICATE::ContainsNormalized - matched {} out of {} graphs",
+                "XPATH PREDICATE::ContainsNormalized - matched {} out of {} values",
                 matched_count,
-                graphs.len()
+                values.len()
             );
             Ok(filtered)
         }
@@ -505,9 +508,10 @@ pub fn traverse_using_xpath_predicate(
             };
 
             let mut matched_count = 0;
-            let filtered: Vec<Graph> = graphs
+            let filtered: Vec<Value> = values
                 .iter()
-                .filter(|graph| {
+                .filter(|v| {
+                    let graph = v.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     let matches = contexts_lookup
                         .get(&graph_id)
@@ -540,10 +544,11 @@ pub fn traverse_using_xpath_predicate(
                 .collect();
 
             log::info!(
-                "XPATH PREDICATE::Contains - matched {} out of {} graphs",
+                "XPATH PREDICATE::Contains - matched {} out of {} values",
                 matched_count,
-                graphs.len()
+                values.len()
             );
+
             Ok(filtered)
         }
         XPathPredicate::ContainsToken { name, value } => {
@@ -557,9 +562,10 @@ pub fn traverse_using_xpath_predicate(
                 lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
             };
 
-            let filtered: Vec<Graph> = graphs
+            let filtered: Vec<Value> = values
                 .iter()
-                .filter(|graph| {
+                .filter(|v| {
+                    let graph = v.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     contexts_lookup
                         .get(&graph_id)
@@ -569,13 +575,13 @@ pub fn traverse_using_xpath_predicate(
                     .map(|attr_value| attr_value.split_whitespace().any(|word| word == value))
                         .unwrap_or(false)
                 })
-            .cloned()
+                .cloned()
                 .collect();
 
             log::info!(
-                "XPATH PREDICATE::ContainsToken - matched {} out of {} graphs",
+                "XPATH PREDICATE::ContainsToken - matched {} out of {} values",
                 filtered.len(),
-                graphs.len()
+                values.len()
             );
             Ok(filtered)
         }
@@ -591,9 +597,10 @@ pub fn traverse_using_xpath_predicate(
             };
 
             let mut matched_count = 0;
-            let filtered: Vec<Graph> = graphs
+            let filtered: Vec<Value> = values
                 .iter()
-                .filter(|graph| {
+                .filter(|v| {
+                    let graph = v.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     let matches = contexts_lookup
                         .get(&graph_id)
@@ -645,9 +652,9 @@ pub fn traverse_using_xpath_predicate(
                 .collect();
 
             log::info!(
-                "XPATH PREDICATE::Attribute - matched {} out of {} graphs",
+                "XPATH PREDICATE::Attribute - matched {} out of {} values",
                 matched_count,
-                graphs.len()
+                values.len()
             );
             Ok(filtered)
         }
@@ -659,9 +666,10 @@ pub fn traverse_using_xpath_predicate(
             };
 
             let mut matched_count = 0;
-            let filtered: Vec<Graph> = graphs
+            let filtered: Vec<Value> = values
                 .iter()
-                .filter(|graph| {
+                .filter(|v| {
+                    let graph = v.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     let matches = contexts_lookup
                         .get(&graph_id)
@@ -694,9 +702,9 @@ pub fn traverse_using_xpath_predicate(
                 .collect();
 
             log::info!(
-                "XPATH PREDICATE::AttributePresence - matched {} out of {} graphs",
+                "XPATH PREDICATE::AttributePresence - matched {} out of {} values",
                 matched_count,
-                graphs.len()
+                values.len()
             );
             Ok(filtered)
         }
@@ -712,9 +720,10 @@ pub fn traverse_using_xpath_predicate(
             };
 
             let mut matched_count = 0;
-            let filtered: Vec<Graph> = graphs
+            let filtered: Vec<Value> = values
                 .iter()
-                .filter(|graph| {
+                .filter(|v| {
+                    let graph = v.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     let matches = contexts_lookup
                         .get(&graph_id)
@@ -747,27 +756,26 @@ pub fn traverse_using_xpath_predicate(
                 .collect();
 
             log::info!(
-                "XPATH PREDICATE::StartsWith - matched {} out of {} graphs",
+                "XPATH PREDICATE::StartsWith - matched {} out of {} values",
                 matched_count,
-                graphs.len()
+                values.len()
             );
+
             Ok(filtered)
         }
         XPathPredicate::Path(path) => {
             log::info!("XPATH PREDICATE::Path - filtering based on path traversal");
             let mut matched_count = 0;
-            let filtered: Vec<Graph> = graphs
+            let filtered: Vec<Value> = values
                 .into_iter()
-                .filter(|graph| {
+                .filter(|value| {
+                    let graph = value.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
-                    let path_match = matches!(
-                        traverse_using_xpath(
-                            Arc::clone(&normalization_context),
-                            Arc::clone(graph),
-                            path
-                        ),
-                        Ok(Some(_))
-                    );
+                    let path_match = path
+                        .traverse(Arc::clone(&normalization_context), Arc::clone(&graph))
+                        .map(|found| !found.is_empty())
+                        .unwrap_or(false);
+
                     if path_match {
                         log::debug!(
                             "XPATH PREDICATE::Path - MATCH on node {}",
@@ -780,7 +788,7 @@ pub fn traverse_using_xpath_predicate(
                 .collect();
 
             log::info!(
-                "XPATH PREDICATE::Path - matched {} graphs via path traversal",
+                "XPATH PREDICATE::Path - matched {} values via path traversal",
                 matched_count
             );
             Ok(filtered)
@@ -790,9 +798,9 @@ pub fn traverse_using_xpath_predicate(
                 "XPATH PREDICATE::And - applying {} predicates sequentially",
                 predicates.len()
             );
-            predicates.iter().try_fold(graphs, |acc, predicate| {
+            predicates.iter().try_fold(values, |acc, predicate| {
                 log::debug!(
-                    "XPATH PREDICATE::And - applying predicate to {} graphs",
+                    "XPATH PREDICATE::And - applying predicate to {} values",
                     acc.len()
                 );
                 traverse_using_xpath_predicate(
@@ -810,9 +818,10 @@ pub fn traverse_using_xpath_predicate(
 
 pub fn traverse_using_xpath_segment(
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    graph: Graph,
+    value: &Value,
     xpath_segment: &XPathSegment,
-) -> Result<Vec<Graph>, Errors> {
+) -> Result<Vec<Value>, Errors> {
+    let graph = value.graph.clone();
     let graph_id = read_lock!(graph).id.clone();
 
     log::warn!("===== XPATH SEGMENT =====");
@@ -833,42 +842,42 @@ pub fn traverse_using_xpath_segment(
         log::warn!("  DocumentNode: {}", doc_node.to_string());
     }
 
-    let mut next_graphs: Vec<Graph> = traverse_using_xpath_axis(
+    let mut next_values: Vec<Value> = traverse_using_xpath_axis(
         Arc::clone(&normalization_context),
-        Arc::clone(&graph),
+        value,
         &xpath_segment.axis,
     )?;
 
     log::info!(
-        "XPATH SEGMENT - after axis '{}', have {} graphs",
+        "XPATH SEGMENT - after axis '{}', have {} values",
         format!("{:?}", xpath_segment.axis),
-        next_graphs.len()
+        next_values.len()
     );
 
-    let mut next_graphs: Vec<Graph> = if matches!(
+    let mut next_values: Vec<Value> = if matches!(
         xpath_segment.axis,
         XPathAxis::Self_ | XPathAxis::Parent | XPathAxis::Attribute
     ) {
         log::info!("XPATH SEGMENT - skipping node_test for Self_/Parent axis");
-        next_graphs
+        next_values
     } else {
         log::info!(
             "XPATH SEGMENT - applying node_test '{}' to {} graphs",
             xpath_segment.node_test,
-            next_graphs.len()
+            next_values.len()
         );
-        let tested: Vec<Vec<Graph>> = next_graphs
+        let tested: Vec<Vec<Value>> = next_values
             .iter()
-            .map(|graph| {
+            .map(|v| {
                 traverse_using_xpath_node_test(
                     Arc::clone(&normalization_context),
-                    Arc::clone(&graph),
+                    v,
                     &xpath_segment.node_test,
                 )
             })
-            .collect::<Result<Vec<Vec<Graph>>, Errors>>()?;
+            .collect::<Result<Vec<Vec<Value>>, Errors>>()?;
 
-        let flattened: Vec<Graph> = tested.into_iter().flatten().collect();
+        let flattened: Vec<Value> = tested.into_iter().flatten().collect();
         log::info!(
             "XPATH SEGMENT - after node_test, have {} graphs",
             flattened.len()
@@ -885,22 +894,22 @@ pub fn traverse_using_xpath_segment(
         xpath_segment
             .predicates
             .iter()
-            .try_fold(next_graphs, |graphs, predicate| {
+            .try_fold(next_values, |values, predicate| {
                 predicate_count += 1;
                 log::debug!(
-                    "XPATH SEGMENT - predicate {}/{}: {} graphs before",
+                    "XPATH SEGMENT - predicate {}/{}: {} values before",
                     predicate_count,
                     xpath_segment.predicates.len(),
-                    graphs.len()
+                    values.len()
                 );
                 let result = traverse_using_xpath_predicate(
                     Arc::clone(&normalization_context),
-                    graphs,
+                    values,
                     predicate,
                 );
                 if let Ok(ref filtered) = result {
                     log::debug!(
-                        "XPATH SEGMENT - predicate {}/{}: {} graphs after",
+                        "XPATH SEGMENT - predicate {}/{}: {} values after",
                         predicate_count,
                         xpath_segment.predicates.len(),
                         filtered.len()
@@ -909,133 +918,8 @@ pub fn traverse_using_xpath_segment(
                 result
             })?;
 
-    log::info!("XPATH SEGMENT - final result: {} graphs", result.len());
+    log::info!("XPATH SEGMENT - final result: {} values", result.len());
     log::warn!("===== END XPATH SEGMENT =====");
+
     Ok(result)
 }
-
-pub fn traverse_using_xpath(
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    start: Graph,
-    xpath: &XPath,
-) -> Result<Option<Graph>, Errors> {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let traversal_id = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos() % 100000)
-        .unwrap_or(0);
-
-    log::error!("");
-    log::error!(
-        "╔════════════════════════════════════════════════════════════════════════════════╗"
-    );
-    log::error!(
-        "║                    ▶ XPATH TRAVERSAL START [ID: {}]                          ║",
-        traversal_id
-    );
-    log::error!(
-        "╚════════════════════════════════════════════════════════════════════════════════╝"
-    );
-    log::error!(
-        "[{}] Starting node ID: {}",
-        traversal_id,
-        read_lock!(start).id.to_string()
-    );
-    log::error!(
-        "[{}] Total segments: {}",
-        traversal_id,
-        xpath.segments.len()
-    );
-    log::error!(
-        "[{}] ─────────────────────────────────────────────────────────────────────────────",
-        traversal_id
-    );
-
-    let segments = &xpath.segments;
-
-    let mut current: Vec<Graph> = vec![Arc::clone(&start)];
-
-    for (index, segment) in segments.iter().enumerate() {
-        log::error!("[{}]", traversal_id);
-        log::error!(
-            "[{}] ┌─ SEGMENT {}/{}",
-            traversal_id,
-            index + 1,
-            segments.len()
-        );
-        log::error!(
-            "[{}] │  Processing {} current graph(s)",
-            traversal_id,
-            current.len()
-        );
-
-        current = current
-            .iter()
-            .map(|graph| {
-                traverse_using_xpath_segment(
-                    Arc::clone(&normalization_context),
-                    Arc::clone(graph),
-                    segment,
-                )
-            })
-            .collect::<Result<Vec<Vec<Graph>>, Errors>>()?
-            .into_iter()
-            .flatten()
-            .collect();
-
-        log::error!(
-            "[{}] └─ After segment: {} graph(s) remaining",
-            traversal_id,
-            current.len()
-        );
-
-        if current.is_empty() {
-            if index == segments.len() - 1 {
-                log::error!(
-                    "[{}] ╳ TRAVERSAL COMPLETE (all segments processed, no matches)",
-                    traversal_id
-                );
-            } else {
-                log::error!(
-                    "[{}] ╳ TRAVERSAL STOPPED EARLY (no matches after segment {})",
-                    traversal_id,
-                    index
-                );
-            }
-
-            log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
-            log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
-            log::error!("║                  ✗ XPATH TRAVERSAL FAILED [ID: {}]                           ║", traversal_id);
-            log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
-            log::error!("");
-            return Ok(None);
-        }
-    }
-
-    let result_node = current.first().cloned();
-    if let Some(ref node) = result_node {
-        log::error!(
-            "[{}] ✓ SUCCESS - Selected node: {}",
-            traversal_id,
-            read_lock!(node).id.to_string()
-        );
-    }
-    log::error!(
-        "[{}] ─────────────────────────────────────────────────────────────────────────────",
-        traversal_id
-    );
-    log::error!(
-        "╔════════════════════════════════════════════════════════════════════════════════╗"
-    );
-    log::error!(
-        "║                  ✓ XPATH TRAVERSAL SUCCESS [ID: {}]                          ║",
-        traversal_id
-    );
-    log::error!(
-        "╚════════════════════════════════════════════════════════════════════════════════╝"
-    );
-    log::error!("");
-
-    Ok(result_node)
-}
-

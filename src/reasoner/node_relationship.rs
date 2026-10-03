@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_node::BasisNode;
-use crate::graph_node::GraphNode;
+use crate::graph_node::{Graph, GraphNode};
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
@@ -442,10 +442,11 @@ fn validate_node_relationship(
                 left_contexts
                     .iter()
                     .try_fold(0, |acc, item| -> Result<i32, Errors> {
-                        let target_graph_nodes = xpath.traverse(
+                        let target_values = xpath.traverse(
                             Arc::clone(&normalization_context),
                             Arc::clone(&item.graph_node),
                         )?;
+                        let target_graph_nodes: Vec<Graph> = target_values.into_iter().map(|v| v.graph).collect();
 
                         if target_graph_nodes.is_empty() {
                             log::warn!(
@@ -494,10 +495,11 @@ fn validate_node_relationship(
                 right_contexts
                     .iter()
                     .try_fold(0, |acc, item| -> Result<i32, Errors> {
-                        let target_graph_nodes = xpath.traverse(
+                        let target_values = xpath.traverse(
                             Arc::clone(&normalization_context),
                             Arc::clone(&item.graph_node),
                         )?;
+                        let target_graph_nodes: Vec<Graph> = target_values.into_iter().map(|v| v.graph).collect();
 
                         if target_graph_nodes.is_empty() {
                             log::warn!(

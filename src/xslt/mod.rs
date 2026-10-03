@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::prelude::*;
 use crate::graph_node::{GraphNode, Graph};
 use crate::normalization_context::NormalizationContext;
-use crate::xpath::{XPath, traverse_using_xpath_predicate, traverse_using_xpath_node_test};
+use crate::xpath::{XPath, traverse_using_xpath_predicate, traverse_using_xpath_node_test, Value, Selection};
 
 const XSL_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
 
@@ -131,7 +131,7 @@ impl Xslt {
 
         log::info!("XSLT template pattern matched the starting node.");
 
-        let mut result: Vec<Graph> = Vec::new();
+        let mut result: Vec<Value> = Vec::new();
 
         for instruction in &self.template.body {
             match instruction {
@@ -145,7 +145,7 @@ impl Xslt {
             }
         }
 
-        Ok(result)
+        unimplemented!()
     }
 
     fn matches(
@@ -157,7 +157,7 @@ impl Xslt {
 
         let mut candidates = traverse_using_xpath_node_test(
             Arc::clone(&normalization_context),
-            Arc::clone(&node),
+            &Value::from_graph(Arc::clone(&node)),
             &segment.node_test,
         )?;
 
