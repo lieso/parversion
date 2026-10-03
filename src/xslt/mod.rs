@@ -2,7 +2,7 @@ use xmltree::{Element, XMLNode};
 use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
-use crate::graph_node::Graph;
+use crate::graph_node::{GraphNode, Graph};
 use crate::normalization_context::NormalizationContext;
 use crate::xpath::{XPath};
 
@@ -124,7 +124,42 @@ impl Xslt {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
     ) -> Result<Vec<Graph>, Errors> {
-        unimplemented!()
+        if !self.matches(Arc::clone(&normalization_context), Arc::clone(&start))? {
+            log::warn!("XSLT template pattern did not match start node; returning no nodes");
+            return Ok(Vec::new());
+        }
+
+        log::info!("XSLT template pattern matched the starting node.");
+
+        //unimplemented!()
+        Ok(Vec::new())
+    }
+
+    fn matches(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        node: Graph
+    ) -> Result<bool, Errors> {
+        let segment = &self.template.pattern.segments[0];
+
+        let mut candidates = GraphNode::traverse_using_xpath_node_test(
+            Arc::clone(&normalization_context),
+            Arc::clone(&node),
+            &segment.node_test,
+        )?;
+
+        for predicate in &segment.predicates {
+            if candidates.is_empty() {
+                break;
+            }
+            candidates = GraphNode::traverse_using_xpath_predicate(
+                Arc::clone(&normalization_context),
+                candidates,
+                predicate,
+            )?;
+        }
+
+        Ok(!candidates.is_empty())
     }
 }
 
