@@ -6,6 +6,14 @@ use std::sync::{Arc, RwLock};
 use crate::graph_node::{Graph, GraphNode};
 use crate::prelude::*;
 
+mod traverse;
+
+pub use traverse::{
+    traverse_using_xpath_segment,
+    traverse_using_xpath_predicate,
+    traverse_using_xpath_node_test
+};
+
 thread_local! {
     static XPATH_CACHE: RefCell<HashMap<(ID, Vec<XPathSegment>), Vec<Graph>>> = RefCell::new(HashMap::new());
 }
@@ -130,7 +138,7 @@ impl XPath {
             current = current
                 .iter()
                 .map(|graph| {
-                    GraphNode::traverse_using_xpath_segment(
+                    traverse::traverse_using_xpath_segment(
                         Arc::clone(&normalization_context),
                         Arc::clone(graph),
                         segment,

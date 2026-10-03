@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::prelude::*;
 use crate::graph_node::{GraphNode, Graph};
 use crate::normalization_context::NormalizationContext;
-use crate::xpath::{XPath};
+use crate::xpath::{XPath, traverse_using_xpath_predicate, traverse_using_xpath_node_test};
 
 const XSL_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
 
@@ -155,7 +155,7 @@ impl Xslt {
     ) -> Result<bool, Errors> {
         let segment = &self.template.pattern.segments[0];
 
-        let mut candidates = GraphNode::traverse_using_xpath_node_test(
+        let mut candidates = traverse_using_xpath_node_test(
             Arc::clone(&normalization_context),
             Arc::clone(&node),
             &segment.node_test,
@@ -165,7 +165,7 @@ impl Xslt {
             if candidates.is_empty() {
                 break;
             }
-            candidates = GraphNode::traverse_using_xpath_predicate(
+            candidates = traverse_using_xpath_predicate(
                 Arc::clone(&normalization_context),
                 candidates,
                 predicate,
