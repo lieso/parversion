@@ -59,6 +59,20 @@ pub enum XPathPredicate {
     ContainsToken { name: String, value: String },
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Value {
+    pub graph: Graph,
+    pub selection: Option<Selection>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum Selection {
+    Attribute { name: String, value: String },
+    String(String),
+    Number(f64),
+    Boolean(bool),
+}
+
 impl XPath {
     pub fn traverse(
         &self,
