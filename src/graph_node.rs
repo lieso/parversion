@@ -742,6 +742,39 @@ impl GraphNode {
                 );
                 Ok(filtered)
             }
+            XPathPredicate::ContainsToken { name, value } => {
+                log::info!(
+                    "XPATH PREDICATE::ContainsToken - filtering for attribute '{}' containing token '{}'",
+                    name,
+                    value
+                );
+                let contexts_lookup = {
+                    let lock = read_lock!(normalization_context);
+                    lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+                };
+
+                let filtered: Vec<Graph> = graphs
+                    .iter()
+                    .filter(|graph| {
+                        let graph_id = read_lock!(graph).id.clone();
+                        contexts_lookup
+                            .get(&graph_id)
+                            .and_then(|context| {
+                                read_lock!(&context.document_node).get_attribute_value(name)
+                            })
+                        .map(|attr_value| attr_value.split_whitespace().any(|word| word == value))
+                            .unwrap_or(false)
+                    })
+                .cloned()
+                    .collect();
+
+                log::info!(
+                    "XPATH PREDICATE::ContainsToken - matched {} out of {} graphs",
+                    filtered.len(),
+                    graphs.len()
+                );
+                Ok(filtered)
+            }
             XPathPredicate::Attribute { name, value } => {
                 log::info!(
                     "XPATH PREDICATE::Attribute - filtering for attribute match: {}='{}'",

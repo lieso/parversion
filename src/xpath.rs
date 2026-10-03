@@ -48,6 +48,7 @@ pub enum XPathPredicate {
     Path(XPath),
     And(Vec<XPathPredicate>),
     Not(Box<XPathPredicate>),
+    ContainsToken { name: String, value: String },
 }
 
 impl XPath {
@@ -417,6 +418,8 @@ impl XPathPredicate {
                 .trim_matches('"')
                 .to_string();
             Ok(XPathPredicate::ContainsNormalized { value })
+        } else if let Some((name, value)) = Self::parse_contains_token(s) {
+            Ok(XPathPredicate::ContainsToken { name, value })
         } else if let Some(inner) = s
             .strip_prefix("contains(")
             .and_then(|s| s.strip_suffix(')'))
@@ -424,6 +427,12 @@ impl XPathPredicate {
             let (attr_part, val_part) = inner.split_once(',').ok_or_else(|| {
                 Errors::XPathParseError(format!("Invalid contains() predicate: {}", s))
             })?;
+            let attr_part = attr_part.trim();
+            if attr_part.contains('(') || attr_part == "." {
+                return Err(Errors::XPathParseError(format!(
+                    "Unsupported contains() argument: {}", attr_part
+                )));
+            }
             let name = attr_part.trim().trim_start_matches('@').to_string();
             let value = val_part
                 .trim()
@@ -442,6 +451,14 @@ impl XPathPredicate {
             let (attr_part, val_part) = inner.split_once(',').ok_or_else(|| {
                 Errors::XPathParseError(format!("Invalid starts-with() predicate: {}", s))
             })?;
+
+            let attr_part = attr_part.trim();
+            if attr_part.contains('(') || attr_part == "." {
+                return Err(Errors::XPathParseError(format!(
+                    "Unsupported contains() argument: {}", attr_part
+                )));
+            }
+
             let name = attr_part.trim().trim_start_matches('@').to_string();
             let value = val_part
                 .trim()
@@ -459,6 +476,14 @@ impl XPathPredicate {
                 s
             )))
         }
+    }
+
+    fn parse_contains_token(s: &str) -> Option<(String, String)> {
+        let rest = s.strip_prefix("contains(concat(' ', normalize-space(@")?;
+        let (name, rest) = rest.split_once("), ' '), '")?;
+        let value = rest.strip_suffix("')")?;
+        let token = value.strip_prefix(' ')?.strip_suffix(' ')?;
+        Some((name.to_string(), token.to_string()))
     }
 
     pub fn to_string(&self) -> String {
@@ -485,6 +510,9 @@ impl XPathPredicate {
                 format!("contains(normalize-space(.),'{}'')", value)
             }
             XPathPredicate::Not(pred) => format!("not({})", pred.to_string()),
+            XPathPredicate::ContainsToken { name, value } => {
+                format!("contains(concat(' ', normalize-space(@{}), ' '), ' {} ')", name, value)
+            }
         }
     }
 }
