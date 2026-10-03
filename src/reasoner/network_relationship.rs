@@ -12,6 +12,23 @@ use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
 use crate::normal_context::NormalContext;
 
+#[derive(Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum NetworkRelationshipTypeResponse {
+    ParentChild,
+    NoRelationship,
+}
+
+#[derive(Deserialize, JsonSchema, Debug)]
+pub struct NetworkRelationshipSelfResponse {
+    // Whether instances of this entity form a parent-child hierarchy ("PARENT_CHILD") or are independent of one another ("NO_RELATIONSHIP")
+    pub relationship_type: NetworkRelationshipTypeResponse,
+    // XSLT that, starting from a child instance's anchor element, locates its parent's anchor element, if PARENT_CHILD
+    pub child_to_parent_xslt: Option<String>,
+    // XSLT that, starting from a parent instance's anchor element, locates its direct children's anchor elements, if PARENT_CHILD
+    pub parent_to_child_xslt: Option<String>,
+}
+
 pub async fn network_relationship<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -44,12 +61,14 @@ async fn network_relationship_reflexive<R: Reasoner>(
         Arc::clone(&normalization_context),
         network.clone(),
     )?;
-    let capability = Capability::Fast;
+    let capability = Capability::Capable;
+    let schema = serde_json::to_value(schemars::schema_for!(NetworkRelationshipSelfResponse))
+        .expect("Failed to serialise NetworkRelationshipSelfResponse schema");
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
     log::debug!("║                                                               ║");
-    log::debug!("║                   NETWORK RELATIONSHIP                        ║");
+    log::debug!("║                   NETWORK RELATIONSHIP (SELF)                 ║");
     log::debug!("║                                                               ║");
     log::debug!("╚═══════════════════════════════════════════════════════════════╝");
     log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
@@ -59,8 +78,26 @@ async fn network_relationship_reflexive<R: Reasoner>(
     log::debug!("{}", user_prompt);
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
+    log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
     log::debug!("  Capability : {:?}", capability);
     log::debug!("");
+
+    let (result, metadata) = reasoner
+        .execute::<NetworkRelationshipSelfResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompt_hash: metadata.prompt_hash.clone(),
+    };
+
+    log::debug!("result: {:?}", result);
 
     unimplemented!()
 }

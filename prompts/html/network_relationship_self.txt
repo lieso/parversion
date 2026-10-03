@@ -72,9 +72,8 @@ container elements.
 Each stylesheet must handle every structural arrangement shown in the
 samples (for example, children nested inside a sub-container in some places
 and following the parent as siblings in others), combined into a single
-stylesheet. The two stylesheets must be exact inverses: running
-`parent_to_child_xslt` from a parent locates precisely those instances for
-which `child_to_parent_xslt` locates that parent.
+stylesheet. The two stylesheets are applied independently of each other, so
+each must be correct on its own.
 
 Requirements:
 
@@ -84,6 +83,11 @@ Requirements:
   top-level instance has no parent; a leaf has no children).
 * Rely on structure and on attributes that identify an instance's role,
   not on brittle positional indexes or on the text content of fields.
+* Write the simplest stylesheet that is correct. Use XSLT 1.0
+  (`version="1.0"`) and XPath 1.0 only. Do not use XSLT 2.0 or later
+  features such as the `>>` and `<<` node-order operators, sequences,
+  `for` expressions, regular expressions or `xsl:function`. Prefer a
+  single template with a few location steps over elaborate logic.
 
 For NO_RELATIONSHIP, set both stylesheet fields to null.
 
