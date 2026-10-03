@@ -131,8 +131,21 @@ impl Xslt {
 
         log::info!("XSLT template pattern matched the starting node.");
 
-        //unimplemented!()
-        Ok(Vec::new())
+        let mut result: Vec<Graph> = Vec::new();
+
+        for instruction in &self.template.body {
+            match instruction {
+                Instruction::CopyOf { select } => {
+                    let selected = select.traverse(Arc::clone(&normalization_context), Arc::clone(&start))?;
+                    result.extend(selected);
+                }
+                Instruction::Variable { .. } => {
+                    unimplemented!()
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     fn matches(
