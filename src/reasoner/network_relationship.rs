@@ -96,16 +96,20 @@ fn get_user_prompt_reflexive<R: Reasoner>(
             .collect::<Result<Vec<_>, Errors>>()?
     };
 
-    for normal_context in normal_contexts {
-        log::debug!("-----------------------------------------------------------------------------------------------------");
-        let context_string = Context::generate_context_string_network_relationship(
-            Arc::clone(&normalization_context),
-            normal_context.contexts.clone()
-        )?;
+    let context_string = normal_contexts
+        .iter()
+        .try_fold(String::new(), |acc, normal_context| {
+            let context_string = Context::generate_context_string_network_relationship(
+                Arc::clone(&normalization_context),
+                normal_context.contexts.clone()
+            )?;
 
-        log::debug!("context_string: {}", context_string);
+            Ok::<String, Errors>(if acc.is_empty() {
+                context_string
+            } else {
+                format!("{}\n\n---SNIPPET SEPARATOR---\n\n{}", acc, context_string)
+            })
+        })?;
 
-    }
-
-    unimplemented!()
+    Ok(context_string)
 }
