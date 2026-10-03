@@ -33,6 +33,8 @@ pub enum Errors {
     RequestTimeout(String),
     EmbeddingError(String),
     TaskJoinError(String),
+    XsltParseError(String),
+    XsltTraverseError(String),
 }
 
 impl From<JoinError> for Errors {
