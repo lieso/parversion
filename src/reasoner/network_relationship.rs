@@ -37,15 +37,30 @@ async fn network_relationship_reflexive<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     network: Arc<BasisNetwork>,
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
+
+    let system_prompt = get_system_prompt_reflexive(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt = get_user_prompt_reflexive(
         reasoner,
         Arc::clone(&normalization_context),
         network.clone(),
     )?;
+    let capability = Capability::Fast;
 
+    log::debug!("");
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║                   NETWORK RELATIONSHIP                        ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
     log::debug!("{}", user_prompt);
     log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("  Capability : {:?}", capability);
+    log::debug!("");
 
     unimplemented!()
 }
@@ -57,6 +72,42 @@ async fn network_relationship_comparative<R: Reasoner>(
     right: Arc<BasisNetwork>,
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
     unimplemented!()
+}
+
+async fn get_system_prompt_reflexive<R: Reasoner>(
+    reasoner: &R,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+) -> Result<String, Errors> {
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context
+            .clone()
+            .ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
+    };
+
+    let document_type = meta_context.document_type.to_string().to_lowercase();
+
+    let paths_to_try: Vec<String> = vec![
+        format!(
+            "{}/{}",
+            document_type,
+            meta_context.acyclic_subgraph_hash.clone()
+        ),
+        format!("{}", document_type),
+    ];
+
+    for path in paths_to_try {
+        log::trace!("Searching for prompt with path: {}", path);
+        if let Some(system_prompt) = reasoner.prompts().get(&path, "network_relationship_self").await? {
+            return Ok(system_prompt);
+        }
+    }
+
+    Err(Errors::UnavailableSystemPrompt(
+        "Expected a network_relationship_self.txt system prompt in prompts directory".to_string(),
+    ))
 }
 
 fn get_user_prompt_reflexive<R: Reasoner>(
@@ -111,5 +162,10 @@ fn get_user_prompt_reflexive<R: Reasoner>(
             })
         })?;
 
-    Ok(context_string)
+    let result = format!(r##"
+[ENTITIES]
+{}
+    "##, context_string);
+
+    Ok(result)
 }

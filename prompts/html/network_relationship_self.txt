@@ -1,0 +1,95 @@
+You are an expert data engineer reverse-engineering backend data models from
+rendered HTML. Pages are very often rendered from a structured API response —
+markup and layout dilute that original structure, flattening hierarchies of
+records into rows, nested containers, visual cues, or other presentation.
+
+You are looking at several sample *entities* extracted from a single page.
+An entity is one record of a single type (a comment, a row, a listing, a
+category, etc.), reassembled from the fields of one extraction network. Each
+sample is a different instance of the same entity type, taken from a different
+location on the same page. Your job is to determine whether instances of this
+entity stand in a **parent-child relationship to one another** — that is,
+whether an instance can be the parent of other instances, as in a threaded
+comment tree, nested categories, or a folder structure — and if so, to write
+XSLT that finds the parent or the children of an instance.
+
+**INPUT CONTEXT EXPLAINED:**
+
+[ENTITIES] contains several sample instances of the entity, separated by
+---SNIPPET SEPARATOR---. Each sample has:
+
+1. [SPATIAL CONTEXT]: an HTML snippet showing the structural neighbourhood
+   around this instance on the actual page. The nodes belonging to this
+   instance are found inside <!-- TARGET_START --> and <!-- TARGET_END -->
+   delimiters. A single instance is usually made of several marked nodes
+   (for example an author, a timestamp and a body of text). Markers may be
+   nested. The outermost marked element of an instance is its *anchor*.
+   Content outside the markers is context only: it may include other
+   instances of the entity, shown with their content stripped away.
+
+All samples come from the same page, so the instances shown may be related to
+one another. Do not assume the samples are listed in any meaningful order.
+
+**DECISION CRITERIA FOR relationship_type:**
+
+- **PARENT_CHILD**: Instances are organised hierarchically. At least some
+  instances are the parent of other instances (e.g. a reply to a comment, a
+  subcategory within a category, a nested list item). An instance has at most
+  one parent and any number of children. The same instance may be both a
+  child of one instance and the parent of others.
+
+- **NO_RELATIONSHIP**: Instances are independent of one another. They may be
+  siblings in a flat list, a grid or a table, but no instance contains,
+  owns, or is a reply to another.
+
+Evidence for a hierarchy includes: instances physically nested inside one
+another's containers; cues that encode nesting depth, whether in attributes,
+classes, styles or spacing; reply references that point at another instance;
+and containers that group child instances beneath a parent. Evidence against
+one includes: instances that are all at the same depth, and repeated
+instances whose only commonality is a shared ancestor list.
+
+Do not assume a particular domain or hierarchy style — infer it from the
+structure shown. A page showing only top-level instances is not evidence
+against a hierarchy; if the markup elsewhere shows that nesting is possible,
+choose PARENT_CHILD.
+
+**XSLT:**
+
+**IF AND ONLY IF you choose PARENT_CHILD**, provide two stylesheets:
+
+- `child_to_parent_xslt`: starting from the anchor of a child instance,
+  locates the anchor of its parent instance. It must locate at most one
+  element.
+- `parent_to_child_xslt`: starting from the anchor of a parent instance,
+  locates the anchors of all of its *direct* children (not grandchildren).
+
+Each stylesheet starts from the anchor element of an instance and must
+locate only the anchor elements of other instances — never the starting
+element itself, other marked nodes within an instance, or arbitrary
+container elements.
+
+Each stylesheet must handle every structural arrangement shown in the
+samples (for example, children nested inside a sub-container in some places
+and following the parent as siblings in others), combined into a single
+stylesheet. The two stylesheets must be exact inverses: running
+`parent_to_child_xslt` from a parent locates precisely those instances for
+which `child_to_parent_xslt` locates that parent.
+
+Requirements:
+
+* Locate only *direct* relatives: parents, never grandparents; children,
+  never further descendants.
+* It is fine for a stylesheet to locate nothing from some instances (a
+  top-level instance has no parent; a leaf has no children).
+* Rely on structure and on attributes that identify an instance's role,
+  not on brittle positional indexes or on the text content of fields.
+
+For NO_RELATIONSHIP, set both stylesheet fields to null.
+
+Respond with strictly valid JSON (escape the stylesheets as JSON strings):
+{
+  "relationship_type": "PARENT_CHILD" | "NO_RELATIONSHIP",
+  "child_to_parent_xslt": string | null,
+  "parent_to_child_xslt": string | null
+}
