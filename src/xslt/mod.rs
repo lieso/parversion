@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::prelude::*;
 use crate::graph_node::{GraphNode, Graph};
 use crate::normalization_context::NormalizationContext;
-use crate::xpath::{XPath, traverse_using_xpath_predicate, traverse_using_xpath_node_test, Value, Selection};
+use crate::xpath::{XPath, traverse_using_xpath_predicate, traverse_using_xpath_node_test, Value, Selection, Variables};
 
 const XSL_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
 
@@ -123,7 +123,7 @@ impl Xslt {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
-    ) -> Result<Vec<Graph>, Errors> {
+    ) -> Result<Vec<Value>, Errors> {
         if !self.matches(Arc::clone(&normalization_context), Arc::clone(&start))? {
             log::warn!("XSLT template pattern did not match start node; returning no nodes");
             return Ok(Vec::new());
@@ -131,21 +131,60 @@ impl Xslt {
 
         log::info!("XSLT template pattern matched the starting node.");
 
+        let mut variables: Variables = Variables::new();
         let mut result: Vec<Value> = Vec::new();
 
         for instruction in &self.template.body {
             match instruction {
                 Instruction::CopyOf { select } => {
-                    let selected = select.traverse(Arc::clone(&normalization_context), Arc::clone(&start))?;
+                    let selected = Self::evaluate_select(
+                        Arc::clone(&normalization_context),
+                        &variables,
+                        Arc::clone(&start),
+                        select,
+                    )?;
                     result.extend(selected);
                 }
-                Instruction::Variable { .. } => {
-                    unimplemented!()
+                Instruction::Variable { name, select } => {
+                    let selected = Self::evaluate_select(
+                        Arc::clone(&normalization_context),
+                        &variables,
+                        Arc::clone(&start),
+                        select
+                    )?;
+                    variables.insert(name.clone(), selected);
                 }
             }
         }
 
-        unimplemented!()
+        Ok(result)
+    }
+
+    fn evaluate_select(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        variables: &Variables,
+        start: Graph,
+        select: &XPath
+    ) -> Result<Vec<Value>, Errors> {
+        let bound = select.substitute(variables)?;
+
+        let starts: Vec<Graph> = match &bound.start_variable {
+            Some(name) => variables
+                .get(name)
+                .ok_or_else(|| Errors::XPathTraverseError(format!("Unbound variable ${}", name)))?
+                .iter()
+                .map(|v| Arc::clone(&v.graph))
+                .collect(),
+            None => vec![Arc::clone(&start)],
+        };
+        let path = XPath { start_variable: None, ..bound };
+
+        let mut out = Vec::new();
+        for s in starts {
+            out.extend(path.traverse(Arc::clone(&normalization_context), s)?);
+        }
+
+        Ok(out)
     }
 
     fn matches(

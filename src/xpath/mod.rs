@@ -83,6 +83,10 @@ pub enum Selection {
 }
 
 impl XPath {
+    pub fn substitute(&self, _variables: &Variables) -> Result<XPath, Errors> {
+        Ok(self.clone())
+    }
+
     pub fn traverse(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -241,7 +245,16 @@ impl XPath {
 
         let start_variable = match parts.first() {
             Some(p) if p.starts_with('$') => {
-                let name = p[1..].to_string();
+                let name = &p[1..];
+                if name.is_empty()
+                    || !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
+                {
+                    return Err(Errors::XPathParseError(format!(
+                        "Unsupported variable reference: {}",
+                        p
+                    )));
+                }
+                let name = name.to_string();
                 parts.remove(0);
                 Some(name)
             }
@@ -344,6 +357,17 @@ impl XPathSegment {
             return Err(Errors::XPathParseError(format!(
                 "Empty node test in segment: {}",
                 s
+            )));
+        }
+
+        let valid_name = node_test
+            .chars()
+            .all(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '.' | ':' | '#'));
+        let valid_kind = matches!(node_test, "*" | "text()" | "node()" | "comment()");
+        if !valid_name && !valid_kind {
+            return Err(Errors::XPathParseError(format!(
+                "Unsupported node test '{}' in segment: {}",
+                node_test, s
             )));
         }
 
