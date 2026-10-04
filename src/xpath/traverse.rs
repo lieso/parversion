@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::graph_node::{Graph, GraphNode};
-use super::{XPath, XPathAxis, XPathPredicate, XPathSegment, Value, Selection};
+use super::{XPath, XPathAxis, XPathPredicate, XPathSegment, Value, Selection, Variables};
 
 pub fn traverse_using_xpath_axis(
     _meta_context: Arc<RwLock<NormalizationContext>>,
@@ -399,6 +399,23 @@ pub fn traverse_using_xpath_predicate(
     log::warn!("Input values count: {}", values.len());
 
     let result = match predicate {
+        XPathPredicate::Equals { lhs, rhs } => {
+            let target = rhs.evaluate()?;
+            let filtered: Vec<Value> = values
+                .into_iter()
+                .filter(|v| {
+                    lhs.evaluate(
+                        Arc::clone(&normalization_context),
+                        &Variables::new(),
+                        Arc::clone(&v.graph),
+                    )
+                        .ok()
+                        .and_then(|r| r.first().and_then(|x| x.to_number()))
+                        == Some(target)
+                })
+            .collect();
+            Ok(filtered)
+        }
         XPathPredicate::Position(index) => {
             log::info!(
                 "XPATH PREDICATE::Position - filtering for position {}",
