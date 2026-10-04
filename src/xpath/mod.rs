@@ -20,6 +20,8 @@ thread_local! {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct XPath {
+    #[serde(default)]
+    pub start_variable: Option<String>,
     pub segments: Vec<XPathSegment>,
 }
 
@@ -64,6 +66,8 @@ pub struct Value {
     pub graph: Graph,
     pub selection: Option<Selection>,
 }
+
+pub type Variables = HashMap<String, Vec<Value>>;
 
 impl Value {
     pub fn from_graph(graph: Graph) -> Self { Value { graph, selection: None } }
@@ -235,25 +239,40 @@ impl XPath {
         }
         parts.push(&s[start..].trim());
 
+        let start_variable = match parts.first() {
+            Some(p) if p.starts_with('$') => {
+                let name = p[1..].to_string();
+                parts.remove(0);
+                Some(name)
+            }
+            _ => None,
+        };
+
         let segments = parts
             .into_iter()
             .filter(|part| !part.is_empty())
             .map(XPathSegment::from_str)
             .collect::<Result<Vec<_>, Errors>>()?;
 
-        if segments.is_empty() {
+        if segments.is_empty() && start_variable.is_none() {
             return Err(Errors::XPathParseError("XPath is empty".to_string()));
         }
 
-        Ok(XPath { segments })
+        Ok(XPath { segments, start_variable })
     }
 
     pub fn to_string(&self) -> String {
-        self.segments
+        let path = self.segments
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
-            .join("/")
+            .join("/");
+
+        match &self.start_variable {
+            Some(name) if path.is_empty() => format!("${}", name),
+            Some(name) => format!("${}/{}", name, path),
+            None => path,
+        }
     }
 }
 
