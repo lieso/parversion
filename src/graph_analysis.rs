@@ -4,8 +4,8 @@ use std::sync::{Arc, RwLock};
 use tokio::task;
 
 use crate::basis_graph::{BasisGraph};
-use crate::basis_network::BasisNetwork;
-use crate::network_relationship::{NetworkRelationship};
+use crate::basis_network::{BasisNetwork, NetworkShape};
+use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::prelude::*;
 
 pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
@@ -27,17 +27,17 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
             .clone()
     };
 
-    let basis_networks: Vec<Arc<BasisNetwork>> = basis_networks.values().cloned().collect();
-
-    // delete me
     let basis_networks: Vec<Arc<BasisNetwork>> = basis_networks
-            .into_iter()
-            .filter(|n| n.name == "user_profile")
-            .collect();
+        .values()
+        .cloned()
+        .filter(|network| matches!(network.shape, NetworkShape::Reduction))
+        .collect();
+
+    let mut network_relationships: Vec<Arc<NetworkRelationship>> = Vec::new();
 
     let mut handles = Vec::new();
 
-    for basis_network in basis_networks {
+    for basis_network in basis_networks.clone() {
         let cloned_provider = Arc::clone(&provider);
         let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_normalization_context = Arc::clone(&normalization_context);
@@ -64,9 +64,43 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
 
     for result in results {
         let relationship = result?;
-        log::debug!("relationship: {:?}", relationship);
+        network_relationships.push(Arc::new(relationship));
     }
 
+    let basis_graph = resolve_basis_graph(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&normalization_context),
+        options,
+        stage_context,
+        basis_networks.clone(),
+        network_relationships
+    )
+    .await?;
+
+    Ok(Arc::new(basis_graph))
+}
+
+async fn resolve_basis_graph<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+    basis_networks: Vec<Arc<BasisNetwork>>,
+    relationships: Vec<Arc<NetworkRelationship>>,
+) -> Result<BasisGraph, Errors> {
+    let actual_relationships: Vec<Arc<NetworkRelationship>> = relationships
+        .iter()
+        .filter(|relationship| {
+            !matches!(
+                relationship.relationship_type,
+                NetworkRelationshipType::NoRelationship
+            )
+        })
+        .cloned()
+        .collect();
+    
     unimplemented!()
 }
 
