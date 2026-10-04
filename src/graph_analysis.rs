@@ -3,8 +3,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 
-use crate::basis_graph::{BasisGraph, NetworkRelationship};
+use crate::basis_graph::{BasisGraph};
 use crate::basis_network::BasisNetwork;
+use crate::network_relationship::{NetworkRelationship};
 use crate::prelude::*;
 
 pub async fn generate_basis_graph<P: Provider, R: Reasoner>(

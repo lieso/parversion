@@ -50,6 +50,7 @@ mod types;
 mod utility;
 mod xpath;
 mod xslt;
+mod network_relationship;
 
 use crate::entrypoint::run;
 

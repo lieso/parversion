@@ -2,13 +2,14 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 use crate::basis_field::BasisField;
-use crate::basis_graph::{BasisGraph, NetworkRelationship};
+use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::classification::Classification;
 use crate::document::Document;
 use crate::node_relationship::NodeRelationship;
+use crate::network_relationship::NetworkRelationship;
 use crate::prelude::*;
 use crate::translation_network::TranslationNetwork;
 use crate::translation_node::TranslationNode;

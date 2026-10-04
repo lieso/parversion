@@ -3,13 +3,14 @@ use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use crate::basis_field::BasisField;
-use crate::basis_graph::{BasisGraph, NetworkRelationship};
+use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::classification::Classification;
 use crate::hash::Hash;
 use crate::node_relationship::NodeRelationship;
+use crate::network_relationship::NetworkRelationship;
 use crate::prelude::*;
 use crate::prompt_registry::PromptRegistry;
 
