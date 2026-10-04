@@ -54,12 +54,11 @@ pub fn traverse_using_xpath_axis(
             Ok(lock.parents.clone())
         }
         XPathAxis::Attribute => {
-            log::info!("Applying XPATH AXIS::Attribute - staying on current node");
-            Ok(vec![Arc::clone(&graph)])
+            unreachable!()
         }
         XPathAxis::Self_ => {
-            log::info!("Applying XPATH AXIS::Self_ - returning current node");
-            Ok(vec![graph.clone()])
+            log::info!("Applying XPATH AXIS::Self_ - returning current value");
+            return Ok(vec![value.clone()]);
         }
         XPathAxis::Descendant => {
             log::info!("Applying XPATH AXIS::Descendant - traversing all descendants");
@@ -824,6 +823,12 @@ pub fn traverse_using_xpath_segment(
     let graph = value.graph.clone();
     let graph_id = read_lock!(graph).id.clone();
 
+    if !value.is_node()
+        && !matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent)
+    {
+        return Ok(Vec::new());
+    }
+
     log::warn!("===== XPATH SEGMENT =====");
     log::warn!(
         "SEGMENT - axis: {:?}, node_test: '{}', predicates: {}",
@@ -842,11 +847,32 @@ pub fn traverse_using_xpath_segment(
         log::warn!("  DocumentNode: {}", doc_node.to_string());
     }
 
-    let mut next_values: Vec<Value> = traverse_using_xpath_axis(
-        Arc::clone(&normalization_context),
-        value,
-        &xpath_segment.axis,
-    )?;
+    let next_values: Vec<Value> = if matches!(xpath_segment.axis, XPathAxis::Attribute) {
+        if value.is_node() {
+            contexts_lookup
+                .get(&graph_id)
+                .and_then(|c| {
+                    read_lock!(c.document_node).get_attribute_value(&xpath_segment.node_test)
+                })
+                .map(|attr_value| Value {
+                    graph: Arc::clone(&value.graph),
+                    selection: Some(Selection::Attribute {
+                        name: xpath_segment.node_test.clone(),
+                        value: attr_value,
+                    }),
+                })
+                .into_iter()
+                .collect()
+        } else {
+            Vec::new()
+        }
+    } else {
+        traverse_using_xpath_axis(
+            Arc::clone(&normalization_context),
+            &value,
+            &xpath_segment.axis,
+        )?
+    };
 
     log::info!(
         "XPATH SEGMENT - after axis '{}', have {} values",
@@ -858,7 +884,7 @@ pub fn traverse_using_xpath_segment(
         xpath_segment.axis,
         XPathAxis::Self_ | XPathAxis::Parent | XPathAxis::Attribute
     ) {
-        log::info!("XPATH SEGMENT - skipping node_test for Self_/Parent axis");
+        log::info!("XPATH SEGMENT - skipping node_test for Self_/Parent/Attribute axis");
         next_values
     } else {
         log::info!(

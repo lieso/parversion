@@ -67,6 +67,7 @@ pub struct Value {
 
 impl Value {
     pub fn from_graph(graph: Graph) -> Self { Value { graph, selection: None } }
+    pub fn is_node(&self) -> bool { self.selection.is_none() }
 }
 
 #[derive(Clone, Debug, PartialEq)]
