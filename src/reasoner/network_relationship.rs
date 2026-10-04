@@ -98,9 +98,36 @@ async fn network_relationship_reflexive<R: Reasoner>(
         prompt_hash: metadata.prompt_hash.clone(),
     };
 
-    log::debug!("result: {:?}", result);
+    let relationship = match result.relationship_type {
+        NetworkRelationshipTypeResponse::NoRelationship => NetworkRelationship {
+            id: ID::new(),
+            left_basis_lineage: network.lineage.clone(),
+            right_basis_lineage: network.lineage.clone(),
+            relationship_type: NetworkRelationshipType::NoRelationship,
+        },
+        NetworkRelationshipTypeResponse::ParentChild => {
+            let child_to_parent = result.child_to_parent_xslt
+                .ok_or(Errors::UnexpectedError(
+                    "ParentChild requires child_to_parent_xslt".to_string(),
+                ))?;
+            let parent_to_child = result.parent_to_child_xslt
+                .ok_or(Errors::UnexpectedError(
+                    "ParentChild requires parent_to_child_xslt".to_string(),
+                ))?;
 
-    unimplemented!()
+            NetworkRelationship {
+                id: ID::new(),
+                left_basis_lineage: network.lineage.clone(),
+                right_basis_lineage: network.lineage.clone(),
+                relationship_type: NetworkRelationshipType::ParentChild {
+                    xslt_child_to_parent: child_to_parent,
+                    xslt_parent_to_child: parent_to_child,
+                },
+            }
+        }
+    };
+
+    Ok((relationship, reasoner_metadata))
 }
 
 async fn network_relationship_comparative<R: Reasoner>(
