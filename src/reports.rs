@@ -8,11 +8,13 @@ use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::basis_graph::{BasisGraph, BasisGraphNode};
 
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
 const GREEN: &str = "\x1b[32m";
 const RESET: &str = "\x1b[0m";
+const YELLOW: &str = "\x1b[33m";
 
 pub async fn report_basis_fields<P: Provider>(
     provider: Arc<P>,
@@ -410,5 +412,101 @@ pub async fn report_basis_networks(
 pub async fn report_basis_graph(
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
-    unimplemented!()
+    let basis_graph = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_graph.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis graph not provided in normalization context".to_string(),
+            )
+        })?
+    };
+
+    println!("{}=== Basis Graph Report ==={}", YELLOW, RESET);
+    println!("{}{}{}", YELLOW, "-----------------------------------------------------------------------------------------------------", RESET);
+    println!("{}  id: {}{}", YELLOW, basis_graph.id.to_string(), RESET);
+    println!("{}  name: {:?}{}", YELLOW, basis_graph.name, RESET);
+    println!("{}  description: {:?}{}", YELLOW, basis_graph.description, RESET);
+    println!("{}  lineage: {}{}", YELLOW, basis_graph.lineage.to_string(), RESET);
+    println!("{}  roots: {}{}", YELLOW, basis_graph.graph_roots.len(), RESET);
+    println!("{}  prompts: {:?}{}", YELLOW, basis_graph.metadata.prompts, RESET);
+    println!("{}{}{}", YELLOW, "-----------------------------------------------------------------------------------------------------", RESET);
+
+    let mut stack: Vec<(Arc<RwLock<BasisGraphNode>>, usize)> = basis_graph
+        .graph_roots
+        .iter()
+        .rev()
+        .map(|root| (Arc::clone(root), 0))
+        .collect();
+
+    while let Some((node, depth)) = stack.pop() {
+        let node = read_lock!(node);
+        let indent = "  ".repeat(depth);
+        let network = &node.basis_network;
+
+        println!(
+            "{}{}- Node [{}]{}",
+            YELLOW,
+            indent,
+            node.id.to_string(),
+            RESET
+        );
+        println!("{}{}    network id: {}{}", YELLOW, indent, network.id.to_string(), RESET);
+        println!("{}{}    name: {}{}", YELLOW, indent, network.name, RESET);
+        println!("{}{}    description: {}{}", YELLOW, indent, network.description, RESET);
+        println!("{}{}    lineage: {}{}", YELLOW, indent, network.lineage.to_string(), RESET);
+        println!("{}{}    shape: {:?}{}", YELLOW, indent, network.shape, RESET);
+        println!("{}{}    prompts: {:?}{}", YELLOW, indent, network.metadata.prompts, RESET);
+
+        println!(
+            "{}{}    basis nodes ({}):{}",
+            YELLOW,
+            indent,
+            network.basis_nodes.len(),
+            RESET
+        );
+        for basis_node in &network.basis_nodes {
+            println!(
+                "{}{}      - [{}] lineage={} transformations={}{}",
+                YELLOW,
+                indent,
+                basis_node.id.to_string(),
+                basis_node.lineage.to_string(),
+                basis_node.transformations.len(),
+                RESET
+            );
+            for transformation in &basis_node.transformations {
+                println!(
+                    "{}{}          * {} (field: {}, image: {}){}",
+                    YELLOW,
+                    indent,
+                    transformation.description,
+                    transformation.field,
+                    transformation.image,
+                    RESET
+                );
+            }
+        }
+
+        let child_ids: Vec<String> = node
+            .children
+            .iter()
+            .map(|c| read_lock!(c).basis_network.id.to_string())
+            .collect();
+        println!(
+            "{}{}    children: {}{}",
+            YELLOW,
+            indent,
+            if child_ids.is_empty() {
+                "none (leaf)".to_string()
+            } else {
+                format!("{} [{}]", child_ids.len(), child_ids.join(", "))
+            },
+            RESET
+        );
+    }
+
+    println!();
+    println!("{}=== End Basis Graph Report ==={}", YELLOW, RESET);
+
+    Ok(())
 }
