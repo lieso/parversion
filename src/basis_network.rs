@@ -9,7 +9,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
-use crate::traversal::Traversal;
+use crate::traversal::{Traversal, TraversalKind};
 use crate::xpath::XPath;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -190,8 +190,8 @@ impl BasisNetwork {
                 .iter()
                 .filter(|traversal| {
                     !processed_traversals.contains(&traversal.id) && (
-                        traversal.left_basis_lineage == current_node.lineage ||
-                        traversal.right_basis_lineage == current_node.lineage
+                        traversal.left_basis_lineage.clone().unwrap() == current_node.lineage ||
+                        traversal.right_basis_lineage.clone().unwrap() == current_node.lineage
                     )
                 })
                 .cloned()
@@ -470,10 +470,17 @@ impl BasisNetwork {
         };
 
         let xpath_str = {
-            if traversal.left_basis_lineage == basis_node.lineage {
-                traversal.xpath_ltr.clone()
-            } else {
-                traversal.xpath_rtl.clone()
+            match &traversal.kind {
+                TraversalKind::XPath { xpath_ltr, xpath_rtl } => {
+                    if traversal.left_basis_lineage.as_ref() == Some(&basis_node.lineage) {
+                        xpath_ltr.clone()
+                    } else {
+                        xpath_rtl.clone()
+                    }
+                }
+                TraversalKind::Xslt { .. } => {
+                    unimplemented!()
+                }
             }
         };
 
@@ -510,12 +517,12 @@ impl BasisNetwork {
 
             if let Some(target_basis_node) = target_basis_node {
                 let expected_lineage = {
-                    let is_left = traversal.left_basis_lineage == basis_node.lineage;
+                    let is_left = traversal.left_basis_lineage.as_ref() == Some(&basis_node.lineage);
 
                     if is_left {
-                        &traversal.right_basis_lineage
+                        &traversal.right_basis_lineage.clone().unwrap()
                     } else {
-                        &traversal.left_basis_lineage
+                        &traversal.left_basis_lineage.clone().unwrap()
                     }
                 };
 
