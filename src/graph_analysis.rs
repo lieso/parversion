@@ -3,10 +3,11 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 
+use crate::prelude::*;
 use crate::basis_graph::{BasisGraph, BasisGraphNode, BasisGraphMetadata};
 use crate::basis_network::{BasisNetwork, NetworkShape};
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
-use crate::prelude::*;
+use crate::traversal::{Traversal, TraversalKind};
 
 pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -90,8 +91,6 @@ async fn resolve_basis_graph<P: Provider, R: Reasoner>(
     basis_networks: Vec<Arc<BasisNetwork>>,
     relationships: Vec<Arc<NetworkRelationship>>,
 ) -> Result<BasisGraph, Errors> {
-
-
     let graph_roots: Vec<Arc<RwLock<BasisGraphNode>>> = basis_networks
         .iter()
         .map(|basis_network| {
@@ -105,11 +104,38 @@ async fn resolve_basis_graph<P: Provider, R: Reasoner>(
         })
         .collect();
 
-
     for relationship in relationships {
         match &relationship.relationship_type {
             NetworkRelationshipType::ParentChild { xslt_parent_to_child, xslt_child_to_parent } => {
-                unimplemented!()
+                let parent = graph_roots
+                    .iter()
+                    .find(|graph_node| {
+                        read_lock!(graph_node).basis_network.lineage == relationship.left_basis_lineage
+                    })
+                    .ok_or(Errors::UnexpectedError(
+                        "Parent-child network has no parent ".to_string(),
+                    ))?
+                    .clone();
+
+                let traversal = Traversal {
+                    id: ID::new(),
+                    left_basis_lineage: None,
+                    right_basis_lineage: None,
+                    kind: TraversalKind::Xslt {
+                        xslt_ltr: xslt_parent_to_child.clone(),
+                        xslt_rtl: xslt_child_to_parent.clone(),
+                    },
+                };
+
+                let child = Arc::new(RwLock::new(BasisGraphNode {
+                    id: ID::new(),
+                    parent: Some(parent.clone()),
+                    basis_network: read_lock!(&parent).basis_network.clone(),
+                    traversal: Some(traversal),
+                    children: Vec::new(),
+                }));
+
+                write_lock!(&parent).children.push(child);
             }
             NetworkRelationshipType::NoRelationship => {
                 // no-op
