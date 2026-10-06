@@ -13,9 +13,9 @@ pub struct BasisGraphMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisGraphNode {
     pub id: ID,
-    pub parent: Arc<RwLock<BasisGraphNode>>,
+    pub parent: Option<Arc<RwLock<BasisGraphNode>>>,
     pub basis_network: Arc<BasisNetwork>,
-    pub traversal: Traversal,
+    pub traversal: Option<Traversal>,
     pub children: Vec<Arc<RwLock<BasisGraphNode>>>,
 }
 
@@ -25,6 +25,6 @@ pub struct BasisGraph {
     pub name: Option<String>,
     pub description: Option<String>,
     pub lineage: Lineage,
-    pub graph_roots: Vec<BasisGraphNode>,
+    pub graph_roots: Vec<Arc<RwLock<BasisGraphNode>>>,
     pub metadata: BasisGraphMetadata,
 }

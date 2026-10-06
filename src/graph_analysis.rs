@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 
-use crate::basis_graph::{BasisGraph};
+use crate::basis_graph::{BasisGraph, BasisGraphNode, BasisGraphMetadata};
 use crate::basis_network::{BasisNetwork, NetworkShape};
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::prelude::*;
@@ -90,18 +90,43 @@ async fn resolve_basis_graph<P: Provider, R: Reasoner>(
     basis_networks: Vec<Arc<BasisNetwork>>,
     relationships: Vec<Arc<NetworkRelationship>>,
 ) -> Result<BasisGraph, Errors> {
-    let actual_relationships: Vec<Arc<NetworkRelationship>> = relationships
+
+
+    let graph_roots: Vec<Arc<RwLock<BasisGraphNode>>> = basis_networks
         .iter()
-        .filter(|relationship| {
-            !matches!(
-                relationship.relationship_type,
-                NetworkRelationshipType::NoRelationship
-            )
+        .map(|basis_network| {
+            Arc::new(RwLock::new(BasisGraphNode {
+                id: ID::new(),
+                parent: None,
+                basis_network: basis_network.clone(),
+                traversal: None,
+                children: Vec::new(),
+            }))
         })
-        .cloned()
         .collect();
+
+
+    for relationship in relationships {
+        match &relationship.relationship_type {
+            NetworkRelationshipType::ParentChild { xslt_parent_to_child, xslt_child_to_parent } => {
+                unimplemented!()
+            }
+            NetworkRelationshipType::NoRelationship => {
+                // no-op
+            }
+        }
+    }
     
-    unimplemented!()
+    Ok(BasisGraph {
+        id: ID::new(),
+        name: None,
+        description: None,
+        lineage: basis_graph_lineage(basis_networks.clone()),
+        graph_roots,
+        metadata: BasisGraphMetadata {
+            prompts: Vec::new(),
+        }
+    })
 }
 
 async fn generate_network_relationship<P: Provider, R: Reasoner>(
@@ -139,4 +164,13 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
         .await?;
 
     Ok(network_relationship)
+}
+
+fn basis_graph_lineage(basis_networks: Vec<Arc<BasisNetwork>>) -> Lineage {
+    let hashes: Vec<Hash> = basis_networks
+        .iter()
+        .map(|network| network.lineage.identity_hash.clone())
+        .collect();
+
+    Lineage::from_hashes(hashes)
 }
