@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
+use futures::future::try_join_all;
 
 use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
@@ -51,17 +52,20 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let elapsed = start.elapsed();
     log::info!("init_normalization_context: {:.2?}", elapsed);
 
-    for normalization_context in normalization_contexts {
-        let normalized = run_pipeline(
-            Arc::clone(&normalization_context),
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            options,
-            execution_context.clone(),
-        ).await?;
-    }
+    let normalizations = try_join_all(normalization_contexts
+        .iter()
+        .map(|normalization_context| {
+            run_pipeline(
+                Arc::clone(&normalization_context),
+                Arc::clone(&provider),
+                Arc::clone(&reasoner),
+                options,
+                execution_context.clone(),
+            )
+        }))
+        .await?;
 
-    unimplemented!()
+    Ok(normalizations.first().unwrap().clone())
 }
 
 async fn run_pipeline<P: Provider, R: Reasoner>(
