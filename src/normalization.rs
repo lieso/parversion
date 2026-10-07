@@ -52,196 +52,212 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     log::info!("init_normalization_context: {:.2?}", elapsed);
 
     for normalization_context in normalization_contexts {
-        let start = Instant::now();
-        let stage = execution_context.enter_stage("Document classification");
-
-        let classification = get_classification(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            normalization_context.clone(),
-            &options,
-            &stage,
-        )
-        .await?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_classification(classification);
-        }
-
-        stage.finish();
-        let elapsed = start.elapsed();
-        log::info!("get_classification: {:.2?}", elapsed);
-
-        let start = Instant::now();
-        let stage = execution_context.enter_stage("Field analysis");
-
-        let basis_fields = generate_basis_fields(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
+        let normalized = run_pipeline(
             Arc::clone(&normalization_context),
-            &options,
-            &stage,
-        )
-        .await?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_basis_fields(basis_fields);
-        }
-
-        let elapsed = start.elapsed();
-        log::info!("generate_basis_fields: {:.2?}", elapsed);
-
-        #[cfg(debug_assertions)]
-        {
-            report_basis_fields(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
-        }
-
-        stage.finish();
-
-        let start = Instant::now();
-        let stage = execution_context.enter_stage("Group analysis");
-
-        let basis_groups = generate_basis_groups(
             Arc::clone(&provider),
             Arc::clone(&reasoner),
-            Arc::clone(&normalization_context),
-            &options,
-            &stage,
-        )
-        .await?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_basis_groups(basis_groups);
-        }
-
-        let (context_groups, context_to_group) =
-            resolve_context_groups(Arc::clone(&normalization_context))?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_context_groups(context_groups, context_to_group);
-        }
-
-        let elapsed = start.elapsed();
-        log::info!("generate_basis_groups: {:.2?}", elapsed);
-
-        #[cfg(debug_assertions)]
-        {
-            report_basis_groups(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
-        }
-
-        stage.finish();
-
-        let start = Instant::now();
-        let stage = execution_context.enter_stage("Node analysis");
-
-        log::info!("Getting basis nodes");
-        let (basis_nodes, basis_node_contexts, context_basis_node) = generate_basis_nodes(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            normalization_context.clone(),
-            &options,
-            &stage,
-        )
-        .await?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_basis_nodes(basis_nodes, basis_node_contexts, context_basis_node);
-        }
-
-        let elapsed = start.elapsed();
-        log::info!("generate_basis_nodes: {:.2?}", elapsed);
-
-        #[cfg(debug_assertions)]
-        {
-            report_basis_nodes(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
-        }
-
-        stage.finish();
-
-        let start = Instant::now();
-        let stage = execution_context.enter_stage("Network analysis");
-
-        log::info!("Generating basis networks");
-        let (basis_networks,) = generate_basis_networks(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            normalization_context.clone(),
-            &options,
-            &stage,
-        )
-        .await?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_basis_networks(basis_networks);
-        }
-
-        let elapsed = start.elapsed();
-        log::info!("generate_basis_networks: {:.2?}", elapsed);
-
-        #[cfg(debug_assertions)]
-        {
-            report_basis_networks(Arc::clone(&normalization_context)).await?;
-        }
-
-        stage.finish();
-
-        let start = Instant::now();
-        let stage = execution_context.enter_stage("Graph analysis");
-
-        log::info!("Generating basis graph");
-        let basis_graph = generate_basis_graph(
-            Arc::clone(&provider),
-            Arc::clone(&reasoner),
-            Arc::clone(&normalization_context),
-            &options,
-            &stage,
-        )
-        .await?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_basis_graph(basis_graph);
-        }
-
-        let elapsed = start.elapsed();
-        log::info!("generate_basis_graph: {:.2?}", elapsed);
-
-        #[cfg(debug_assertions)]
-        {
-            report_basis_graph(Arc::clone(&normalization_context)).await?;
-        }
-
-        stage.finish();
-
-        let start = Instant::now();
-        let stage = execution_context.enter_stage("Building normalized graph");
-
-        let normalized = build_normalized_graph(
-            Arc::clone(&provider),
-            Arc::clone(&normalization_context),
-            &options,
-        )?;
-
-        {
-            let mut lock = write_lock!(normalization_context);
-            lock.update_normalized_graph(normalized);
-        }
-
-        let elapsed = start.elapsed();
-        log::info!("build_normalized_graph: {:.2?}", elapsed);
-
-        stage.finish();
-
-        unimplemented!()
+            options,
+            execution_context.clone(),
+        ).await?;
     }
 
     unimplemented!()
+}
+
+async fn run_pipeline<P: Provider, R: Reasoner>(
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    options: &Options,
+    execution_context: Arc<ExecutionContext>
+) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Document classification");
+
+    let classification = get_classification(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        normalization_context.clone(),
+        &options,
+        &stage,
+    )
+    .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_classification(classification);
+    }
+
+    stage.finish();
+    let elapsed = start.elapsed();
+    log::info!("get_classification: {:.2?}", elapsed);
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Field analysis");
+
+    let basis_fields = generate_basis_fields(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&normalization_context),
+        &options,
+        &stage,
+    )
+    .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_basis_fields(basis_fields);
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("generate_basis_fields: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_fields(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+    }
+
+    stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Group analysis");
+
+    let basis_groups = generate_basis_groups(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&normalization_context),
+        &options,
+        &stage,
+    )
+    .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_basis_groups(basis_groups);
+    }
+
+    let (context_groups, context_to_group) =
+        resolve_context_groups(Arc::clone(&normalization_context))?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_context_groups(context_groups, context_to_group);
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("generate_basis_groups: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_groups(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+    }
+
+    stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Node analysis");
+
+    log::info!("Getting basis nodes");
+    let (basis_nodes, basis_node_contexts, context_basis_node) = generate_basis_nodes(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        normalization_context.clone(),
+        &options,
+        &stage,
+    )
+    .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_basis_nodes(basis_nodes, basis_node_contexts, context_basis_node);
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("generate_basis_nodes: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_nodes(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+    }
+
+    stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Network analysis");
+
+    log::info!("Generating basis networks");
+    let (basis_networks,) = generate_basis_networks(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        normalization_context.clone(),
+        &options,
+        &stage,
+    )
+    .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_basis_networks(basis_networks);
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("generate_basis_networks: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_networks(Arc::clone(&normalization_context)).await?;
+    }
+
+    stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Graph analysis");
+
+    log::info!("Generating basis graph");
+    let basis_graph = generate_basis_graph(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&normalization_context),
+        &options,
+        &stage,
+    )
+    .await?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_basis_graph(basis_graph);
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("generate_basis_graph: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_basis_graph(Arc::clone(&normalization_context)).await?;
+    }
+
+    stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Building normalized graph");
+
+    let normalized = build_normalized_graph(
+        Arc::clone(&provider),
+        Arc::clone(&normalization_context),
+        &options,
+    )?;
+
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.update_normalized_graph(normalized);
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("build_normalized_graph: {:.2?}", elapsed);
+
+    stage.finish();
+
+    Ok(normalization_context)
 }
 
 async fn normalize_html<P: Provider, R: Reasoner>(
