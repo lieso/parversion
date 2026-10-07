@@ -145,27 +145,25 @@ impl Json {
         let mut result: Value = Value::Object(Map::new());
 
         fn recurse(normal_meta_context: &NormalMetaContext, graph_node: Graph, result: &mut Value) {
-            let context = normal_meta_context
-                .contexts_lookup
-                .get(&read_lock!(graph_node).id)
-                .unwrap();
-            let data_node = &context.data_node;
-            let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
-            for json_node in json_nodes {
-                let json = json_node.json;
+            if let Some(context) = normal_meta_context.contexts_lookup.get(&read_lock!(graph_node).id) {
+                let data_node = &context.data_node;
+                let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
+                for json_node in json_nodes {
+                    let json = json_node.json;
 
-                let value = json!(json.value.trim().to_string());
-                if let Value::Object(ref mut map) = result {
-                    match map.get_mut(&json.key) {
-                        Some(Value::Array(arr)) => {
-                            arr.push(value);
-                        }
-                        Some(existing) => {
-                            let existing_value = existing.clone();
-                            *existing = json!(vec![existing_value, value]);
-                        }
-                        None => {
-                            map.insert(json.key, value);
+                    let value = json!(json.value.trim().to_string());
+                    if let Value::Object(ref mut map) = result {
+                        match map.get_mut(&json.key) {
+                            Some(Value::Array(arr)) => {
+                                arr.push(value);
+                            }
+                            Some(existing) => {
+                                let existing_value = existing.clone();
+                                *existing = json!(vec![existing_value, value]);
+                            }
+                            None => {
+                                map.insert(json.key, value);
+                            }
                         }
                     }
                 }

@@ -246,7 +246,6 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     let stage = execution_context.enter_stage("Building normalized graph");
 
     let normalized = build_normalized_graph(
-        Arc::clone(&provider),
         Arc::clone(&normalization_context),
         &options,
     )?;
@@ -498,8 +497,7 @@ async fn init_normalization_context<P: Provider, R: Reasoner>(
     }
 }
 
-fn build_normalized_graph<P: Provider>(
-    provider: Arc<P>,
+fn build_normalized_graph(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     options: &Options,
 ) -> Result<NormalMetaContext, Errors> {

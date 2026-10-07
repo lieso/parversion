@@ -39,6 +39,35 @@ impl BasisGraph {
     ) -> Result<NormalMetaContext, Errors> {
         log::trace!("In apply");
 
+        for graph_root in self.graph_roots.clone() {
+
+            let basis_network = &read_lock!(graph_root).basis_network;
+
+
+
+            let normal_meta_context = basis_network.apply(
+                Arc::clone(&normalization_context),
+                Arc::clone(&parent)
+            )?;
+
+
+
+
+            for child in &read_lock!(graph_root).children {
+
+                if let Some(traversal) = &read_lock!(child).traversal {
+
+
+
+                }
+                
+
+            }
+
+
+
+        }
+
         unimplemented!()
     }
 }

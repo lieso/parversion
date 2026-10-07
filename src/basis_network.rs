@@ -46,30 +46,6 @@ impl BasisNetwork {
         let mut normal_contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
         let mut normal_contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
 
-        let root_normal_context = Arc::new(NormalContext {
-            id: ID::new(),
-            network_name: None,
-            network_description: None,
-            data_node: Arc::new(DataNode {
-                id: ID::new(),
-                hash: Hash::new(),
-                lineage: Lineage::new(),
-                fields: DataNodeFields::new(),
-                description: String::new(),
-            }),
-            graph_node: Arc::clone(&parent),
-            contexts: Vec::new(),
-        });
-
-        normal_contexts.insert(
-            root_normal_context.id.clone(),
-            Arc::clone(&root_normal_context),
-        );
-        normal_contexts_lookup.insert(
-            read_lock!(root_normal_context.graph_node).id.clone(),
-            Arc::clone(&root_normal_context),
-        );
-
         let meta_context = {
             let lock = read_lock!(normalization_context);
             lock.meta_context
