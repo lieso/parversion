@@ -24,6 +24,8 @@ enum Instruction {
 
 impl Xslt {
     pub fn new(stylesheet: &str) -> Result<Self, Errors> {
+        log::debug!("stylesheet: {}", stylesheet);
+
         let root = Element::parse(stylesheet.as_bytes()).map_err(|e| {
             Errors::XsltParseError(format!("Stylesheet is not well-formed XML: {}", e))
         })?;

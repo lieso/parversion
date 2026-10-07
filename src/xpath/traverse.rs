@@ -351,11 +351,6 @@ pub fn traverse_using_xpath_node_test(
         panic!("Received node_test 'comment()'");
     }
 
-    if node_test == "*" {
-        log::error!("XPATH NODE TEST ERROR: Received forbidden node_test '*'");
-        panic!("Received node_test '*'");
-    }
-
     let node_test = if node_test == "text()" {
         log::info!("XPATH NODE TEST: Converting 'text()' to '#text'");
         "#text"
@@ -367,6 +362,10 @@ pub fn traverse_using_xpath_node_test(
     let current_context = contexts_lookup.get(&graph_id).unwrap();
     let document_node = current_context.document_node.clone();
     let name = read_lock!(document_node).get_element_name();
+
+    if node_test == "*" {
+        return Ok(if name != "#text" { vec![value.clone()] } else { vec![] });
+    }
 
     log::info!("XPATH NODE TEST: Comparing node_test='{}' (trimmed) against element name='{}' (trimmed)",
               node_test.trim(), name.trim());
