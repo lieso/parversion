@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::*;
 use crate::basis_network::BasisNetwork;
 use crate::traversal::Traversal;
+use crate::graph_node::{Graph};
+use crate::normal_meta_context::NormalMetaContext;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisGraphMetadata {
@@ -27,4 +29,16 @@ pub struct BasisGraph {
     pub lineage: Lineage,
     pub graph_roots: Vec<Arc<RwLock<BasisGraphNode>>>,
     pub metadata: BasisGraphMetadata,
+}
+
+impl BasisGraph {
+    pub fn apply(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        parent: Graph,
+    ) -> Result<NormalMetaContext, Errors> {
+        log::trace!("In apply");
+
+        unimplemented!()
+    }
 }

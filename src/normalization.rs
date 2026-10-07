@@ -505,6 +505,18 @@ fn build_normalized_graph<P: Provider>(
 ) -> Result<NormalMetaContext, Errors> {
     log::trace!("In build_normalized_graph");
 
+    let basis_graph: Arc<BasisGraph> = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_graph
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(
+                    "Basis graph not provided in normalization context".to_string(),
+                )
+            })?
+            .clone()
+    };
+
     let classification: Arc<Classification> = {
         let lock = read_lock!(normalization_context);
         lock.classification
@@ -522,34 +534,7 @@ fn build_normalized_graph<P: Provider>(
         children: Vec::new(),
     }));
 
-    let basis_networks = {
-        let lock = read_lock!(normalization_context);
-        lock.basis_networks
-            .as_ref()
-            .ok_or_else(|| {
-                Errors::DeficientNormalizationContextError(
-                    "Basis networks not provided in normalization context".to_string(),
-                )
-            })?
-            .clone()
-    };
-
-    let mut normalized = basis_networks
-        .values()
-        .try_fold(
-            None,
-            |acc, basis_network| -> Result<Option<NormalMetaContext>, Errors> {
-                let normal_meta_context =
-                    basis_network.apply(Arc::clone(&normalization_context), Arc::clone(&root))?;
-
-                if let Some(result) = acc {
-                    Ok(Some(result.merge(normal_meta_context)?))
-                } else {
-                    Ok(Some(normal_meta_context))
-                }
-            },
-        )?
-        .unwrap();
+    let mut normalized = basis_graph.apply(Arc::clone(&normalization_context), Arc::clone(&root))?;
 
     let root_context = Arc::new(NormalContext {
         id: ID::new(),
