@@ -7,6 +7,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::normal_meta_context::NormalMetaContext;
 use crate::traversal::{Traversal, TraversalKind};
 use crate::xslt::Xslt;
+use crate::normal_context::NormalContext;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisGraphMetadata {
@@ -65,57 +66,48 @@ impl BasisGraph {
 
 
             for child in &read_lock!(graph_root).children {
-
-
                 if let Some(traversal) = &read_lock!(child).traversal {
 
-
-
-                    let instance_roots = read_lock!(normal_meta_context.graph_root).children.clone();
-
-
-
-
-
-                    for instance_root in instance_roots {
-                        let normal_context = {
-                            normal_meta_context
-                                .contexts_lookup
-                                .get(&read_lock!(instance_root).id)
-                                .unwrap()
-                                .clone()
-                        };
-
-                        let contexts = normal_context.contexts.clone();
-
-                        let (xslt_ltr, xslt_rtl) = {
-                            match &traversal.kind {
-                                TraversalKind::XPath { .. } => {
-                                    unimplemented!()
-                                }
-                                TraversalKind::Xslt { xslt_ltr, xslt_rtl } => {
-                                    (xslt_ltr.clone(), xslt_rtl.clone())
-                                }
+                    // We only need to find the parent node to completely resolve instance hierarchy
+                    let xslt_rtl = {
+                        match &traversal.kind {
+                            TraversalKind::XPath { .. } => {
+                                unimplemented!()
                             }
-                        };
-
-                        let xslt: Xslt = Xslt::new(&xslt_rtl)?;
-
-
-                        for context in contexts {
-
-                            let target_values = xslt.traverse(
-                                Arc::clone(&normalization_context),
-                                Arc::clone(&context.graph_node),
-                            )?;
-
-                            let target_graph_nodes: Vec<Graph> = target_values.into_iter().map(|v| v.graph).collect();
-
-                            if target_graph_nodes.is_empty() {
-                                log::warn!("Could not find target graph nodes");
-                            } else {
-                                log::info!("Found a graph node using xslt");
+                            TraversalKind::Xslt { xslt_rtl, .. } => {
+                                xslt_rtl.clone()
                             }
+                        }
+                    };
+
+                    let xslt: Xslt = Xslt::new(&xslt_rtl)?;
+
+
+
+                    let instances: Vec<Graph> = read_lock!(normal_meta_context.graph_root)
+                        .children
+                        .clone();
+
+
+                    for instance in instances.clone() {
+                        let normal_context = normal_meta_context
+                            .contexts_lookup
+                            .get(&read_lock!(instance).id)
+                            .unwrap()
+                            .clone();
+
+                        let parent_instance = self.get_parent(
+                            Arc::clone(&normalization_context),
+                            &xslt,
+                            normal_context.clone(),
+                            &normal_meta_context
+                        )?;
+
+                        if let Some(parent_instance) = parent_instance {
+                            log::info!("Instance has a parent");
+
+                        } else {
+                            log::info!("Instance has no parent");
 
                         }
 
@@ -130,14 +122,51 @@ impl BasisGraph {
 
 
                 }
-                
-
             }
-
-
-
         }
 
         unimplemented!()
+    }
+
+    fn get_parent(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        xslt: &Xslt,
+        normal_context: Arc<NormalContext>,
+        normal_meta_context: &NormalMetaContext
+    ) -> Result<Option<Arc<NormalContext>>, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().ok_or(Errors::DeficientNormalizationContextError(
+                "Meta context not provided in normalization context".to_string(),
+            ))?
+        };
+
+        for context in &normal_context.contexts {
+            let target_values = xslt.traverse(
+                Arc::clone(&normalization_context),
+                Arc::clone(&context.graph_node),
+            )?;
+
+            let Some(parent_graph_node) = target_values
+                .into_iter()
+                .next()
+                .map(|v| v.graph) else { continue };
+
+            let target_context = meta_context
+                .contexts_lookup
+                .get(&read_lock!(parent_graph_node).id)
+                .unwrap()
+                .clone();
+
+            if let Some(normal_context) = normal_meta_context
+                .contexts_lookup
+                .get(&target_context.id)
+                .clone() {
+                return Ok(Some(normal_context.clone()));
+            }
+        }
+
+        Ok(None)
     }
 }
