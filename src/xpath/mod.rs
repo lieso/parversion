@@ -231,18 +231,22 @@ impl Operand {
     fn from_str(s: &str) -> Result<Operand, Errors> {
         let s = s.trim();
 
-        // rightmost operator => left-associative: `a - b + c` = `(a - b) + c`
-        let split = [(" - ", ArithOp::Sub), (" + ", ArithOp::Add)]
-            .into_iter()
-            .filter_map(|(sep, op)| s.rfind(sep).map(|pos| (pos, sep, op)))
-            .max_by_key(|(pos, _, _)| *pos);
-
-        if let Some((pos, sep, op)) = split {
+        // rightmost top-level operator => left-associative: `a - b + c` = `(a - b) + c`
+        if let Some((pos, op)) = rightmost_top_level_op(s) {
             return Ok(Operand::Arith {
                 op,
                 lhs: Box::new(Operand::from_str(&s[..pos])?),
-                rhs: Box::new(Operand::from_str(&s[pos + sep.len()..])?),
+                rhs: Box::new(Operand::from_str(&s[pos + 3..])?), // " - " / " + " are 3 bytes
             });
+        }
+
+        // ( ... ) grouping, and number( ... ): operands are already numeric, so it's the identity
+        if let Some(open) = s.find('(') {
+            let name = &s[..open];
+            if (name.is_empty() || name == "number") && matching_paren(s, open) == Some(s.len() - 1)
+            {
+                return Operand::from_str(&s[open + 1..s.len() - 1]);
+            }
         }
 
         if let Some(name) = s.strip_prefix('$') {
@@ -1038,4 +1042,30 @@ fn split_top_level_union(s: &str) -> Vec<&str> {
 
     parts.push(s[start..].trim());
     parts
+}
+
+/// Byte position and op of the rightmost ` - ` / ` + ` outside any parentheses.
+fn rightmost_top_level_op(s: &str) -> Option<(usize, ArithOp)> {
+    let bytes = s.as_bytes();
+    let mut depth = 0i32;
+    let mut found = None;
+    for (i, &b) in bytes.iter().enumerate() {
+        match b {
+            b'(' => depth += 1,
+            b')' => depth -= 1,
+            b'-' | b'+' if depth == 0 && i > 0 && i + 1 < bytes.len() => {
+                if bytes[i - 1] == b' ' && bytes[i + 1] == b' ' {
+                    // i is the operator itself, so the separator starts at i - 1
+                    let op = if b == b'-' {
+                        ArithOp::Sub
+                    } else {
+                        ArithOp::Add
+                    };
+                    found = Some((i - 1, op));
+                }
+            }
+            _ => {}
+        }
+    }
+    found
 }
