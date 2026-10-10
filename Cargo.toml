@@ -62,7 +62,7 @@ name = "parversion"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["sqlite-provider", "openrouter-reasoner"]
 yaml-provider = ["dep:serde_yaml"]
 sqlite-provider = ["dep:rusqlite"]
 openrouter-reasoner = ["dep:openrouter-rs"]
