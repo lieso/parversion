@@ -57,19 +57,29 @@ impl BasisGraph {
                     children: Vec::new(),
                 }));
 
-
                 let normal_meta_context = basis_network.apply(
                     Arc::clone(&normalization_context),
                     Arc::clone(&temp_parent)
                 )?;
 
-                for child in &read_lock!(graph_root).children {
-                    Self::hierarchize(
+
+                let children = read_lock!(graph_root).children.clone();
+
+                if children.is_empty() {
+                    Self::augment(
                         Arc::clone(&normalization_context),
                         &normal_meta_context,
-                        Arc::clone(&child),
                         Arc::clone(&parent),
                     )?;
+                } else {
+                    for child in children {
+                        Self::hierarchize(
+                            Arc::clone(&normalization_context),
+                            &normal_meta_context,
+                            Arc::clone(&child),
+                            Arc::clone(&parent),
+                        )?;
+                    }
                 }
 
                 if let Some(acc) = acc {
@@ -102,6 +112,23 @@ impl BasisGraph {
 
 
         Ok(result)
+    }
+
+    fn augment(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        normal_meta_context: &NormalMetaContext,
+        parent: Graph,
+    ) -> Result<(), Errors> {
+        let instances: Vec<Graph> = read_lock!(normal_meta_context.graph_root)
+            .children
+            .clone();
+
+        for instance in &instances {
+            write_lock!(instance).parents = vec![Arc::clone(&parent)];
+            write_lock!(parent).children.push(Arc::clone(&instance));
+        }
+
+        Ok(())
     }
 
     fn hierarchize(
