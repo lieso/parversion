@@ -1,1 +1,3 @@
-c && RUSTFLAGS=-Awarnings cargo check --features sqlite-provider --features openrouter-reasoner --release
+## License
+
+Licensed under the [MIT License](LICENSE).
