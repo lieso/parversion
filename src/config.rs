@@ -5,11 +5,6 @@ use std::path::Path;
 use std::sync::RwLock;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct LlmConfig {
-    pub max_concurrency: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct DevConfig {
     #[serde(default = "get_default_debug_dir")]
     pub debug_dir: String,
@@ -39,7 +34,6 @@ impl Default for DevConfig {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    pub llm: LlmConfig,
     #[serde(default)]
     pub dev: DevConfig,
     #[serde(default)]
@@ -67,7 +61,6 @@ fn get_default_prompts_location() -> String {
 impl Default for Config {
     fn default() -> Self {
         let config = Config {
-            llm: LlmConfig { max_concurrency: 1 },
             dev: DevConfig::default(),
             reasoner: ReasonerConfig::default(),
         };

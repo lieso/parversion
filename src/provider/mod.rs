@@ -11,8 +11,6 @@ use crate::document::Document;
 use crate::network_relationship::NetworkRelationship;
 use crate::node_relationship::NodeRelationship;
 use crate::prelude::*;
-use crate::translation_network::TranslationNetwork;
-use crate::translation_node::TranslationNode;
 
 #[cfg(feature = "yaml-provider")]
 pub mod yaml;
@@ -77,26 +75,6 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         hash: &Hash,
     ) -> Result<Option<Document>, Errors>;
-    async fn get_translation_node_by_lineages(
-        &self,
-        lineage_from: &Lineage,
-        lineage_to: &Lineage,
-    ) -> Result<Option<Option<TranslationNode>>, Errors>;
-    async fn save_translation_node(
-        &self,
-        lineages: (Lineage, Lineage),
-        translation_node: Option<TranslationNode>,
-    ) -> Result<(), Errors>;
-    async fn get_translation_network_by_lineages(
-        &self,
-        lineage_from: &Lineage,
-        lineage_to: &Lineage,
-    ) -> Result<Option<Option<TranslationNetwork>>, Errors>;
-    async fn save_translation_network(
-        &self,
-        lineages: (Lineage, Lineage),
-        translation_network: Option<TranslationNetwork>,
-    ) -> Result<(), Errors>;
     async fn get_node_relationships(
         &self,
         left_basis_lineage: &Lineage,
@@ -222,38 +200,6 @@ impl Provider for VoidProvider {
         _hash: &Hash,
     ) -> Result<Option<Document>, Errors> {
         Ok(None)
-    }
-
-    async fn get_translation_node_by_lineages(
-        &self,
-        _lineage_from: &Lineage,
-        _lineage_to: &Lineage,
-    ) -> Result<Option<Option<TranslationNode>>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_translation_node(
-        &self,
-        _lineages: (Lineage, Lineage),
-        _translation_node: Option<TranslationNode>,
-    ) -> Result<(), Errors> {
-        Ok(())
-    }
-
-    async fn get_translation_network_by_lineages(
-        &self,
-        lineage_from: &Lineage,
-        lineage_to: &Lineage,
-    ) -> Result<Option<Option<TranslationNetwork>>, Errors> {
-        Ok(None)
-    }
-
-    async fn save_translation_network(
-        &self,
-        lineages: (Lineage, Lineage),
-        translation_network: Option<TranslationNetwork>,
-    ) -> Result<(), Errors> {
-        Ok(())
     }
 
     async fn get_node_relationships(

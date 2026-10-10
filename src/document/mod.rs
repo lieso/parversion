@@ -9,7 +9,6 @@ mod json;
 mod xml;
 
 use crate::document_format::DocumentFormat;
-use crate::llm::LLM;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -95,25 +94,27 @@ impl Document {
             }
         }
 
-        let (instance, (tokens,)) = LLM::schema_to_instance(value).await?;
+        unimplemented!();
 
-        let document = Document {
-            document_type: metadata.document_type.clone().unwrap(),
-            metadata: DocumentMetadata {
-                origin: options.origin.clone(),
-                date: options.date.clone(),
-                name: None,
-                description: None,
-                semantic_content_types: None,
-            },
-            data: instance.clone(),
-        };
+        //let (instance, (tokens,)) = LLM::schema_to_instance(value).await?;
 
-        provider
-            .save_schema_instance_document(&hash, document.clone())
-            .await?;
+        //let document = Document {
+        //    document_type: metadata.document_type.clone().unwrap(),
+        //    metadata: DocumentMetadata {
+        //        origin: options.origin.clone(),
+        //        date: options.date.clone(),
+        //        name: None,
+        //        description: None,
+        //        semantic_content_types: None,
+        //    },
+        //    data: instance.clone(),
+        //};
 
-        Ok(document)
+        //provider
+        //    .save_schema_instance_document(&hash, document.clone())
+        //    .await?;
+
+        //Ok(document)
     }
 
     pub fn from_string(
@@ -273,23 +274,7 @@ impl Document {
         log::trace!("In from_translation");
 
         match document_format.format_type {
-            DocumentType::Json => {
-                let data = Json::from_translation(Arc::clone(&translation_context))?;
-
-                let document = Document {
-                    document_type: DocumentType::Json,
-                    data,
-                    metadata: DocumentMetadata {
-                        origin: None,
-                        date: None,
-                        name: None,
-                        description: None,
-                        semantic_content_types: None,
-                    },
-                };
-
-                Ok(document)
-            }
+            DocumentType::Json => unimplemented!(),
             DocumentType::PlainText => unimplemented!(),
             DocumentType::JavaScript => unimplemented!(),
             DocumentType::Xml => unimplemented!(),

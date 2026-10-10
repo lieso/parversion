@@ -13,8 +13,6 @@ use crate::network_relationship::NetworkRelationship;
 use crate::node_relationship::NodeRelationship;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::translation_network::TranslationNetwork;
-use crate::translation_node::TranslationNode;
 
 #[cfg(feature = "sqlite-provider")]
 pub struct SqliteProvider {
@@ -57,18 +55,6 @@ impl SqliteProvider {
                  indexed_lineage_hash  TEXT NOT NULL DEFAULT '',
                  data                  TEXT,
                  PRIMARY KEY (acyclic_lineage_hash, lineage_hash, indexed_lineage_hash)
-             );
-             CREATE TABLE IF NOT EXISTS translation_nodes (
-                 lineage_from       TEXT NOT NULL DEFAULT '',
-                 lineage_to         TEXT NOT NULL DEFAULT '',
-                 data               TEXT,
-                 PRIMARY KEY (lineage_from, lineage_to)
-             );
-             CREATE TABLE IF NOT EXISTS translation_networks (
-                 lineage_from       TEXT NOT NULL DEFAULT '',
-                 lineage_to         TEXT NOT NULL DEFAULT '',
-                 data               TEXT,
-                 PRIMARY KEY (lineage_from, lineage_to)
              );
              CREATE TABLE IF NOT EXISTS basis_networks (
                 basis_nodes   TEXT PRIMARY KEY,
@@ -456,110 +442,6 @@ impl Provider for SqliteProvider {
                 Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
                 Err(e) => Err(db_err(e)),
             }
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
-    async fn get_translation_node_by_lineages(
-        &self,
-        lineage_from: &Lineage,
-        lineage_to: &Lineage,
-    ) -> Result<Option<Option<TranslationNode>>, Errors> {
-        let conn = self.connection.clone();
-        let key1 = lineage_from.to_string();
-        let key2 = lineage_to.to_string();
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-            match conn.query_row(
-                "SELECT data FROM translation_nodes WHERE lineage_from = ?1 AND lineage_to = ?2",
-                params![key1, key2],
-                |row| row.get::<_, Option<String>>(0),
-            ) {
-                Ok(Some(data)) => deserialize(data).map(Some),
-                Ok(None) => Ok(Some(None)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(db_err(e)),
-            }
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
-    async fn save_translation_node(
-        &self,
-        lineages: (Lineage, Lineage),
-        translation_node: Option<TranslationNode>,
-    ) -> Result<(), Errors> {
-        let conn = self.connection.clone();
-        let key1 = lineages.0.to_string();
-        let key2 = lineages.1.to_string();
-
-        let data = serialize(&translation_node)?;
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-
-            conn.execute(
-                "INSERT OR REPLACE INTO translation_nodes (lineage_from, lineage_to, data) VALUES (?1, ?2, ?3)",
-                params![key1, key2, data],
-            )
-            .map_err(|e| db_err(e))?;
-
-            Ok(())
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
-    async fn get_translation_network_by_lineages(
-        &self,
-        lineage_from: &Lineage,
-        lineage_to: &Lineage,
-    ) -> Result<Option<Option<TranslationNetwork>>, Errors> {
-        let conn = self.connection.clone();
-        let key1 = lineage_from.to_string();
-        let key2 = lineage_to.to_string();
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-            match conn.query_row(
-                "SELECT data FROM translation_networks WHERE lineage_from = ?1 AND lineage_to = ?2",
-                params![key1, key2],
-                |row| row.get::<_, Option<String>>(0),
-            ) {
-                Ok(Some(data)) => deserialize(data).map(Some),
-                Ok(None) => Ok(Some(None)),
-                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-                Err(e) => Err(db_err(e)),
-            }
-        })
-        .await
-        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
-    }
-
-    async fn save_translation_network(
-        &self,
-        lineages: (Lineage, Lineage),
-        translation_network: Option<TranslationNetwork>,
-    ) -> Result<(), Errors> {
-        let conn = self.connection.clone();
-        let key1 = lineages.0.to_string();
-        let key2 = lineages.1.to_string();
-
-        let data = serialize(&translation_network)?;
-
-        task::spawn_blocking(move || {
-            let conn = conn.lock().map_err(|_| lock_err())?;
-
-            conn.execute(
-                "INSERT OR REPLACE INTO translation_networks (lineage_from, lineage_to, data) VALUES (?1, ?2, ?3)",
-                params![key1, key2, data],
-            )
-            .map_err(|e| db_err(e))?;
-
-            Ok(())
         })
         .await
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?

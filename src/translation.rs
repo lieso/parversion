@@ -3,8 +3,6 @@ use std::sync::{Arc, RwLock};
 use crate::data_node::DataNode;
 use crate::document::{Document, DocumentRole, DocumentType};
 use crate::document_format::DocumentFormat;
-use crate::network_analysis::get_translation_networks;
-use crate::node_analysis::get_translation_nodes;
 use crate::normalization;
 use crate::normalization::normalize;
 use crate::normalization_context::NormalizationContext;
@@ -12,8 +10,6 @@ use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_context::TranslationContext;
-use crate::translation_network::TranslationNetwork;
-use crate::translation_node::TranslationNode;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -35,40 +31,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
     )
     .await?;
 
-    let stage = execution_context.enter_stage("Translating nodes");
-
-    let translation_nodes = get_translation_nodes(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        Arc::clone(&translation_context),
-        &options,
-        &stage,
-    )
-    .await?;
-
-    {
-        let mut lock = write_lock!(translation_context);
-        lock.update_translation_nodes(translation_nodes);
-    }
-
-    stage.finish();
-    let stage = execution_context.enter_stage("Translating networks");
-
-    let translation_networks = get_translation_networks(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        Arc::clone(&translation_context),
-        &options,
-        &stage,
-    )
-    .await?;
-
-    {
-        let mut lock = write_lock!(translation_context);
-        lock.update_translation_networks(translation_networks);
-    }
-
-    stage.finish();
+    unimplemented!();
 
     Ok(translation_context)
 }
