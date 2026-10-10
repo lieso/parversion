@@ -317,6 +317,9 @@ impl BasisNetwork {
         network_contexts
             .sort_by_cached_key(|context| read_lock!(context.graph_node).document_path());
 
+        // zero-padding indexes
+        let width = network_contexts.len().to_string().len();
+
         for (index, network_context) in network_contexts.into_iter().enumerate() {
             let basis_node = {
                 let lock = read_lock!(normalization_context);
@@ -325,9 +328,11 @@ impl BasisNetwork {
             };
 
             if let Some(data_node) = basis_node.apply(network_context.clone())? {
+                let network_name = format!("{:0width$}", index, width = width);
+
                 let normal_context = Arc::new(NormalContext {
                     id: ID::new(),
-                    network_name: Some(format!("{}", index)),
+                    network_name: Some(network_name),
                     network_description: Some("placeholder description".to_string()),
                     data_node: Arc::new(data_node.clone()),
                     graph_node: Arc::new(RwLock::new(GraphNode::from_data_node(
