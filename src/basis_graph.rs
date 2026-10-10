@@ -63,69 +63,14 @@ impl BasisGraph {
                     Arc::clone(&temp_parent)
                 )?;
 
-
-
-
                 for child in &read_lock!(graph_root).children {
-                    if let Some(traversal) = &read_lock!(child).traversal {
-
-                        // We only need to find the parent node to completely resolve instance hierarchy
-                        let xslt_rtl = {
-                            match &traversal.kind {
-                                TraversalKind::XPath { .. } => {
-                                    unimplemented!()
-                                }
-                                TraversalKind::Xslt { xslt_rtl, .. } => {
-                                    xslt_rtl.clone()
-                                }
-                            }
-                        };
-
-                        let xslt: Xslt = Xslt::new(&xslt_rtl)?;
-
-
-
-                        let instances: Vec<Graph> = read_lock!(normal_meta_context.graph_root)
-                            .children
-                            .clone();
-
-
-                        for instance in &instances {
-                            write_lock!(instance).parents.clear();
-                        }
-
-                        for instance in &instances {
-                            let normal_context = normal_meta_context
-                                .contexts_lookup
-                                .get(&read_lock!(instance).id)
-                                .unwrap()
-                                .clone();
-
-                            let parent_instance = Self::get_parent(
-                                Arc::clone(&normalization_context),
-                                &xslt,
-                                normal_context.clone(),
-                                &normal_meta_context
-                            )?;
-
-                            if let Some(parent_instance) = parent_instance {
-                                log::info!("Instance has a parent");
-
-                                write_lock!(parent_instance.graph_node).children.push(Arc::clone(&instance));
-                                write_lock!(instance).parents = vec![Arc::clone(&parent_instance.graph_node)];
-                            } else {
-                                log::info!("Instance has no parent");
-                                write_lock!(instance).parents = vec![Arc::clone(&parent)];
-                                write_lock!(parent).children.push(Arc::clone(&instance));
-                            }
-
-
-                        }
-
-                    }
+                    Self::hierarchize(
+                        Arc::clone(&normalization_context),
+                        &normal_meta_context,
+                        Arc::clone(&child),
+                        Arc::clone(&parent),
+                    )?;
                 }
-
-
 
                 if let Some(acc) = acc {
                     let next_normal_meta_context = NormalMetaContext {
@@ -157,6 +102,71 @@ impl BasisGraph {
 
 
         Ok(result)
+    }
+
+    fn hierarchize(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        normal_meta_context: &NormalMetaContext,
+        child: Arc<RwLock<BasisGraphNode>>,
+        parent: Graph,
+    ) -> Result<(), Errors> {
+        let Some(traversal) = &read_lock!(child).traversal else {
+            return Err(Errors::UnexpectedError("Attempting to hierarchize a network without a Traversal".to_string()));
+        };
+
+
+
+        // We only need to find the parent instance to completely resolve instance hierarchy
+        let xslt_rtl = {
+            match &traversal.kind {
+                TraversalKind::XPath { .. } => {
+                    unimplemented!()
+                }
+                TraversalKind::Xslt { xslt_rtl, .. } => {
+                    xslt_rtl.clone()
+                }
+            }
+        };
+
+        let xslt: Xslt = Xslt::new(&xslt_rtl)?;
+
+
+
+        let instances: Vec<Graph> = read_lock!(normal_meta_context.graph_root)
+            .children
+            .clone();
+
+        for instance in &instances {
+            write_lock!(instance).parents.clear();
+        }
+
+        for instance in &instances {
+            let normal_context = normal_meta_context
+                .contexts_lookup
+                .get(&read_lock!(instance).id)
+                .unwrap()
+                .clone();
+
+            let parent_instance = Self::get_parent(
+                Arc::clone(&normalization_context),
+                &xslt,
+                normal_context.clone(),
+                &normal_meta_context
+            )?;
+
+            if let Some(parent_instance) = parent_instance {
+                log::info!("Instance has a parent");
+
+                write_lock!(parent_instance.graph_node).children.push(Arc::clone(&instance));
+                write_lock!(instance).parents = vec![Arc::clone(&parent_instance.graph_node)];
+            } else {
+                log::info!("Instance has no parent");
+                write_lock!(instance).parents = vec![Arc::clone(&parent)];
+                write_lock!(parent).children.push(Arc::clone(&instance));
+            }
+        }
+
+        Ok(())
     }
 
     fn get_parent(
