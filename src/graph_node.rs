@@ -305,7 +305,7 @@ impl GraphNode {
             .collect();
 
         let segment_count = segments.len();
-        let xpath = XPath { segments, start_variable: None };
+        let xpath = XPath { segments, start_variable: None, union: Vec::new() };
 
         log::info!(
             "XPATH GENERATION - created xpath with {} total segments",

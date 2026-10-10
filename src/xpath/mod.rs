@@ -23,6 +23,8 @@ pub struct XPath {
     #[serde(default)]
     pub start_variable: Option<String>,
     pub segments: Vec<XPathSegment>,
+    #[serde(default)]
+    pub union: Vec<XPath>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
@@ -322,7 +324,23 @@ impl XPath {
                 .map(|s| s.substitute(variables))
                 .collect::<Result<Vec<_>, Errors>>()?,
             start_variable: self.start_variable.clone(),
+            union: self
+                .union
+                .iter()
+                .map(|b| b.substitute(variables))
+                .collect::<Result<Vec<_>, Errors>>()?,
         })
+    }
+
+    fn extend_dedup(out: &mut Vec<Value>, incoming: Vec<Value>) {
+        for value in incoming {
+            if !out
+                .iter()
+                .any(|v| Arc::ptr_eq(&v.graph, &value.graph) && v.selection == value.selection)
+            {
+                out.push(value);
+            }
+        }
     }
 
     pub fn evaluate(
@@ -351,7 +369,48 @@ impl XPath {
         Ok(out)
     }
 
+    fn evaluate_branch(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        variables: &Variables,
+        start: Graph,
+    ) -> Result<Vec<Value>, Errors> {
+        let starts: Vec<Graph> = match &self.start_variable {
+            Some(name) => variables
+                .get(name)
+                .ok_or_else(|| Errors::XPathTraverseError(format!("Unbound variable ${}", name)))?
+                .iter()
+                .map(|v| Arc::clone(&v.graph))
+                .collect(),
+            None => vec![Arc::clone(&start)],
+        };
+        let path = XPath {
+            start_variable: None,
+            union: Vec::new(),
+            segments: self.segments.clone(),
+        };
+
+        let mut out = Vec::new();
+        for s in starts {
+            out.extend(path.traverse_branch(Arc::clone(&normalization_context), s)?);
+        }
+        Ok(out)
+    }
+
     pub fn traverse(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        start: Graph,
+    ) -> Result<Vec<Value>, Errors> {
+        let mut out = self.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
+        for branch in &self.union {
+            let values = branch.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
+            Self::extend_dedup(&mut out, values);
+        }
+        Ok(out)
+    }
+
+    pub fn traverse_branch(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
@@ -489,6 +548,19 @@ impl XPath {
 
     pub fn from_str(s: &str) -> Result<Self, Errors> {
         log::debug!("xpath: {}", s);
+
+        let branches = split_top_level_union(s.trim());
+        if branches.len() > 1 {
+            let mut parsed = branches
+                .into_iter()
+                .map(XPath::from_str)
+                .collect::<Result<Vec<_>, Errors>>()?
+                .into_iter();
+            let mut first = parsed.next().expect("split yields at least one branch");
+            first.union = parsed.collect();
+            return Ok(first);
+        }
+
         let s = s.replace("//", "/descendant::");
 
         let mut parts: Vec<&str> = Vec::new();
@@ -535,7 +607,7 @@ impl XPath {
             return Err(Errors::XPathParseError("XPath is empty".to_string()));
         }
 
-        Ok(XPath { segments, start_variable })
+        Ok(XPath { segments, start_variable, union: Vec::new() })
     }
 
     pub fn to_string(&self) -> String {
@@ -545,11 +617,16 @@ impl XPath {
             .collect::<Vec<_>>()
             .join("/");
 
-        match &self.start_variable {
+        let head = match &self.start_variable {
             Some(name) if path.is_empty() => format!("${}", name),
             Some(name) => format!("${}/{}", name, path),
             None => path,
-        }
+        };
+
+        std::iter::once(head)
+            .chain(self.union.iter().map(|b| b.to_string()))
+            .collect::<Vec<_>>()
+            .join(" | ")
     }
 }
 
@@ -887,4 +964,30 @@ impl XPathPredicate {
             XPathPredicate::Equals { lhs, rhs } => format!("{} = {}", lhs.to_string(), rhs.to_string())
         }
     }
+}
+
+/// Splits `s` on `|` characters that are not inside brackets, parentheses or quotes.
+fn split_top_level_union(s: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0;
+    let mut quote: Option<char> = None;
+    let mut start = 0;
+
+    for (i, c) in s.char_indices() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some(_), _) => {}
+            (None, '\'') | (None, '"') => quote = Some(c),
+            (None, '[') | (None, '(') => depth += 1,
+            (None, ']') | (None, ')') => depth -= 1,
+            (None, '|') if depth == 0 => {
+                parts.push(s[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+
+    parts.push(s[start..].trim());
+    parts
 }
