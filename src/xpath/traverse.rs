@@ -1,8 +1,8 @@
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
+use super::{Selection, Value, Variables, XPathAxis, XPathPredicate, XPathSegment};
 use crate::graph_node::{Graph, GraphNode};
-use super::{XPath, XPathAxis, XPathPredicate, XPathSegment, Value, Selection, Variables};
+use crate::prelude::*;
 
 pub fn traverse_using_xpath_axis(
     _meta_context: Arc<RwLock<NormalizationContext>>,
@@ -122,8 +122,7 @@ pub fn traverse_using_xpath_axis(
                     .iter()
                     .position(|child| read_lock!(child).id == lock.id)
                 {
-                    let siblings: Vec<Graph> =
-                        parent_lock.children[index_current + 1..].to_vec();
+                    let siblings: Vec<Graph> = parent_lock.children[index_current + 1..].to_vec();
                     log::info!("XPATH AXIS::FollowingSibling - current at index {}, found {} following siblings", index_current, siblings.len());
                     Ok(siblings)
                 } else {
@@ -195,8 +194,7 @@ pub fn traverse_using_xpath_axis(
                     else {
                         log::error!("XPATH AXIS::Following - Could not find current node in parent's children");
                         return Err(Errors::XPathTraverseError(
-                            "Could not find index of current node as a child of parent"
-                                .to_string(),
+                            "Could not find index of current node as a child of parent".to_string(),
                         ));
                     };
                     let following_siblings = parent_lock.children[index + 1..].to_vec();
@@ -265,8 +263,7 @@ pub fn traverse_using_xpath_axis(
                     else {
                         log::error!("XPATH AXIS::Preceding - Could not find current node in parent's children");
                         return Err(Errors::XPathTraverseError(
-                            "Could not find index of current node as a child of parent"
-                                .to_string(),
+                            "Could not find index of current node as a child of parent".to_string(),
                         ));
                     };
                     let preceding_siblings: Vec<Graph> = parent_lock.children[..index]
@@ -364,11 +361,18 @@ pub fn traverse_using_xpath_node_test(
     let name = read_lock!(document_node).get_element_name();
 
     if node_test == "*" {
-        return Ok(if name != "#text" { vec![value.clone()] } else { vec![] });
+        return Ok(if name != "#text" {
+            vec![value.clone()]
+        } else {
+            vec![]
+        });
     }
 
-    log::info!("XPATH NODE TEST: Comparing node_test='{}' (trimmed) against element name='{}' (trimmed)",
-              node_test.trim(), name.trim());
+    log::info!(
+        "XPATH NODE TEST: Comparing node_test='{}' (trimmed) against element name='{}' (trimmed)",
+        node_test.trim(),
+        name.trim()
+    );
 
     let result = if node_test.trim() == name.trim() {
         log::info!(
@@ -408,11 +412,11 @@ pub fn traverse_using_xpath_predicate(
                         &Variables::new(),
                         Arc::clone(&v.graph),
                     )
-                        .ok()
-                        .and_then(|r| r.first().and_then(|x| x.to_number()))
+                    .ok()
+                    .and_then(|r| r.first().and_then(|x| x.to_number()))
                         == Some(target)
                 })
-            .collect();
+                .collect();
             Ok(filtered)
         }
         XPathPredicate::Position(index) => {
@@ -422,7 +426,11 @@ pub fn traverse_using_xpath_predicate(
             );
             // XPath positions are 1-indexed
             if *index < 1 || *index as usize > values.len() {
-                log::info!("XPATH PREDICATE::Position {} - OUT OF BOUNDS (values.len={}), returning empty", index, values.len());
+                log::info!(
+                    "XPATH PREDICATE::Position {} - OUT OF BOUNDS (values.len={}), returning empty",
+                    index,
+                    values.len()
+                );
                 return Ok(vec![]);
             }
 
@@ -587,7 +595,7 @@ pub fn traverse_using_xpath_predicate(
                         .and_then(|context| {
                             read_lock!(&context.document_node).get_attribute_value(name)
                         })
-                    .map(|attr_value| attr_value.split_whitespace().any(|word| word == value))
+                        .map(|attr_value| attr_value.split_whitespace().any(|word| word == value))
                         .unwrap_or(false)
                 })
                 .cloned()
@@ -818,11 +826,7 @@ pub fn traverse_using_xpath_predicate(
                     "XPATH PREDICATE::And - applying predicate to {} values",
                     acc.len()
                 );
-                traverse_using_xpath_predicate(
-                    Arc::clone(&normalization_context),
-                    acc,
-                    predicate,
-                )
+                traverse_using_xpath_predicate(Arc::clone(&normalization_context), acc, predicate)
             })
         }
     };
@@ -839,9 +843,7 @@ pub fn traverse_using_xpath_segment(
     let graph = value.graph.clone();
     let graph_id = read_lock!(graph).id.clone();
 
-    if !value.is_node()
-        && !matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent)
-    {
+    if !value.is_node() && !matches!(xpath_segment.axis, XPathAxis::Self_ | XPathAxis::Parent) {
         return Ok(Vec::new());
     }
 
@@ -932,33 +934,32 @@ pub fn traverse_using_xpath_segment(
         xpath_segment.predicates.len()
     );
     let mut predicate_count = 0;
-    let result =
-        xpath_segment
-            .predicates
-            .iter()
-            .try_fold(next_values, |values, predicate| {
-                predicate_count += 1;
+    let result = xpath_segment
+        .predicates
+        .iter()
+        .try_fold(next_values, |values, predicate| {
+            predicate_count += 1;
+            log::debug!(
+                "XPATH SEGMENT - predicate {}/{}: {} values before",
+                predicate_count,
+                xpath_segment.predicates.len(),
+                values.len()
+            );
+            let result = traverse_using_xpath_predicate(
+                Arc::clone(&normalization_context),
+                values,
+                predicate,
+            );
+            if let Ok(ref filtered) = result {
                 log::debug!(
-                    "XPATH SEGMENT - predicate {}/{}: {} values before",
+                    "XPATH SEGMENT - predicate {}/{}: {} values after",
                     predicate_count,
                     xpath_segment.predicates.len(),
-                    values.len()
+                    filtered.len()
                 );
-                let result = traverse_using_xpath_predicate(
-                    Arc::clone(&normalization_context),
-                    values,
-                    predicate,
-                );
-                if let Ok(ref filtered) = result {
-                    log::debug!(
-                        "XPATH SEGMENT - predicate {}/{}: {} values after",
-                        predicate_count,
-                        xpath_segment.predicates.len(),
-                        filtered.len()
-                    );
-                }
-                result
-            })?;
+            }
+            result
+        })?;
 
     log::info!("XPATH SEGMENT - final result: {} values", result.len());
     log::warn!("===== END XPATH SEGMENT =====");

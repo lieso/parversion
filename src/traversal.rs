@@ -5,8 +5,14 @@ use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum TraversalKind {
-    XPath { xpath_ltr: String, xpath_rtl: String },
-    Xslt { xslt_ltr: String, xslt_rtl: String },
+    XPath {
+        xpath_ltr: String,
+        xpath_rtl: String,
+    },
+    Xslt {
+        xslt_ltr: String,
+        xslt_rtl: String,
+    },
 }
 
 // TODO: eliminate ambiguity
@@ -50,7 +56,10 @@ impl Traversal {
             id: ID::new(),
             left_basis_lineage: Some(relationship.left_basis_lineage.clone()),
             right_basis_lineage: Some(relationship.right_basis_lineage.clone()),
-            kind: TraversalKind::XPath { xpath_ltr, xpath_rtl }
+            kind: TraversalKind::XPath {
+                xpath_ltr,
+                xpath_rtl,
+            },
         })
     }
 }

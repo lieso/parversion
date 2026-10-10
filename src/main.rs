@@ -26,6 +26,7 @@ mod macros;
 mod meta_context;
 mod metadata;
 mod network_analysis;
+mod network_relationship;
 mod node_analysis;
 mod node_relationship;
 mod normal_context;
@@ -50,7 +51,6 @@ mod types;
 mod utility;
 mod xpath;
 mod xslt;
-mod network_relationship;
 
 use crate::entrypoint::run;
 

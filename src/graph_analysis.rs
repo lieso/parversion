@@ -1,12 +1,11 @@
 use futures::future::try_join_all;
-use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
 use tokio::task;
 
-use crate::prelude::*;
-use crate::basis_graph::{BasisGraph, BasisGraphNode, BasisGraphMetadata};
+use crate::basis_graph::{BasisGraph, BasisGraphMetadata, BasisGraphNode};
 use crate::basis_network::{BasisNetwork, NetworkShape};
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
+use crate::prelude::*;
 use crate::traversal::{Traversal, TraversalKind};
 
 pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
@@ -75,7 +74,7 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
         options,
         stage_context,
         basis_networks.clone(),
-        network_relationships
+        network_relationships,
     )
     .await?;
 
@@ -106,11 +105,15 @@ async fn resolve_basis_graph<P: Provider, R: Reasoner>(
 
     for relationship in relationships {
         match &relationship.relationship_type {
-            NetworkRelationshipType::ParentChild { xslt_parent_to_child, xslt_child_to_parent } => {
+            NetworkRelationshipType::ParentChild {
+                xslt_parent_to_child,
+                xslt_child_to_parent,
+            } => {
                 let parent = graph_roots
                     .iter()
                     .find(|graph_node| {
-                        read_lock!(graph_node).basis_network.lineage == relationship.left_basis_lineage
+                        read_lock!(graph_node).basis_network.lineage
+                            == relationship.left_basis_lineage
                     })
                     .ok_or(Errors::UnexpectedError(
                         "Parent-child network has no parent ".to_string(),
@@ -142,7 +145,7 @@ async fn resolve_basis_graph<P: Provider, R: Reasoner>(
             }
         }
     }
-    
+
     Ok(BasisGraph {
         id: ID::new(),
         name: None,
@@ -151,7 +154,7 @@ async fn resolve_basis_graph<P: Provider, R: Reasoner>(
         graph_roots,
         metadata: BasisGraphMetadata {
             prompts: Vec::new(),
-        }
+        },
     })
 }
 

@@ -28,7 +28,7 @@ pub struct Context {
 impl Context {
     pub fn generate_context_string_network_relationship(
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        contexts: Vec<Arc<Context>>
+        contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -42,7 +42,8 @@ impl Context {
                 .clone()
         };
 
-        let spatial_context = Self::generate_spatial_context_multi(contexts.clone(), &meta_context)?;
+        let spatial_context =
+            Self::generate_spatial_context_multi(contexts.clone(), &meta_context)?;
 
         let result = format!(
             r##"
@@ -394,7 +395,7 @@ impl Context {
 
     fn generate_spatial_context_multi(
         contexts: Vec<Arc<Context>>,
-        meta_context: &MetaContext
+        meta_context: &MetaContext,
     ) -> Result<String, Errors> {
         let mut neighbourhood = HashSet::new();
 

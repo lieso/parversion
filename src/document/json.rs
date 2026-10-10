@@ -145,7 +145,10 @@ impl Json {
         let mut result: Value = Value::Object(Map::new());
 
         fn recurse(normal_meta_context: &NormalMetaContext, graph_node: Graph, result: &mut Value) {
-            if let Some(context) = normal_meta_context.contexts_lookup.get(&read_lock!(graph_node).id) {
+            if let Some(context) = normal_meta_context
+                .contexts_lookup
+                .get(&read_lock!(graph_node).id)
+            {
                 let data_node = &context.data_node;
                 let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
                 for json_node in json_nodes {

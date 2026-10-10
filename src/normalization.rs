@@ -1,18 +1,14 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use futures::future::try_join_all;
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
-use futures::future::try_join_all;
 
 use crate::basis_graph::BasisGraph;
-use crate::basis_group::BasisGroup;
-use crate::basis_network::BasisNetwork;
 use crate::classification::Classification;
 use crate::data_node::{DataNode, DataNodeFields};
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::field_analysis::generate_basis_fields;
 use crate::graph_analysis::generate_basis_graph;
-use crate::graph_node::Graph;
 use crate::graph_node::GraphNode;
 use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
 use crate::network_analysis::{generate_basis_networks, get_classification};
@@ -52,18 +48,16 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let elapsed = start.elapsed();
     log::info!("init_normalization_context: {:.2?}", elapsed);
 
-    let normalizations = try_join_all(normalization_contexts
-        .iter()
-        .map(|normalization_context| {
-            run_pipeline(
-                Arc::clone(&normalization_context),
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
-                options,
-                execution_context.clone(),
-            )
-        }))
-        .await?;
+    let normalizations = try_join_all(normalization_contexts.iter().map(|normalization_context| {
+        run_pipeline(
+            Arc::clone(&normalization_context),
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            options,
+            execution_context.clone(),
+        )
+    }))
+    .await?;
 
     Ok(normalizations.first().unwrap().clone())
 }
@@ -73,7 +67,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     options: &Options,
-    execution_context: Arc<ExecutionContext>
+    execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     let start = Instant::now();
     let stage = execution_context.enter_stage("Document classification");
@@ -245,10 +239,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Building normalized graph");
 
-    let normalized = build_normalized_graph(
-        Arc::clone(&normalization_context),
-        &options,
-    )?;
+    let normalized = build_normalized_graph(Arc::clone(&normalization_context), &options)?;
 
     {
         let mut lock = write_lock!(normalization_context);
@@ -269,8 +260,6 @@ async fn normalize_html<P: Provider, R: Reasoner>(
     document: Document,
     options: &Options,
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
-    let mut document = document;
-
     let (meta_contexts, _other_documents) = document.to_meta_context()?;
 
     let normalization_contexts = meta_contexts
@@ -532,7 +521,8 @@ fn build_normalized_graph(
         children: Vec::new(),
     }));
 
-    let mut normalized = basis_graph.apply(Arc::clone(&normalization_context), Arc::clone(&root))?;
+    let mut normalized =
+        basis_graph.apply(Arc::clone(&normalization_context), Arc::clone(&root))?;
 
     let root_context = Arc::new(NormalContext {
         id: ID::new(),

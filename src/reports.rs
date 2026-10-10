@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 
+use crate::basis_graph::{BasisGraph, BasisGraphNode};
 use crate::basis_network::BasisNetwork;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
@@ -8,7 +9,6 @@ use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::basis_graph::{BasisGraph, BasisGraphNode};
 
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
@@ -425,10 +425,26 @@ pub async fn report_basis_graph(
     println!("{}{}{}", YELLOW, "-----------------------------------------------------------------------------------------------------", RESET);
     println!("{}  id: {}{}", YELLOW, basis_graph.id.to_string(), RESET);
     println!("{}  name: {:?}{}", YELLOW, basis_graph.name, RESET);
-    println!("{}  description: {:?}{}", YELLOW, basis_graph.description, RESET);
-    println!("{}  lineage: {}{}", YELLOW, basis_graph.lineage.to_string(), RESET);
-    println!("{}  roots: {}{}", YELLOW, basis_graph.graph_roots.len(), RESET);
-    println!("{}  prompts: {:?}{}", YELLOW, basis_graph.metadata.prompts, RESET);
+    println!(
+        "{}  description: {:?}{}",
+        YELLOW, basis_graph.description, RESET
+    );
+    println!(
+        "{}  lineage: {}{}",
+        YELLOW,
+        basis_graph.lineage.to_string(),
+        RESET
+    );
+    println!(
+        "{}  roots: {}{}",
+        YELLOW,
+        basis_graph.graph_roots.len(),
+        RESET
+    );
+    println!(
+        "{}  prompts: {:?}{}",
+        YELLOW, basis_graph.metadata.prompts, RESET
+    );
     println!("{}{}{}", YELLOW, "-----------------------------------------------------------------------------------------------------", RESET);
 
     let mut stack: Vec<(Arc<RwLock<BasisGraphNode>>, usize)> = basis_graph
@@ -450,12 +466,33 @@ pub async fn report_basis_graph(
             node.id.to_string(),
             RESET
         );
-        println!("{}{}    network id: {}{}", YELLOW, indent, network.id.to_string(), RESET);
+        println!(
+            "{}{}    network id: {}{}",
+            YELLOW,
+            indent,
+            network.id.to_string(),
+            RESET
+        );
         println!("{}{}    name: {}{}", YELLOW, indent, network.name, RESET);
-        println!("{}{}    description: {}{}", YELLOW, indent, network.description, RESET);
-        println!("{}{}    lineage: {}{}", YELLOW, indent, network.lineage.to_string(), RESET);
-        println!("{}{}    shape: {:?}{}", YELLOW, indent, network.shape, RESET);
-        println!("{}{}    prompts: {:?}{}", YELLOW, indent, network.metadata.prompts, RESET);
+        println!(
+            "{}{}    description: {}{}",
+            YELLOW, indent, network.description, RESET
+        );
+        println!(
+            "{}{}    lineage: {}{}",
+            YELLOW,
+            indent,
+            network.lineage.to_string(),
+            RESET
+        );
+        println!(
+            "{}{}    shape: {:?}{}",
+            YELLOW, indent, network.shape, RESET
+        );
+        println!(
+            "{}{}    prompts: {:?}{}",
+            YELLOW, indent, network.metadata.prompts, RESET
+        );
 
         println!(
             "{}{}    basis nodes ({}):{}",

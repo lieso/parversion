@@ -9,7 +9,6 @@ use crate::basis_node::BasisNode;
 use crate::classification::Classification;
 use crate::context::Context;
 use crate::document::Document;
-use crate::graph_node::Graph;
 use crate::meta_context::MetaContext;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;

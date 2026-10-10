@@ -7,11 +7,11 @@ use crate::basis_network::BasisNetwork;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::graph_node::GraphNode;
+use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
+use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
-use crate::normal_context::NormalContext;
 use crate::xslt::Xslt;
-use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -55,8 +55,8 @@ async fn network_relationship_reflexive<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     network: Arc<BasisNetwork>,
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
-
-    let system_prompt = get_system_prompt_reflexive(reasoner, Arc::clone(&normalization_context)).await?;
+    let system_prompt =
+        get_system_prompt_reflexive(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt = get_user_prompt_reflexive(
         reasoner,
         Arc::clone(&normalization_context),
@@ -90,7 +90,12 @@ async fn network_relationship_reflexive<R: Reasoner>(
     log::debug!("");
 
     let (result, metadata) = reasoner
-        .execute::<NetworkRelationshipSelfResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .execute::<NetworkRelationshipSelfResponse>(
+            &capability,
+            &system_prompt,
+            &user_prompt,
+            schema,
+        )
         .await?;
 
     let reasoner_metadata = ReasonerMetadata {
@@ -106,14 +111,12 @@ async fn network_relationship_reflexive<R: Reasoner>(
             relationship_type: NetworkRelationshipType::NoRelationship,
         },
         NetworkRelationshipTypeResponse::ParentChild => {
-            let child_to_parent = result.child_to_parent_xslt
-                .ok_or(Errors::UnexpectedError(
-                    "ParentChild requires child_to_parent_xslt".to_string(),
-                ))?;
-            let parent_to_child = result.parent_to_child_xslt
-                .ok_or(Errors::UnexpectedError(
-                    "ParentChild requires parent_to_child_xslt".to_string(),
-                ))?;
+            let child_to_parent = result.child_to_parent_xslt.ok_or(Errors::UnexpectedError(
+                "ParentChild requires child_to_parent_xslt".to_string(),
+            ))?;
+            let parent_to_child = result.parent_to_child_xslt.ok_or(Errors::UnexpectedError(
+                "ParentChild requires parent_to_child_xslt".to_string(),
+            ))?;
 
             NetworkRelationship {
                 id: ID::new(),
@@ -165,7 +168,11 @@ async fn get_system_prompt_reflexive<R: Reasoner>(
 
     for path in paths_to_try {
         log::trace!("Searching for prompt with path: {}", path);
-        if let Some(system_prompt) = reasoner.prompts().get(&path, "network_relationship_self").await? {
+        if let Some(system_prompt) = reasoner
+            .prompts()
+            .get(&path, "network_relationship_self")
+            .await?
+        {
             return Ok(system_prompt);
         }
     }
@@ -200,37 +207,39 @@ fn get_user_prompt_reflexive<R: Reasoner>(
             .take(5)
             .map(|child| {
                 let id = read_lock!(child).id.clone();
-                normal_meta_context
-                    .contexts_lookup
-                    .get(&id)
-                    .cloned()
-                    .ok_or(Errors::DeficientNormalizationContextError(format!(
+                normal_meta_context.contexts_lookup.get(&id).cloned().ok_or(
+                    Errors::DeficientNormalizationContextError(format!(
                         "No normal context found for graph node {}",
                         id.to_string()
-                    )))
+                    )),
+                )
             })
             .collect::<Result<Vec<_>, Errors>>()?
     };
 
-    let context_string = normal_contexts
-        .iter()
-        .try_fold(String::new(), |acc, normal_context| {
-            let context_string = Context::generate_context_string_network_relationship(
-                Arc::clone(&normalization_context),
-                normal_context.contexts.clone()
-            )?;
+    let context_string =
+        normal_contexts
+            .iter()
+            .try_fold(String::new(), |acc, normal_context| {
+                let context_string = Context::generate_context_string_network_relationship(
+                    Arc::clone(&normalization_context),
+                    normal_context.contexts.clone(),
+                )?;
 
-            Ok::<String, Errors>(if acc.is_empty() {
-                context_string
-            } else {
-                format!("{}\n\n---SNIPPET SEPARATOR---\n\n{}", acc, context_string)
-            })
-        })?;
+                Ok::<String, Errors>(if acc.is_empty() {
+                    context_string
+                } else {
+                    format!("{}\n\n---SNIPPET SEPARATOR---\n\n{}", acc, context_string)
+                })
+            })?;
 
-    let result = format!(r##"
+    let result = format!(
+        r##"
 [ENTITIES]
 {}
-    "##, context_string);
+    "##,
+        context_string
+    );
 
     Ok(result)
 }

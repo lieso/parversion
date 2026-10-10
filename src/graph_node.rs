@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::basis_node::BasisNode;
 use crate::data_node::DataNode;
 use crate::prelude::*;
-use crate::xpath::{XPath, XPathSegment, XPathPredicate, XPathAxis};
+use crate::xpath::{XPath, XPathAxis, XPathPredicate, XPathSegment};
 
 pub type Graph = Arc<RwLock<GraphNode>>;
 pub type GraphNodeID = ID;
@@ -305,7 +305,11 @@ impl GraphNode {
             .collect();
 
         let segment_count = segments.len();
-        let xpath = XPath { segments, start_variable: None, union: Vec::new() };
+        let xpath = XPath {
+            segments,
+            start_variable: None,
+            union: Vec::new(),
+        };
 
         log::info!(
             "XPATH GENERATION - created xpath with {} total segments",

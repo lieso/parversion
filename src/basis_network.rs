@@ -162,13 +162,14 @@ impl BasisNetwork {
         let mut processed_traversals: HashSet<ID> = HashSet::new();
 
         while let Some((current_context, current_node)) = queue.pop_front() {
-            let traversals: Vec<Traversal> = self.traversals
+            let traversals: Vec<Traversal> = self
+                .traversals
                 .iter()
                 .filter(|traversal| {
-                    !processed_traversals.contains(&traversal.id) && (
-                        traversal.left_basis_lineage.clone().unwrap() == current_node.lineage ||
-                        traversal.right_basis_lineage.clone().unwrap() == current_node.lineage
-                    )
+                    !processed_traversals.contains(&traversal.id)
+                        && (traversal.left_basis_lineage.clone().unwrap() == current_node.lineage
+                            || traversal.right_basis_lineage.clone().unwrap()
+                                == current_node.lineage)
                 })
                 .cloned()
                 .collect();
@@ -181,9 +182,10 @@ impl BasisNetwork {
                     &traversal,
                 )?;
 
-                if next_contexts.iter().all(|(context, _)| {
-                    processed_contexts.contains(&context.id)
-                }) {
+                if next_contexts
+                    .iter()
+                    .all(|(context, _)| processed_contexts.contains(&context.id))
+                {
                     processed_traversals.insert(traversal.id.clone());
                 } else {
                     for (next_context, next_node) in next_contexts {
@@ -203,7 +205,8 @@ impl BasisNetwork {
                                     .as_ref()
                                     .ok_or_else(|| {
                                         Errors::DeficientNormalizationContextError(
-                                            "Basis networks not provided in normalization context".to_string(),
+                                            "Basis networks not provided in normalization context"
+                                                .to_string(),
                                         )
                                     })?
                                     .values()
@@ -214,7 +217,10 @@ impl BasisNetwork {
                             let next_network = basis_networks
                                 .iter()
                                 .find(|network| {
-                                    network.basis_nodes.iter().any(|basis_node| basis_node.id == next_node.id)
+                                    network
+                                        .basis_nodes
+                                        .iter()
+                                        .any(|basis_node| basis_node.id == next_node.id)
                                 })
                                 .cloned();
 
@@ -227,7 +233,7 @@ impl BasisNetwork {
                                     normal_contexts_lookup,
                                     processed_contexts,
                                     next_context.graph_node.clone(),
-                                    graph_node.clone()
+                                    graph_node.clone(),
                                 )?;
                             } else {
                                 log::warn!("Traversed to a basis node outside the current network, but has not been placed in any BasisNetwork");
@@ -250,26 +256,22 @@ impl BasisNetwork {
         network_contexts.retain(|c| seen.insert(c.id.clone()));
 
         match self.shape {
-            NetworkShape::Reduction => {
-                Ok(self.reduce(
-                    Arc::clone(&parent),
-                    Arc::clone(&graph_node),
-                    Arc::clone(&normalization_context),
-                    network_contexts,
-                    normal_contexts,
-                    normal_contexts_lookup,
-                )?)
-            }
-            NetworkShape::Enumeration => {
-                Ok(self.enumerate(
-                    Arc::clone(&parent),
-                    Arc::clone(&graph_node),
-                    Arc::clone(&normalization_context),
-                    network_contexts,
-                    normal_contexts,
-                    normal_contexts_lookup,
-                )?)
-            }
+            NetworkShape::Reduction => Ok(self.reduce(
+                Arc::clone(&parent),
+                Arc::clone(&graph_node),
+                Arc::clone(&normalization_context),
+                network_contexts,
+                normal_contexts,
+                normal_contexts_lookup,
+            )?),
+            NetworkShape::Enumeration => Ok(self.enumerate(
+                Arc::clone(&parent),
+                Arc::clone(&graph_node),
+                Arc::clone(&normalization_context),
+                network_contexts,
+                normal_contexts,
+                normal_contexts_lookup,
+            )?),
         }
     }
 
@@ -304,19 +306,17 @@ impl BasisNetwork {
             read_lock!(&container_context.graph_node).id.clone(),
             Arc::clone(&container_context),
         );
-        normal_contexts_lookup.insert(
-            container_context.id.clone(),
-            Arc::clone(&container_context),
-        );
+        normal_contexts_lookup.insert(container_context.id.clone(), Arc::clone(&container_context));
 
-        write_lock!(parent).children.push(container_context.graph_node.clone());
+        write_lock!(parent)
+            .children
+            .push(container_context.graph_node.clone());
 
         let mut network_contexts = network_contexts.clone();
 
-        network_contexts.sort_by_cached_key(|context| {
-            read_lock!(context.graph_node).document_path()
-        });
-        
+        network_contexts
+            .sort_by_cached_key(|context| read_lock!(context.graph_node).document_path());
+
         for (index, network_context) in network_contexts.into_iter().enumerate() {
             let basis_node = {
                 let lock = read_lock!(normalization_context);
@@ -334,7 +334,7 @@ impl BasisNetwork {
                         Arc::new(data_node.clone()),
                         vec![Arc::clone(&container_context.graph_node)],
                     ))),
-                    contexts: vec![network_context.clone()]
+                    contexts: vec![network_context.clone()],
                 });
 
                 normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
@@ -346,7 +346,9 @@ impl BasisNetwork {
                     Arc::clone(&normal_context),
                 );
 
-                write_lock!(container_context.graph_node).children.push(normal_context.graph_node.clone());
+                write_lock!(container_context.graph_node)
+                    .children
+                    .push(normal_context.graph_node.clone());
             }
         }
 
@@ -384,7 +386,7 @@ impl BasisNetwork {
                 } else {
                     Ok(acc)
                 }
-            }
+            },
         )?;
 
         let normal_context = Arc::new(NormalContext {
@@ -447,7 +449,10 @@ impl BasisNetwork {
 
         let xpath_str = {
             match &traversal.kind {
-                TraversalKind::XPath { xpath_ltr, xpath_rtl } => {
+                TraversalKind::XPath {
+                    xpath_ltr,
+                    xpath_rtl,
+                } => {
                     if traversal.left_basis_lineage.as_ref() == Some(&basis_node.lineage) {
                         xpath_ltr.clone()
                     } else {
@@ -493,7 +498,8 @@ impl BasisNetwork {
 
             if let Some(target_basis_node) = target_basis_node {
                 let expected_lineage = {
-                    let is_left = traversal.left_basis_lineage.as_ref() == Some(&basis_node.lineage);
+                    let is_left =
+                        traversal.left_basis_lineage.as_ref() == Some(&basis_node.lineage);
 
                     if is_left {
                         &traversal.right_basis_lineage.clone().unwrap()

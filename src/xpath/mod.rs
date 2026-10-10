@@ -3,15 +3,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use crate::graph_node::{Graph, GraphNode};
+use crate::graph_node::Graph;
 use crate::prelude::*;
 
 mod traverse;
 
 pub use traverse::{
-    traverse_using_xpath_segment,
-    traverse_using_xpath_predicate,
-    traverse_using_xpath_node_test
+    traverse_using_xpath_node_test, traverse_using_xpath_predicate, traverse_using_xpath_segment,
 };
 
 thread_local! {
@@ -73,8 +71,15 @@ pub struct Value {
 pub type Variables = HashMap<String, Vec<Value>>;
 
 impl Value {
-    pub fn from_graph(graph: Graph) -> Self { Value { graph, selection: None } }
-    pub fn is_node(&self) -> bool { self.selection.is_none() }
+    pub fn from_graph(graph: Graph) -> Self {
+        Value {
+            graph,
+            selection: None,
+        }
+    }
+    pub fn is_node(&self) -> bool {
+        self.selection.is_none()
+    }
     pub fn to_number(&self) -> Option<f64> {
         match &self.selection {
             Some(Selection::Number(n)) => Some(*n),
@@ -98,8 +103,8 @@ pub enum Selection {
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum Expr {
     Path(XPath),
-    Function { name: String, arg: Box<Expr> },        // number(...)
-    Filter { base: Box<Expr>, position: usize },       // (...)[1]
+    Function { name: String, arg: Box<Expr> }, // number(...)
+    Filter { base: Box<Expr>, position: usize }, // (...)[1]
 }
 
 impl Expr {
@@ -136,9 +141,8 @@ impl Expr {
 
         // ( ... ) or ( ... )[n]
         if s.starts_with('(') {
-            let close = matching_paren(s, 0).ok_or_else(|| {
-                Errors::XPathParseError(format!("Unbalanced parentheses: {}", s))
-            })?;
+            let close = matching_paren(s, 0)
+                .ok_or_else(|| Errors::XPathParseError(format!("Unbalanced parentheses: {}", s)))?;
             let inner = Expr::from_str(&s[1..close])?;
             let rest = s[close + 1..].trim();
             if rest.is_empty() {
@@ -149,7 +153,10 @@ impl Expr {
                 .and_then(|r| r.strip_suffix(']'))
                 .and_then(|r| r.trim().parse::<usize>().ok())
                 .ok_or_else(|| Errors::XPathParseError(format!("Unsupported expression: {}", s)))?;
-            return Ok(Expr::Filter { base: Box::new(inner), position });
+            return Ok(Expr::Filter {
+                base: Box::new(inner),
+                position,
+            });
         }
 
         Ok(Expr::Path(XPath::from_str(s)?))
@@ -168,7 +175,9 @@ fn matching_paren(s: &str, open: usize) -> Option<usize> {
             (None, '(') => depth += 1,
             (None, ')') => {
                 depth -= 1;
-                if depth == 0 { return Some(i); }
+                if depth == 0 {
+                    return Some(i);
+                }
             }
             _ => {}
         }
@@ -181,11 +190,18 @@ pub enum Operand {
     /// Source text, so Operand can stay Hash + Eq (f64 can't).
     Number(String),
     Variable(String),
-    Arith { op: ArithOp, lhs: Box<Operand>, rhs: Box<Operand> },
+    Arith {
+        op: ArithOp,
+        lhs: Box<Operand>,
+        rhs: Box<Operand>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
-pub enum ArithOp { Add, Sub }
+pub enum ArithOp {
+    Add,
+    Sub,
+}
 
 impl Operand {
     fn substitute(&self, variables: &Variables) -> Result<Operand, Errors> {
@@ -197,7 +213,10 @@ impl Operand {
                     .and_then(|values| values.first())
                     .and_then(|v| v.to_number())
                     .ok_or_else(|| {
-                        Errors::XPathTraverseError(format!("Unbound or non-numeric variable ${}", name))
+                        Errors::XPathTraverseError(format!(
+                            "Unbound or non-numeric variable ${}",
+                            name
+                        ))
                     })?;
                 Operand::Number(n.to_string())
             }
@@ -232,7 +251,10 @@ impl Operand {
         if s.parse::<f64>().is_ok() {
             return Ok(Operand::Number(s.to_string()));
         }
-        Err(Errors::XPathParseError(format!("Unsupported operand: {}", s)))
+        Err(Errors::XPathParseError(format!(
+            "Unsupported operand: {}",
+            s
+        )))
     }
 }
 
@@ -268,11 +290,18 @@ impl Expr {
                         variables,
                         Arc::clone(&start),
                     )?;
-                    let n = values.first().and_then(|v| v.to_number()).unwrap_or(f64::NAN);
-                    Ok(vec![Value { graph: start, selection: Some(Selection::Number(n)) }])
+                    let n = values
+                        .first()
+                        .and_then(|v| v.to_number())
+                        .unwrap_or(f64::NAN);
+                    Ok(vec![Value {
+                        graph: start,
+                        selection: Some(Selection::Number(n)),
+                    }])
                 }
                 other => Err(Errors::XPathTraverseError(format!(
-                    "Unsupported function {}()", other
+                    "Unsupported function {}()",
+                    other
                 ))),
             },
         }
@@ -296,9 +325,9 @@ impl Operand {
 
     pub fn evaluate(&self) -> Result<f64, Errors> {
         match self {
-            Operand::Number(n) => n.parse::<f64>().map_err(|_| {
-                Errors::XPathTraverseError(format!("Invalid number literal: {}", n))
-            }),
+            Operand::Number(n) => n
+                .parse::<f64>()
+                .map_err(|_| Errors::XPathTraverseError(format!("Invalid number literal: {}", n))),
             Operand::Variable(name) => Err(Errors::XPathTraverseError(format!(
                 "Unsubstituted variable ${}",
                 name
@@ -360,7 +389,10 @@ impl XPath {
                 .collect(),
             None => vec![Arc::clone(&start)],
         };
-        let path = XPath { start_variable: None, ..bound };
+        let path = XPath {
+            start_variable: None,
+            ..bound
+        };
 
         let mut out = Vec::new();
         for s in starts {
@@ -402,9 +434,11 @@ impl XPath {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
     ) -> Result<Vec<Value>, Errors> {
-        let mut out = self.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
+        let mut out =
+            self.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
         for branch in &self.union {
-            let values = branch.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
+            let values =
+                branch.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
             Self::extend_dedup(&mut out, values);
         }
         Ok(out)
@@ -583,7 +617,9 @@ impl XPath {
             Some(p) if p.starts_with('$') => {
                 let name = &p[1..];
                 if name.is_empty()
-                    || !name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
+                    || !name
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.')
                 {
                     return Err(Errors::XPathParseError(format!(
                         "Unsupported variable reference: {}",
@@ -607,11 +643,16 @@ impl XPath {
             return Err(Errors::XPathParseError("XPath is empty".to_string()));
         }
 
-        Ok(XPath { segments, start_variable, union: Vec::new() })
+        Ok(XPath {
+            segments,
+            start_variable,
+            union: Vec::new(),
+        })
     }
 
     pub fn to_string(&self) -> String {
-        let path = self.segments
+        let path = self
+            .segments
             .iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
@@ -642,7 +683,7 @@ impl XPathSegment {
                 .collect::<Result<Vec<_>, Errors>>()?,
         })
     }
-    
+
     fn from_str(s: &str) -> Result<Self, Errors> {
         let mut rest = s.trim_end();
         let mut predicate_strs: Vec<&str> = Vec::new();
@@ -878,7 +919,8 @@ impl XPathPredicate {
             let attr_part = attr_part.trim();
             if attr_part.contains('(') || attr_part == "." {
                 return Err(Errors::XPathParseError(format!(
-                    "Unsupported contains() argument: {}", attr_part
+                    "Unsupported contains() argument: {}",
+                    attr_part
                 )));
             }
             let name = attr_part.trim().trim_start_matches('@').to_string();
@@ -903,7 +945,8 @@ impl XPathPredicate {
             let attr_part = attr_part.trim();
             if attr_part.contains('(') || attr_part == "." {
                 return Err(Errors::XPathParseError(format!(
-                    "Unsupported contains() argument: {}", attr_part
+                    "Unsupported contains() argument: {}",
+                    attr_part
                 )));
             }
 
@@ -959,9 +1002,14 @@ impl XPathPredicate {
             }
             XPathPredicate::Not(pred) => format!("not({})", pred.to_string()),
             XPathPredicate::ContainsToken { name, value } => {
-                format!("contains(concat(' ', normalize-space(@{}), ' '), ' {} ')", name, value)
+                format!(
+                    "contains(concat(' ', normalize-space(@{}), ' '), ' {} ')",
+                    name, value
+                )
             }
-            XPathPredicate::Equals { lhs, rhs } => format!("{} = {}", lhs.to_string(), rhs.to_string())
+            XPathPredicate::Equals { lhs, rhs } => {
+                format!("{} = {}", lhs.to_string(), rhs.to_string())
+            }
         }
     }
 }

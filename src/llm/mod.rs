@@ -1,11 +1,7 @@
 use rand::prelude::*;
-use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use crate::basis_field::BasisField;
-use crate::basis_network::BasisNetwork;
-use crate::config::CONFIG;
 use crate::context::Context;
 use crate::prelude::*;
 use crate::transformation::{FieldTranslationTransformation, NetworkTranslationTransformation};

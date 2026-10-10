@@ -167,20 +167,27 @@ pub async fn node_relationship_self<R: Reasoner>(
                 .xpath_pairs
                 .into_iter()
                 .map(|pair| {
-                    let (xpath_ltr, xpath_rtl) = (pair.left_to_right_xpath, pair.right_to_left_xpath);
+                    let (xpath_ltr, xpath_rtl) =
+                        (pair.left_to_right_xpath, pair.right_to_left_xpath);
 
                     NodeRelationship {
                         id: ID::new(),
                         left_basis_lineage: node.lineage.clone(),
                         right_basis_lineage: node.lineage.clone(),
                         relationship_type: if mixed_content {
-                            NodeRelationshipType::MixedContent { xpath_ltr, xpath_rtl }
+                            NodeRelationshipType::MixedContent {
+                                xpath_ltr,
+                                xpath_rtl,
+                            }
                         } else {
-                            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl }
+                            NodeRelationshipType::Combine {
+                                xpath_ltr,
+                                xpath_rtl,
+                            }
                         },
                     }
                 })
-            .collect()
+                .collect()
         }
     };
 
@@ -446,7 +453,8 @@ fn validate_node_relationship(
                             Arc::clone(&normalization_context),
                             Arc::clone(&item.graph_node),
                         )?;
-                        let target_graph_nodes: Vec<Graph> = target_values.into_iter().map(|v| v.graph).collect();
+                        let target_graph_nodes: Vec<Graph> =
+                            target_values.into_iter().map(|v| v.graph).collect();
 
                         if target_graph_nodes.is_empty() {
                             log::warn!(
@@ -499,7 +507,8 @@ fn validate_node_relationship(
                             Arc::clone(&normalization_context),
                             Arc::clone(&item.graph_node),
                         )?;
-                        let target_graph_nodes: Vec<Graph> = target_values.into_iter().map(|v| v.graph).collect();
+                        let target_graph_nodes: Vec<Graph> =
+                            target_values.into_iter().map(|v| v.graph).collect();
 
                         if target_graph_nodes.is_empty() {
                             log::warn!(

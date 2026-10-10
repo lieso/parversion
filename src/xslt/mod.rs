@@ -1,10 +1,12 @@
-use xmltree::{Element, XMLNode};
 use std::sync::{Arc, RwLock};
+use xmltree::{Element, XMLNode};
 
-use crate::prelude::*;
-use crate::graph_node::{GraphNode, Graph};
+use crate::graph_node::{Graph, GraphNode};
 use crate::normalization_context::NormalizationContext;
-use crate::xpath::{XPath, traverse_using_xpath_predicate, traverse_using_xpath_node_test, Value, Selection, Variables, Expr};
+use crate::prelude::*;
+use crate::xpath::{
+    traverse_using_xpath_node_test, traverse_using_xpath_predicate, Expr, Value, Variables, XPath,
+};
 
 const XSL_NAMESPACE: &str = "http://www.w3.org/1999/XSL/Transform";
 
@@ -14,7 +16,7 @@ pub struct Xslt {
 
 struct Template {
     pattern: XPath,
-    body: Vec<Instruction>
+    body: Vec<Instruction>,
 }
 
 enum Instruction {
@@ -32,7 +34,7 @@ impl Xslt {
 
         if root.namespace.as_deref() != Some(XSL_NAMESPACE) || root.name != "stylesheet" {
             return Err(Errors::XsltParseError(
-                "Root element must be xsl:stylesheet with valid namespace".to_string()
+                "Root element must be xsl:stylesheet with valid namespace".to_string(),
             ));
         };
 
@@ -66,10 +68,14 @@ impl Xslt {
 
         let template_element = match templates.as_slice() {
             [only] => *only,
-            [] => return Err(Errors::XsltParseError("Stylesheet has no xsl:template".to_string())),
+            [] => {
+                return Err(Errors::XsltParseError(
+                    "Stylesheet has no xsl:template".to_string(),
+                ))
+            }
             _ => {
                 return Err(Errors::XsltParseError(
-                        "Only a single xsl:template is supported".to_string(),
+                    "Only a single xsl:template is supported".to_string(),
                 ))
             }
         };
@@ -114,10 +120,7 @@ impl Xslt {
         }
 
         Ok(Xslt {
-            template: Template {
-                pattern,
-                body,
-            }
+            template: Template { pattern, body },
         })
     }
 
@@ -163,7 +166,7 @@ impl Xslt {
     fn matches(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        node: Graph
+        node: Graph,
     ) -> Result<bool, Errors> {
         let segment = &self.template.pattern.segments[0];
 
@@ -190,6 +193,9 @@ impl Xslt {
 
 fn required_attribute(element: &Element, name: &str) -> Result<String, Errors> {
     element.attributes.get(name).cloned().ok_or_else(|| {
-        Errors::XsltParseError(format!("xsl:{} requires a {} attribute", element.name, name))
+        Errors::XsltParseError(format!(
+            "xsl:{} requires a {} attribute",
+            element.name, name
+        ))
     })
 }
