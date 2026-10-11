@@ -83,12 +83,8 @@ fn handle_error(err: &Errors) {
         Errors::UnexpectedError(msg) => format!("unexpected error: {}", msg),
         Errors::PathConversionError => "failed to convert path".to_string(),
         Errors::FetchUrlError(msg) => format!("failed to fetch URL: {}", msg),
-        Errors::DeficientMetaContextError(msg) => format!("deficient meta context: {}", msg),
         Errors::DeficientNormalizationContextError(msg) => {
             format!("deficient normalization context: {}", msg)
-        }
-        Errors::DeficientTranslationContextError(msg) => {
-            format!("deficient translation context: {}", msg)
         }
         Errors::ClassificationNotFound => "classification not found".to_string(),
         Errors::InsufficientPrerequisites(msg) => format!("insufficient prerequisites: {}", msg),
@@ -108,7 +104,6 @@ fn handle_error(err: &Errors) {
         Errors::EmbeddingError(msg) => format!("embedding error: {}", msg),
         Errors::TaskJoinError(msg) => format!("task join error: {}", msg),
         Errors::XsltParseError(msg) => format!("failed to parse XSLT: {}", msg),
-        Errors::XsltTraverseError(msg) => format!("failed to traverse XSLT: {}", msg),
     };
 
     eprintln!("Error: {}", message);

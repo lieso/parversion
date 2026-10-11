@@ -13,9 +13,7 @@ pub enum Errors {
     UnexpectedError(String),
     PathConversionError,
     FetchUrlError(String),
-    DeficientMetaContextError(String),
     DeficientNormalizationContextError(String),
-    DeficientTranslationContextError(String),
     ClassificationNotFound,
     InsufficientPrerequisites(String),
     XPathParseError(String),
@@ -34,7 +32,6 @@ pub enum Errors {
     EmbeddingError(String),
     TaskJoinError(String),
     XsltParseError(String),
-    XsltTraverseError(String),
 }
 
 impl From<JoinError> for Errors {
