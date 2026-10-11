@@ -402,34 +402,6 @@ impl XPath {
         Ok(out)
     }
 
-    fn evaluate_branch(
-        &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        variables: &Variables,
-        start: Graph,
-    ) -> Result<Vec<Value>, Errors> {
-        let starts: Vec<Graph> = match &self.start_variable {
-            Some(name) => variables
-                .get(name)
-                .ok_or_else(|| Errors::XPathTraverseError(format!("Unbound variable ${}", name)))?
-                .iter()
-                .map(|v| Arc::clone(&v.graph))
-                .collect(),
-            None => vec![Arc::clone(&start)],
-        };
-        let path = XPath {
-            start_variable: None,
-            union: Vec::new(),
-            segments: self.segments.clone(),
-        };
-
-        let mut out = Vec::new();
-        for s in starts {
-            out.extend(path.traverse_branch(Arc::clone(&normalization_context), s)?);
-        }
-        Ok(out)
-    }
-
     pub fn traverse(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,

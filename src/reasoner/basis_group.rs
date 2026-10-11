@@ -28,7 +28,7 @@ pub async fn basis_group<R: Reasoner>(
     let hash = group[0].data_node.hash.clone();
 
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
-    let user_prompt = get_user_prompt(reasoner, Arc::clone(&normalization_context), group).await?;
+    let user_prompt = get_user_prompt(Arc::clone(&normalization_context), group).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisGroupResponse))
         .expect("Failed to serialise BasisGroupResponse schema");
     let capability = Capability::Fast;
@@ -68,11 +68,6 @@ pub async fn basis_group<R: Reasoner>(
     };
 
     if result.is_match {
-        let meta_context = {
-            let lock = read_lock!(normalization_context);
-            lock.meta_context.clone().unwrap()
-        };
-
         let basis_group = BasisGroup {
             id: ID::new(),
             hash,
@@ -90,15 +85,10 @@ pub async fn basis_group<R: Reasoner>(
     }
 }
 
-async fn get_user_prompt<R: Reasoner>(
-    reasoner: &R,
+async fn get_user_prompt(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().unwrap()
-    };
     let group = pre_sample_context_group(group);
     let context_strings: Vec<String> = group
         .iter()

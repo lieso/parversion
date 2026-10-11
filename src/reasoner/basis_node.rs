@@ -196,7 +196,7 @@ async fn get_user_prompt<R: Reasoner>(
             context.generate_context_string_basis_node(Arc::clone(&normalization_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
-    let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
+    let (embeddings, _metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = sample_most_different(context_strings, &embeddings);
     let merged_samples = samples.join("\n\n---OCCURRENCE SEPARATOR---\n\n");
 

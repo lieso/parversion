@@ -74,10 +74,10 @@ pub struct Document {
 impl Document {
     pub async fn from_schema_string<P: Provider, R: Reasoner>(
         provider: Arc<P>,
-        reasoner: Arc<R>,
+        _reasoner: Arc<R>,
         value: String,
         options: &Options,
-        metadata: &Metadata,
+        _metadata: &Metadata,
     ) -> Result<Self, Errors> {
         log::trace!("In from_schema_string");
 
@@ -266,7 +266,7 @@ impl Document {
     }
 
     pub fn from_translation(
-        translation_context: Arc<RwLock<TranslationContext>>,
+        _translation_context: Arc<RwLock<TranslationContext>>,
         document_format: &DocumentFormat,
     ) -> Result<Self, Errors> {
         log::trace!("In from_translation");

@@ -57,7 +57,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
                 let neighbours = get_basis_node_neighbours(
                     Arc::clone(&normalization_context),
                     Arc::clone(&current),
-                    Arc::clone(&basis_node),
                 )?;
 
                 let next_comparisons: Vec<(Arc<BasisNode>, Arc<BasisNode>)> = neighbours
@@ -161,15 +160,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
             .collect()
     };
 
-    let basis_node_contexts = {
-        let lock = read_lock!(normalization_context);
-        lock.basis_node_contexts.clone().ok_or_else(|| {
-            Errors::DeficientNormalizationContextError(
-                "Basis node contexts not provided in normalization context".to_string(),
-            )
-        })?
-    };
-
     let non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
         .iter()
         .filter(|basis_node| !basis_node.transformations.is_empty())
@@ -198,7 +188,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 fn get_basis_node_neighbours(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     graph: Graph,
-    target_basis_node: Arc<BasisNode>,
 ) -> Result<Vec<Arc<BasisNode>>, Errors> {
     let mut result: Vec<Arc<BasisNode>> = Vec::new();
 
@@ -307,7 +296,6 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
         .cloned()
         .collect();
 
-    let basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
     let mut placed: HashSet<Lineage> = HashSet::new();
     let mut handles = Vec::new();
 
@@ -627,42 +615,6 @@ fn get_mixed_content_relationships(
                     if visited_lineages.insert(neighbour.clone()) {
                         queue.push_back(neighbour);
                     }
-                }
-            }
-        }
-    }
-
-    collected.into_values().collect()
-}
-
-fn get_node_relationships(
-    relationships: Vec<Arc<NodeRelationship>>,
-    basis_lineage: &Lineage,
-) -> Vec<Arc<NodeRelationship>> {
-    let mut visited_lineages: HashSet<Lineage> = HashSet::new();
-    let mut queue: VecDeque<Lineage> = VecDeque::new();
-    let mut collected: HashMap<ID, Arc<NodeRelationship>> = HashMap::new();
-
-    visited_lineages.insert(basis_lineage.clone());
-    queue.push_back(basis_lineage.clone());
-
-    while let Some(current) = queue.pop_front() {
-        for relationship in &relationships {
-            if relationship.left_basis_lineage == current
-                || relationship.right_basis_lineage == current
-            {
-                collected
-                    .entry(relationship.id.clone())
-                    .or_insert_with(|| Arc::clone(relationship));
-
-                let neighbour = if relationship.left_basis_lineage == current {
-                    relationship.right_basis_lineage.clone()
-                } else {
-                    relationship.left_basis_lineage.clone()
-                };
-
-                if visited_lineages.insert(neighbour.clone()) {
-                    queue.push_back(neighbour);
                 }
             }
         }

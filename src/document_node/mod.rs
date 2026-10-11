@@ -66,7 +66,7 @@ impl DocumentNode {
     pub fn get_attribute_value(&self, attribute: &str) -> Option<String> {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_attribute_value(&node, attribute),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(_value) => panic!("Unexpected DocumentNodeData"),
         }
     }
 
@@ -93,7 +93,7 @@ impl DocumentNode {
     pub fn get_element_name(&self) -> String {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_element_name(&node),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(_value) => panic!("Unexpected DocumentNodeData"),
         }
     }
 

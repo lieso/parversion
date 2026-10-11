@@ -6,7 +6,7 @@ pub use crate::id::{
     NodeID, TranslationNetworkID, TranslationNodeID, ID,
 };
 pub use crate::lineage::{BasisLineage, Lineage};
-pub use crate::macros::*;
+pub(crate) use crate::macros::*;
 pub use crate::meta_context::MetaContext;
 pub use crate::metadata::Metadata;
 pub use crate::normalization_context::NormalizationContext;

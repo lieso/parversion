@@ -8,7 +8,6 @@ use crate::graph_node::GraphNode;
 use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
-use crate::provider::Provider;
 
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
@@ -16,8 +15,7 @@ const GREEN: &str = "\x1b[32m";
 const RESET: &str = "\x1b[0m";
 const YELLOW: &str = "\x1b[33m";
 
-pub async fn report_basis_fields<P: Provider>(
-    provider: Arc<P>,
+pub async fn report_basis_fields(
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
     let basis_fields = {
@@ -97,8 +95,7 @@ pub async fn report_basis_fields<P: Provider>(
     Ok(())
 }
 
-pub async fn report_basis_groups<P: Provider>(
-    provider: Arc<P>,
+pub async fn report_basis_groups(
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
     let context_groups = {
@@ -175,8 +172,7 @@ pub async fn report_basis_groups<P: Provider>(
     Ok(())
 }
 
-pub async fn report_basis_nodes<P: Provider>(
-    provider: Arc<P>,
+pub async fn report_basis_nodes(
     normalization_context: Arc<RwLock<NormalizationContext>>,
 ) -> Result<(), Errors> {
     let (context_groups, _context_to_group) =

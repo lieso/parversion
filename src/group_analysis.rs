@@ -52,9 +52,9 @@ pub fn resolve_context_groups(
         basis_group_lookup.insert(key, group.clone());
     }
 
-    let mut context_groups: Arc<RwLock<HashMap<BasisGroupID, Vec<Arc<Context>>>>> =
+    let context_groups: Arc<RwLock<HashMap<BasisGroupID, Vec<Arc<Context>>>>> =
         Arc::new(RwLock::new(HashMap::new()));
-    let mut context_to_group: Arc<RwLock<HashMap<ContextID, Arc<BasisGroup>>>> =
+    let context_to_group: Arc<RwLock<HashMap<ContextID, Arc<BasisGroup>>>> =
         Arc::new(RwLock::new(HashMap::new()));
 
     non_empty_contexts.par_iter().for_each(|context| {

@@ -104,7 +104,7 @@ async fn get_user_prompt<R: Reasoner>(
         .iter()
         .map(|context| context.generate_context_string(&meta_context))
         .collect::<Result<Vec<String>, Errors>>()?;
-    let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
+    let (embeddings, _metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = sample_most_different(context_strings, &embeddings);
     let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 

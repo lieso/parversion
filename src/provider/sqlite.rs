@@ -76,16 +76,6 @@ impl SqliteProvider {
     }
 }
 
-fn sorted_keys(a: &Hash, b: &Hash) -> Result<(String, String), Errors> {
-    let a = a
-        .to_string()
-        .ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
-    let b = b
-        .to_string()
-        .ok_or_else(|| Errors::UnexpectedError("Database operation failed".to_string()))?;
-    Ok(if a <= b { (a, b) } else { (b, a) })
-}
-
 fn lock_err() -> Errors {
     Errors::ProviderError("sqlite connection mutex poisoned".to_string())
 }

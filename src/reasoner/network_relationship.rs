@@ -54,7 +54,6 @@ async fn network_relationship_reflexive<R: Reasoner>(
     let system_prompt =
         get_system_prompt_reflexive(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt = get_user_prompt_reflexive(
-        reasoner,
         Arc::clone(&normalization_context),
         network.clone(),
     )?;
@@ -130,10 +129,10 @@ async fn network_relationship_reflexive<R: Reasoner>(
 }
 
 async fn network_relationship_comparative<R: Reasoner>(
-    reasoner: &R,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    left: Arc<BasisNetwork>,
-    right: Arc<BasisNetwork>,
+    _reasoner: &R,
+    _normalization_context: Arc<RwLock<NormalizationContext>>,
+    _left: Arc<BasisNetwork>,
+    _right: Arc<BasisNetwork>,
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
     unimplemented!()
 }
@@ -178,8 +177,7 @@ async fn get_system_prompt_reflexive<R: Reasoner>(
     ))
 }
 
-fn get_user_prompt_reflexive<R: Reasoner>(
-    reasoner: &R,
+fn get_user_prompt_reflexive(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     network: Arc<BasisNetwork>,
 ) -> Result<String, Errors> {

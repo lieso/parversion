@@ -110,7 +110,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
 
     #[cfg(debug_assertions)]
     {
-        report_basis_fields(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+        report_basis_fields(Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
@@ -145,7 +145,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
 
     #[cfg(debug_assertions)]
     {
-        report_basis_groups(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+        report_basis_groups(Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
@@ -173,7 +173,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
 
     #[cfg(debug_assertions)]
     {
-        report_basis_nodes(Arc::clone(&provider), Arc::clone(&normalization_context)).await?;
+        report_basis_nodes(Arc::clone(&normalization_context)).await?;
     }
 
     stage.finish();
@@ -254,7 +254,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
 
 async fn normalize_html(
     document: Document,
-    options: &Options,
+    _options: &Options,
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     let (meta_contexts, _other_documents) = document.to_meta_context()?;
 
@@ -480,7 +480,7 @@ async fn init_normalization_context(
 
 fn build_normalized_graph(
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    options: &Options,
+    _options: &Options,
 ) -> Result<NormalMetaContext, Errors> {
     log::trace!("In build_normalized_graph");
 

@@ -70,7 +70,6 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
     let basis_graph = resolve_basis_graph(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
-        Arc::clone(&normalization_context),
         options,
         stage_context,
         basis_networks.clone(),
@@ -82,11 +81,10 @@ pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
 }
 
 async fn resolve_basis_graph<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    options: &Options,
-    stage_context: &StageContext,
+    _provider: Arc<P>,
+    _reasoner: Arc<R>,
+    _options: &Options,
+    _stage_context: &StageContext,
     basis_networks: Vec<Arc<BasisNetwork>>,
     relationships: Vec<Arc<NetworkRelationship>>,
 ) -> Result<BasisGraph, Errors> {

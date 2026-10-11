@@ -19,7 +19,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
 ) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
     log::trace!("In translate");
 
-    let translation_context = init_translation_context(
+    let _translation_context = init_translation_context(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         source,
@@ -33,18 +33,18 @@ pub async fn translate<P: Provider, R: Reasoner>(
 }
 
 pub async fn translate_json<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
+    _provider: Arc<P>,
+    _reasoner: Arc<R>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    translation_context: Arc<RwLock<TranslationContext>>,
+    _translation_context: Arc<RwLock<TranslationContext>>,
     document: Document,
-    options: &Options,
+    _options: &Options,
 ) -> Result<(), Errors> {
     log::trace!("In translate_json");
 
-    let translation_meta_context = document.to_meta_context()?;
+    let _translation_meta_context = document.to_meta_context()?;
 
-    let normalized_document = Document::from_normalized_graph(
+    let _normalized_document = Document::from_normalized_graph(
         Arc::clone(&normalization_context),
         &DocumentFormat {
             format_type: DocumentType::Json,

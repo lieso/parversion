@@ -898,7 +898,7 @@ pub fn traverse_using_xpath_segment(
         next_values.len()
     );
 
-    let mut next_values: Vec<Value> = if matches!(
+    let next_values: Vec<Value> = if matches!(
         xpath_segment.axis,
         XPathAxis::Self_ | XPathAxis::Parent | XPathAxis::Attribute
     ) {

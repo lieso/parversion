@@ -20,11 +20,6 @@ use crate::prompt_registry::PromptRegistry;
 use crate::provider::Provider;
 use crate::translation;
 
-#[cfg(feature = "sqlite-provider")]
-use crate::provider::sqlite::SqliteProvider;
-#[cfg(feature = "yaml-provider")]
-use crate::provider::yaml::YamlFileProvider;
-
 #[cfg(feature = "openrouter-reasoner")]
 use crate::reasoner::openrouter::OpenRouterReasoner;
 
@@ -127,19 +122,6 @@ fn setup() {
 
     log::debug!("===========CONFIGURATION===========");
     log::debug!("{:?}", config);
-}
-
-fn handle_error(err: Errors) {
-    match err {
-        Errors::YamlParseError(msg)
-        | Errors::FetchUrlError(msg)
-        | Errors::DeficientNormalizationContextError(msg) => {
-            eprintln!("Error: {}", msg);
-        }
-        _ => {
-            eprintln!("Error: {:?}", err);
-        }
-    }
 }
 
 fn parse_arguments() -> clap::ArgMatches {
@@ -463,6 +445,7 @@ async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
 
     cfg_if::cfg_if! {
          if #[cfg(feature = "yaml-provider")] {
+             use crate::provider::yaml::YamlFileProvider;
              log::info!("Using yaml file provider");
 
              let data_dir = dirs::data_dir()
@@ -479,6 +462,7 @@ async fn init_provider() -> Result<Arc<impl Provider>, Errors> {
              Ok(Arc::new(YamlFileProvider::new(provider_path.to_string_lossy().into_owned())))
 
          } else if #[cfg(feature = "sqlite-provider")] {
+             use crate::provider::sqlite::SqliteProvider;
              log::info!("Using sqlite provider");
 
              let data_dir = dirs::data_dir()

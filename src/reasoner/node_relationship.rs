@@ -95,7 +95,6 @@ pub async fn node_relationship_self<R: Reasoner>(
         .collect();
 
     let user_prompt = get_user_prompt_self(
-        reasoner,
         Arc::clone(&normalization_context),
         node.clone(),
         &contexts,
@@ -553,21 +552,16 @@ fn validate_node_relationship(
             Ok(true)
         }
         NodeRelationshipType::Equal {
-            xpath_ltr,
-            xpath_rtl,
             ..
         } => Ok(true),
         NodeRelationshipType::MixedContent {
-            xpath_ltr,
-            xpath_rtl,
             ..
         } => Ok(true),
         NodeRelationshipType::NoRelationship => Ok(true),
     }
 }
 
-async fn get_user_prompt_self<R: Reasoner>(
-    reasoner: &R,
+async fn get_user_prompt_self(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     node: Arc<BasisNode>,
     node_contexts: &Vec<Arc<Context>>,
@@ -609,7 +603,7 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let (embeddings, metadata) = reasoner.embed(left_context_strings.clone()).await?;
+    let (embeddings, _metadata) = reasoner.embed(left_context_strings.clone()).await?;
     let samples = sample_most_different(left_context_strings, &embeddings);
     let left_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
@@ -625,7 +619,7 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let (embeddings, metadata) = reasoner.embed(right_context_strings.clone()).await?;
+    let (embeddings, _metadata) = reasoner.embed(right_context_strings.clone()).await?;
     let samples = sample_most_different(right_context_strings, &embeddings);
     let right_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 

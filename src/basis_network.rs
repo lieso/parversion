@@ -406,7 +406,7 @@ impl BasisNetwork {
             .iter()
             .find_map(|context| normal_contexts_lookup.get(&context.id).cloned());
 
-        if let Some(existing_network) = existing_network {
+        if let Some(_existing_network) = existing_network {
             normal_contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
 
             for context in &normal_context.contexts {

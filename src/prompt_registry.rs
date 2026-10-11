@@ -11,7 +11,6 @@ type FetchFn =
     Box<dyn Fn() -> Pin<Box<dyn Future<Output = Result<String, Errors>> + Send>> + Send + Sync>;
 
 struct PromptNode {
-    name: PromptNodeName,
     children: HashMap<PromptNodeName, PromptNode>,
     operations: HashMap<String, FetchFn>,
 }
@@ -42,15 +41,14 @@ impl PromptRegistry {
     }
 
     fn load_from_filesystem(path: &str) -> Result<Self, Errors> {
-        let root = Self::load_directory(Path::new(path), "root")?;
+        let root = Self::load_directory(Path::new(path))?;
         let registry = PromptRegistry { root };
 
         Ok(registry)
     }
 
-    fn load_directory(dir: &Path, name: &str) -> Result<PromptNode, Errors> {
+    fn load_directory(dir: &Path) -> Result<PromptNode, Errors> {
         let mut prompt_node = PromptNode {
-            name: name.to_string(),
             children: HashMap::new(),
             operations: HashMap::new(),
         };
@@ -66,10 +64,8 @@ impl PromptRegistry {
             let file_type = entry.file_type().map_err(io_err)?;
             let name = entry.file_name().to_string_lossy().into_owned();
 
-            log::debug!("name: {}", name);
-
             if file_type.is_dir() {
-                let child = Self::load_directory(&entry.path(), &name)?;
+                let child = Self::load_directory(&entry.path())?;
                 prompt_node.children.insert(name, child);
             } else if file_type.is_file() {
                 let file_path = entry.path();

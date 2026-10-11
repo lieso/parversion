@@ -25,7 +25,6 @@ pub async fn basis_network<R: Reasoner>(
 ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt = get_user_prompt(
-        reasoner,
         Arc::clone(&normalization_context),
         basis_nodes.clone(),
     )
@@ -169,8 +168,7 @@ async fn get_system_prompt<R: Reasoner>(
     ))
 }
 
-async fn get_user_prompt<R: Reasoner>(
-    reasoner: &R,
+async fn get_user_prompt(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     basis_nodes: Vec<Arc<BasisNode>>,
 ) -> Result<String, Errors> {
