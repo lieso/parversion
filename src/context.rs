@@ -141,21 +141,8 @@ impl Context {
 
     pub fn generate_context_string_basis_network(
         &self,
-        normalization_context: Arc<RwLock<NormalizationContext>>,
         basis_node: Arc<BasisNode>,
     ) -> Result<String, Errors> {
-        let meta_context = {
-            let lock = read_lock!(normalization_context);
-            lock.meta_context
-                .as_ref()
-                .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError(
-                        "Meta context not provided in normalization context".to_string(),
-                    )
-                })?
-                .clone()
-        };
-
         let mut transformed_context = String::new();
         for transformation in &basis_node.transformations {
             let transformed = transformation.transform(self.data_node.clone())?;

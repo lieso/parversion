@@ -9,9 +9,7 @@ use crate::basis_field::BasisField;
 use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
-use crate::bloom_filter::BloomFilter;
 use crate::classification::Classification;
-use crate::operation::Operation;
 use crate::prelude::*;
 use crate::provider::Provider;
 
@@ -208,53 +206,6 @@ impl Provider for YamlFileProvider {
             sequence.push(serialized_classification);
         } else {
             yaml["classifications"] = serde_yaml::Value::Sequence(vec![serialized_classification]);
-        }
-
-        self.save_data(&yaml).await
-    }
-
-    async fn save_operation(&self, hash: &Hash, operation: Operation) -> Result<(), Errors> {
-        let mut yaml = self.load_data().await?;
-
-        let mut bloom_filter = yaml
-            .get("no_op")
-            .and_then(|data| {
-                let deserialized: Result<BloomFilter, _> = serde_yaml::from_value(data.clone());
-
-                if let Err(ref err) = deserialized {
-                    log::error!(
-                        "Deserialization error for operation bloom filter: {:?}",
-                        err
-                    );
-                }
-                deserialized.ok()
-            })
-            .unwrap_or_else(|| BloomFilter::new(1_048_576, 7));
-
-        if operation.is_no_op() {
-            bloom_filter.add(hash);
-
-            let serialized_bloom_filter = serde_yaml::to_value(bloom_filter)
-                .map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
-            yaml["no_op"] = serialized_bloom_filter;
-
-            return self.save_data(&yaml).await;
-        }
-
-        let serialized_operation = serde_yaml::to_value(&operation)
-            .map_err(|_| Errors::UnexpectedError("Serialization error".to_string()))?;
-
-        if let Some(operations) = yaml.get_mut("operations") {
-            operations
-                .as_sequence_mut()
-                .ok_or_else(|| {
-                    Errors::YamlParseError(
-                        "Failed to get mutable sequence for operations".to_string(),
-                    )
-                })?
-                .push(serialized_operation);
-        } else {
-            yaml["operations"] = serde_yaml::Value::Sequence(vec![serialized_operation]);
         }
 
         self.save_data(&yaml).await

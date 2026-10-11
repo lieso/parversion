@@ -37,8 +37,6 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let stage = execution_context.enter_stage("Initialization");
 
     let normalization_contexts = init_normalization_context(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
         document,
         options,
     )
@@ -254,9 +252,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     Ok(normalization_context)
 }
 
-async fn normalize_html<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
+async fn normalize_html(
     document: Document,
     options: &Options,
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
@@ -453,9 +449,7 @@ pub async fn normalize_file_to_string<P: Provider, R: Reasoner>(
     Ok(document.to_string())
 }
 
-async fn init_normalization_context<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
+async fn init_normalization_context(
     document: Document,
     options: &Options,
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
@@ -464,8 +458,6 @@ async fn init_normalization_context<P: Provider, R: Reasoner>(
     match document.document_type {
         DocumentType::Html => {
             normalize_html(
-                Arc::clone(&provider),
-                Arc::clone(&reasoner),
                 document,
                 options,
             )

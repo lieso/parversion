@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 use xmltree::{Element, XMLNode};
 
-use crate::graph_node::{Graph, GraphNode};
+use crate::graph_node::Graph;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::xpath::{

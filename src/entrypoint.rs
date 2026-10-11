@@ -210,8 +210,6 @@ fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
 }
 
 async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadata)>, Errors> {
-    let documents: Vec<(String, Metadata)> = Vec::new();
-
     let fallback_type: Option<DocumentType> = matches
         .get_one::<String>("document-format")
         .map(|s| parse_document_type(s))

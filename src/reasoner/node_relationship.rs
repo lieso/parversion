@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_node::BasisNode;
-use crate::graph_node::{Graph, GraphNode};
+use crate::graph_node::Graph;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};

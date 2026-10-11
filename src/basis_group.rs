@@ -35,7 +35,7 @@ impl BasisGroup {
                 .unwrap()
         };
 
-        Ok(basis_node.apply(Arc::clone(&context))?)
+        basis_node.apply(Arc::clone(&context))
     }
 
     pub fn get_basis_lineage(&self) -> BasisLineage {
