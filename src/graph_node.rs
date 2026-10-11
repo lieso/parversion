@@ -199,9 +199,6 @@ impl GraphNode {
     }
 
     pub fn to_xpath(&self, meta_context: &MetaContext) -> Result<XPath, Errors> {
-        log::warn!("===== GENERATING XPATH FROM NODE =====");
-        log::warn!("Source node ID: {}", self.id.to_string());
-
         let ancestors = {
             let mut ancestors: Vec<Graph> = Vec::new();
             let mut current_parents = self.parents.clone();
@@ -213,14 +210,12 @@ impl GraphNode {
             }
 
             ancestors.reverse();
-            log::info!("XPATH GENERATION - collected {} ancestors", ancestors.len());
             ancestors
         };
 
         let segments: Vec<XPathSegment> = ancestors
             .iter()
-            .enumerate()
-            .map(|(idx, graph)| {
+            .map(|graph| {
                 let lock = read_lock!(graph);
                 let context = meta_context.contexts_lookup.get(&lock.id).unwrap();
                 let document_node = read_lock!(context.document_node);
@@ -240,12 +235,6 @@ impl GraphNode {
                 };
 
                 let element_name = document_node.get_element_name();
-                log::debug!(
-                    "XPATH GENERATION - ancestor segment {}: element='{}', position={:?}",
-                    idx,
-                    element_name,
-                    predicate
-                );
 
                 XPathSegment {
                     axis: XPathAxis::Child,
@@ -272,7 +261,6 @@ impl GraphNode {
             };
 
             if final_context.data_node.fields.contains_key("text") {
-                log::debug!("XPATH GENERATION - final segment: text() node");
                 XPathSegment {
                     axis: XPathAxis::Child,
                     node_test: "text()".to_string(),
@@ -283,9 +271,6 @@ impl GraphNode {
                 let attributes: Vec<String> =
                     final_context.data_node.fields.keys().cloned().collect();
                 let element_name = document_node.get_element_name();
-
-                log::debug!("XPATH GENERATION - final segment: element='{}', position={:?}, attributes={:?}",
-                           element_name, position, attributes);
 
                 XPathSegment {
                     axis: XPathAxis::Child,
@@ -304,18 +289,11 @@ impl GraphNode {
             .chain(std::iter::once(final_segment))
             .collect();
 
-        let segment_count = segments.len();
         let xpath = XPath {
             segments,
             start_variable: None,
             union: Vec::new(),
         };
-
-        log::info!(
-            "XPATH GENERATION - created xpath with {} total segments",
-            segment_count
-        );
-        log::warn!("===== END XPATH GENERATION =====");
 
         Ok(xpath)
     }

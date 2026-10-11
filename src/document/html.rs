@@ -433,7 +433,7 @@ fn process_element(
         let mut attributes_str = String::new();
 
         for (attr_name, attr_value) in element.attrs() {
-            let attr_name = attr_name.trim().to_string();
+            let attr_name = sanitize_xml_name(attr_name.trim());
             let attr_value = attr_value.trim().to_string();
 
             let is_html = is_likely_html(&attr_value);
@@ -570,4 +570,16 @@ fn calculate_subtree_sizes(
 
     sizes.insert(node.id(), count);
     count
+}
+
+fn sanitize_xml_name(name: &str) -> String {
+    name.chars()
+        .enumerate()
+        .map(|(i, c)| {
+            let ok = c.is_alphabetic()
+                || c == '_'
+                || (i > 0 && (c.is_alphanumeric() || c == '-' || c == '.'));
+            if ok { c } else { '_' }
+        })
+        .collect()
 }
