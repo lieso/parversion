@@ -95,14 +95,10 @@ async fn get_user_prompt<R: Reasoner>(
     group: Vec<Arc<Context>>,
     candidate: String,
 ) -> Result<String, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().unwrap()
-    };
     let group = pre_sample_context_group(group);
     let context_strings: Vec<String> = group
         .iter()
-        .map(|context| context.generate_context_string(&meta_context))
+        .map(|context| context.generate_context_string(Arc::clone(&normalization_context)))
         .collect::<Result<Vec<String>, Errors>>()?;
     let (embeddings, _metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = sample_most_different(context_strings, &embeddings);

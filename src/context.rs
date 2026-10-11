@@ -30,20 +30,11 @@ impl Context {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {
-        let meta_context = {
-            let lock = read_lock!(normalization_context);
-            lock.meta_context
-                .as_ref()
-                .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError(
-                        "Meta context not provided in normalization context".to_string(),
-                    )
-                })?
-                .clone()
-        };
-
         let spatial_context =
-            Self::generate_spatial_context_multi(contexts.clone(), &meta_context)?;
+            Self::generate_spatial_context_multi(
+                Arc::clone(&normalization_context),
+                contexts.clone()
+            )?;
 
         let result = format!(
             r##"
@@ -86,7 +77,7 @@ impl Context {
                 .collect::<Vec<_>>()
         };
 
-        let spatial_context: String = self.generate_spatial_context(&meta_context)?;
+        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let fields_context: String = basis_fields.iter().fold(String::new(), |acc, item| {
@@ -185,7 +176,7 @@ impl Context {
                 .clone()
         };
 
-        let spatial_context: String = self.generate_spatial_context(&meta_context)?;
+        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let mut transformed_context = String::new();
@@ -240,7 +231,7 @@ impl Context {
                 .clone()
         };
 
-        let spatial_context: String = self.generate_spatial_context(&meta_context)?;
+        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let fields_context: String = self
@@ -267,9 +258,23 @@ impl Context {
         Ok(result)
     }
 
-    pub fn generate_context_string(&self, meta_context: &MetaContext) -> Result<String, Errors> {
-        let spatial_context: String = self.generate_spatial_context(meta_context)?;
-        let positional_context: String = self.generate_positional_context(meta_context)?;
+    pub fn generate_context_string(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+    ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
+                })?
+                .clone()
+        };
+        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
+        let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let result = format!(
             r##"
@@ -350,15 +355,34 @@ impl Context {
         Ok(context_strings.join("\n"))
     }
 
-    fn generate_spatial_context(&self, meta_context: &MetaContext) -> Result<String, Errors> {
+    fn generate_spatial_context(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+    ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
+                })?
+                .clone()
+        };
+        let spatial_context_size = {
+            let lock = read_lock!(normalization_context);
+            lock.spatial_context_size
+        };
+
         let mut neighbourhood = HashSet::new();
-        traverse_structural_envelope(self.clone(), &mut neighbourhood);
+        traverse_structural_envelope(self.clone(), &mut neighbourhood, spatial_context_size);
 
         let target_id = read_lock!(self.graph_node).id.clone();
         let target_ids: HashSet<GraphNodeID> = HashSet::from([target_id]);
 
         let partial_document = Document::from_meta_context(
-            meta_context,
+            &meta_context,
             &DocumentFormat {
                 format_type: meta_context.document_type.clone(),
                 encoding: Some(String::from("UTF-8")),
@@ -377,23 +401,38 @@ impl Context {
     }
 
     fn generate_spatial_context_multi(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
         contexts: Vec<Arc<Context>>,
-        meta_context: &MetaContext,
     ) -> Result<String, Errors> {
-        let mut neighbourhood = HashSet::new();
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
+                })?
+                .clone()
+        };
+        let spatial_context_size = {
+            let lock = read_lock!(normalization_context);
+            lock.spatial_context_size
+        };
 
+        let mut neighbourhood = HashSet::new();
         let mut target_ids: HashSet<GraphNodeID> = HashSet::new();
 
         for context in contexts {
             let mut envelope: HashSet<GraphNodeID> = HashSet::new();
-            traverse_structural_envelope(context.as_ref().clone(), &mut envelope);
+            traverse_structural_envelope(context.as_ref().clone(), &mut envelope, spatial_context_size);
             neighbourhood.extend(envelope);
 
             target_ids.insert(read_lock!(context.graph_node).id.clone());
         }
 
         let partial_document = Document::from_meta_context(
-            meta_context,
+            &meta_context,
             &DocumentFormat {
                 format_type: meta_context.document_type.clone(),
                 encoding: Some(String::from("UTF-8")),
@@ -470,9 +509,12 @@ impl Ord for QueueItem {
     }
 }
 
-fn traverse_structural_envelope(context: Context, neighbourhood: &mut HashSet<GraphNodeID>) {
+fn traverse_structural_envelope(
+    context: Context,
+    neighbourhood: &mut HashSet<GraphNodeID>,
+    max_neighbours: usize
+) {
     let target_node = context.graph_node;
-    let max_neighbours = 100;
 
     let mut queue: BinaryHeap<QueueItem> = BinaryHeap::new();
 

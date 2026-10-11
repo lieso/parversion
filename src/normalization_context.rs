@@ -12,6 +12,8 @@ use crate::meta_context::MetaContext;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
 
+const DEFAULT_SPATIAL_CONTEXT_SIZE: usize = 37;
+
 pub struct NormalizationContext {
     pub meta_context: Option<Arc<MetaContext>>,
     pub basis_fields: Option<HashMap<ID, Arc<BasisField>>>,
@@ -25,6 +27,7 @@ pub struct NormalizationContext {
     pub context_groups: Option<HashMap<ID, Vec<Arc<Context>>>>,
     pub context_to_group: Option<HashMap<ID, Arc<BasisGroup>>>,
     pub normalized: Option<NormalMetaContext>,
+    pub spatial_context_size: usize,
 }
 
 impl NormalizationContext {
@@ -42,6 +45,7 @@ impl NormalizationContext {
             context_groups: None,
             context_to_group: None,
             normalized: None,
+            spatial_context_size: DEFAULT_SPATIAL_CONTEXT_SIZE,
         }
     }
 
@@ -110,5 +114,9 @@ impl NormalizationContext {
     ) {
         self.context_groups = Some(context_groups);
         self.context_to_group = Some(context_to_group);
+    }
+
+    pub fn bump_spatial_context_size(&mut self) {
+        self.spatial_context_size += 17;
     }
 }
