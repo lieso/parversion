@@ -1,56 +1,5 @@
-mod basis_field;
-mod basis_graph;
-mod basis_group;
-mod basis_network;
-mod basis_node;
-mod classification;
-mod config;
-mod context;
-mod data_node;
-mod document;
-mod document_format;
-mod document_node;
-mod entrypoint;
-mod environment;
-mod execution_context;
-mod field_analysis;
-mod graph_analysis;
-mod graph_node;
-mod group_analysis;
-mod hash;
-mod id;
-mod json_node;
-mod lineage;
-mod macros;
-mod meta_context;
-mod metadata;
-mod network_analysis;
-mod network_relationship;
-mod node_analysis;
-mod node_relationship;
-mod normal_context;
-mod normal_meta_context;
-mod normalization;
-mod normalization_context;
-mod options;
-mod package;
-mod prelude;
-mod prompt_registry;
-mod provider;
-mod reasoner;
-mod reports;
-mod transformation;
-mod translation;
-mod translation_context;
-mod traversal;
-mod types;
-#[allow(dead_code)]
-mod utility;
-mod xpath;
-mod xslt;
-
-use crate::entrypoint::run;
-use crate::types::Errors;
+use parversion::entrypoint::run;
+use parversion::types::Errors;
 
 fn build_runtime() -> tokio::runtime::Runtime {
     let mut builder = if std::env::var("SINGLE_THREAD").is_ok() {
