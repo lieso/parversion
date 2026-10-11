@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use http::StatusCode;
-use openrouter_rs::error::{OpenRouterError};
+use openrouter_rs::error::OpenRouterError;
 use openrouter_rs::{
     api::chat::*,
     api::embeddings::*,

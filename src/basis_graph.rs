@@ -67,10 +67,7 @@ impl BasisGraph {
                     let children = read_lock!(graph_root).children.clone();
 
                     if children.is_empty() {
-                        Self::augment(
-                            &normal_meta_context,
-                            Arc::clone(&parent),
-                        )?;
+                        Self::augment(&normal_meta_context, Arc::clone(&parent))?;
                     } else {
                         for child in children {
                             Self::hierarchize(
@@ -114,10 +111,7 @@ impl BasisGraph {
         Ok(result)
     }
 
-    fn augment(
-        normal_meta_context: &NormalMetaContext,
-        parent: Graph,
-    ) -> Result<(), Errors> {
+    fn augment(normal_meta_context: &NormalMetaContext, parent: Graph) -> Result<(), Errors> {
         let instances: Vec<Graph> = read_lock!(normal_meta_context.graph_root).children.clone();
 
         for instance in &instances {

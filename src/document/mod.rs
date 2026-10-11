@@ -167,9 +167,7 @@ impl Document {
 
         let data = {
             match document_format.format_type {
-                DocumentType::Json => {
-                    Json::from_meta_context(meta_context, render_ids)?
-                }
+                DocumentType::Json => Json::from_meta_context(meta_context, render_ids)?,
                 DocumentType::PlainText => unimplemented!(),
                 DocumentType::JavaScript => unimplemented!(),
                 DocumentType::Xml => unimplemented!(),
