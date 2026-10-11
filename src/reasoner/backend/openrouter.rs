@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use http::StatusCode;
-use openrouter_rs::error::{ApiErrorKind, OpenRouterError};
+use openrouter_rs::error::{OpenRouterError};
 use openrouter_rs::{
     api::chat::*,
     api::embeddings::*,
@@ -111,13 +111,13 @@ impl Reasoner for OpenRouterReasoner {
                         CompletionMetadata {
                             input_tokens: usage.prompt_tokens as u32,
                             output_tokens: usage.completion_tokens as u32,
-                            prompt_hash: prompt_hash,
+                            prompt_hash,
                         }
                     } else {
                         CompletionMetadata {
                             input_tokens: 0,
                             output_tokens: 0,
-                            prompt_hash: prompt_hash,
+                            prompt_hash,
                         }
                     };
 

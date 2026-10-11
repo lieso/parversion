@@ -5,9 +5,8 @@ use std::sync::{Arc, RwLock};
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_group::BasisGroup;
 use crate::basis_node::{BasisNode, BasisNodeMetadata};
-use crate::data_node::DataNodeFields;
 use crate::prelude::*;
-use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 use crate::transformation::{FieldMetadata, FieldTransformation};
 
 #[derive(Deserialize, JsonSchema)]

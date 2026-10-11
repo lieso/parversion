@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
@@ -106,7 +105,7 @@ impl BasisNetwork {
                 if is_element {
                     log::info!("Basis node is an element of the network");
 
-                    let normal_context = self.process_network(
+                    let _ = self.process_network(
                         Arc::clone(&normalization_context),
                         (context.clone(), basis_node.clone()),
                         Arc::clone(&parent),

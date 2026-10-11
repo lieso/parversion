@@ -68,7 +68,6 @@ impl BasisGraph {
 
                     if children.is_empty() {
                         Self::augment(
-                            Arc::clone(&normalization_context),
                             &normal_meta_context,
                             Arc::clone(&parent),
                         )?;
@@ -116,7 +115,6 @@ impl BasisGraph {
     }
 
     fn augment(
-        normalization_context: Arc<RwLock<NormalizationContext>>,
         normal_meta_context: &NormalMetaContext,
         parent: Graph,
     ) -> Result<(), Errors> {

@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use crate::basis_graph::{BasisGraph, BasisGraphNode};
+use crate::basis_graph::BasisGraphNode;
 use crate::basis_network::BasisNetwork;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::classification::Classification;
 use crate::prelude::*;
-use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ClassificationResponse {

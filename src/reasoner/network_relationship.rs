@@ -1,17 +1,13 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use crate::basis_network::BasisNetwork;
-use crate::document::{Document, DocumentType};
-use crate::document_format::DocumentFormat;
 use crate::graph_node::GraphNode;
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
-use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
-use crate::xslt::Xslt;
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

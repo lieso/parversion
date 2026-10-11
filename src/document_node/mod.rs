@@ -52,7 +52,7 @@ impl DocumentNode {
     pub fn to_string_components(&self) -> (String, Option<String>) {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::to_string_components(&node),
-            DocumentNodeData::Json(value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(_value) => unimplemented!(),
         }
     }
 

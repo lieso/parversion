@@ -317,7 +317,7 @@ fn clone_full_subtree(node: NodeRef<ScraperNode>, mut dest: NodeMut<ScraperNode>
 
 fn clone_into(node: NodeRef<ScraperNode>, mut dest: NodeMut<ScraperNode>, cuts: &HashSet<NodeId>) {
     for child in node.children() {
-        let mut dest_child = dest.append(child.value().clone());
+        let dest_child = dest.append(child.value().clone());
         if !cuts.contains(&child.id()) {
             clone_into(child, dest_child, cuts);
         }
@@ -430,14 +430,11 @@ fn process_element(
     if let ScraperNode::Element(element) = node.value() {
         let tag_name = preprocess_element(element.name())?;
 
-        let mut has_attributes = false;
         let mut attributes_str = String::new();
 
         for (attr_name, attr_value) in element.attrs() {
             let attr_name = attr_name.trim().to_string();
             let attr_value = attr_value.trim().to_string();
-
-            has_attributes = true;
 
             let is_html = is_likely_html(&attr_value);
             let _is_javascript = false; // TODO: Check if attr_value is valid JavaScript

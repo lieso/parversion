@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_field::{BasisField, BasisFieldMetadata};
 use crate::prelude::*;
-use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisFieldResponse {
@@ -102,7 +102,7 @@ async fn get_user_prompt<R: Reasoner>(
     let group = pre_sample_context_group(group);
     let context_strings: Vec<String> = group
         .iter()
-        .map(|context| context.generate_context_string(&meta_context, Vec::new()))
+        .map(|context| context.generate_context_string(&meta_context))
         .collect::<Result<Vec<String>, Errors>>()?;
     let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
     let samples = sample_most_different(context_strings, &embeddings);

@@ -1,13 +1,11 @@
 use futures::future::try_join_all;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
-use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
 use crate::classification::Classification;
-use crate::config::CONFIG;
 use crate::graph_node::Graph;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::normalization_context::NormalizationContext;
@@ -172,7 +170,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         })?
     };
 
-    let mut non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
+    let non_empty_basis_nodes: Vec<Arc<BasisNode>> = basis_nodes
         .iter()
         .filter(|basis_node| !basis_node.transformations.is_empty())
         .cloned()
@@ -309,7 +307,7 @@ async fn resolve_basis_networks<P: Provider, R: Reasoner>(
         .cloned()
         .collect();
 
-    let mut basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
+    let basis_networks: Vec<Arc<BasisNetwork>> = Vec::new();
     let mut placed: HashSet<Lineage> = HashSet::new();
     let mut handles = Vec::new();
 

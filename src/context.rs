@@ -283,7 +283,6 @@ impl Context {
     pub fn generate_context_string(
         &self,
         meta_context: &MetaContext,
-        relevant_contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {
         let spatial_context: String = self.generate_spatial_context(meta_context)?;
         let positional_context: String = self.generate_positional_context(meta_context)?;

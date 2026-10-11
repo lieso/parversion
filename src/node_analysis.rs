@@ -1,18 +1,15 @@
 use futures::future::try_join_all;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use tokio::sync::Semaphore;
 use tokio::task;
 
 use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
-use crate::config::CONFIG;
 use crate::context::Context;
 use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::translation_context::TranslationContext;
 
 pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,

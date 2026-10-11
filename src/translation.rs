@@ -1,10 +1,8 @@
 use std::sync::{Arc, RwLock};
 
-use crate::data_node::DataNode;
 use crate::document::{Document, DocumentRole, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::normalization;
-use crate::normalization::normalize;
 use crate::normalization_context::NormalizationContext;
 use crate::package::Package;
 use crate::prelude::*;
@@ -31,9 +29,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
     )
     .await?;
 
-    unimplemented!();
-
-    Ok(translation_context)
+    unimplemented!()
 }
 
 pub async fn translate_json<P: Provider, R: Reasoner>(
@@ -62,16 +58,7 @@ pub async fn translate_json<P: Provider, R: Reasoner>(
         },
     )?;
 
-    unimplemented!();
-
-    //let normalized_meta_context = normalized_document.to_meta_context()?;
-
-    //{
-    //    let mut lock = write_lock!(translation_context);
-    //    lock.update_meta_contexts(normalized_meta_context, translation_meta_context);
-    //}
-
-    Ok(())
+    unimplemented!()
 }
 
 pub async fn translate_text_to_document<P: Provider, R: Reasoner>(

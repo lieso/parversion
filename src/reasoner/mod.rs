@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use crate::basis_field::BasisField;

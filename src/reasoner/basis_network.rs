@@ -6,7 +6,7 @@ use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NetworkShape};
 use crate::basis_node::BasisNode;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
-use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 use crate::traversal::Traversal;
 
 #[derive(Deserialize, JsonSchema, Debug)]

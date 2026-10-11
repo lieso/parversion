@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 use crate::prelude::*;
-use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisGroupResponse {

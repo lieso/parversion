@@ -1,6 +1,5 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use super::sampling::{pre_sample_context_group, sample_most_different};
@@ -8,7 +7,7 @@ use crate::basis_node::BasisNode;
 use crate::graph_node::{Graph, GraphNode};
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
-use crate::reasoner::{Capability, CompletionMetadata, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 use crate::xpath::XPath;
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -369,7 +368,7 @@ async fn determine_node_relationship_other<R: Reasoner>(
         prompt_hash: metadata.prompt_hash.clone(),
     };
 
-    let mut relationship_type = {
+    let relationship_type = {
         match result.relationship_type {
             RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
                 xpath_ltr: result.left_to_right_xpath.unwrap().clone(),

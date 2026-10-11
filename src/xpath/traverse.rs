@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use super::{Selection, Value, Variables, XPathAxis, XPathPredicate, XPathSegment};
-use crate::graph_node::{Graph, GraphNode};
+use crate::graph_node::Graph;
 use crate::prelude::*;
 
 pub fn traverse_using_xpath_axis(
