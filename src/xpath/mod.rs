@@ -83,10 +83,9 @@ impl Value {
     pub fn to_number(&self) -> Option<f64> {
         match &self.selection {
             Some(Selection::Number(n)) => Some(*n),
-            Some(Selection::Attribute { value, .. }) | Some(Selection::String(value)) => {
+            Some(Selection::Attribute { value, .. }) => {
                 value.trim().parse().ok()
             }
-            Some(Selection::Boolean(b)) => Some(if *b { 1.0 } else { 0.0 }),
             None => None, // node string-value: not needed yet
         }
     }
@@ -95,9 +94,7 @@ impl Value {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Selection {
     Attribute { name: String, value: String },
-    String(String),
     Number(f64),
-    Boolean(bool),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]

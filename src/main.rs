@@ -100,7 +100,6 @@ fn handle_error(err: &Errors) {
         Errors::InsufficientBackendQuota(msg) => format!("insufficient backend quota: {}", msg),
         Errors::RateLimitError(msg) => format!("rate limited: {}", msg),
         Errors::TransientBackendError(msg) => format!("transient backend error: {}", msg),
-        Errors::RequestTimeout(msg) => format!("request timed out: {}", msg),
         Errors::EmbeddingError(msg) => format!("embedding error: {}", msg),
         Errors::TaskJoinError(msg) => format!("task join error: {}", msg),
         Errors::XsltParseError(msg) => format!("failed to parse XSLT: {}", msg),

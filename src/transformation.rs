@@ -5,54 +5,6 @@ use crate::data_node::{DataNode, DataNodeFields};
 use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Runtime {
-    AWK,
-    NodeJS,
-    Python,
-    QuickJS,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct NetworkTranslationTransformation {
-    pub id: ID,
-    pub image: String,
-    pub cardinality: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FieldTranslationTransformation {
-    pub id: ID,
-    pub field: String,
-    pub image: String,
-    pub code: Option<String>,
-}
-
-impl FieldTranslationTransformation {
-    pub fn transform(&self, data_node: Arc<DataNode>) -> Result<DataNode, Errors> {
-        let mut new_fields = DataNodeFields::new();
-
-        for value in data_node.fields.get(&self.field) {
-            new_fields.insert(self.image.clone(), value.to_string());
-        }
-
-        let transformed = DataNode {
-            id: ID::new(),
-            hash: data_node.hash.clone(),
-            lineage: data_node.lineage.clone(),
-            description: data_node.description.clone(),
-            fields: new_fields,
-        };
-
-        Ok(transformed)
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BasisFieldTransformation {
-    pub id: ID,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldMetadata {
     pub data_type: String,
     pub format: Option<String>,
@@ -85,9 +37,4 @@ impl FieldTransformation {
 
         Ok(transformed)
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RelationshipTransformation {
-    pub id: ID,
 }
