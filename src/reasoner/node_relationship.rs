@@ -246,37 +246,15 @@ pub async fn node_relationship_other<R: Reasoner>(
                 }
                 result => {
                     log::warn!("Relationship invalid or error: {:?}", result);
-                    log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
+                    log::info!("Node relationship did not validate ");
+                    relationships.push(NodeRelationship {
+                        id: ID::new(),
+                        left_basis_lineage: node_relationship.left_basis_lineage.clone(),
+                        right_basis_lineage: node_relationship.right_basis_lineage.clone(),
+                        relationship_type: NodeRelationshipType::NoRelationship,
+                    });
 
-                    let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
-                        reasoner,
-                        Arc::clone(&normalization_context),
-                        Arc::clone(&left),
-                        Arc::clone(&right),
-                        Capability::Strong,
-                    )
-                    .await?;
-
-                    match validate_node_relationship(
-                        Arc::clone(&normalization_context),
-                        left.clone(),
-                        right.clone(),
-                        &node_relationship,
-                    ) {
-                        Ok(true) => {
-                            log::info!("Relationship valid");
-                            relationships.push(node_relationship.clone());
-
-                            Ok((relationships, reasoner_metadata))
-                        }
-                        result => {
-                            log::warn!("Relationship invalid or error: {:?}", result);
-                            log::info!("Node relationship did not validate ");
-                            relationships.push(node_relationship.clone());
-
-                            Ok((relationships, reasoner_metadata))
-                        }
-                    }
+                    Ok((relationships, reasoner_metadata))
                 }
             }
         }
