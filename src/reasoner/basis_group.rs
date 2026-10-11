@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
-use super::sampling::{pre_sample_context_group};
+use super::sampling::pre_sample_context_group;
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};

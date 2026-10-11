@@ -83,9 +83,7 @@ impl Value {
     pub fn to_number(&self) -> Option<f64> {
         match &self.selection {
             Some(Selection::Number(n)) => Some(*n),
-            Some(Selection::Attribute { value, .. }) => {
-                value.trim().parse().ok()
-            }
+            Some(Selection::Attribute { value, .. }) => value.trim().parse().ok(),
             None => None, // node string-value: not needed yet
         }
     }

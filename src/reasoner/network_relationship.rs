@@ -53,10 +53,8 @@ async fn network_relationship_reflexive<R: Reasoner>(
 ) -> Result<(NetworkRelationship, ReasonerMetadata), Errors> {
     let system_prompt =
         get_system_prompt_reflexive(reasoner, Arc::clone(&normalization_context)).await?;
-    let user_prompt = get_user_prompt_reflexive(
-        Arc::clone(&normalization_context),
-        network.clone(),
-    )?;
+    let user_prompt =
+        get_user_prompt_reflexive(Arc::clone(&normalization_context), network.clone())?;
     let capability = Capability::Capable;
     let schema = serde_json::to_value(schemars::schema_for!(NetworkRelationshipSelfResponse))
         .expect("Failed to serialise NetworkRelationshipSelfResponse schema");

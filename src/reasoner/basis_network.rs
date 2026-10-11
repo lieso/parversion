@@ -24,11 +24,8 @@ pub async fn basis_network<R: Reasoner>(
     relationships: Vec<Arc<NodeRelationship>>,
 ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
-    let user_prompt = get_user_prompt(
-        Arc::clone(&normalization_context),
-        basis_nodes.clone(),
-    )
-    .await?;
+    let user_prompt =
+        get_user_prompt(Arc::clone(&normalization_context), basis_nodes.clone()).await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(BasisNetworkResponse))
         .expect("Failed to serialize BasisNetworkResponse schema");
@@ -192,9 +189,8 @@ async fn get_user_prompt(
                 .next()
                 .unwrap();
 
-            let context_string = context.generate_context_string_basis_network(
-                basis_node.clone(),
-            )?;
+            let context_string =
+                context.generate_context_string_basis_network(basis_node.clone())?;
 
             let new_acc = if acc.is_empty() {
                 context_string

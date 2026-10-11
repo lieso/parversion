@@ -36,11 +36,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Initialization");
 
-    let normalization_contexts = init_normalization_context(
-        document,
-        options,
-    )
-    .await?;
+    let normalization_contexts = init_normalization_context(document, options).await?;
 
     stage.finish();
     let elapsed = start.elapsed();
@@ -456,13 +452,7 @@ async fn init_normalization_context(
     log::trace!("In init_normalization_context");
 
     match document.document_type {
-        DocumentType::Html => {
-            normalize_html(
-                document,
-                options,
-            )
-            .await
-        }
+        DocumentType::Html => normalize_html(document, options).await,
         DocumentType::Json => {
             unimplemented!()
         }

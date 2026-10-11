@@ -94,12 +94,8 @@ pub async fn node_relationship_self<R: Reasoner>(
         .cloned()
         .collect();
 
-    let user_prompt = get_user_prompt_self(
-        Arc::clone(&normalization_context),
-        node.clone(),
-        &contexts,
-    )
-    .await?;
+    let user_prompt =
+        get_user_prompt_self(Arc::clone(&normalization_context), node.clone(), &contexts).await?;
 
     let system_prompt =
         get_system_prompt_self(reasoner, Arc::clone(&normalization_context)).await?;
@@ -551,12 +547,8 @@ fn validate_node_relationship(
 
             Ok(true)
         }
-        NodeRelationshipType::Equal {
-            ..
-        } => Ok(true),
-        NodeRelationshipType::MixedContent {
-            ..
-        } => Ok(true),
+        NodeRelationshipType::Equal { .. } => Ok(true),
+        NodeRelationshipType::MixedContent { .. } => Ok(true),
         NodeRelationshipType::NoRelationship => Ok(true),
     }
 }
