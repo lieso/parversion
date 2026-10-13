@@ -30,7 +30,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     document: Document,
     options: &Options,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     log::trace!("In normalize");
 
     let start = Instant::now();
@@ -53,7 +53,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     }))
     .await?;
 
-    Ok(normalizations.first().unwrap().clone())
+    Ok(normalizations)
 }
 
 async fn run_pipeline<P: Provider, R: Reasoner>(
@@ -281,7 +281,7 @@ pub async fn normalize_document<P: Provider, R: Reasoner>(
 ) -> Result<Package, Errors> {
     log::trace!("In normalize_document");
 
-    let normalization_context = normalize(
+    let normalization_contexts = normalize(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         document,
@@ -290,35 +290,16 @@ pub async fn normalize_document<P: Provider, R: Reasoner>(
     )
     .await?;
 
-    let normalized_document =
-        Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)?;
+    let normalized_documents: Vec<Document> = normalization_contexts
+        .iter()
+        .map(|normalization_context| {
+            Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
+        })
+        .collect::<Result<_, _>>()?;
 
     Ok(Package {
-        document: normalized_document,
+        documents: normalized_documents,
     })
-}
-
-pub async fn normalize_document_to_string<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
-    document: Document,
-    _options: &Options,
-    document_format: &DocumentFormat,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<String, Errors> {
-    log::trace!("In normalize_document_to_string");
-
-    let package = normalize_document(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        document,
-        _options,
-        document_format,
-        execution_context,
-    )
-    .await?;
-
-    Ok(package.to_string())
 }
 
 pub async fn normalize_text<P: Provider, R: Reasoner>(
@@ -328,7 +309,7 @@ pub async fn normalize_text<P: Provider, R: Reasoner>(
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     log::trace!("In normalize_text");
 
     let document = Document::from_string(text, _options, metadata)?;
@@ -351,10 +332,10 @@ pub async fn normalize_text_to_document<P: Provider, R: Reasoner>(
     metadata: &Metadata,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Document, Errors> {
+) -> Result<Vec<Document>, Errors> {
     log::trace!("In normalize_text_to_document");
 
-    let normalization_context = normalize_text(
+    let normalization_contexts = normalize_text(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         text,
@@ -363,8 +344,13 @@ pub async fn normalize_text_to_document<P: Provider, R: Reasoner>(
         execution_context,
     )
     .await?;
-
-    Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
+    
+    normalization_contexts
+        .iter()
+        .map(|normalization_context| {
+            Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
+        })
+        .collect::<Result<_, _>>()
 }
 
 pub async fn normalize_file<P: Provider, R: Reasoner>(
@@ -374,7 +360,7 @@ pub async fn normalize_file<P: Provider, R: Reasoner>(
     _options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     log::trace!("In normalize_file");
     log::debug!("file path: {}", path);
 
@@ -402,11 +388,11 @@ pub async fn normalize_file_to_document<P: Provider, R: Reasoner>(
     metadata: &Metadata,
     document_format: &DocumentFormat,
     execution_context: Arc<ExecutionContext>,
-) -> Result<Document, Errors> {
+) -> Result<Vec<Document>, Errors> {
     log::trace!("In normalize_file_to_document");
     log::debug!("file path: {}", path);
 
-    let normalization_context = normalize_file(
+    let normalization_contexts = normalize_file(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         path,
@@ -416,33 +402,12 @@ pub async fn normalize_file_to_document<P: Provider, R: Reasoner>(
     )
     .await?;
 
-    Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
-}
-
-pub async fn normalize_file_to_string<P: Provider, R: Reasoner>(
-    provider: Arc<P>,
-    reasoner: Arc<R>,
-    path: &str,
-    _options: &Options,
-    metadata: &Metadata,
-    document_format: &DocumentFormat,
-    execution_context: Arc<ExecutionContext>,
-) -> Result<String, Errors> {
-    log::trace!("In normalize_file_to_string");
-    log::debug!("file path: {}", path);
-
-    let document = normalize_file_to_document(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        path,
-        _options,
-        metadata,
-        document_format,
-        execution_context,
-    )
-    .await?;
-
-    Ok(document.to_string())
+    normalization_contexts
+        .iter()
+        .map(|normalization_context| {
+            Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
+        })
+        .collect::<Result<_, _>>()
 }
 
 async fn init_normalization_context(

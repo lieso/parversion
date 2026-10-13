@@ -58,14 +58,16 @@ pub async fn run() -> Result<(), Errors> {
 
     log::info!("Successfully processed document");
 
-    if matches.get_flag("output-metadata") {
-        println!(
-            "{}",
-            serde_json::to_string(&package.document.metadata)
-                .expect("Failed to serialize document metadata")
-        );
-    } else {
-        println!("{}", package.to_string());
+    for document in package.documents {
+        if matches.get_flag("output-metadata") {
+            println!(
+                "{}",
+                serde_json::to_string(&document.metadata)
+                    .expect("Failed to serialize document metadata")
+            );
+        } else {
+            println!("{}", document.to_string());
+        }
     }
 
     let elapsed = start.elapsed();
@@ -389,10 +391,10 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
         .await?;
 
         Ok(Package {
-            document: translated_document,
+            documents: vec![translated_document],
         })
     } else {
-        let normalized_document = normalization::normalize_text_to_document(
+        let normalized_documents = normalization::normalize_text_to_document(
             provider.clone(),
             reasoner.clone(),
             document,
@@ -404,7 +406,7 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
         .await?;
 
         Ok(Package {
-            document: normalized_document,
+            documents: normalized_documents,
         })
     }
 }

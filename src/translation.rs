@@ -152,7 +152,7 @@ pub async fn translate_text_to_package<P: Provider, R: Reasoner>(
     .await?;
 
     Ok(Package {
-        document: translated_document,
+        documents: vec![translated_document],
     })
 }
 
@@ -166,7 +166,7 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
 ) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
     log::trace!("In init_translation_context");
 
-    let normalization_context: Arc<RwLock<NormalizationContext>> = normalization::normalize(
+    let normalization_contexts = normalization::normalize(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         source,
@@ -174,6 +174,8 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
         execution_context.clone(),
     )
     .await?;
+
+    let normalization_context = normalization_contexts.first().unwrap().clone();
 
     let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
 

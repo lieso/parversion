@@ -223,6 +223,11 @@ pub async fn node_relationship_other<R: Reasoner>(
                 "Node relationship did not validate. Escalating to a more advanced model... "
             );
 
+            {
+                let mut lock = write_lock!(normalization_context);
+                lock.bump_spatial_context_size();
+            }
+
             let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
                 reasoner,
                 Arc::clone(&normalization_context),
