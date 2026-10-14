@@ -46,7 +46,7 @@ pub enum Capability {
 pub struct ReasonerMetadata {
     pub tokens: u32,
     pub cost: f64,
-    pub prompt_hash: Hash,
+    pub prompts: Vec<Hash>,
 }
 
 #[async_trait]

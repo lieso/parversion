@@ -135,7 +135,7 @@ pub async fn node_relationship_self<R: Reasoner>(
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
-        prompt_hash: metadata.prompt_hash.clone(),
+        prompts: vec![metadata.prompt_hash.clone()],
         cost: metadata.cost.unwrap_or(0.0),
     };
 
@@ -240,8 +240,7 @@ pub async fn node_relationship_other<R: Reasoner>(
 
             let reasoner_metadata = ReasonerMetadata {
                 tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
-                // TODO: convert to vector
-                prompt_hash: reasoner_metadata.prompt_hash.clone(),
+                prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
                 cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
             };
 
@@ -277,10 +276,8 @@ pub async fn node_relationship_other<R: Reasoner>(
                         .await?;
 
                     let reasoner_metadata = ReasonerMetadata {
-                        tokens: reasoner_metadata.tokens.clone()
-                            + next_reasoner_metadata.tokens.clone(),
-                        // TODO: convert to vector
-                        prompt_hash: reasoner_metadata.prompt_hash.clone(),
+                        tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
+                        prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
                         cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
                     };
 
@@ -387,7 +384,7 @@ async fn determine_node_relationship_other<R: Reasoner>(
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
-        prompt_hash: metadata.prompt_hash.clone(),
+        prompts: vec![metadata.prompt_hash.clone()],
         cost: metadata.cost.unwrap_or(0.0),
     };
 

@@ -294,7 +294,7 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
                 basis_group
                     .metadata
                     .prompts
-                    .push(metadata.prompt_hash.clone());
+                    .extend(metadata.prompts.clone());
             }
             basis_group
         })
@@ -429,7 +429,7 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
                 basis_group
                     .metadata
                     .prompts
-                    .push(metadata.prompt_hash.clone());
+                    .extend(metadata.prompts.clone());
             }
             basis_group
         })
@@ -567,7 +567,7 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
                 basis_group
                     .metadata
                     .prompts
-                    .push(metadata.prompt_hash.clone());
+                    .extend(metadata.prompts.clone());
             }
             basis_group
         })

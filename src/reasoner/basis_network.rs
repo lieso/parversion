@@ -62,7 +62,7 @@ pub async fn basis_network<R: Reasoner>(
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
-        prompt_hash: metadata.prompt_hash.clone(),
+        prompts: vec![metadata.prompt_hash.clone()],
         cost: metadata.cost.unwrap_or(0.0),
     };
 
@@ -123,7 +123,7 @@ pub async fn basis_network<R: Reasoner>(
         shape: network_shape,
         traversals,
         metadata: BasisNetworkMetadata {
-            prompts: vec![reasoner_metadata.prompt_hash.clone()],
+            prompts: reasoner_metadata.prompts.clone(),
         },
     };
 

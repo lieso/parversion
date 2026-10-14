@@ -93,7 +93,7 @@ async fn network_relationship_reflexive<R: Reasoner>(
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
-        prompt_hash: metadata.prompt_hash.clone(),
+        prompts: vec![metadata.prompt_hash.clone()],
         cost: metadata.cost.unwrap_or(0.0),
     };
 

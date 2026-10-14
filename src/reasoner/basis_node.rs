@@ -76,7 +76,7 @@ pub async fn basis_node<R: Reasoner>(
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
-        prompt_hash: metadata.prompt_hash.clone(),
+        prompts: vec![metadata.prompt_hash.clone()],
         cost: metadata.cost.unwrap_or(0.0),
     };
 
@@ -150,7 +150,7 @@ pub async fn basis_node<R: Reasoner>(
         lineage: basis_group.get_basis_lineage(),
         transformations,
         metadata: BasisNodeMetadata {
-            prompts: vec![reasoner_metadata.prompt_hash.clone()],
+            prompts: reasoner_metadata.prompts.clone(),
         },
     };
 

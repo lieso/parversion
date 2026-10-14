@@ -64,7 +64,7 @@ pub async fn basis_group<R: Reasoner>(
 
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
-        prompt_hash: metadata.prompt_hash,
+        prompts: vec![metadata.prompt_hash],
         cost: metadata.cost.unwrap_or(0.0),
     };
 
@@ -76,7 +76,7 @@ pub async fn basis_group<R: Reasoner>(
             lineage,
             indexed_lineage,
             metadata: BasisGroupMetadata {
-                prompts: vec![reasoner_metadata.prompt_hash.clone()],
+                prompts: reasoner_metadata.prompts.clone(),
             },
         };
 
