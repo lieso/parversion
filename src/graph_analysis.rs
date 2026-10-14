@@ -186,7 +186,7 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
     stage_context.record_events(
         "Network relationship",
         metadata.tokens.into(),
-        metadata.cost.into(),
+        metadata.cost,
     );
 
     provider

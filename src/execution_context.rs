@@ -29,7 +29,7 @@ impl StageContext {
             .fetch_add(tokens, Ordering::Relaxed);
         self.parent
             .total_cost
-            .fetch_add((cost * 1_000_000.0).round() as u64, Ordering::Relaxed);
+            .fetch_add((cost * 1_000_000_000.0).round() as u64, Ordering::Relaxed);
 
         if let Some(tx) = &self.parent.progress_tx {
             let _ = tx.send(ProgressEvent::Event {
@@ -51,7 +51,7 @@ impl StageContext {
 #[derive(Debug)]
 pub struct ExecutionContext {
     pub total_tokens: AtomicU64,
-    pub total_cost: AtomicU64, // USD * 1_000_000
+    pub total_cost: AtomicU64, // USD * 1_000_000_000
     pub progress_tx: Option<mpsc::UnboundedSender<ProgressEvent>>,
 }
 

@@ -124,7 +124,7 @@ async fn generate_basis_node<P: Provider, R: Reasoner>(
     stage_context.record_events(
         "Node analysis",
         metadata.tokens.into(),
-        metadata.cost.into(),
+        metadata.cost,
     );
 
     provider

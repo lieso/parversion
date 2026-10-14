@@ -81,7 +81,7 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
                     cloned_stage_context.record_events(
                         "Field analysis",
                         metadata.tokens.into(),
-                        metadata.cost.into(),
+                        metadata.cost,
                     );
                     Ok(maybe_basis_field)
                 }

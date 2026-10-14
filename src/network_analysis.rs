@@ -453,7 +453,7 @@ async fn generate_basis_network<P: Provider, R: Reasoner>(
     stage_context.record_events(
         "Network analysis",
         metadata.tokens.into(),
-        metadata.cost.into(),
+        metadata.cost,
     );
 
     provider
@@ -493,7 +493,7 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
     stage_context.record_events(
         "Node relationship",
         metadata.tokens.into(),
-        metadata.cost.into(),
+        metadata.cost,
     );
 
     provider
@@ -545,7 +545,7 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
     stage_context.record_events(
         "Document classification",
         metadata.tokens.into(),
-        metadata.cost.into(),
+        metadata.cost,
     );
 
     Ok(Arc::new(classification))

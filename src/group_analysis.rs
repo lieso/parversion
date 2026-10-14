@@ -228,7 +228,7 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
             stage_context.record_events(
                 "Group analysis",
                 metadata.tokens.into(),
-                metadata.cost.into(),
+                metadata.cost,
             );
 
             (maybe_basis_group, Some(metadata))
@@ -365,7 +365,7 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
             stage_context.record_events(
                 "Group analysis",
                 metadata.tokens.into(),
-                metadata.cost.into(),
+                metadata.cost,
             );
 
             (maybe_basis_group, Some(metadata))
@@ -507,7 +507,7 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
             stage_context.record_events(
                 "Group analysis",
                 metadata.tokens.into(),
-                metadata.cost.into(),
+                metadata.cost,
             );
 
             (maybe_basis_group, Some(metadata))
