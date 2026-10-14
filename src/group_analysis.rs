@@ -180,8 +180,6 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
     options: Options,
     stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
-    stage_context.record_events("Group analysis", 0);
-
     let maybe_basis_groups = {
         if !options.regenerate {
             provider
@@ -194,6 +192,8 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
 
     if let Some(ref basis_groups) = maybe_basis_groups {
         if !basis_groups.is_empty() {
+            stage_context.record_events("Group analysis", 0, 0.0);
+
             return Ok(basis_groups.clone());
         }
     }
@@ -225,7 +225,7 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
                 )
                 .await?;
 
-            stage_context.record_events("Group analysis", metadata.tokens.into());
+            stage_context.record_events("Group analysis", metadata.tokens.into(), metadata.cost.into());
 
             (maybe_basis_group, Some(metadata))
         } else {
@@ -313,8 +313,6 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
     options: Options,
     stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
-    stage_context.record_events("Group analysis", 0);
-
     let maybe_basis_groups = {
         if !options.regenerate {
             provider
@@ -327,6 +325,8 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
 
     if let Some(ref basis_groups) = maybe_basis_groups {
         if !basis_groups.is_empty() {
+            stage_context.record_events("Group analysis", 0, 0.0);
+
             return Ok(basis_groups.clone());
         }
     }
@@ -358,7 +358,7 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
                 )
                 .await?;
 
-            stage_context.record_events("Group analysis", metadata.tokens.into());
+            stage_context.record_events("Group analysis", metadata.tokens.into(), metadata.cost.into());
 
             (maybe_basis_group, Some(metadata))
         } else {
@@ -451,8 +451,6 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
     options: Options,
     stage_context: StageContext,
 ) -> Result<Vec<BasisGroup>, Errors> {
-    stage_context.record_events("Group analysis", 0);
-
     let maybe_basis_groups = {
         if !options.regenerate {
             provider
@@ -465,6 +463,8 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
 
     if let Some(ref basis_groups) = maybe_basis_groups {
         if !basis_groups.is_empty() {
+            stage_context.record_events("Group analysis", 0, 0.0);
+
             return Ok(basis_groups.clone());
         }
     }
@@ -496,7 +496,7 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
                 )
                 .await?;
 
-            stage_context.record_events("Group analysis", metadata.tokens.into());
+            stage_context.record_events("Group analysis", metadata.tokens.into(), metadata.cost.into());
 
             (maybe_basis_group, Some(metadata))
         } else {

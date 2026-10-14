@@ -12,6 +12,7 @@ pub enum ProgressEvent {
         stage: &'static str,
         event_name: &'static str,
         tokens: u64,
+        cost: f64,
     },
 }
 
@@ -22,16 +23,20 @@ pub struct StageContext {
 }
 
 impl StageContext {
-    pub fn record_events(&self, event_name: &'static str, tokens: u64) {
+    pub fn record_events(&self, event_name: &'static str, tokens: u64, cost: f64) {
         self.parent
             .total_tokens
             .fetch_add(tokens, Ordering::Relaxed);
+        self.parent
+            .total_cost
+            .fetch_add((cost * 1_000_000.0).round() as u64, Ordering::Relaxed);
 
         if let Some(tx) = &self.parent.progress_tx {
             let _ = tx.send(ProgressEvent::Event {
                 stage: self.stage,
                 event_name,
                 tokens,
+                cost,
             });
         }
     }
@@ -46,6 +51,7 @@ impl StageContext {
 #[derive(Debug)]
 pub struct ExecutionContext {
     pub total_tokens: AtomicU64,
+    pub total_cost: AtomicU64, // USD * 1_000_000
     pub progress_tx: Option<mpsc::UnboundedSender<ProgressEvent>>,
 }
 
@@ -53,6 +59,7 @@ impl ExecutionContext {
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
             total_tokens: AtomicU64::new(0),
+            total_cost: AtomicU64::new(0),
             progress_tx: None,
         })
     }
@@ -71,6 +78,7 @@ impl ExecutionContext {
     pub fn with_progress(tx: mpsc::UnboundedSender<ProgressEvent>) -> Arc<Self> {
         Arc::new(Self {
             total_tokens: AtomicU64::new(0),
+            total_cost: AtomicU64::new(0),
             progress_tx: Some(tx),
         })
     }

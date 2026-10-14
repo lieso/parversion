@@ -104,12 +104,12 @@ async fn generate_basis_node<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<BasisNode, Errors> {
-    stage_context.record_events("Node analysis", 0);
 
     let basis_lineage: BasisLineage = basis_group.get_basis_lineage();
 
     if !options.regenerate {
         if let Some(basis_node) = provider.get_basis_node_by_lineage(&basis_lineage).await? {
+            stage_context.record_events("Node analysis", 0, 0.0);
             return Ok(basis_node);
         }
     }
@@ -122,7 +122,7 @@ async fn generate_basis_node<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events("Node analysis", metadata.tokens.into());
+    stage_context.record_events("Node analysis", metadata.tokens.into(), metadata.cost.into());
 
     provider
         .save_basis_node(&basis_lineage, basis_node.clone())

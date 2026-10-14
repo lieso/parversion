@@ -14,8 +14,6 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
 ) -> Result<HashMap<ID, Arc<BasisField>>, Errors> {
     log::trace!("In generate_basis_fields");
 
-    stage_context.record_events("Field analysis", 0);
-
     let meta_context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context
@@ -41,6 +39,8 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
                     (id, basis_field)
                 })
                 .collect();
+
+            stage_context.record_events("Field analysis", 0, 0.0);
 
             return Ok(field_map);
         }
@@ -78,7 +78,7 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
 
             match result {
                 Ok((maybe_basis_field, metadata)) => {
-                    cloned_stage_context.record_events("Field analysis", metadata.tokens.into());
+                    cloned_stage_context.record_events("Field analysis", metadata.tokens.into(), metadata.cost.into());
                     Ok(maybe_basis_field)
                 }
                 Err(e) => Err(e),

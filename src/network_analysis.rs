@@ -435,10 +435,9 @@ async fn generate_basis_network<P: Provider, R: Reasoner>(
     basis_nodes: Vec<Arc<BasisNode>>,
     relationships: Vec<Arc<NodeRelationship>>,
 ) -> Result<BasisNetwork, Errors> {
-    stage_context.record_events("Network analysis", 0);
-
     if !options.regenerate {
         if let Some(basis_network) = provider.get_basis_network(basis_nodes.clone()).await? {
+            stage_context.record_events("Network analysis", 0, 0.0);
             return Ok(basis_network);
         }
     }
@@ -451,7 +450,7 @@ async fn generate_basis_network<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events("Network analysis", metadata.tokens.into());
+    stage_context.record_events("Network analysis", metadata.tokens.into(), metadata.cost.into());
 
     provider
         .save_basis_network(basis_nodes.clone(), basis_network.clone())
@@ -469,13 +468,12 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
 ) -> Result<Vec<NodeRelationship>, Errors> {
-    stage_context.record_events("Node relationship", 0);
-
     if !options.regenerate {
         if let Some(node_relationships) = provider
             .get_node_relationships(&left.lineage, &right.lineage)
             .await?
         {
+            stage_context.record_events("Node relationship", 0, 0.0);
             return Ok(node_relationships);
         }
     }
@@ -488,7 +486,7 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events("Node relationship", metadata.tokens.into());
+    stage_context.record_events("Node relationship", metadata.tokens.into(), metadata.cost.into());
 
     provider
         .save_node_relationships(
@@ -510,8 +508,6 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
 ) -> Result<Arc<Classification>, Errors> {
     log::trace!("In get_classification");
 
-    stage_context.record_events("Document classification", 0);
-
     let meta_context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context
@@ -526,6 +522,8 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
         if let Some(classification) = provider.get_classification_by_lineage(&lineage).await? {
             log::info!("Provider has supplied classification");
 
+            stage_context.record_events("Document classification", 0, 0.0);
+
             return Ok(Arc::new(classification));
         };
     }
@@ -536,7 +534,7 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
         .save_classification(&lineage, classification.clone())
         .await?;
 
-    stage_context.record_events("Document classification", metadata.tokens.into());
+    stage_context.record_events("Document classification", metadata.tokens.into(), metadata.cost.into());
 
     Ok(Arc::new(classification))
 }
