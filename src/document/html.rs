@@ -579,7 +579,11 @@ fn sanitize_xml_name(name: &str) -> String {
             let ok = c.is_alphabetic()
                 || c == '_'
                 || (i > 0 && (c.is_alphanumeric() || c == '-' || c == '.'));
-            if ok { c } else { '_' }
+            if ok {
+                c
+            } else {
+                '_'
+            }
         })
         .collect()
 }

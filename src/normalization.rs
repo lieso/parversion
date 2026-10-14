@@ -344,7 +344,7 @@ pub async fn normalize_text_to_document<P: Provider, R: Reasoner>(
         execution_context,
     )
     .await?;
-    
+
     normalization_contexts
         .iter()
         .map(|normalization_context| {

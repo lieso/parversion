@@ -111,12 +111,14 @@ impl Reasoner for OpenRouterReasoner {
                         CompletionMetadata {
                             input_tokens: usage.prompt_tokens as u32,
                             output_tokens: usage.completion_tokens as u32,
+                            cost: usage.cost,
                             prompt_hash,
                         }
                     } else {
                         CompletionMetadata {
                             input_tokens: 0,
                             output_tokens: 0,
+                            cost: None,
                             prompt_hash,
                         }
                     };

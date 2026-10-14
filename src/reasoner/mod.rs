@@ -28,6 +28,7 @@ pub use backend::openrouter;
 pub struct CompletionMetadata {
     pub input_tokens: u32,
     pub output_tokens: u32,
+    pub cost: Option<f64>,
     pub prompt_hash: Hash,
 }
 
@@ -44,6 +45,7 @@ pub enum Capability {
 
 pub struct ReasonerMetadata {
     pub tokens: u32,
+    pub cost: f64,
     pub prompt_hash: Hash,
 }
 

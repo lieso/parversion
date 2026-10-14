@@ -136,6 +136,7 @@ pub async fn node_relationship_self<R: Reasoner>(
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompt_hash: metadata.prompt_hash.clone(),
+        cost: metadata.cost.unwrap_or(0.0),
     };
 
     let relationships: Vec<NodeRelationship> = match result.relationship_type {
@@ -228,7 +229,7 @@ pub async fn node_relationship_other<R: Reasoner>(
                 lock.bump_spatial_context_size();
             }
 
-            let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
+            let (node_relationship, next_reasoner_metadata) = determine_node_relationship_other(
                 reasoner,
                 Arc::clone(&normalization_context),
                 Arc::clone(&left),
@@ -236,6 +237,13 @@ pub async fn node_relationship_other<R: Reasoner>(
                 Capability::Capable,
             )
             .await?;
+
+            let reasoner_metadata = ReasonerMetadata {
+                tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
+                // TODO: convert to vector
+                prompt_hash: reasoner_metadata.prompt_hash.clone(),
+                cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
+            };
 
             match validate_node_relationship(
                 Arc::clone(&normalization_context),
@@ -253,14 +261,28 @@ pub async fn node_relationship_other<R: Reasoner>(
                     log::warn!("Relationship invalid or error: {:?}", result);
                     log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
 
-                    let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
-                        reasoner,
-                        Arc::clone(&normalization_context),
-                        Arc::clone(&left),
-                        Arc::clone(&right),
-                        Capability::Strong,
-                    )
-                    .await?;
+                    {
+                        let mut lock = write_lock!(normalization_context);
+                        lock.bump_spatial_context_size();
+                    }
+
+                    let (node_relationship, next_reasoner_metadata) =
+                        determine_node_relationship_other(
+                            reasoner,
+                            Arc::clone(&normalization_context),
+                            Arc::clone(&left),
+                            Arc::clone(&right),
+                            Capability::Strong,
+                        )
+                        .await?;
+
+                    let reasoner_metadata = ReasonerMetadata {
+                        tokens: reasoner_metadata.tokens.clone()
+                            + next_reasoner_metadata.tokens.clone(),
+                        // TODO: convert to vector
+                        prompt_hash: reasoner_metadata.prompt_hash.clone(),
+                        cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
+                    };
 
                     match validate_node_relationship(
                         Arc::clone(&normalization_context),
@@ -366,6 +388,7 @@ async fn determine_node_relationship_other<R: Reasoner>(
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompt_hash: metadata.prompt_hash.clone(),
+        cost: metadata.cost.unwrap_or(0.0),
     };
 
     let relationship_type = {

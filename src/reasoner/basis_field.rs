@@ -66,6 +66,7 @@ pub async fn basis_field<R: Reasoner>(
     let reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompt_hash: metadata.prompt_hash.clone(),
+        cost: metadata.cost.unwrap_or(0.0),
     };
 
     if result.is_meaningful {

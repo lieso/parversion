@@ -30,11 +30,10 @@ impl Context {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {
-        let spatial_context =
-            Self::generate_spatial_context_multi(
-                Arc::clone(&normalization_context),
-                contexts.clone()
-            )?;
+        let spatial_context = Self::generate_spatial_context_multi(
+            Arc::clone(&normalization_context),
+            contexts.clone(),
+        )?;
 
         let result = format!(
             r##"
@@ -77,7 +76,8 @@ impl Context {
                 .collect::<Vec<_>>()
         };
 
-        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
+        let spatial_context: String =
+            self.generate_spatial_context(Arc::clone(&normalization_context))?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let fields_context: String = basis_fields.iter().fold(String::new(), |acc, item| {
@@ -176,7 +176,8 @@ impl Context {
                 .clone()
         };
 
-        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
+        let spatial_context: String =
+            self.generate_spatial_context(Arc::clone(&normalization_context))?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let mut transformed_context = String::new();
@@ -231,7 +232,8 @@ impl Context {
                 .clone()
         };
 
-        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
+        let spatial_context: String =
+            self.generate_spatial_context(Arc::clone(&normalization_context))?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let fields_context: String = self
@@ -273,7 +275,8 @@ impl Context {
                 })?
                 .clone()
         };
-        let spatial_context: String = self.generate_spatial_context(Arc::clone(&normalization_context))?;
+        let spatial_context: String =
+            self.generate_spatial_context(Arc::clone(&normalization_context))?;
         let positional_context: String = self.generate_positional_context(&meta_context)?;
 
         let result = format!(
@@ -425,7 +428,11 @@ impl Context {
 
         for context in contexts {
             let mut envelope: HashSet<GraphNodeID> = HashSet::new();
-            traverse_structural_envelope(context.as_ref().clone(), &mut envelope, spatial_context_size);
+            traverse_structural_envelope(
+                context.as_ref().clone(),
+                &mut envelope,
+                spatial_context_size,
+            );
             neighbourhood.extend(envelope);
 
             target_ids.insert(read_lock!(context.graph_node).id.clone());
@@ -512,7 +519,7 @@ impl Ord for QueueItem {
 fn traverse_structural_envelope(
     context: Context,
     neighbourhood: &mut HashSet<GraphNodeID>,
-    max_neighbours: usize
+    max_neighbours: usize,
 ) {
     let target_node = context.graph_node;
 
