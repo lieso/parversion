@@ -9,6 +9,9 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing_subscriber::{fmt, EnvFilter};
+use indicatif::{ProgressBar, ProgressStyle};
+use std::io::IsTerminal;
+use std::time::Duration;
 
 use crate::config::CONFIG;
 use crate::document::{DocumentRole, DocumentType};
@@ -423,9 +426,33 @@ fn init_execution_context() -> Arc<ExecutionContext> {
     let execution_context = ExecutionContext::with_progress(tx);
 
     tokio::spawn(async move {
+        let bar = if io::stderr().is_terminal() {
+            ProgressBar::new_spinner()
+        } else {
+            ProgressBar::hidden()
+        };
+        bar.set_style(
+            ProgressStyle::with_template("{spinner:.magenta} [{elapsed_precise}] {msg}").unwrap(),
+        );
+
+        bar.enable_steady_tick(Duration::from_millis(100));
+
+        let mut stage = "starting";
+        let (mut tokens, mut cost) = (0u64, 0f64);
+
         while let Some(event) = rx.recv().await {
-            println!("\x1b[38;2;255;0;255m{:?}\x1b[0m", event); // fuchsia
+            match event {
+                ProgressEvent::StageStart(s) => stage = s,
+                ProgressEvent::StageDone(s) => bar.println(format!("✔ {s}")),
+                ProgressEvent::Event { tokens: t, cost: c, .. } => {
+                    tokens += t;
+                    cost += c;
+                }
+            }
+            bar.set_message(format!("{stage} · {tokens} tokens · ${cost:.4}"));
         }
+
+        bar.finish_and_clear();
     });
 
     execution_context
