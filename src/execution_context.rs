@@ -48,6 +48,12 @@ impl StageContext {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ExecutionSummary {
+    pub total_tokens: u64,
+    pub total_cost: f64, // USD
+}
+
 #[derive(Debug)]
 pub struct ExecutionContext {
     pub total_tokens: AtomicU64,
@@ -81,5 +87,12 @@ impl ExecutionContext {
             total_cost: AtomicU64::new(0),
             progress_tx: Some(tx),
         })
+    }
+
+    pub fn summary(&self) -> ExecutionSummary {
+        ExecutionSummary {
+            total_tokens: self.total_tokens.load(Ordering::Relaxed),
+            total_cost: self.total_cost.load(Ordering::Relaxed) as f64 / 1_000_000_000.0,
+        }
     }
 }

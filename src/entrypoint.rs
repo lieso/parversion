@@ -73,6 +73,13 @@ pub async fn run() -> Result<(), Errors> {
     let elapsed = start.elapsed();
     log::info!("Elapsed: {:.2?}", elapsed);
 
+    let summary = execution_context.summary();
+    log::info!(
+        "Tokens: {}, cost: ${:.6}",
+        summary.total_tokens,
+        summary.total_cost
+    );
+
     Ok(())
 }
 
