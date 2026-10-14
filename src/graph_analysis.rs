@@ -165,7 +165,6 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
     left: Arc<BasisNetwork>,
     right: Arc<BasisNetwork>,
 ) -> Result<NetworkRelationship, Errors> {
-
     if !options.regenerate {
         if let Some(network_relationship) = provider
             .get_network_relationship(left.clone(), right.clone())
@@ -184,7 +183,11 @@ async fn generate_network_relationship<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events("Network relationship", metadata.tokens.into(), metadata.cost.into());
+    stage_context.record_events(
+        "Network relationship",
+        metadata.tokens.into(),
+        metadata.cost.into(),
+    );
 
     provider
         .save_network_relationship(left.clone(), right.clone(), network_relationship.clone())

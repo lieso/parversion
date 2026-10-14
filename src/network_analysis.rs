@@ -450,7 +450,11 @@ async fn generate_basis_network<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events("Network analysis", metadata.tokens.into(), metadata.cost.into());
+    stage_context.record_events(
+        "Network analysis",
+        metadata.tokens.into(),
+        metadata.cost.into(),
+    );
 
     provider
         .save_basis_network(basis_nodes.clone(), basis_network.clone())
@@ -486,7 +490,11 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events("Node relationship", metadata.tokens.into(), metadata.cost.into());
+    stage_context.record_events(
+        "Node relationship",
+        metadata.tokens.into(),
+        metadata.cost.into(),
+    );
 
     provider
         .save_node_relationships(
@@ -534,7 +542,11 @@ pub async fn get_classification<P: Provider, R: Reasoner>(
         .save_classification(&lineage, classification.clone())
         .await?;
 
-    stage_context.record_events("Document classification", metadata.tokens.into(), metadata.cost.into());
+    stage_context.record_events(
+        "Document classification",
+        metadata.tokens.into(),
+        metadata.cost.into(),
+    );
 
     Ok(Arc::new(classification))
 }

@@ -225,7 +225,11 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
                 )
                 .await?;
 
-            stage_context.record_events("Group analysis", metadata.tokens.into(), metadata.cost.into());
+            stage_context.record_events(
+                "Group analysis",
+                metadata.tokens.into(),
+                metadata.cost.into(),
+            );
 
             (maybe_basis_group, Some(metadata))
         } else {
@@ -358,7 +362,11 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
                 )
                 .await?;
 
-            stage_context.record_events("Group analysis", metadata.tokens.into(), metadata.cost.into());
+            stage_context.record_events(
+                "Group analysis",
+                metadata.tokens.into(),
+                metadata.cost.into(),
+            );
 
             (maybe_basis_group, Some(metadata))
         } else {
@@ -496,7 +504,11 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
                 )
                 .await?;
 
-            stage_context.record_events("Group analysis", metadata.tokens.into(), metadata.cost.into());
+            stage_context.record_events(
+                "Group analysis",
+                metadata.tokens.into(),
+                metadata.cost.into(),
+            );
 
             (maybe_basis_group, Some(metadata))
         } else {

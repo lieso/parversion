@@ -78,7 +78,11 @@ pub async fn generate_basis_fields<P: Provider, R: Reasoner>(
 
             match result {
                 Ok((maybe_basis_field, metadata)) => {
-                    cloned_stage_context.record_events("Field analysis", metadata.tokens.into(), metadata.cost.into());
+                    cloned_stage_context.record_events(
+                        "Field analysis",
+                        metadata.tokens.into(),
+                        metadata.cost.into(),
+                    );
                     Ok(maybe_basis_field)
                 }
                 Err(e) => Err(e),

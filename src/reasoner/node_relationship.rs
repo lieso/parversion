@@ -277,7 +277,8 @@ pub async fn node_relationship_other<R: Reasoner>(
 
                     let reasoner_metadata = ReasonerMetadata {
                         tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
-                        prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
+                        prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts]
+                            .concat(),
                         cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
                     };
 
