@@ -74,10 +74,11 @@ pub struct Document {
 impl Document {
     pub async fn from_schema_string<P: Provider, R: Reasoner>(
         provider: Arc<P>,
-        _reasoner: Arc<R>,
+        reasoner: Arc<R>,
         value: String,
         options: &Options,
-        _metadata: &Metadata,
+        metadata: &Metadata,
+        stage_context: &StageContext,
     ) -> Result<Self, Errors> {
         log::trace!("In from_schema_string");
 
@@ -94,27 +95,33 @@ impl Document {
             }
         }
 
-        unimplemented!();
+        let (instance, reasoner_metadata) = reasoner
+            .generate_document_from_schema(value)
+            .await?;
 
-        //let (instance, (tokens,)) = LLM::schema_to_instance(value).await?;
+        stage_context.record_events(
+            "Schema to instance",
+            reasoner_metadata.tokens.into(),
+            reasoner_metadata.cost
+        );
 
-        //let document = Document {
-        //    document_type: metadata.document_type.clone().unwrap(),
-        //    metadata: DocumentMetadata {
-        //        origin: options.origin.clone(),
-        //        date: options.date.clone(),
-        //        name: None,
-        //        description: None,
-        //        semantic_content_types: None,
-        //    },
-        //    data: instance.clone(),
-        //};
+        let document = Document {
+            document_type: metadata.document_type.clone().unwrap(),
+            metadata: DocumentMetadata {
+                origin: options.origin.clone(),
+                date: options.date.clone(),
+                name: None,
+                description: None,
+                semantic_content_types: None,
+            },
+            data: instance.clone(),
+        };
 
-        //provider
-        //    .save_schema_instance_document(&hash, document.clone())
-        //    .await?;
+        provider
+            .save_schema_instance_document(&hash, document.clone())
+            .await?;
 
-        //Ok(document)
+        Ok(document)
     }
 
     pub fn from_string(

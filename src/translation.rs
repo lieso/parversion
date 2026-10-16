@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use std::time::Instant;
 
 use crate::document::{Document, DocumentRole, DocumentType};
 use crate::document_format::DocumentFormat;
@@ -100,6 +101,9 @@ pub async fn translate_text<P: Provider, R: Reasoner>(
 
     let source_document = Document::from_string(source.0, options, source.1)?;
 
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Target document");
+
     let target_document = {
         match target.1.role {
             DocumentRole::Instance => Document::from_string(target.0, options, target.1)?,
@@ -110,11 +114,16 @@ pub async fn translate_text<P: Provider, R: Reasoner>(
                     target.0,
                     options,
                     target.1,
+                    &stage,
                 )
                 .await?
             }
         }
     };
+
+    stage.finish();
+    let elapsed = start.elapsed();
+    log::info!("preinitialization: {:.2?}", elapsed);
 
     let translation_context = translate(
         Arc::clone(&provider),
