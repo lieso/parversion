@@ -135,6 +135,7 @@ impl Context {
         basis_node: Arc<BasisNode>,
     ) -> Result<String, Errors> {
         let mut transformed_context = String::new();
+
         for transformation in &basis_node.transformations {
             let transformed = transformation.transform(self.data_node.clone())?;
 
@@ -195,7 +196,7 @@ impl Context {
                     return Err(Errors::UnexpectedError("Basis node transformation resulting in an empty value during context string generation".to_string()));
                 }
 
-                transformed_context.push_str(&format!("{} => {}", transformation.image, truncated));
+                transformed_context.push_str(&format!("{} => {}\n", transformation.image, truncated));
             }
         }
 
