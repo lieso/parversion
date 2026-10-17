@@ -55,29 +55,6 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     Ok(normalizations)
 }
 
-async fn normalize_html(
-    document: Document,
-    _options: &Options,
-) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
-    let (meta_contexts, _other_documents) = document.to_meta_context()?;
-
-    let normalization_contexts = meta_contexts
-        .into_iter()
-        .map(|meta_context| {
-            let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
-
-            {
-                let mut lock = write_lock!(normalization_context);
-                lock.update_meta_context(meta_context);
-            }
-
-            normalization_context
-        })
-        .collect();
-
-    Ok(normalization_contexts)
-}
-
 pub async fn normalize_document<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
@@ -223,21 +200,23 @@ async fn init_normalization_context(
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     log::trace!("In init_normalization_context");
 
-    match document.document_type {
-        DocumentType::Html => normalize_html(document, options).await,
-        DocumentType::Json => {
-            unimplemented!()
-        }
-        DocumentType::PlainText => {
-            unimplemented!()
-        }
-        DocumentType::JavaScript => {
-            unimplemented!()
-        }
-        DocumentType::Xml => {
-            unimplemented!()
-        }
-    }
+    let (meta_contexts, _other_documents) = document.to_meta_context()?;
+
+    let normalization_contexts = meta_contexts
+        .into_iter()
+        .map(|meta_context| {
+            let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
+
+            {
+                let mut lock = write_lock!(normalization_context);
+                lock.update_meta_context(meta_context);
+            }
+
+            normalization_context
+        })
+        .collect();
+
+    Ok(normalization_contexts)
 }
 
 fn build_normalized_graph(

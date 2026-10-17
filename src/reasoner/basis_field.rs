@@ -6,6 +6,7 @@ use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_field::{BasisField, BasisFieldMetadata};
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::document::DocumentType;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisFieldResponse {
@@ -21,6 +22,30 @@ pub async fn basis_field<R: Reasoner>(
     candidate: String,
 ) -> Result<(Option<BasisField>, ReasonerMetadata), Errors> {
     log::trace!("In basis_field");
+
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().unwrap()
+    };
+
+    if matches!(meta_context.document_type, DocumentType::Json) {
+        let basis_field = BasisField {
+            id: ID::new(),
+            acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
+            name: candidate.clone(),
+            metadata: BasisFieldMetadata {
+                prompts: Vec::new(),
+            },
+        };
+
+        let reasoner_metadata = ReasonerMetadata {
+            tokens: 0,
+            prompts: Vec::new(),
+            cost: 0.0,
+        };
+
+        return Ok((Some(basis_field), reasoner_metadata));
+    }
 
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt = get_user_prompt(
@@ -70,11 +95,6 @@ pub async fn basis_field<R: Reasoner>(
     };
 
     if result.is_meaningful {
-        let meta_context = {
-            let lock = read_lock!(normalization_context);
-            lock.meta_context.clone().unwrap()
-        };
-
         let basis_field = BasisField {
             id: ID::new(),
             acyclic_subgraph_hash: meta_context.acyclic_subgraph_hash.clone(),
