@@ -1,0 +1,101 @@
+You are analyzing a JSON document to identify which of its data carries meaning,
+and to describe the data model it represents, as part of normalizing arbitrary
+JSON into a consistent, well-described structure.
+
+**THE GOAL:** Reconstruct a clean data model from a JSON document of unknown
+origin and unknown quality. The document may be well structured, or it may be
+noisy, inconsistent, or partially malformed. We want to identify the keys that
+carry meaningful information about what the document records, and describe each
+one precisely, while excluding keys that carry no discernible information.
+
+**HOW TO READ THE CONTEXT INSTANCES:**
+Multiple context instances are provided below (separated by ---OCCURRENCE SEPARATOR---).
+Each instance is a different occurrence of the same role in the document, so
+they differ in values but share keys and structural position. Each instance shows:
+1. SPATIAL CONTEXT: A portion of the JSON document surrounding the extracted
+   fields, showing nearby keys, values, and parent relationships. This reveals
+   the actual content and structural position.
+2. POSITIONAL CONTEXT: The path of keys from the document root to the extracted
+   fields (e.g., "root -> items -> details -> label"). This shows the full
+   structural lineage.
+3. EXTRACTED FIELDS: The key and value of each field identified at this location.
+
+Use all three perspectives together to understand each key's semantic role. Key
+names are a useful hint, but they may be abbreviated, generic, opaque, or
+misleading, so confirm them against the values and the surrounding structure.
+Do not assume the document is clean: values may be inconsistent in type or
+format across occurrences, and keys may be unconventional.
+
+**EVALUATION TASK:**
+For each EXTRACTED FIELD shown, evaluat carries
+meaningful data or is noise. Use the multiple occurrences as samples: a key is
+meaningful if its values consistently css
+occurrences, not merely in one. Judge meaning relative to what the document
+appears to record. Technical or adminiss, timestamps,
+counters, statuses, measurements) are meaningful when they are part of what is
+recorded, and are not noise merely beca
+
+**ELIMINATION CRITERIA (do not include
+
+1. **Empty or Placeholder Content:** Va or stand-ins
+   for the absence of a value (e.g., empty strings, "N/A", "undefined"), or
+   loading or template placeholders, coces.
+
+2. **No Discernible Role:** Opaque or rwhich no
+   semantic role can be inferred from the key, the values, or the surrounding
+   structure.
+
+3. **Incidental Content:** Content thate document
+   records, such as advertising or promotional payloads, tracking or campaign
+   identifiers, presentation or layout nd actions,
+   when they sit alongside the real data.
+
+4. **Constant Boilerplate:** Values that are identical across every occurrence
+   and are not specific to any one of t or
+   site-wide settings, unless the constant is itself part of what is recorded.
+
+Malformed or unusual values alone are NOT grounds for elimination. If a key
+clearly has a meaningful role but its v format,
+mixed types), include it and describe the intended role.
+
+**INCLUSION CRITERIA (include in response):**
+A key is meaningful if its values conveing being
+recorded. Ask: "Does this key describe a property, measurement, identity,
+relationship, or state of something in  value
+vary with that thing?"
+
+For meaningful fields, provide exactly one mapping per source field:
+- source_field: The key of the extracteafter "FIELD:"
+- field_name: Semantic snake_case identifier reflecting its role in the data model
+- description: Brief description of wha
+- data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.). If values are
+inconsistent, choose the type that bestole.
+- format: Optional. More specific type hint if applicable.
+
+**Important:** Each source field should map to exactly one output field_name. Do not provide multiple
+mappings for the same source field. If cribes the field's role well, it is fine to report it unchanged as the field_name (converted to snake_case if needed). Only choose a different
+name when it would be more precise or c
+
+When reporting `source_field`, copy ONLws "FIELD:" — do not include the"FIELD:" prefix, the "VALUE: ..." portion, or any surrounding punctuation. For example, given "FIELD: id,
+VALUE: 42", report source_field as exac
+
+**Response Format:**
+Respond with valid JSON. Return one entry per meaningful field identified:
+
+{
+  "fields": [
+    {
+      "source_field": "id",
+      "field_name": "record_id",
+      "description": "Unique identifier
+      "data_type": "string",
+      "format": "uuid"
+    }
+  ]
+}
+
+If all evaluated fields are noise respond with an empty array:
+
+{
+  "fields": []
+}
