@@ -4,12 +4,14 @@ use std::sync::{
 };
 use tokio::sync::mpsc;
 
+use crate::prelude::*;
+
 #[derive(Debug)]
 pub enum ProgressEvent {
-    StageStart(&'static str),
-    StageDone(&'static str),
+    StageStart { id: ID, parent: Option<ID>, name: &'static str },
+    StageDone { id: ID },
     Event {
-        stage: &'static str,
+        stage: ID,
         event_name: &'static str,
         tokens: u64,
         cost: f64,
@@ -18,22 +20,24 @@ pub enum ProgressEvent {
 
 #[derive(Clone)]
 pub struct StageContext {
-    parent: Arc<ExecutionContext>,
-    stage: &'static str,
+    execution_context: Arc<ExecutionContext>,
+    parent: Option<Arc<StageContext>>,
+    id: ID,
+    name: &'static str,
 }
 
 impl StageContext {
     pub fn record_events(&self, event_name: &'static str, tokens: u64, cost: f64) {
-        self.parent
+        self.execution_context
             .total_tokens
             .fetch_add(tokens, Ordering::Relaxed);
-        self.parent
+        self.execution_context
             .total_cost
             .fetch_add((cost * 1_000_000_000.0).round() as u64, Ordering::Relaxed);
 
-        if let Some(tx) = &self.parent.progress_tx {
+        if let Some(tx) = &self.execution_context.progress_tx {
             let _ = tx.send(ProgressEvent::Event {
-                stage: self.stage,
+                stage: self.id.clone(),
                 event_name,
                 tokens,
                 cost,
@@ -42,8 +46,19 @@ impl StageContext {
     }
 
     pub fn finish(self) {
-        if let Some(tx) = &self.parent.progress_tx {
-            let _ = tx.send(ProgressEvent::StageDone(self.stage));
+        if let Some(tx) = &self.execution_context.progress_tx {
+            let _ = tx.send(ProgressEvent::StageDone {
+                id: self.id.clone()
+            });
+        }
+    }
+
+    pub fn enter_stage(&self, name: &'static str) -> StageContext {
+        StageContext {
+            execution_context: Arc::clone(&self.execution_context),
+            id: ID::new(),
+            parent: Some(Arc::new(self.clone())),
+            name,
         }
     }
 }
@@ -70,14 +85,22 @@ impl ExecutionContext {
         })
     }
 
-    pub fn enter_stage(self: &Arc<Self>, stage: &'static str) -> StageContext {
+    pub fn enter_stage(self: &Arc<Self>, name: &'static str) -> StageContext {
+        let stage_id = ID::new();
+
         if let Some(tx) = &self.progress_tx {
-            let _ = tx.send(ProgressEvent::StageStart(stage));
+            let _ = tx.send(ProgressEvent::StageStart {
+                id: stage_id.clone(),
+                parent: None,
+                name,
+            });
         }
 
         StageContext {
-            parent: Arc::clone(self),
-            stage,
+            execution_context: Arc::clone(&self),
+            parent: None,
+            id: stage_id,
+            name,
         }
     }
 

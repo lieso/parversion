@@ -9,9 +9,10 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing_subscriber::{fmt, EnvFilter};
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle, MultiProgress, ProgressDrawTarget};
 use std::io::IsTerminal;
 use std::time::Duration;
+use std::collections::HashMap;
 
 use crate::config::CONFIG;
 use crate::document::{DocumentRole, DocumentType};
@@ -421,38 +422,102 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
     }
 }
 
+struct StageView {
+    bar: ProgressBar,
+    parent: Option<ID>,
+    depth: usize,
+    name: &'static str,
+    tokens: u64,
+    cost: f64,
+}
+
+fn stage_label(view: &StageView) -> String {
+    format!("{} · {} tokens · ${:.4}", view.name, view.tokens, view.cost)
+}
+
 fn init_execution_context() -> Arc<ExecutionContext> {
     let (tx, mut rx) = mpsc::unbounded_channel();
     let execution_context = ExecutionContext::with_progress(tx);
 
     tokio::spawn(async move {
-        let bar = if io::stderr().is_terminal() {
-            ProgressBar::new_spinner()
+        let target = if io::stderr().is_terminal() {
+            ProgressDrawTarget::stderr()
         } else {
-            ProgressBar::hidden()
+            ProgressDrawTarget::hidden()
         };
-        bar.set_style(
-            ProgressStyle::with_template("{spinner:.magenta} [{elapsed_precise}] {msg}").unwrap(),
-        );
+        let multi = MultiProgress::with_draw_target(target);
 
-        bar.enable_steady_tick(Duration::from_millis(100));
+        let running = ProgressStyle::with_template(
+            "{prefix}{spinner:.magenta} {msg} [{elapsed_precise}]",
+        )
+        .unwrap();
+        let done = ProgressStyle::with_template("{prefix}✔ {msg}").unwrap();
 
-        let mut stage = "starting";
-        let (mut tokens, mut cost) = (0u64, 0f64);
+        let header = multi.add(ProgressBar::new_spinner());
+        header.set_style(ProgressStyle::with_template("{msg}").unwrap());
+        let (mut total_tokens, mut total_cost) = (0u64, 0f64);
+
+        let mut stages: HashMap<ID, StageView> = HashMap::new();
 
         while let Some(event) = rx.recv().await {
             match event {
-                ProgressEvent::StageStart(s) => stage = s,
-                ProgressEvent::StageDone(s) => bar.println(format!("✔ {s}")),
-                ProgressEvent::Event { tokens: t, cost: c, .. } => {
-                    tokens += t;
-                    cost += c;
+                ProgressEvent::StageStart { id, parent, name } => {
+                    let depth = parent
+                        .as_ref()
+                        .and_then(|p| stages.get(p))
+                        .map_or(0, |view| view.depth + 1);
+
+                    let bar = multi.add(ProgressBar::new_spinner());
+                    bar.set_style(running.clone());
+                    bar.set_prefix("  ".repeat(depth));
+                    bar.enable_steady_tick(Duration::from_millis(100));
+
+                    let view = StageView {
+                        bar,
+                        parent,
+                        depth,
+                        name,
+                        tokens: 0,
+                        cost: 0.0,
+                    };
+                    view.bar.set_message(stage_label(&view));
+                    stages.insert(id, view);
+                }
+
+                ProgressEvent::StageDone { id } => {
+                    if let Some(view) = stages.get(&id) {
+                        view.bar.set_style(done.clone());
+                        view.bar.finish();
+                    }
+                }
+
+                ProgressEvent::Event {
+                    stage,
+                    tokens,
+                    cost,
+                    ..
+                } => {
+                    total_tokens += tokens;
+                    total_cost += cost;
+
+                    let mut current = Some(stage);
+                    while let Some(id) = current {
+                        let Some(view) = stages.get_mut(&id) else { break };
+                        view.tokens += tokens;
+                        view.cost += cost;
+                        view.bar.set_message(stage_label(view));
+                        current = view.parent.clone();
+                    }
                 }
             }
-            bar.set_message(format!("{stage} · {tokens} tokens · ${cost:.4}"));
+
+            header.set_message(format!(
+                "Total · {} tokens · ${:.4}",
+                total_tokens, total_cost
+            ));
         }
 
-        bar.finish_and_clear();
+        header.finish();
     });
 
     execution_context

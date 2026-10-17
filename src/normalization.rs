@@ -63,8 +63,10 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     options: &Options,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
+    let process = execution_context.enter_stage("Normalization");
+
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Document classification");
+    let stage = process.enter_stage("Document classification");
 
     let classification = get_classification(
         Arc::clone(&provider),
@@ -85,7 +87,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     log::info!("get_classification: {:.2?}", elapsed);
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Field analysis");
+    let stage = process.enter_stage("Field analysis");
 
     let basis_fields = generate_basis_fields(
         Arc::clone(&provider),
@@ -112,7 +114,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     stage.finish();
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Group analysis");
+    let stage = process.enter_stage("Group analysis");
 
     let basis_groups = generate_basis_groups(
         Arc::clone(&provider),
@@ -147,7 +149,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     stage.finish();
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Node analysis");
+    let stage = process.enter_stage("Node analysis");
 
     log::info!("Getting basis nodes");
     let (basis_nodes, basis_node_contexts, context_basis_node) = generate_basis_nodes(
@@ -175,7 +177,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     stage.finish();
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Network analysis");
+    let stage = process.enter_stage("Network analysis");
 
     log::info!("Generating basis networks");
     let (basis_networks,) = generate_basis_networks(
@@ -203,7 +205,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     stage.finish();
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Graph analysis");
+    let stage = process.enter_stage("Graph analysis");
 
     log::info!("Generating basis graph");
     let basis_graph = generate_basis_graph(
@@ -231,7 +233,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     stage.finish();
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Building normalized graph");
+    let stage = process.enter_stage("Building normalized graph");
 
     let normalized = build_normalized_graph(Arc::clone(&normalization_context), &options)?;
 

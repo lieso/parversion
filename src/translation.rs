@@ -20,6 +20,9 @@ pub async fn translate<P: Provider, R: Reasoner>(
 ) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
     log::trace!("In translate");
 
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Initialization");
+
     let _translation_context = init_translation_context(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
@@ -29,6 +32,10 @@ pub async fn translate<P: Provider, R: Reasoner>(
         execution_context.clone(),
     )
     .await?;
+
+    stage.finish();
+    let elapsed = start.elapsed();
+    log::info!("init_translation_context: {:.2?}", elapsed);
 
     unimplemented!()
 }
@@ -102,7 +109,7 @@ pub async fn translate_text<P: Provider, R: Reasoner>(
     let source_document = Document::from_string(source.0, options, source.1)?;
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Target document");
+    let stage = execution_context.enter_stage("Preintialization");
 
     let target_document = {
         match target.1.role {
