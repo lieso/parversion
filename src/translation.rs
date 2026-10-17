@@ -37,6 +37,9 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let elapsed = start.elapsed();
     log::info!("init_translation_context: {:.2?}", elapsed);
 
+
+
+
     unimplemented!()
 }
 
@@ -109,7 +112,7 @@ pub async fn translate_text<P: Provider, R: Reasoner>(
     let source_document = Document::from_string(source.0, options, source.1)?;
 
     let start = Instant::now();
-    let stage = execution_context.enter_stage("Preintialization");
+    let stage = execution_context.enter_stage("Preinitialization");
 
     let target_document = {
         match target.1.role {

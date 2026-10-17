@@ -441,7 +441,7 @@ fn init_execution_context() -> Arc<ExecutionContext> {
     let execution_context = ExecutionContext::with_progress(tx);
 
     tokio::spawn(async move {
-        let target = if io::stderr().is_terminal() {
+        let target = if !cfg!(debug_assertions) && io::stderr().is_terminal() {
             ProgressDrawTarget::stderr()
         } else {
             ProgressDrawTarget::hidden()
@@ -461,7 +461,6 @@ fn init_execution_context() -> Arc<ExecutionContext> {
         let mut stages: HashMap<ID, StageView> = HashMap::new();
 
         while let Some(event) = rx.recv().await {
-            log::debug!("stages: {}", stages.len());
             match event {
                 ProgressEvent::StageStart { id, parent, name } => {
                     let anchor = parent
