@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
-use crate::document::{Document, DocumentRole, DocumentType};
+use crate::document::{Document, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::normalization;
 use crate::package::Package;
@@ -37,35 +37,6 @@ pub async fn translate<P: Provider, R: Reasoner>(
     log::info!("init_translation_context: {:.2?}", elapsed);
 
     unimplemented!()
-}
-
-pub async fn translate_json(
-    source: Vec<Arc<RwLock<NormalizationContext>>>,
-    target_document: Document,
-    _options: &Options,
-) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
-    log::trace!("In translate_json");
-
-    let (meta_contexts, _other_documents) = target_document.to_meta_context()?;
-
-    let target: Vec<Arc<RwLock<NormalizationContext>>> = meta_contexts
-        .into_iter()
-        .map(|meta_context| {
-            let normalization_context = Arc::new(RwLock::new(NormalizationContext::new()));
-
-            {
-                let mut lock = write_lock!(normalization_context);
-                lock.update_meta_context(meta_context);
-            }
-
-            normalization_context
-        })
-        .collect();
-
-    Ok(Arc::new(RwLock::new(TranslationContext::new(
-        source,
-        target,
-    ))))
 }
 
 pub async fn translate_text_to_document<P: Provider, R: Reasoner>(
@@ -181,35 +152,25 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
 ) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
     log::trace!("In init_translation_context");
 
-    let normalization_contexts = normalization::normalize(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        source,
-        options,
-        execution_context.clone(),
-    )
-    .await?;
+    let (source, target) = futures::try_join!(
+        normalization::normalize(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            source,
+            options,
+            execution_context.clone(),
+        ),
+        normalization::normalize(
+            Arc::clone(&provider),
+            Arc::clone(&reasoner),
+            target,
+            options,
+            execution_context.clone(),
+        )
+    )?;
 
-    match target.document_type {
-        DocumentType::Html => {
-            unimplemented!()
-        }
-        DocumentType::Json => {
-            translate_json(
-                normalization_contexts,
-                target,
-                options,
-            )
-            .await
-        }
-        DocumentType::PlainText => {
-            unimplemented!()
-        }
-        DocumentType::JavaScript => {
-            unimplemented!()
-        }
-        DocumentType::Xml => {
-            unimplemented!()
-        }
-    }
+    Ok(Arc::new(RwLock::new(TranslationContext::new(
+        source,
+        target,
+    ))))
 }
