@@ -48,7 +48,12 @@ pub async fn generate_document_from_schema<R: Reasoner>(
     log::debug!("");
 
     let (result, metadata) = reasoner
-        .execute::<SchemaInstanceResponse>(&capability, &system_prompt, &user_prompt, response_schema)
+        .execute::<SchemaInstanceResponse>(
+            &capability,
+            &system_prompt,
+            &user_prompt,
+            response_schema,
+        )
         .await?;
 
     let reasoner_metadata = ReasonerMetadata {
@@ -60,16 +65,14 @@ pub async fn generate_document_from_schema<R: Reasoner>(
     Ok((result.document, reasoner_metadata))
 }
 
-async fn get_system_prompt<R: Reasoner>(
-    reasoner: &R,
-) -> Result<String, Errors> {
+async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> {
     reasoner
         .prompts()
         .get("", "schema_to_instance")
         .await?
         .ok_or_else(|| {
             Errors::UnavailableSystemPrompt(
-                "Expected a schema_to_instance.txt system prompt in prompts".to_string()
+                "Expected a schema_to_instance.txt system prompt in prompts".to_string(),
             )
         })
 }

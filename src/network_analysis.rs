@@ -450,11 +450,7 @@ async fn generate_basis_network<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events(
-        "Network analysis",
-        metadata.tokens.into(),
-        metadata.cost,
-    );
+    stage_context.record_events("Network analysis", metadata.tokens.into(), metadata.cost);
 
     provider
         .save_basis_network(basis_nodes.clone(), basis_network.clone())
@@ -490,11 +486,7 @@ async fn generate_node_relationship<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events(
-        "Node relationship",
-        metadata.tokens.into(),
-        metadata.cost,
-    );
+    stage_context.record_events("Node relationship", metadata.tokens.into(), metadata.cost);
 
     provider
         .save_node_relationships(

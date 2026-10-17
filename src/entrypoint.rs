@@ -1,18 +1,18 @@
 use atty::Stream;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use dotenv;
+use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
+use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::io::IsTerminal;
 use std::io::{self, Read};
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tracing_subscriber::{fmt, EnvFilter};
-use indicatif::{ProgressBar, ProgressStyle, MultiProgress, ProgressDrawTarget};
-use std::io::IsTerminal;
-use std::time::Duration;
-use std::collections::HashMap;
 
 use crate::config::CONFIG;
 use crate::document::{DocumentRole, DocumentType};
@@ -448,10 +448,9 @@ fn init_execution_context() -> Arc<ExecutionContext> {
         };
         let multi = MultiProgress::with_draw_target(target);
 
-        let running = ProgressStyle::with_template(
-            "{prefix}{spinner:.magenta} {msg} [{elapsed_precise}]",
-        )
-        .unwrap();
+        let running =
+            ProgressStyle::with_template("{prefix}{spinner:.magenta} {msg} [{elapsed_precise}]")
+                .unwrap();
         let done = ProgressStyle::with_template("{prefix}✔ {msg}").unwrap();
 
         let header = multi.add(ProgressBar::new_spinner());
@@ -461,6 +460,8 @@ fn init_execution_context() -> Arc<ExecutionContext> {
         let mut stages: HashMap<ID, StageView> = HashMap::new();
 
         while let Some(event) = rx.recv().await {
+            log::info!("Progress Event: {:?}", event);
+
             match event {
                 ProgressEvent::StageStart { id, parent, name } => {
                     let anchor = parent
@@ -475,7 +476,9 @@ fn init_execution_context() -> Arc<ExecutionContext> {
 
                     let mut current = parent.clone();
                     while let Some(id) = current {
-                        let Some(view) = stages.get_mut(&id) else { break };
+                        let Some(view) = stages.get_mut(&id) else {
+                            break;
+                        };
                         view.anchor = bar.clone();
                         current = view.parent.clone();
                     }
@@ -520,7 +523,9 @@ fn init_execution_context() -> Arc<ExecutionContext> {
 
                     let mut current = Some(stage);
                     while let Some(id) = current {
-                        let Some(view) = stages.get_mut(&id) else { break };
+                        let Some(view) = stages.get_mut(&id) else {
+                            break;
+                        };
                         view.tokens += tokens;
                         view.cost += cost;
                         view.bar.set_message(stage_label(view));

@@ -37,9 +37,6 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let elapsed = start.elapsed();
     log::info!("init_translation_context: {:.2?}", elapsed);
 
-
-
-
     unimplemented!()
 }
 

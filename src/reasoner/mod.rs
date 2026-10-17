@@ -20,8 +20,8 @@ mod basis_node;
 mod classify;
 mod network_relationship;
 mod node_relationship;
-mod translation;
 mod sampling;
+mod translation;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -187,7 +187,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
 
     async fn generate_document_from_schema(
         &self,
-        schema: String
+        schema: String,
     ) -> Result<(String, ReasonerMetadata), Errors> {
         translation::generate_document_from_schema(self, schema).await
     }

@@ -95,14 +95,12 @@ impl Document {
             }
         }
 
-        let (instance, reasoner_metadata) = reasoner
-            .generate_document_from_schema(value)
-            .await?;
+        let (instance, reasoner_metadata) = reasoner.generate_document_from_schema(value).await?;
 
         stage_context.record_events(
             "Schema to instance",
             reasoner_metadata.tokens.into(),
-            reasoner_metadata.cost
+            reasoner_metadata.cost,
         );
 
         let document = Document {

@@ -8,8 +8,14 @@ use crate::prelude::*;
 
 #[derive(Debug)]
 pub enum ProgressEvent {
-    StageStart { id: ID, parent: Option<ID>, name: &'static str },
-    StageDone { id: ID },
+    StageStart {
+        id: ID,
+        parent: Option<ID>,
+        name: &'static str,
+    },
+    StageDone {
+        id: ID,
+    },
     Event {
         stage: ID,
         event_name: &'static str,
@@ -21,9 +27,7 @@ pub enum ProgressEvent {
 #[derive(Clone)]
 pub struct StageContext {
     execution_context: Arc<ExecutionContext>,
-    parent: Option<Arc<StageContext>>,
     id: ID,
-    name: &'static str,
 }
 
 impl StageContext {
@@ -48,7 +52,7 @@ impl StageContext {
     pub fn finish(self) {
         if let Some(tx) = &self.execution_context.progress_tx {
             let _ = tx.send(ProgressEvent::StageDone {
-                id: self.id.clone()
+                id: self.id.clone(),
             });
         }
     }
@@ -67,8 +71,6 @@ impl StageContext {
         StageContext {
             execution_context: Arc::clone(&self.execution_context),
             id: stage_id,
-            parent: Some(Arc::new(self.clone())),
-            name,
         }
     }
 }
@@ -108,9 +110,7 @@ impl ExecutionContext {
 
         StageContext {
             execution_context: Arc::clone(&self),
-            parent: None,
             id: stage_id,
-            name,
         }
     }
 

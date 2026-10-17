@@ -121,11 +121,7 @@ async fn generate_basis_node<P: Provider, R: Reasoner>(
         )
         .await?;
 
-    stage_context.record_events(
-        "Node analysis",
-        metadata.tokens.into(),
-        metadata.cost,
-    );
+    stage_context.record_events("Node analysis", metadata.tokens.into(), metadata.cost);
 
     provider
         .save_basis_node(&basis_lineage, basis_node.clone())
