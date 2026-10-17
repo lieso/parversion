@@ -145,7 +145,7 @@ impl Context {
                 } else {
                     value.to_string()
                 };
-                transformed_context.push_str(&format!("{} => {}", transformation.image, truncated));
+                transformed_context.push_str(&format!("{} => {}\n", transformation.image, truncated));
             }
         }
 
