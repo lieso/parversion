@@ -50,6 +50,23 @@ impl Json {
             .collect()
     }
 
+    pub fn get_attribute_value(map: &Map<String, Value>, attribute: &str) -> Option<String> {
+        match map.get(attribute)? {
+            Value::String(s) => Some(s.clone()),
+            Value::Number(n) => Some(n.to_string()),
+            Value::Bool(b) => Some(b.to_string()),
+            Value::Null => Some("null".to_string()),
+            Value::Object(_) => None,
+            Value::Array(arr) if arr.iter().any(|e| e.is_object()) => None,
+            Value::Array(arr) => Some(
+                arr.iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+                .join(","),
+            ),
+        }
+    }
+
     pub fn get_children(map: &Map<String, Value>) -> Vec<Map<String, Value>> {
         if map.len() == 1 {
             if let Some((_, Value::Array(arr))) = map.iter().next() {

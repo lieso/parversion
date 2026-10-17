@@ -52,7 +52,7 @@ impl DocumentNode {
     pub fn to_string_components(&self) -> (String, Option<String>) {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::to_string_components(&node),
-            DocumentNodeData::Json(_value) => unimplemented!(),
+            DocumentNodeData::Json(map) => (Json::to_string(map), None),
         }
     }
 
@@ -66,7 +66,7 @@ impl DocumentNode {
     pub fn get_attribute_value(&self, attribute: &str) -> Option<String> {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_attribute_value(&node, attribute),
-            DocumentNodeData::Json(_value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(map) => Json::get_attribute_value(map, attribute),
         }
     }
 
@@ -93,7 +93,7 @@ impl DocumentNode {
     pub fn get_element_name(&self) -> String {
         match &self.data {
             DocumentNodeData::Xml(node) => Xml::get_element_name(&node),
-            DocumentNodeData::Json(_value) => panic!("Unexpected DocumentNodeData"),
+            DocumentNodeData::Json(map) => Json::get_name(map),
         }
     }
 
