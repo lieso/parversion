@@ -6,7 +6,6 @@ use crate::basis_graph::BasisGraph;
 use crate::basis_group::BasisGroup;
 use crate::basis_network::BasisNetwork;
 use crate::basis_node::BasisNode;
-use crate::classification::Classification;
 use crate::context::Context;
 use crate::meta_context::MetaContext;
 use crate::normal_meta_context::NormalMetaContext;
@@ -23,7 +22,6 @@ pub struct NormalizationContext {
     pub context_basis_node: Option<HashMap<ContextID, Arc<BasisNode>>>,
     pub basis_networks: Option<HashMap<ID, Arc<BasisNetwork>>>,
     pub basis_graph: Option<Arc<BasisGraph>>,
-    pub classification: Option<Arc<Classification>>,
     pub context_groups: Option<HashMap<ID, Vec<Arc<Context>>>>,
     pub context_to_group: Option<HashMap<ID, Arc<BasisGroup>>>,
     pub normalized: Option<NormalMetaContext>,
@@ -41,7 +39,6 @@ impl NormalizationContext {
             context_basis_node: None,
             basis_networks: None,
             basis_graph: None,
-            classification: None,
             context_groups: None,
             context_to_group: None,
             normalized: None,
@@ -70,14 +67,6 @@ impl NormalizationContext {
 
     pub fn update_normalized_graph(&mut self, normalized: NormalMetaContext) {
         self.normalized = Some(normalized);
-    }
-
-    pub fn update_classification(&mut self, classification: Arc<Classification>) {
-        self.classification = Some(classification);
-    }
-
-    pub fn get_classification(&self) -> Option<Arc<Classification>> {
-        self.classification.as_ref().map(Arc::clone)
     }
 
     pub fn update_basis_groups(&mut self, groups: HashMap<ID, Arc<BasisGroup>>) {

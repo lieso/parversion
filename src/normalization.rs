@@ -3,7 +3,6 @@ use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use crate::basis_graph::BasisGraph;
-use crate::classification::Classification;
 use crate::data_node::{DataNode, DataNodeFields};
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
@@ -11,7 +10,7 @@ use crate::field_analysis::generate_basis_fields;
 use crate::graph_analysis::generate_basis_graph;
 use crate::graph_node::GraphNode;
 use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
-use crate::network_analysis::{generate_basis_networks, get_classification};
+use crate::network_analysis::generate_basis_networks;
 use crate::node_analysis::generate_basis_nodes;
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
@@ -259,13 +258,6 @@ fn build_normalized_graph(
             .clone()
     };
 
-    let classification: Arc<Classification> = {
-        let lock = read_lock!(normalization_context);
-        lock.classification
-            .clone()
-            .ok_or(Errors::ClassificationNotFound)?
-    };
-
     let root = Arc::new(RwLock::new(GraphNode {
         id: ID::new(),
         parents: Vec::new(),
@@ -281,8 +273,8 @@ fn build_normalized_graph(
 
     let root_context = Arc::new(NormalContext {
         id: ID::new(),
-        network_name: Some(classification.name.clone()),
-        network_description: Some(classification.description.clone()),
+        network_name: None,
+        network_description: None,
         graph_node: Arc::clone(&root),
         data_node: Arc::new(DataNode {
             id: ID::new(),
@@ -312,27 +304,6 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Arc<RwLock<NormalizationContext>>, Errors> {
     let process = execution_context.enter_stage("Normalization");
-
-    let start = Instant::now();
-    let stage = process.enter_stage("Document classification");
-
-    let classification = get_classification(
-        Arc::clone(&provider),
-        Arc::clone(&reasoner),
-        normalization_context.clone(),
-        &options,
-        &stage,
-    )
-    .await?;
-
-    {
-        let mut lock = write_lock!(normalization_context);
-        lock.update_classification(classification);
-    }
-
-    stage.finish();
-    let elapsed = start.elapsed();
-    log::info!("get_classification: {:.2?}", elapsed);
 
     let start = Instant::now();
     let stage = process.enter_stage("Field analysis");

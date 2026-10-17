@@ -63,8 +63,8 @@ pub async fn translate_json(
         .collect();
 
     Ok(Arc::new(RwLock::new(TranslationContext::new(
-        source.clone(),
-        target.clone()
+        source,
+        target,
     ))))
 }
 
