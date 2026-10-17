@@ -54,9 +54,19 @@ impl StageContext {
     }
 
     pub fn enter_stage(&self, name: &'static str) -> StageContext {
+        let stage_id = ID::new();
+
+        if let Some(tx) = &self.execution_context.progress_tx {
+            let _ = tx.send(ProgressEvent::StageStart {
+                id: stage_id.clone(),
+                parent: Some(self.id.clone()),
+                name,
+            });
+        }
+
         StageContext {
             execution_context: Arc::clone(&self.execution_context),
-            id: ID::new(),
+            id: stage_id,
             parent: Some(Arc::new(self.clone())),
             name,
         }

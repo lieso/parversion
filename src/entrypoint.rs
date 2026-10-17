@@ -424,6 +424,7 @@ async fn determine_documents<P: Provider + ?Sized, R: Reasoner>(
 
 struct StageView {
     bar: ProgressBar,
+    anchor: ProgressBar,
     parent: Option<ID>,
     depth: usize,
     name: &'static str,
@@ -460,20 +461,38 @@ fn init_execution_context() -> Arc<ExecutionContext> {
         let mut stages: HashMap<ID, StageView> = HashMap::new();
 
         while let Some(event) = rx.recv().await {
+            log::debug!("stages: {}", stages.len());
             match event {
                 ProgressEvent::StageStart { id, parent, name } => {
+                    let anchor = parent
+                        .as_ref()
+                        .and_then(|p| stages.get(p))
+                        .map(|view| view.anchor.clone());
+
+                    let bar = match &anchor {
+                        Some(anchor) => multi.insert_after(anchor, ProgressBar::new_spinner()),
+                        None => multi.add(ProgressBar::new_spinner()),
+                    };
+
+                    let mut current = parent.clone();
+                    while let Some(id) = current {
+                        let Some(view) = stages.get_mut(&id) else { break };
+                        view.anchor = bar.clone();
+                        current = view.parent.clone();
+                    }
+
                     let depth = parent
                         .as_ref()
                         .and_then(|p| stages.get(p))
                         .map_or(0, |view| view.depth + 1);
 
-                    let bar = multi.add(ProgressBar::new_spinner());
                     bar.set_style(running.clone());
                     bar.set_prefix("  ".repeat(depth));
                     bar.enable_steady_tick(Duration::from_millis(100));
 
                     let view = StageView {
-                        bar,
+                        bar: bar.clone(),
+                        anchor: bar,
                         parent,
                         depth,
                         name,
