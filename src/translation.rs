@@ -4,7 +4,6 @@ use std::time::Instant;
 use crate::document::{Document, DocumentRole, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::normalization;
-use crate::normalization_context::NormalizationContext;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
@@ -43,7 +42,6 @@ pub async fn translate<P: Provider, R: Reasoner>(
 pub async fn translate_json<P: Provider, R: Reasoner>(
     _provider: Arc<P>,
     _reasoner: Arc<R>,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
     _translation_context: Arc<RwLock<TranslationContext>>,
     document: Document,
     _options: &Options,
@@ -52,19 +50,19 @@ pub async fn translate_json<P: Provider, R: Reasoner>(
 
     let _translation_meta_context = document.to_meta_context()?;
 
-    let _normalized_document = Document::from_normalized_graph(
-        Arc::clone(&normalization_context),
-        &DocumentFormat {
-            format_type: DocumentType::Json,
-            encoding: Some(String::from("UTF-8")),
-            indent: None,
-            line_ending: None,
-            headers: None,
-            wrap_text: None,
-            exclude_nulls: None,
-            custom_delimiter: None,
-        },
-    )?;
+    //let _normalized_document = Document::from_normalized_graph(
+    //    Arc::clone(&normalization_context),
+    //    &DocumentFormat {
+    //        format_type: DocumentType::Json,
+    //        encoding: Some(String::from("UTF-8")),
+    //        indent: None,
+    //        line_ending: None,
+    //        headers: None,
+    //        wrap_text: None,
+    //        exclude_nulls: None,
+    //        custom_delimiter: None,
+    //    },
+    //)?;
 
     unimplemented!()
 }
@@ -191,9 +189,8 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
     )
     .await?;
 
-    let normalization_context = normalization_contexts.first().unwrap().clone();
-
-    let translation_context = Arc::new(RwLock::new(TranslationContext::new()));
+    let translation_context =
+        Arc::new(RwLock::new(TranslationContext::new(normalization_contexts)));
 
     match target.document_type {
         DocumentType::Html => {
@@ -203,7 +200,6 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
             translate_json(
                 Arc::clone(&provider),
                 Arc::clone(&reasoner),
-                Arc::clone(&normalization_context),
                 Arc::clone(&translation_context),
                 target,
                 options,
