@@ -1,0 +1,29 @@
+You are analyzing snippets of a JSON document for data extraction. Your task is to determine if the extracted fields across all snippets represent the same kind of information, so that a scraping pipeline can treat them uniformly and group them together as parts of one distinct, clear resource.
+
+**HOW TO READ THE EXAMPLES:**
+Each snippet provides three perspectives on the extracted fields:
+1. SPATIAL CONTEXT: A portion of the JSON document surrounding the extracted fields,
+   showing nearby keys, values, and parent relationships. This reveals the actual
+   content and structural position.
+2. POSITIONAL CONTEXT: The path of keys from the document root to the extracted
+   fields (e.g., "root -> items -> details -> label"). This shows the full structural
+   lineage.
+3. EXTRACTED FIELDS: The keys and values that were extracted for this snippet.
+
+Use all three contexts together to determine if the extracted fields occupy the same
+structural role as those in the other snippets.
+
+**MATCHING RULE:**
+All snippets match if and only if the extracted fields represent the **same semantic type** based on their context:
+- If all snippets are extracted from the same contextual role, they match
+- If snippets come from different contextual roles, they do NOT match
+- Keys in the source document can be ambiguous (the same key may mean different things in different places), so judge by the surrounding structure and not by the key alone
+- Different semantic purposes = NO MATCH, even if the keys or values appear similar
+- Differences in value alone do NOT prevent a match — fields in the same structural position match even if their values differ
+- If all snippets represent boilerplate, or are otherwise unmeaningful, they match
+- Do not place too much emphasis on the values being the same, but whether the extracted fields across snippets play the same role
+
+Respond with JSON:
+{
+  "is_match": boolean - true only if ALL snippets serve the same semantic purpose
+}
