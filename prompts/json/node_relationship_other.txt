@@ -17,9 +17,9 @@ extraction pattern, separated by ---SNIPPET SEPARATOR---. Each sample has:
 
 2. [POSITIONAL CONTEXT]: one line per extracted field. Each line is the path of
    keys from the document root to the field, with the field's own key as the
-   last element. Everything before the last element identifies the object node
-   the instance is anchored at (e.g., "root -> items -> details -> label" is the
-   field "label" on the object node "details", reached via "root" and "items").
+   last element. Everything before the last element names the keys passed
+   through on the way to the object that holds the field. That object, which
+   holds the field's value, is the node the instance is anchored at.
 
 3. [TRANSFORMED FIELDS]: the field(s) this extraction pattern produces for
    this instance, one per line, as "name => value" pairs.
@@ -52,33 +52,70 @@ instance pairs to compare directly.
   unrelated things.
 
 **IF AND ONLY IF you choose COMBINE or EQUAL**, also provide relative paths
-that locate an instance of the other extraction pattern, anchored at the object
+that locate an instance of the other extraction pattern, anchored at the data
 node identified by [POSITIONAL CONTEXT] for a single sample:
 
-- `left_to_right_xpath`: relative path from a left instance's object node to
-  the corresponding right instance's object node.
-- `right_to_left_xpath`: relative path from a right instance's object node to
-  the corresponding left instance's object node.
+- `left_to_right_xpath`: relative path from a left instance's data node to the
+  corresponding right instance's data node.
+- `right_to_left_xpath`: relative path from a right instance's data node to the
+  corresponding left instance's data node.
 
-The paths use a restricted XPath 1.0 grammar evaluated over the document's
-object nodes. Keep generated paths within it:
+The paths use a restricted XPath 1.0 grammar evaluated over a tree of nodes
+built from the document. Build the tree in your head using the rules below,
+then navigate it.
 
-* Every step selects an object node. A node's name is the key it is stored
-  under, as it appears in [POSITIONAL CONTEXT]. Arrays are not nodes of their
-  own: the objects inside an array are nodes named by the key that holds the
-  array.
-* Use `*` to match a node that has no name. Prefer a name whenever one exists.
-* Use a single `/` for each step down to a child node (e.g., `author`,
-  `author/address`).
-* Use `ancestor::name[1]` to move up to the nearest ancestor with that name, or
-  `parent::*` to move up exactly one node. Do not chain multiple `..` steps.
-* Combine steps with `/` (e.g., `ancestor::entries[1]/author`).
+**HOW THE TREE IS BUILT:**
+
+* An object that holds fields (its scalar keys) is a *data node*. It has no
+  name.
+* Every key whose value is an object, or an array that contains objects,
+  produces two levels in the tree: first a *named node* whose name is that key
+  and which holds no fields, and directly beneath it one data node for each
+  object (one for an object value, one per object item for an array value).
+  A data node therefore never has a data node as its direct child: there is
+  always a named node in between.
+* Items of the same array are sibling data nodes under one shared named node.
+* A data node's fields are only its scalar keys. Keys whose values are objects
+  or arrays of objects are not fields. They are the named nodes beneath it.
+* Exception: an object whose only key holds an object or an array of objects
+  has no fields of its own, so it is treated as the named node itself, with no
+  separate data node above it.
+
+Example. For the document:
+
+    {"orders": [{"id": 1, "customer": {"name": "A"}, "lines": [{"sku": "x"}, {"sku": "y"}]}]}
+
+the tree is:
+
+    root
+    └─ orders              (named node)
+       └─ data node        (id)
+          ├─ customer      (named node)
+          │  └─ data node  (name)
+          └─ lines         (named node)
+             ├─ data node  (sku: x)
+             └─ data node  (sku: y)
+
+From the "id" data node to the customer's data node: `customer/*`. Back:
+`parent::*/parent::*`. From the first line's data node to the second line:
+`following-sibling::*`. From a line to its order: `parent::*/parent::*`.
+
+**PATH GRAMMAR:**
+
+* Use `/` for each step down. Because of the structure above, reaching the
+  object under a key takes two steps: the named node, then `*` for its data
+  node (e.g., `customer/*`).
+* Use `parent::*` to move up exactly one node. Reaching a data node's parent
+  data node takes two: `parent::*/parent::*`. Do not chain `..`.
+* Use `ancestor::name[1]` to move up to the nearest named ancestor.
+* Use `following-sibling::*` and `preceding-sibling::*` to move between data
+  nodes that share a named parent.
+* `*` matches any node. A name matches only the named nodes above.
 * Do not use `//`, unions, positional indexes other than `[1]` on an ancestor
   step, or any function other than those described here.
-* Paths must terminate at an object node. Never select a field (a scalar key
-  and its value): if a transformed field comes from a key, navigate to the
-  object node that owns the key.
-* The path must resolve to exactly one corresponding node for any given
+* Paths must terminate at a data node, because that is where fields live.
+  Never end on a named node or on a field.
+* The path must resolve to exactly one corresponding data node for any given
   starting node, and the two paths must be inverses of each other.
 
 Leave both null for NO_RELATIONSHIP.
