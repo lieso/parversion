@@ -60,9 +60,9 @@ impl Json {
             Value::Array(arr) if arr.iter().any(|e| e.is_object()) => None,
             Value::Array(arr) => Some(
                 arr.iter()
-                .map(|e| e.to_string())
-                .collect::<Vec<_>>()
-                .join(","),
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
             ),
         }
     }

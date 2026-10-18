@@ -239,8 +239,9 @@ impl Json {
                 .get(&read_lock!(graph_node).id)
                 .unwrap();
 
-            let is_target = context_string_target_ids.map(|ids| ids.contains(&current_id)).unwrap_or(false);
-
+            let is_target = context_string_target_ids
+                .map(|ids| ids.contains(&current_id))
+                .unwrap_or(false);
 
             if should_render {
                 if !result.is_object() {

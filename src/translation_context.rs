@@ -12,9 +12,6 @@ impl TranslationContext {
         source: Vec<Arc<RwLock<NormalizationContext>>>,
         target: Vec<Arc<RwLock<NormalizationContext>>>,
     ) -> Self {
-        Self {
-            source,
-            target,
-        }
+        Self { source, target }
     }
 }

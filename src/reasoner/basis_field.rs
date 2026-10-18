@@ -4,9 +4,9 @@ use std::sync::{Arc, RwLock};
 
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_field::{BasisField, BasisFieldMetadata};
+use crate::document::DocumentType;
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
-use crate::document::DocumentType;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisFieldResponse {

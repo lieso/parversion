@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::basis_graph::BasisGraph;
 use crate::data_node::{DataNode, DataNodeFields};
-use crate::document::{Document, DocumentType};
+use crate::document::{Document};
 use crate::document_format::DocumentFormat;
 use crate::field_analysis::generate_basis_fields;
 use crate::graph_analysis::generate_basis_graph;
@@ -35,7 +35,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Initialization");
 
-    let normalization_contexts = init_normalization_context(document, options).await?;
+    let normalization_contexts = init_normalization_context(document).await?;
 
     stage.finish();
     let elapsed = start.elapsed();
@@ -196,7 +196,6 @@ pub async fn normalize_file_to_document<P: Provider, R: Reasoner>(
 
 async fn init_normalization_context(
     document: Document,
-    options: &Options,
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     log::trace!("In init_normalization_context");
 

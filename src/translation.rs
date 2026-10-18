@@ -170,7 +170,6 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
     )?;
 
     Ok(Arc::new(RwLock::new(TranslationContext::new(
-        source,
-        target,
+        source, target,
     ))))
 }
