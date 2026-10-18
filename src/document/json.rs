@@ -213,6 +213,7 @@ impl Json {
     pub fn from_meta_context(
         meta_context: &MetaContext,
         render_ids: Option<&HashSet<GraphNodeID>>,
+        context_string_target_ids: Option<&HashSet<GraphNodeID>>,
     ) -> Result<String, Errors> {
         let graph_root = meta_context.graph_root.clone();
 
@@ -223,8 +224,10 @@ impl Json {
             render_ids: Option<&HashSet<GraphNodeID>>,
             graph_node: Graph,
             network_name: &str,
+            context_string_target_ids: Option<&HashSet<GraphNodeID>>,
             result: &mut Value,
         ) {
+            let current_id = read_lock!(graph_node).id.clone();
             let should_render = if let Some(render_ids) = render_ids {
                 render_ids.contains(&read_lock!(graph_node).id)
             } else {
@@ -235,6 +238,9 @@ impl Json {
                 .contexts_lookup
                 .get(&read_lock!(graph_node).id)
                 .unwrap();
+
+            let is_target = context_string_target_ids.map(|ids| ids.contains(&current_id)).unwrap_or(false);
+
 
             if should_render {
                 if !result.is_object() {
@@ -247,6 +253,12 @@ impl Json {
                     let value = json!(json.value.trim().to_string());
                     if let Value::Object(ref mut map) = result {
                         map.insert(json.key, value);
+                    }
+                }
+
+                if is_target {
+                    if let Value::Object(ref mut map) = result {
+                        map.insert("__target__".to_string(), json!(true));
                     }
                 }
             }
@@ -277,6 +289,7 @@ impl Json {
                             render_ids.clone(),
                             Arc::clone(&child),
                             next_network_name,
+                            context_string_target_ids,
                             &mut inner_result,
                         );
 
@@ -299,6 +312,7 @@ impl Json {
                             render_ids.clone(),
                             Arc::clone(&child),
                             next_network_name,
+                            context_string_target_ids,
                             &mut inner_result,
                         );
 
@@ -332,6 +346,7 @@ impl Json {
                         render_ids.clone(),
                         Arc::clone(&child),
                         next_network_name,
+                        context_string_target_ids,
                         result,
                     );
                 }
@@ -343,6 +358,7 @@ impl Json {
             render_ids.clone(),
             Arc::clone(&graph_root),
             "test",
+            context_string_target_ids,
             &mut result,
         );
 
