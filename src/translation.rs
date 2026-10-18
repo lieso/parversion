@@ -8,6 +8,7 @@ use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_context::TranslationContext;
+use crate::normal_context::NormalContext;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -22,7 +23,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Initialization");
 
-    let _translation_context = init_translation_context(
+    let translation_context = init_translation_context(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         source,
@@ -35,6 +36,77 @@ pub async fn translate<P: Provider, R: Reasoner>(
     stage.finish();
     let elapsed = start.elapsed();
     log::info!("init_translation_context: {:.2?}", elapsed);
+
+
+
+
+
+
+
+
+    let left: Vec<Arc<NormalContext>> = read_lock!(translation_context)
+        .source
+        .iter()
+        .map(|normalization_context| {
+            let lock = read_lock!(normalization_context);
+            let normal_contexts: Vec<Arc<NormalContext>> = lock
+                .normalized
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Normalized graph not provided in normalization context".to_string(),
+                    )
+                })?
+                .contexts
+                .values()
+                .cloned()
+                .collect();
+
+            Ok::<_, Errors>(normal_contexts)
+        })
+        .collect::<Result<Vec<_>, Errors>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+
+   
+
+
+
+
+    let right: Vec<Arc<NormalContext>> = read_lock!(translation_context)
+        .target
+        .iter()
+        .map(|normalization_context| {
+            let lock = read_lock!(normalization_context);
+            let normal_contexts: Vec<Arc<NormalContext>> = lock
+                .normalized
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Normalized graph not provided in normalization context".to_string(),
+                    )
+                })?
+                .contexts
+                .values()
+                .cloned()
+                .collect();
+
+            Ok::<_, Errors>(normal_contexts)
+        })
+        .collect::<Result<Vec<_>, Errors>>()?
+        .into_iter()
+        .flatten()
+        .collect();
+
+
+
+
+
+
+
+
 
     unimplemented!()
 }
