@@ -201,7 +201,7 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
     if candidate_group.len() == 1 {
         let basis_group = BasisGroup {
             id: ID::new(),
-            hash: candidate_group[0].data_node.hash.clone(),
+            hash: read_lock!(candidate_group[0].graph_node).hash.clone(),
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: None,
             indexed_lineage: None,
@@ -334,7 +334,7 @@ async fn generate_cyclic_basis_groups<P: Provider, R: Reasoner>(
     if candidate_group.len() == 1 {
         let basis_group = BasisGroup {
             id: ID::new(),
-            hash: candidate_group[0].data_node.hash.clone(),
+            hash: read_lock!(candidate_group[0].graph_node).hash.clone(),
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: Some(lineage.clone()),
             indexed_lineage: None,
@@ -472,7 +472,7 @@ async fn generate_indexed_basis_groups<P: Provider, R: Reasoner>(
     if candidate_group.len() == 1 {
         let basis_group = BasisGroup {
             id: ID::new(),
-            hash: candidate_group[0].data_node.hash.clone(),
+            hash: read_lock!(candidate_group[0].graph_node).hash.clone(),
             acyclic_lineage: acyclic_lineage.clone(),
             lineage: Some(lineage.clone()),
             indexed_lineage: Some(indexed_lineage.clone()),

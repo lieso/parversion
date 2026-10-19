@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::basis_graph::BasisGraph;
 use crate::data_node::{DataNode, DataNodeFields};
-use crate::document::{Document};
+use crate::document::Document;
 use crate::document_format::DocumentFormat;
 use crate::field_analysis::generate_basis_fields;
 use crate::graph_analysis::generate_basis_graph;
@@ -256,8 +256,6 @@ fn build_normalized_graph(
         graph_node: Arc::clone(&root),
         data_node: Arc::new(DataNode {
             id: ID::new(),
-            hash: Hash::new(),
-            lineage: Lineage::new(),
             fields: DataNodeFields::new(),
             description: "Root node".to_string(),
         }),

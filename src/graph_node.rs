@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
 use crate::basis_node::BasisNode;
-use crate::data_node::DataNode;
 use crate::prelude::*;
 use crate::xpath::{XPath, XPathAxis, XPathPredicate, XPathSegment};
 
@@ -21,20 +20,6 @@ pub struct GraphNode {
 }
 
 impl GraphNode {
-    pub fn from_data_node(data_node: Arc<DataNode>, parents: Vec<Graph>) -> Self {
-        let hash = data_node.hash.clone();
-
-        GraphNode {
-            id: ID::new(),
-            parents,
-            description: data_node.description.clone(),
-            hash: hash.clone(),
-            subgraph_hash: hash.clone(),
-            lineage: data_node.lineage.clone(),
-            children: Vec::new(),
-        }
-    }
-
     pub fn document_path(&self) -> Vec<usize> {
         let mut path: Vec<usize> = Vec::new();
         let mut index = self.index_in_parent();

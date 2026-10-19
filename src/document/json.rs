@@ -47,19 +47,24 @@ impl Json {
                 )
             };
 
-            let data_node = Arc::new(DataNode::new(hash, lineage.clone(), fields, description));
+            let data_node = Arc::new(DataNode::new(fields, description));
 
-            let graph_node = Arc::new(RwLock::new(GraphNode::from_data_node(
-                Arc::clone(&data_node),
-                parents.clone(),
-            )));
+            let graph_node = Arc::new(RwLock::new(GraphNode {
+                id: ID::new(),
+                parents: parents.clone(),
+                description: data_node.description.clone(),
+                hash: hash.clone(),
+                lineage: lineage.clone(),
+                subgraph_hash: Hash::new(),
+                children: Vec::new(),
+            }));
 
             let indexed_lineages = Arc::new(RwLock::new(HashMap::new()));
 
             let context = Arc::new(Context {
                 id: ID::new(),
-                acyclic_lineage: data_node.lineage.acyclic(),
-                lineage: data_node.lineage.clone(),
+                acyclic_lineage: lineage.acyclic(),
+                lineage: lineage.clone(),
                 indexed_lineages,
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
@@ -79,7 +84,7 @@ impl Json {
                     .map(|child| {
                         recurse(
                             Arc::new(RwLock::new(child)),
-                            &data_node.lineage,
+                            &lineage,
                             contexts,
                             contexts_lookup,
                             vec![Arc::clone(&graph_node)],

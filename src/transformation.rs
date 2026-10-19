@@ -29,8 +29,6 @@ impl FieldTransformation {
 
         let transformed = DataNode {
             id: ID::new(),
-            hash: data_node.hash.clone(),
-            lineage: data_node.lineage.clone(),
             description: self.description.clone(),
             fields,
         };

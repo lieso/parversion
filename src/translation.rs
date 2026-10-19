@@ -3,12 +3,12 @@ use std::time::Instant;
 
 use crate::document::{Document, DocumentRole};
 use crate::document_format::DocumentFormat;
+use crate::normal_context::NormalContext;
 use crate::normalization;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_context::TranslationContext;
-use crate::normal_context::NormalContext;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -37,13 +37,6 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let elapsed = start.elapsed();
     log::info!("init_translation_context: {:.2?}", elapsed);
 
-
-
-
-
-
-
-
     let left: Vec<Arc<NormalContext>> = read_lock!(translation_context)
         .source
         .iter()
@@ -69,12 +62,6 @@ pub async fn translate<P: Provider, R: Reasoner>(
         .flatten()
         .collect();
 
-
-   
-
-
-
-
     let right: Vec<Arc<NormalContext>> = read_lock!(translation_context)
         .target
         .iter()
@@ -99,14 +86,6 @@ pub async fn translate<P: Provider, R: Reasoner>(
         .into_iter()
         .flatten()
         .collect();
-
-
-
-
-
-
-
-
 
     unimplemented!()
 }

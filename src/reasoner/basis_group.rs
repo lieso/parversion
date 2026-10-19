@@ -25,7 +25,7 @@ pub async fn basis_group<R: Reasoner>(
 
     assert!(group.len() > 1);
 
-    let hash = group[0].data_node.hash.clone();
+    let hash = read_lock!(group[0].graph_node).hash.clone();
 
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt = get_user_prompt(Arc::clone(&normalization_context), group).await?;

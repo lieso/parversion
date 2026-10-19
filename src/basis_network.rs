@@ -291,8 +291,6 @@ impl BasisNetwork {
             network_description: Some(self.description.clone()),
             data_node: Arc::new(DataNode {
                 id: ID::new(),
-                hash: Hash::new(),
-                lineage: Lineage::new(),
                 fields: DataNodeFields::new(),
                 description: "placeholder".to_string(),
             }),
@@ -334,10 +332,15 @@ impl BasisNetwork {
                     network_name: Some(network_name),
                     network_description: Some("placeholder description".to_string()),
                     data_node: Arc::new(data_node.clone()),
-                    graph_node: Arc::new(RwLock::new(GraphNode::from_data_node(
-                        Arc::new(data_node.clone()),
-                        vec![Arc::clone(&container_context.graph_node)],
-                    ))),
+                    graph_node: Arc::new(RwLock::new(GraphNode {
+                        id: ID::new(),
+                        parents: vec![Arc::clone(&container_context.graph_node)],
+                        description: "placeholder".to_string(),
+                        hash: Hash::new(),
+                        lineage: Lineage::new(),
+                        subgraph_hash: Hash::new(),
+                        children: Vec::new(),
+                    })),
                     contexts: vec![network_context.clone()],
                 });
 
@@ -373,8 +376,6 @@ impl BasisNetwork {
         let data_node = network_contexts.iter().try_fold(
             DataNode {
                 id: ID::new(),
-                hash: Hash::new(),
-                lineage: Lineage::new(),
                 fields: DataNodeFields::new(),
                 description: "placeholder".to_string(),
             },

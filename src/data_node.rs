@@ -96,19 +96,15 @@ impl Extend<(String, String)> for DataNodeFields {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DataNode {
     pub id: ID,
-    pub hash: Hash,
-    pub lineage: Lineage,
     pub fields: DataNodeFields,
     pub description: String,
 }
 
 impl DataNode {
-    pub fn new(hash: Hash, lineage: Lineage, fields: DataNodeFields, description: String) -> Self {
+    pub fn new(fields: DataNodeFields, description: String) -> Self {
         DataNode {
             id: ID::new(),
-            hash,
             fields,
-            lineage,
             description,
         }
     }
@@ -116,8 +112,6 @@ impl DataNode {
     pub fn from_data_nodes(data_nodes: Vec<Self>) -> Self {
         Self {
             id: ID::new(),
-            hash: Hash::new(),
-            lineage: Lineage::new(),
             fields: data_nodes
                 .into_iter()
                 .fold(DataNodeFields::new(), |mut acc, data_node| {
@@ -142,8 +136,8 @@ impl DataNode {
                 };
                 JsonNode {
                     id: ID::new(),
-                    hash: self.hash.clone(),
-                    lineage: self.lineage.clone(),
+                    hash: Hash::new(),
+                    lineage: Lineage::new(),
                     description: self.description.clone(),
                     json,
                 }
