@@ -59,7 +59,7 @@ pub fn resolve_context_groups(
 
     non_empty_contexts.par_iter().for_each(|context| {
         if let Some(basis_group) =
-            basis_group_lookup.get(&(context.acyclic_lineage.clone(), None, None))
+            basis_group_lookup.get(&(read_lock!(context.graph_node).acyclic_lineage.clone(), None, None))
         {
             write_lock!(context_groups)
                 .entry(basis_group.id.clone())
@@ -67,8 +67,8 @@ pub fn resolve_context_groups(
                 .push(context.clone());
             write_lock!(context_to_group).insert(context.id.clone(), basis_group.clone());
         } else if let Some(basis_group) = basis_group_lookup.get(&(
-            context.acyclic_lineage.clone(),
-            Some(context.lineage.clone()),
+            read_lock!(context.graph_node).acyclic_lineage.clone(),
+            Some(read_lock!(context.graph_node).lineage.clone()),
             None,
         )) {
             write_lock!(context_groups)
@@ -85,8 +85,8 @@ pub fn resolve_context_groups(
                 };
 
                 if let Some(basis_group) = basis_group_lookup.get(&(
-                    context.acyclic_lineage.clone(),
-                    Some(context.lineage.clone()),
+                    read_lock!(context.graph_node).acyclic_lineage.clone(),
+                    Some(read_lock!(context.graph_node).lineage.clone()),
                     Some(indexed_lineage),
                 )) {
                     write_lock!(context_groups)
@@ -123,7 +123,7 @@ pub async fn generate_basis_groups<P: Provider, R: Reasoner>(
     let mut acyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
     for context in non_empty_contexts {
         acyclic_contexts
-            .entry(context.acyclic_lineage.clone())
+            .entry(read_lock!(context.graph_node).acyclic_lineage.clone())
             .or_insert_with(Vec::new)
             .push(context.clone());
     }
@@ -246,7 +246,7 @@ async fn generate_acyclic_basis_groups<P: Provider, R: Reasoner>(
     let mut cyclic_contexts: HashMap<Lineage, Vec<Arc<Context>>> = HashMap::new();
     for context in candidate_group {
         cyclic_contexts
-            .entry(context.lineage.clone())
+            .entry(read_lock!(context.graph_node).lineage.clone())
             .or_insert_with(Vec::new)
             .push(context.clone());
     }

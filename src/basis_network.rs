@@ -142,15 +142,12 @@ impl BasisNetwork {
     ) -> Result<Arc<NormalContext>, Errors> {
         log::trace!("In process_network");
 
-        let graph_node = Arc::new(RwLock::new(GraphNode {
-            id: ID::new(),
-            parents: vec![Arc::clone(&parent)],
-            description: "placeholder".to_string(),
-            hash: Hash::new(),
-            subgraph_hash: Hash::new(),
-            lineage: Lineage::new(),
-            children: Vec::new(),
-        }));
+        let graph_node = {
+            let mut detached = GraphNode::detached();
+            detached.parents = vec![Arc::clone(&parent)];
+
+            Arc::new(RwLock::new(detached))
+        };
 
         let mut network_contexts: Vec<Arc<Context>> = vec![leader.0.clone()];
         processed_contexts.insert(leader.0.id.clone());
@@ -338,6 +335,8 @@ impl BasisNetwork {
                         description: "placeholder".to_string(),
                         hash: Hash::new(),
                         lineage: Lineage::new(),
+                        acyclic_lineage: Lineage::new(),
+                        indexed_lineages: Arc::new(RwLock::new(HashMap::new())),
                         subgraph_hash: Hash::new(),
                         children: Vec::new(),
                     })),

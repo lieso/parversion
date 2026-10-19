@@ -180,15 +180,7 @@ fn get_user_prompt_reflexive(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     network: Arc<BasisNetwork>,
 ) -> Result<String, Errors> {
-    let parent = Arc::new(RwLock::new(GraphNode {
-        id: ID::new(),
-        parents: Vec::new(),
-        description: "dummy_parent".to_string(),
-        hash: Hash::new(),
-        subgraph_hash: Hash::new(),
-        lineage: Lineage::new(),
-        children: Vec::new(),
-    }));
+    let parent = Arc::new(RwLock::new(GraphNode::detached()));
 
     let normal_meta_context =
         network.apply(Arc::clone(&normalization_context), Arc::clone(&parent))?;

@@ -51,15 +51,7 @@ impl BasisGraph {
                  -> Result<Option<NormalMetaContext>, Errors> {
                     let basis_network = &read_lock!(graph_root).basis_network;
 
-                    let temp_parent = Arc::new(RwLock::new(GraphNode {
-                        id: ID::new(),
-                        parents: Vec::new(),
-                        description: String::from("placeholder description"),
-                        hash: Hash::new(),
-                        subgraph_hash: Hash::new(),
-                        lineage: Lineage::new(),
-                        children: Vec::new(),
-                    }));
+                    let temp_parent = Arc::new(RwLock::new(GraphNode::detached()));
 
                     let normal_meta_context = basis_network
                         .apply(Arc::clone(&normalization_context), Arc::clone(&temp_parent))?;

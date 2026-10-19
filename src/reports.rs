@@ -330,15 +330,7 @@ pub async fn report_basis_networks(
     );
 
     for network in basis_networks {
-        let parent = Arc::new(RwLock::new(GraphNode {
-            id: ID::new(),
-            parents: Vec::new(),
-            description: "report_parent".to_string(),
-            hash: Hash::new(),
-            subgraph_hash: Hash::new(),
-            lineage: Lineage::new(),
-            children: Vec::new(),
-        }));
+        let parent = Arc::new(RwLock::new(GraphNode::detached()));
 
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
         println!(

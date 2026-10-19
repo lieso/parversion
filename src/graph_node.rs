@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 use crate::basis_node::BasisNode;
 use crate::prelude::*;
@@ -14,12 +15,28 @@ pub struct GraphNode {
     pub parents: Vec<Graph>,
     pub description: String,
     pub hash: Hash,
-    pub subgraph_hash: Hash,
+    pub acyclic_lineage: Lineage,
+    pub indexed_lineages: Arc<RwLock<HashMap<usize, Lineage>>>,
     pub lineage: Lineage,
+    pub subgraph_hash: Hash,
     pub children: Vec<Graph>,
 }
 
 impl GraphNode {
+    pub fn detached() -> Self {
+        GraphNode {
+            id: ID::new(),
+            parents: Vec::new(),
+            description: "detached node".to_string(),
+            hash: Hash::new(),
+            lineage: Lineage::new(),
+            acyclic_lineage: Lineage::new(),
+            indexed_lineages: Arc::new(RwLock::new(HashMap::new())),
+            subgraph_hash: Hash::new(),
+            children: Vec::new(),
+        }
+    }
+
     pub fn document_path(&self) -> Vec<usize> {
         let mut path: Vec<usize> = Vec::new();
         let mut index = self.index_in_parent();

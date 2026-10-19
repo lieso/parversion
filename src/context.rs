@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashSet};
 use std::sync::{Arc, RwLock};
 
 use crate::basis_node::BasisNode;
@@ -16,9 +16,6 @@ pub type ContextID = ID;
 #[derive(Clone, Debug)]
 pub struct Context {
     pub id: ContextID,
-    pub lineage: Lineage,
-    pub acyclic_lineage: Lineage,
-    pub indexed_lineages: Arc<RwLock<HashMap<usize, Lineage>>>,
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
@@ -463,16 +460,17 @@ impl Context {
 
 impl Context {
     pub fn get_indexed_lineage(&self, depth: usize) -> Option<Lineage> {
+        let graph_node = read_lock!(self.graph_node);
+
         {
-            let cache = read_lock!(self.indexed_lineages);
+            let cache = read_lock!(graph_node.indexed_lineages);
             if let Some(lineage) = cache.get(&depth) {
                 return Some(lineage.clone());
             }
         }
 
-        let graph_node = read_lock!(self.graph_node);
         if let Some(lineage) = graph_node.get_indexed_lineage_at_depth(depth) {
-            let mut cache = write_lock!(self.indexed_lineages);
+            let mut cache = write_lock!(graph_node.indexed_lineages);
             cache.insert(depth, lineage.clone());
             Some(lineage)
         } else {

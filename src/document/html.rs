@@ -60,23 +60,22 @@ impl Html {
 
                     let data_node = Arc::new(DataNode::new(fields, description));
 
+                    let indexed_lineages = Arc::new(RwLock::new(HashMap::new()));
+
                     let graph_node = Arc::new(RwLock::new(GraphNode {
                         id: ID::new(),
                         parents: parents.clone(),
                         description: data_node.description.clone(),
                         hash: hash.clone(),
                         lineage: lineage.clone(),
+                        acyclic_lineage: lineage.acyclic(),
+                        indexed_lineages,
                         subgraph_hash: Hash::new(),
                         children: Vec::new(),
                     }));
 
-                    let indexed_lineages = Arc::new(RwLock::new(HashMap::new()));
-
                     let context = Arc::new(Context {
                         id: ID::new(),
-                        acyclic_lineage: lineage.acyclic(),
-                        lineage: lineage.clone(),
-                        indexed_lineages,
                         document_node: Arc::clone(&document_node),
                         graph_node: Arc::clone(&graph_node),
                         data_node: Arc::clone(&data_node),

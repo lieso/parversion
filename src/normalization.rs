@@ -236,15 +236,7 @@ fn build_normalized_graph(
             .clone()
     };
 
-    let root = Arc::new(RwLock::new(GraphNode {
-        id: ID::new(),
-        parents: Vec::new(),
-        description: String::from("placeholder description"),
-        hash: Hash::new(),
-        subgraph_hash: Hash::new(),
-        lineage: Lineage::new(),
-        children: Vec::new(),
-    }));
+    let root = Arc::new(RwLock::new(GraphNode::detached()));
 
     let mut normalized =
         basis_graph.apply(Arc::clone(&normalization_context), Arc::clone(&root))?;
