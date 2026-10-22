@@ -144,4 +144,8 @@ impl DataNode {
             })
             .collect()
     }
+
+    pub fn generate_hash(&self) -> Hash {
+        unimplemented!()
+    }
 }
