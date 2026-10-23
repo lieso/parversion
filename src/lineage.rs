@@ -13,9 +13,12 @@ pub struct Lineage {
 
 impl Lineage {
     pub fn new() -> Self {
+        let mut default_identity_hash = Hash::new();
+        default_identity_hash.finalize();
+
         Lineage {
             source_hashes: Vec::new(),
-            identity_hash: Hash::new(),
+            identity_hash: default_identity_hash,
         }
     }
 
