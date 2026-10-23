@@ -60,6 +60,9 @@ pub async fn translate<P: Provider, R: Reasoner>(
         .collect::<Result<Vec<_>, Errors>>()?
         .into_iter()
         .flatten()
+        .filter(|normal_context| {
+            !normal_context.data_node.is_empty()
+        })
         .collect();
 
     let right: Vec<Arc<NormalContext>> = read_lock!(translation_context)
@@ -85,7 +88,11 @@ pub async fn translate<P: Provider, R: Reasoner>(
         .collect::<Result<Vec<_>, Errors>>()?
         .into_iter()
         .flatten()
+        .filter(|normal_context| {
+            !normal_context.data_node.is_empty()
+        })
         .collect();
+
 
     unimplemented!()
 }
