@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 use crate::json_node::{Json, JsonNode};
 use crate::prelude::*;
@@ -146,6 +146,16 @@ impl DataNode {
     }
 
     pub fn generate_hash(&self) -> Hash {
-        unimplemented!()
+        let key_hashes: Vec<String> = self
+            .fields
+            .keys()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .map(|key| Hash::from_str(key).to_string().unwrap_or_default())
+            .collect();
+
+        let mut hash = Hash::from_items(key_hashes);
+        hash.finalize();
+        hash
     }
 }

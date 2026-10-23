@@ -73,20 +73,20 @@ impl BasisGraph {
 
                     if let Some(acc) = acc {
                         let next_contexts = acc
-                                .contexts
-                                .into_iter()
-                                .chain(normal_meta_context.contexts.clone())
-                                .collect();
+                            .contexts
+                            .into_iter()
+                            .chain(normal_meta_context.contexts.clone())
+                            .collect();
                         let next_graph_root = Arc::clone(&parent);
                         let next_contexts_lookup = acc
-                                .contexts_lookup
-                                .into_iter()
-                                .chain(normal_meta_context.contexts_lookup)
-                                .collect();
+                            .contexts_lookup
+                            .into_iter()
+                            .chain(normal_meta_context.contexts_lookup)
+                            .collect();
                         let next_normal_meta_context = NormalMetaContext::new(
                             next_contexts,
                             next_graph_root,
-                            next_contexts_lookup
+                            next_contexts_lookup,
                         );
 
                         Ok(Some(next_normal_meta_context))
