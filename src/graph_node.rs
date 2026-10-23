@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use crate::basis_node::BasisNode;
 use crate::prelude::*;
@@ -35,6 +35,12 @@ impl GraphNode {
             subgraph_hash: Hash::new(),
             children: Vec::new(),
         }
+    }
+
+    pub fn set_lineage(&mut self, lineage: Lineage) {
+        self.lineage = lineage.clone();
+        self.acyclic_lineage = lineage.acyclic();
+        write_lock!(self.indexed_lineages).clear();
     }
 
     pub fn document_path(&self) -> Vec<usize> {

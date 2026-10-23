@@ -63,7 +63,6 @@ impl Json {
                 children: Vec::new(),
             }));
 
-
             let context = Arc::new(Context {
                 id: ID::new(),
                 document_node: Arc::clone(&document_node),

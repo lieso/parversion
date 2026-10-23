@@ -100,6 +100,8 @@ impl BasisGraph {
             )?
             .unwrap();
 
+        result.relineage();
+
         Ok(result)
     }
 

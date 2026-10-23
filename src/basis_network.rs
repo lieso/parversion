@@ -63,11 +63,11 @@ impl BasisNetwork {
             Arc::clone(&parent),
         )?;
 
-        Ok(NormalMetaContext {
-            contexts: normal_contexts,
-            graph_root: parent,
-            contexts_lookup: normal_contexts_lookup,
-        })
+        Ok(NormalMetaContext::new(
+            normal_contexts,
+            parent,
+            normal_contexts_lookup,
+        ))
     }
 
     pub fn traverse(

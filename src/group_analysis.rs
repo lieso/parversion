@@ -58,9 +58,11 @@ pub fn resolve_context_groups(
         Arc::new(RwLock::new(HashMap::new()));
 
     non_empty_contexts.par_iter().for_each(|context| {
-        if let Some(basis_group) =
-            basis_group_lookup.get(&(read_lock!(context.graph_node).acyclic_lineage.clone(), None, None))
-        {
+        if let Some(basis_group) = basis_group_lookup.get(&(
+            read_lock!(context.graph_node).acyclic_lineage.clone(),
+            None,
+            None,
+        )) {
             write_lock!(context_groups)
                 .entry(basis_group.id.clone())
                 .or_default()
