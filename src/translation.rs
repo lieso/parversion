@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use crate::document::{Document, DocumentRole};
 use crate::document_format::DocumentFormat;
-use crate::normal_context::NormalContext;
+use crate::node_analysis::generate_translation_nodes;
 use crate::normalization;
 use crate::package::Package;
 use crate::prelude::*;
@@ -33,66 +33,27 @@ pub async fn translate<P: Provider, R: Reasoner>(
     )
     .await?;
 
-    stage.finish();
     let elapsed = start.elapsed();
     log::info!("init_translation_context: {:.2?}", elapsed);
 
-    let left: Vec<Arc<NormalContext>> = read_lock!(translation_context)
-        .source
-        .iter()
-        .map(|normalization_context| {
-            let lock = read_lock!(normalization_context);
-            let normal_contexts: Vec<Arc<NormalContext>> = lock
-                .normalized
-                .as_ref()
-                .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError(
-                        "Normalized graph not provided in normalization context".to_string(),
-                    )
-                })?
-                .contexts
-                .values()
-                .cloned()
-                .collect();
+    stage.finish();
 
-            Ok::<_, Errors>(normal_contexts)
-        })
-        .collect::<Result<Vec<_>, Errors>>()?
-        .into_iter()
-        .flatten()
-        .filter(|normal_context| {
-            !normal_context.data_node.is_empty()
-        })
-        .collect();
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Node translation");
 
-    let right: Vec<Arc<NormalContext>> = read_lock!(translation_context)
-        .target
-        .iter()
-        .map(|normalization_context| {
-            let lock = read_lock!(normalization_context);
-            let normal_contexts: Vec<Arc<NormalContext>> = lock
-                .normalized
-                .as_ref()
-                .ok_or_else(|| {
-                    Errors::DeficientNormalizationContextError(
-                        "Normalized graph not provided in normalization context".to_string(),
-                    )
-                })?
-                .contexts
-                .values()
-                .cloned()
-                .collect();
+    let translation_nodes = generate_translation_nodes(
+        Arc::clone(&provider),
+        Arc::clone(&reasoner),
+        Arc::clone(&translation_context),
+        &options,
+        &stage,
+    )
+    .await?;
 
-            Ok::<_, Errors>(normal_contexts)
-        })
-        .collect::<Result<Vec<_>, Errors>>()?
-        .into_iter()
-        .flatten()
-        .filter(|normal_context| {
-            !normal_context.data_node.is_empty()
-        })
-        .collect();
+    let elapsed = start.elapsed();
+    log::info!("generate_translation_nodes: {:.2?}", elapsed);
 
+    stage.finish();
 
     unimplemented!()
 }

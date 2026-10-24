@@ -7,9 +7,23 @@ use crate::basis_group::BasisGroup;
 use crate::basis_node::BasisNode;
 use crate::context::Context;
 use crate::group_analysis::resolve_context_groups;
+use crate::normal_context::NormalContext;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
+
+pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    translation_context: Arc<RwLock<TranslationContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+) -> Result<(), Errors> {
+    let left = group_by_acyclic_lineage(read_lock!(translation_context).source.clone())?;
+    let right = group_by_acyclic_lineage(read_lock!(translation_context).target.clone())?;
+
+    unimplemented!()
+}
 
 pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -128,4 +142,43 @@ async fn generate_basis_node<P: Provider, R: Reasoner>(
         .await?;
 
     Ok(basis_node)
+}
+
+fn group_by_acyclic_lineage(
+    normalization_contexts: Vec<Arc<RwLock<NormalizationContext>>>,
+) -> Result<HashMap<Lineage, Vec<Arc<NormalContext>>>, Errors> {
+    let groups: HashMap<Lineage, Vec<Arc<NormalContext>>> = normalization_contexts
+        .iter()
+        .map(|normalization_context| {
+            let lock = read_lock!(normalization_context);
+            let normal_contexts: Vec<Arc<NormalContext>> = lock
+                .normalized
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Normalized graph not provided in normalization context".to_string(),
+                    )
+                })?
+                .contexts
+                .values()
+                .cloned()
+                .collect();
+
+            Ok::<_, Errors>(normal_contexts)
+        })
+        .collect::<Result<Vec<_>, Errors>>()?
+        .into_iter()
+        .flatten()
+        .filter(|normal_context| !normal_context.data_node.is_empty())
+        .fold(HashMap::new(), |mut acc, normal_context| {
+            let graph_node = read_lock!(normal_context.graph_node);
+
+            acc.entry(graph_node.acyclic_lineage.clone())
+                .or_insert_with(Vec::new)
+                .push(normal_context.clone());
+
+            acc
+        });
+
+    Ok(groups)
 }
