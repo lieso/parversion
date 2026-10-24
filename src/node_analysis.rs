@@ -11,6 +11,7 @@ use crate::normal_context::NormalContext;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::translation_node::TranslationNode;
 
 pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -36,6 +37,64 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         })
         .collect();
 
+    log::info!("cartesian product length: {}", cartesian_product.len());
+
+    let mut handles = Vec::new();
+
+    for comparison in cartesian_product {
+        let cloned_provider = Arc::clone(&provider);
+        let cloned_reasoner = Arc::clone(&reasoner);
+        let cloned_translation_context = Arc::clone(&translation_context);
+        let cloned_stage_context = stage_context.clone();
+        let cloned_options = options.clone();
+        let left_acyclic_lineage = comparison.0.0.clone();
+        let left_contexts = comparison.0.1.clone();
+        let right_acyclic_lineage = comparison.1.0.clone();
+        let right_contexts = comparison.1.1.clone();
+
+        let handle = task::spawn(async move {
+            let translation_nodes = generate_acyclic_translation_node(
+                cloned_provider,
+                cloned_reasoner,
+                cloned_translation_context,
+                left_acyclic_lineage,
+                left_contexts,
+                right_acyclic_lineage,
+                right_contexts,
+                &cloned_options,
+                &cloned_stage_context
+            )
+            .await?;
+
+            Ok(translation_nodes)
+        });
+
+        handles.push(handle);
+    }
+
+    let results: Vec<Arc<TranslationNode>> = try_join_all(handles)
+        .await?
+        .into_iter()
+        .collect::<Result<Vec<Vec<TranslationNode>>, Errors>>()?
+        .into_iter()
+        .flatten()
+        .map(|translation_node| Arc::new(translation_node))
+        .collect();
+    
+    unimplemented!()
+}
+
+async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
+    provider: Arc<P>,
+    reasoner: Arc<R>,
+    translation_context: Arc<RwLock<TranslationContext>>,
+    left_acyclic_lineage: AcyclicLineage,
+    left_contexts: Vec<Arc<NormalContext>>,
+    right_acyclic_lineage: AcyclicLineage,
+    rights_contexts: Vec<Arc<NormalContext>>,
+    options: &Options,
+    stage_context: &StageContext,
+) -> Result<Vec<TranslationNode>, Errors> {
     unimplemented!()
 }
 
