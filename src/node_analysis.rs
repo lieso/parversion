@@ -98,6 +98,16 @@ async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
             return Ok(translation_nodes);
         }
     }
+
+    let (maybe_translation_node, metadata) = reasoner
+        .translation_node(
+            Arc::clone(&translation_context),
+            left_contexts,
+            right_contexts,
+        )
+        .await?;
+
+    stage_context.record_events("Node translation", metadata.tokens.into(), metadata.cost);
     
     unimplemented!()
 }
