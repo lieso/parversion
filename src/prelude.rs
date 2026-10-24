@@ -5,7 +5,7 @@ pub use crate::id::{
     BasisGroupID, BasisNetworkID, BasisNodeID, ContextID, DataNodeID, DocumentNodeID, GraphNodeID,
     NodeID, TranslationNetworkID, TranslationNodeID, ID,
 };
-pub use crate::lineage::{BasisLineage, Lineage};
+pub use crate::lineage::{BasisLineage, Lineage, AcyclicLineage, IndexedLineage};
 pub(crate) use crate::macros::*;
 pub use crate::meta_context::MetaContext;
 pub use crate::metadata::Metadata;

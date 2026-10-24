@@ -4,6 +4,8 @@ use std::fmt;
 use crate::hash::Hash;
 
 pub type BasisLineage = Lineage;
+pub type AcyclicLineage = Lineage;
+pub type IndexedLineage = Lineage;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct Lineage {

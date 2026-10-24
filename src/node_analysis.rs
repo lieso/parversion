@@ -19,8 +19,22 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<(), Errors> {
+    log::trace!("In generate_translation_nodes");
+
     let left = group_by_acyclic_lineage(read_lock!(translation_context).source.clone())?;
     let right = group_by_acyclic_lineage(read_lock!(translation_context).target.clone())?;
+
+    let cartesian_product: Vec<((AcyclicLineage, Vec<Arc<NormalContext>>), (AcyclicLineage, Vec<Arc<NormalContext>>))> = left
+        .iter()
+        .flat_map(|(left_lineage, left_contexts)| {
+            right.iter().map(move |(right_lineage, right_contexts)| {
+                (
+                    (left_lineage.clone(), left_contexts.clone()),
+                    (right_lineage.clone(), right_contexts.clone()),
+                )
+            })
+        })
+        .collect();
 
     unimplemented!()
 }
