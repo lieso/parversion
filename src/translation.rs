@@ -45,7 +45,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         Arc::clone(&translation_context),
-        &options,
+        options,
         &stage,
     )
     .await?;

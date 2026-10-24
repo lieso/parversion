@@ -41,16 +41,12 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
 
     let mut handles = Vec::new();
 
-    for comparison in cartesian_product {
+    for ((left_acyclic_lineage, left_contexts), (right_acyclic_lineage, right_contexts)) in cartesian_product {
         let cloned_provider = Arc::clone(&provider);
         let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_translation_context = Arc::clone(&translation_context);
         let cloned_stage_context = stage_context.clone();
         let cloned_options = options.clone();
-        let left_acyclic_lineage = comparison.0.0.clone();
-        let left_contexts = comparison.0.1.clone();
-        let right_acyclic_lineage = comparison.1.0.clone();
-        let right_contexts = comparison.1.1.clone();
 
         let handle = task::spawn(async move {
             let translation_nodes = generate_acyclic_translation_node(
@@ -78,7 +74,7 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         .collect::<Result<Vec<Vec<TranslationNode>>, Errors>>()?
         .into_iter()
         .flatten()
-        .map(|translation_node| Arc::new(translation_node))
+        .map(Arc::new)
         .collect();
     
     unimplemented!()
@@ -91,7 +87,7 @@ async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
     left_acyclic_lineage: AcyclicLineage,
     left_contexts: Vec<Arc<NormalContext>>,
     right_acyclic_lineage: AcyclicLineage,
-    rights_contexts: Vec<Arc<NormalContext>>,
+    right_contexts: Vec<Arc<NormalContext>>,
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<Vec<TranslationNode>, Errors> {
