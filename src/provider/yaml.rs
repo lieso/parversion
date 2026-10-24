@@ -16,6 +16,7 @@ use crate::network_relationship::NetworkRelationship;
 use crate::node_relationship::NodeRelationship;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::translation_node::TranslationNode;
 
 /// A keyed record in a yaml section. `keys` plays the role of the composite
 /// primary key that the sqlite provider uses for each table.
@@ -577,5 +578,16 @@ impl Provider for YamlFileProvider {
         )?;
 
         self.save_data(&yaml).await
+    }
+
+    async fn get_translation_nodes_by_lineages(
+        &self,
+        left_lineage: &Lineage,
+        right_lineage: &Lineage,
+    ) -> Result<Option<Vec<TranslationNode>>, Errors> {
+        let yaml = self.load_data().await?;
+        let keys = [left_lineage.to_string(), right_lineage.to_string()];
+
+        Ok(find_entry(&yaml, "translation_nodes", &keys))
     }
 }

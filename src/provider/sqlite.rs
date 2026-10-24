@@ -13,6 +13,7 @@ use crate::network_relationship::NetworkRelationship;
 use crate::node_relationship::NodeRelationship;
 use crate::prelude::*;
 use crate::provider::Provider;
+use crate::translation_node::TranslationNode;
 
 #[cfg(feature = "sqlite-provider")]
 pub struct SqliteProvider {
@@ -65,6 +66,12 @@ impl SqliteProvider {
                  right_network      TEXT NOT NULL,
                  data               TEXT NOT NULL,
                  PRIMARY KEY (left_network, right_network)
+             );
+             CREATE TABLE IF NOT EXISTS translation_nodes (
+                 left_lineage       TEXT NOT NULL,
+                 right_lineage      TEXT NOT NULL,
+                 data               TEXT NOT NULL,
+                 PRIMARY KEY (left_lineage, right_lineage)
              );
              ",
         )
@@ -575,7 +582,34 @@ impl Provider for SqliteProvider {
             Ok(())
         })
         .await
-            .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
+
+    // Warning: lookup is not symmetric. Which lineage is 'left' or 'right' needs to be consistent
+    // across retrieval and persistence
+    async fn get_translation_nodes_by_lineages(
+        &self,
+        left_lineage: &Lineage,
+        right_lineage: &Lineage,
+    ) -> Result<Option<Vec<TranslationNode>>, Errors> {
+        let conn = self.connection.clone();
+        let left_key = left_lineage.to_string();
+        let right_key = right_lineage.to_string();
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            match conn.query_row(
+                "SELECT data FROM translation_nodes WHERE left_lineage = ?1 AND right_lineage = ?2",
+                params![left_key, right_key],
+                |row| row.get::<_, String>(0),
+            ) {
+                Ok(data) => deserialize(data).map(Some),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(db_err(e)),
+            }
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
 }
 

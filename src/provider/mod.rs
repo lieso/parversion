@@ -10,6 +10,7 @@ use crate::document::Document;
 use crate::network_relationship::NetworkRelationship;
 use crate::node_relationship::NodeRelationship;
 use crate::prelude::*;
+use crate::translation_node::TranslationNode;
 
 #[cfg(feature = "yaml-provider")]
 pub mod yaml;
@@ -105,6 +106,11 @@ pub trait Provider: Send + Sync + Sized + 'static {
         right: Arc<BasisNetwork>,
         network_relationship: NetworkRelationship,
     ) -> Result<(), Errors>;
+    async fn get_translation_nodes_by_lineages(
+        &self,
+        left: &Lineage,
+        right: &Lineage,
+    ) -> Result<Option<Vec<TranslationNode>>, Errors>;
 }
 
 pub struct VoidProvider;
@@ -248,5 +254,13 @@ impl Provider for VoidProvider {
         _network_relationship: NetworkRelationship,
     ) -> Result<(), Errors> {
         Ok(())
+    }
+
+    async fn get_translation_nodes_by_lineages(
+        &self,
+        _left_lineage: &Lineage,
+        _right_lineage: &Lineage,
+    ) -> Result<Option<Vec<TranslationNode>>, Errors> {
+        Ok(None)
     }
 }

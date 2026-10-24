@@ -91,6 +91,14 @@ async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<Vec<TranslationNode>, Errors> {
+
+    if !options.regenerate {
+        if let Some(translation_nodes) = provider.get_translation_nodes_by_lineages(&left_acyclic_lineage, &right_acyclic_lineage).await? {
+            stage_context.record_events("Node translation", 0, 0.0);
+            return Ok(translation_nodes);
+        }
+    }
+    
     unimplemented!()
 }
 
