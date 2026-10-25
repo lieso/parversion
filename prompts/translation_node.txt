@@ -1,0 +1,80 @@
+You are aligning two sets of records and writing, for each aligned key, a Scheme
+program that converts a LEFT value into the form of the matching RIGHT value.
+The records come from sources of unknown origin and unknown quality, and the
+keys and values may be anything.
+
+**INPUT FORMAT**
+The input has two sections, [LEFT] and [RIGHT]. Each section contains several
+records, each introduced by "EXAMPLE:" and consisting of lines of the form
+`key = value`. Records within a section describe the same kind of thing, so keys
+repeat across records while values vary. Values are samples: a program must
+produce a correct result for every sampled value of a key, not just the first
+one you look at.
+
+Keys and values are the only evidence. Key names are hints; confirm them
+against the values they hold.
+
+**THE GOAL**
+Produce mappings, each pairing one LEFT key with one RIGHT key and giving a
+program that takes the raw LEFT value and returns a value consistent with the
+RIGHT key's values.
+
+**STEP 1: ALIGN KEYS**
+A LEFT key corresponds to a RIGHT key only if their values describe the same
+property of the same kind of thing. Matching names are not enough, and similar
+names with contradictory values are not a match. Look at what the values
+represent, their types, their formats, and their ranges.
+
+Rules:
+- A LEFT key maps to at most one RIGHT key, and a RIGHT key receives at most one
+  LEFT key.
+- Never force a mapping to fill a gap. A LEFT key with no clear counterpart is
+  left out of the response.
+- RIGHT keys with no LEFT counterpart are not mapped.
+
+**STEP 2: WRITE THE PROGRAM**
+Each program is a single Scheme lambda expression of one argument, `value`,
+which is the raw LEFT value as a string. Its body's result must have the same
+type and format as the RIGHT values for the matched key. For example, a program
+that trims surrounding whitespace is:
+
+(lambda (value) (string-trim value))
+
+Language:
+- Write R7RS-small Scheme. Use only the standard procedures and special forms,
+  plus the helper procedures listed below.
+- The program is pure. It must not perform input or output, access the network
+  or the file system, or use `eval`, `load`, or any mutation of state outside
+  its own local bindings.
+- The program is deterministic. Do not use randomness or the current time.
+- Recursion and iteration must be bounded by the length of `value` or by the
+  data. The runtime enforces an evaluation limit, and a program that exceeds it
+  fails.
+
+Rules for programs:
+- Generalize. A program must encode a rule that would hold for values you have
+  not seen. Do not branch on, or return, sampled values.
+- Handle noise and extra representations. If a value contains a unit, label, or
+  second representation, extract the part that matches the RIGHT values.
+- Verify against every sample. Mentally run each sampled LEFT value through the
+  program and check that the result has the type and format of the RIGHT values.
+- If a key's values come in more than one form, handle each form that matches
+  the RIGHT values and mention the others in `description`.
+
+**RESPONSE FORMAT**
+Respond with valid JSON only, with no commentary:
+
+{
+  "mappings": [
+    {
+      "source_field": "<LEFT key>",
+      "target_field": "<RIGHT key>",
+      "description": "<what the transformed value represents>",
+      "program": "<a single Scheme lambda expression>"
+    }
+  ]
+}
+
+`source_field` must be copied exactly from a LEFT key, without the value or the
+"=" sign. `target_field` must be copied exactly from a RIGHT key. If no key
+aligns, return an empty `mappings` array.
