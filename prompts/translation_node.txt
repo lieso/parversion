@@ -1,78 +1,143 @@
-You are aligning two sets of records and writing, for each aligned key, a Scheme
-program that converts a LEFT value into the form of the matching RIGHT value.
-The records come from sources of unknown origin and unknown quality, and the
-keys and values may be anything.
+You are aligning one source field with a set of target records and, when an
+alignment exists, writing a Scheme program that converts a source value into
+the form of the matching target field.
 
 **INPUT FORMAT**
-The input has two sections, [LEFT] and [RIGHT]. Each section contains several
-records, each introduced by "EXAMPLE:" and consisting of lines of the form
-`key = value`. Records within a section describe the same kind of thing, so keys
-repeat across records while values vary. Values are samples: a program must
-produce a correct result for every sampled value of a key, not just the first
-one you look at.
 
-Keys and values are the only evidence. Key names are hints; confirm them
-against the values they hold.
+The input contains these sections:
+
+[FIELD]
+The exact name of one source field.
+
+[VALUES]
+Sample values of the source field, normally one value per nonempty line. All
+listed values belong to the field named in [FIELD]. Treat each value as a
+separate sample. 
+
+[RIGHT]
+Zero or more target records. Each record is introduced by `EXAMPLE:` and
+contains lines of the form:
+
+`key = value`
+
+The target records describe the same kind of entity, so keys generally repeat
+across records while their values vary.
+
+Field names are hints, not proof. Confirm their meaning using the sampled
+values, including their types, formats, ranges, and apparent semantics.
 
 **THE GOAL**
-Produce mappings, each pairing one LEFT key with one RIGHT key and giving a
-program that takes the raw LEFT value and returns a value consistent with the
-RIGHT key's values.
 
-**STEP 1: ALIGN KEYS**
-A LEFT key corresponds to a RIGHT key only if their values describe the same
-property of the same kind of thing. Look at what the values
-represent, their types, their formats, and their ranges.
+Determine whether the source field corresponds to one target key. If it does,
+return one mapping containing:
+
+1. The matching target key.
+2. A Scheme program that takes a raw source value and converts it to a value
+   consistent with that target key.
+
+If no target key corresponds to the source field, return nothing.
+
+**STEP 1: ALIGN THE FIELD**
+
+Compare the source field with every key appearing in the target records.
+
+The source field corresponds to a target key only when their values represent
+the same property, or generally convertible representations of the same
+property, for the same kind of entity. Consider:
+
+- Semantic meaning.
+- Data type.
+- Format and structure.
+- Units, labels, prefixes, and suffixes.
+- Plausible value ranges.
+- Whether one general deterministic rule can convert source values into the
+  target representation.
 
 Rules:
-- A LEFT key maps to at most one RIGHT key, and a RIGHT key receives at most one
-  LEFT key.
-- RIGHT keys with no LEFT counterpart are not mapped.
-- Consider every LEFT key against every RIGHT key. Include a mapping whenever the values describe
-  the same property and a single program could plausibly convert them. Uncertain conversions should
-  be included, not omitted; mappings are checked and revised later.
+
+- The single source field may map to at most one target key.
+- A shared broad topic or association is not enough. For example, an account
+  username and a person's display name are related to the same person but are
+  not interchangeable unless the values provide evidence of a general
+  conversion rule.
+- Do not infer correspondence from the order of source samples and target
+  examples. They are not paired.
+- Do not map fields merely because their values have the same primitive type.
+- Prefer the strongest semantic and representational match.
+- Include a plausible but uncertain mapping when the evidence supports the
+  same property and a general conversion rule. Do not include a mapping when
+  conversion would require an external lookup, unavailable context, or
+  guessing individual values.
+- If no target key has a defensible correspondence, return nothing
+  array.
 
 **STEP 2: WRITE THE PROGRAM**
-Each program is a single Scheme lambda expression of one argument, `value`,
-which is the raw LEFT value as a string. Its body's result must have the same
-type and format as the RIGHT values for the matched key. For example, a program
-that trims surrounding whitespace is:
+
+The program must be a single Scheme lambda expression with one argument named
+`value`:
+
+(lambda (value) ...)
+
+`value` is the raw source value as a string. The program's result must have the
+same type and format as values of the matched target key.
+
+For example, a program that removes surrounding whitespace is:
 
 (lambda (value) (string-trim value))
 
-Language:
-- Write R7RS-small Scheme. Use only the standard procedures and special forms,
-  plus the helper procedures listed below.
-- The program is pure. It must not perform input or output, access the network
-  or the file system, or use `eval`, `load`, or any mutation of state outside
-  its own local bindings.
-- The program is deterministic. Do not use randomness or the current time.
-- Recursion and iteration must be bounded by the length of `value` or by the
-  data. The runtime enforces an evaluation limit, and a program that exceeds it
-  fails.
+Language and safety requirements:
 
-Rules for programs:
-- Generalize. A program must encode a rule that would hold for values you have
-  not seen. Do not branch on, or return, sampled values.
-- Handle noise and extra representations. If a value contains a unit, label, or
-  second representation, extract the part that matches the RIGHT values.
-- Verify against every sample. Mentally run each sampled LEFT value through the
-  program and check that the result has the type and format of the RIGHT values.
+- Write R7RS-small Scheme.
+- Use only R7RS-small standard procedures and special forms, plus any helper
+  procedures explicitly provided in the input.
+- The program must be pure and deterministic.
+- Do not perform input or output.
+- Do not access the network, file system, environment, or current time.
+- Do not use randomness, `eval`, or `load`.
+- Do not mutate state outside the program's own local bindings.
+- Recursion and iteration must be bounded by the length of `value` or by data
+  derived from it. The runtime enforces an evaluation limit.
+
+Program rules:
+
+- Generalize beyond the samples. Encode a transformation rule that should work
+  for unseen source values.
+- Do not compare against, branch on, embed, or return individual sampled
+  values.
+- Do not construct a lookup table from the samples.
+- Do not invent missing information.
+- If conversion requires an external identity lookup or facts not present in
+  `value`, the fields are not transformable and must not be mapped.
+- Handle representational noise when appropriate. For example, remove a unit,
+  label, wrapper, or redundant representation if doing so yields the target
+  format.
+- Preserve information needed by the target field.
+- Mentally test the program against every source sample and verify that each
+  result has the target field's expected type and format.
+- Use the identity program `(lambda (value) value)` only when source values
+  already have the target field's required meaning, type, and format.
 
 **RESPONSE FORMAT**
-Respond with valid JSON only, with no commentary:
+
+Respond with valid JSON only. Do not include Markdown, code fences, comments,
+or explanatory text outside the JSON.
+
+Use exactly this structure:
 
 {
-  "mappings": [
-    {
-      "source_field": "<LEFT key>",
-      "target_field": "<RIGHT key>",
-      "description": "<what the transformed value represents>",
-      "program": "<a single Scheme lambda expression>"
-    }
-  ]
+  "target_field": "<target key>",
+  "program": "<a single Scheme lambda expression>"
 }
 
-`source_field` must be copied exactly from a LEFT key, without the value or the
-"=" sign. `target_field` must be copied exactly from a RIGHT key. If no key
-aligns, return an empty `mappings` array.
+Additional response rules:
+
+- `target_field` must be copied exactly from a key in the [RIGHT] section.
+- `program` must contain exactly one Scheme lambda expression serialized as a
+  JSON string.
+- Ensure all JSON string escaping is valid.
+- If no target key aligns with the source field, return:
+
+{
+  "target_field": "",
+  "program": ""
+}
