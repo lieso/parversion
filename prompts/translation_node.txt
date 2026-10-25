@@ -21,16 +21,16 @@ RIGHT key's values.
 
 **STEP 1: ALIGN KEYS**
 A LEFT key corresponds to a RIGHT key only if their values describe the same
-property of the same kind of thing. Matching names are not enough, and similar
-names with contradictory values are not a match. Look at what the values
+property of the same kind of thing. Look at what the values
 represent, their types, their formats, and their ranges.
 
 Rules:
 - A LEFT key maps to at most one RIGHT key, and a RIGHT key receives at most one
   LEFT key.
-- Never force a mapping to fill a gap. A LEFT key with no clear counterpart is
-  left out of the response.
 - RIGHT keys with no LEFT counterpart are not mapped.
+- Consider every LEFT key against every RIGHT key. Include a mapping whenever the values describe
+  the same property and a single program could plausibly convert them. Uncertain conversions should
+  be included, not omitted; mappings are checked and revised later.
 
 **STEP 2: WRITE THE PROGRAM**
 Each program is a single Scheme lambda expression of one argument, `value`,
@@ -58,8 +58,6 @@ Rules for programs:
   second representation, extract the part that matches the RIGHT values.
 - Verify against every sample. Mentally run each sampled LEFT value through the
   program and check that the result has the type and format of the RIGHT values.
-- If a key's values come in more than one form, handle each form that matches
-  the RIGHT values and mention the others in `description`.
 
 **RESPONSE FORMAT**
 Respond with valid JSON only, with no commentary:
