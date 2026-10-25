@@ -72,7 +72,7 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> 
         .await?
         .ok_or_else(|| {
             Errors::UnavailableSystemPrompt(
-                "Expected a schema_to_instance.txt system prompt in prompts".to_string(),
+                "Expected a schema_to_instance.txt system prompt in prompts directory".to_string(),
             )
         })
 }
