@@ -7,6 +7,7 @@ use openrouter_rs::{
     types::{ResponseFormat, Role},
     OpenRouterClient,
 };
+use openrouter_rs::types::Effort;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -65,10 +66,10 @@ impl Reasoner for OpenRouterReasoner {
         let combined_prompt = format!("{}{}", system_prompt, user_prompt);
         let prompt_hash = Hash::from_str(&combined_prompt);
 
-        let model = match capability {
-            Capability::Fast => "gpt-5.6-luna",
-            Capability::Capable => "gpt-5.6-sol",
-            Capability::Strong => "gpt-6-astra",
+        let (model, effort) = match capability {
+            Capability::Fast => ("gpt-5.6-luna", Effort::Low),
+            Capability::Capable => ("gpt-5.6-sol", Effort::Medium),
+            Capability::Strong => ("gpt-6-astra", Effort::High),
         };
 
         // Clone and fix the schema - additionalProperties causes problems
@@ -84,6 +85,8 @@ impl Reasoner for OpenRouterReasoner {
                 Message::new(Role::User, user_prompt),
             ])
             .response_format(response_format)
+            .reasoning_effort(effort)
+            .temperature(0.0)
             .build()
             .expect("Could not construct ChatCompletionRequest");
 

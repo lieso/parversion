@@ -41,7 +41,7 @@ pub async fn translation_node<R: Reasoner>(
     )?;
     let schema = serde_json::to_value(schemars::schema_for!(TranslationNodeResponse))
         .expect("Failed to serialise TranslationNodeResponse schema");
-    let capability = Capability::Capable;
+    let capability = Capability::Strong;
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
