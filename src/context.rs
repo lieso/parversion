@@ -403,7 +403,7 @@ impl Context {
         Ok(partial_document.to_string())
     }
 
-    fn generate_spatial_context_multi(
+    pub fn generate_spatial_context_multi(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         contexts: Vec<Arc<Context>>,
     ) -> Result<String, Errors> {

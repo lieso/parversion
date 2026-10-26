@@ -102,7 +102,7 @@ async fn get_system_prompt<R: Reasoner>(
 }
 
 fn get_user_prompt(
-    _translation_context: Arc<RwLock<TranslationContext>>,
+    translation_context: Arc<RwLock<TranslationContext>>,
     field: &String,
     left_contexts: &Vec<Arc<NormalContext>>,
     right_contexts: &Vec<Arc<NormalContext>>
@@ -125,7 +125,7 @@ fn get_user_prompt(
         .filter(|context| context.data_node.fields.contains_key(&field))
         .take(11)
         .map(|context| {
-            context.generate_context_string_translation_node(&field)
+            context.generate_context_string_translation_node(Arc::clone(&translation_context), &field)
         })
         .collect::<Result<Vec<String>, Errors>>()?;
     let left = context_strings.join("\n\n---EXAMPLE SEPARATOR---\n\n");

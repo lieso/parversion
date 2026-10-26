@@ -39,3 +39,9 @@ impl From<JoinError> for Errors {
         Errors::TaskJoinError(e.to_string())
     }
 }
+
+impl From<serde_json::Error> for Errors {
+    fn from(e: serde_json::Error) -> Self {
+        Errors::JsonParseError(e.to_string())
+    }
+}
