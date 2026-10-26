@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::prelude::*;
 use crate::normal_context::NormalContext;
@@ -25,28 +25,26 @@ pub async fn translation_node<R: Reasoner>(
 ) -> Result<(Option<TranslationNode>, ReasonerMetadata), Errors> {
     log::trace!("In translation_node");
 
-    let fields: HashMap<String, Vec<String>> = left_contexts.iter().fold(HashMap::new(), |mut acc, context| {
-        for (key, value) in context.data_node.fields.iter() {
-            acc.entry(key.clone())
-                .or_default()
-                .push(value.clone())
+    let system_prompt = get_system_prompt(reasoner).await?;
+    let schema = serde_json::to_value(schemars::schema_for!(TranslationNodeResponse))
+        .expect("Failed to serialise TranslationNodeResponse schema");
+    let capability = Capability::Capable;
+
+    let fields: HashSet<String> = left_contexts.iter().fold(HashSet::new(), |mut acc, context| {
+        for (key, _value) in context.data_node.fields.iter() {
+            acc.insert(key.clone());
         }
 
         acc
     });
 
-    for (field, values) in fields {
-
-        let system_prompt = get_system_prompt(reasoner).await?;
+    for field in fields {
         let user_prompt = get_user_prompt(
             Arc::clone(&translation_context),
             &field,
-            &values,
+            &left_contexts,
             &right_contexts
         )?;
-        let schema = serde_json::to_value(schemars::schema_for!(TranslationNodeResponse))
-            .expect("Failed to serialise TranslationNodeResponse schema");
-        let capability = Capability::Capable;
 
         log::debug!("");
         log::debug!("╔═══════════════════════════════════════════════════════════════╗");
@@ -73,15 +71,16 @@ pub async fn translation_node<R: Reasoner>(
         log::debug!("└───────────────────────────────────────────────────────────────┘");
         log::debug!("");
 
-        let (result, metadata) = reasoner
-            .execute::<TranslationNodeResponse>(&capability, &system_prompt, &user_prompt, schema)
-            .await?;
+        //let (result, metadata) = reasoner
+        //    .execute::<TranslationNodeResponse>(&capability, &system_prompt, &user_prompt, schema)
+        //    .await?;
 
-        let reasoner_metadata = ReasonerMetadata {
-            tokens: metadata.input_tokens + metadata.output_tokens,
-            prompts: vec![metadata.prompt_hash.clone()],
-            cost: metadata.cost.unwrap_or(0.0),
-        };
+        //let reasoner_metadata = ReasonerMetadata {
+        //    tokens: metadata.input_tokens + metadata.output_tokens,
+        //    prompts: vec![metadata.prompt_hash.clone()],
+        //    cost: metadata.cost.unwrap_or(0.0),
+        //};
+
 
     }
 
@@ -105,7 +104,7 @@ async fn get_system_prompt<R: Reasoner>(
 fn get_user_prompt(
     _translation_context: Arc<RwLock<TranslationContext>>,
     field: &String,
-    values: &Vec<String>,
+    left_contexts: &Vec<Arc<NormalContext>>,
     right_contexts: &Vec<Arc<NormalContext>>
 ) -> Result<String, Errors> {
 
@@ -121,18 +120,24 @@ fn get_user_prompt(
 
     let right = render(right_contexts);
 
-    let values = values.iter().fold(String::new(), |acc, value| {
-        format!("{}\n{}", acc, value)
-    });
+    let context_strings: Vec<String> = left_contexts
+        .iter()
+        .filter(|context| context.data_node.fields.contains_key(&field))
+        .take(11)
+        .map(|context| {
+            context.generate_context_string_translation_node(&field)
+        })
+        .collect::<Result<Vec<String>, Errors>>()?;
+    let left = context_strings.join("\n\n---EXAMPLE SEPARATOR---\n\n");
 
     Ok(format!(r##"
 [FIELD]
 {}
 
-[VALUES]
+[LEFT]
 {}
 
 [RIGHT]
 {}
-    "##, field, values, right))
+    "##, field, left, right))
 }

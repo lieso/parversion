@@ -14,3 +14,9 @@ pub struct NormalContext {
     pub data_node: Arc<DataNode>,
     pub contexts: Vec<Arc<Context>>,
 }
+
+impl NormalContext {
+    pub fn generate_context_string_translation_node(&self, field: &String) -> Result<String, Errors> {
+        unimplemented!()
+    }
+}
