@@ -92,6 +92,7 @@ impl Html {
                         lock.insert(data_node.id.clone(), Arc::clone(&context));
                         lock.insert(read_lock!(document_node).id.clone(), Arc::clone(&context));
                         lock.insert(read_lock!(graph_node).id.clone(), Arc::clone(&context));
+                        lock.insert(context.id.clone(), Arc::clone(&context));
                     }
 
                     {
