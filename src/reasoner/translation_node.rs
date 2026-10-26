@@ -71,15 +71,15 @@ pub async fn translation_node<R: Reasoner>(
         log::debug!("└───────────────────────────────────────────────────────────────┘");
         log::debug!("");
 
-        //let (result, metadata) = reasoner
-        //    .execute::<TranslationNodeResponse>(&capability, &system_prompt, &user_prompt, schema)
-        //    .await?;
+        let (result, metadata) = reasoner
+            .execute::<TranslationNodeResponse>(&capability, &system_prompt, &user_prompt, schema.clone())
+            .await?;
 
-        //let reasoner_metadata = ReasonerMetadata {
-        //    tokens: metadata.input_tokens + metadata.output_tokens,
-        //    prompts: vec![metadata.prompt_hash.clone()],
-        //    cost: metadata.cost.unwrap_or(0.0),
-        //};
+        let reasoner_metadata = ReasonerMetadata {
+            tokens: metadata.input_tokens + metadata.output_tokens,
+            prompts: vec![metadata.prompt_hash.clone()],
+            cost: metadata.cost.unwrap_or(0.0),
+        };
 
 
     }
@@ -131,13 +131,10 @@ fn get_user_prompt(
     let left = context_strings.join("\n\n---EXAMPLE SEPARATOR---\n\n");
 
     Ok(format!(r##"
-[FIELD]
-{}
-
 [LEFT]
 {}
 
 [RIGHT]
 {}
-    "##, field, left, right))
+    "##, left, right))
 }

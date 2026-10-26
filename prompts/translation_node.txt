@@ -1,141 +1,117 @@
-You are aligning one source field with a set of target records and, when an
-alignment exists, writing a Scheme program that converts a source value into
-the form of the matching target field.
+You are aligning one source field with the fields of a set of target records.
+When the source field has a defensible counterpart in the target, write a Scheme
+program that converts a raw source value into the form of that target field.
 
-**INPUT FORMAT**
-
-The input contains these sections:
+**INPUT**
 
 [FIELD]
-The exact name of one source field.
+The name of one source field. Every source sample in [LEFT] has this field.
 
-[VALUES]
-Sample values of the source field, normally one value per nonempty line. All
-listed values belong to the field named in [FIELD]. Treat each value as a
-separate sample. 
+[LEFT]
+One or more source samples, separated by `---EXAMPLE SEPARATOR---`. Each sample
+contains:
+
+- [OBJECT]: the source record as a JSON object mapping field names to string
+  values. The value of [FIELD] in this object is the raw value the program will
+  receive.
+- [SOURCE DOCUMENT]: the document the record was extracted from. Content between
+  `<!-- TARGET_START -->` and `<!-- TARGET_END -->` marks the location the record
+  was extracted from. Use these markers to find the record and its context. The
+  markers are not data, and anything outside them is still context.
 
 [RIGHT]
-Zero or more target records. Each record is introduced by `EXAMPLE:` and
-contains lines of the form:
+Zero or more target records, each introduced by `EXAMPLE:` and containing lines
+of the form `key = value`. Keys repeat across records while values vary. These
+records show the target form. They are samples, not a complete schema.
 
-`key = value`
-
-The target records describe the same kind of entity, so keys generally repeat
-across records while their values vary.
-
-Field names are hints, not proof. Confirm their meaning using the sampled
-values, including their types, formats, ranges, and apparent semantics.
+Field names are hints, not proof. Confirm what a field means from its values,
+types, formats, ranges, and the context in the source document.
 
 **THE GOAL**
 
-Determine whether the source field corresponds to one target key. If it does,
-return one mapping containing:
-
-1. The matching target key.
-2. A Scheme program that takes a raw source value and converts it to a value
-   consistent with that target key.
-
-If no target key corresponds to the source field, return nothing.
+Decide whether [FIELD] corresponds to one key in [RIGHT]. If it does, return
+that key and a program that converts source values into the target form. If it
+does not, return empty values.
 
 **STEP 1: ALIGN THE FIELD**
 
-Compare the source field with every key appearing in the target records.
+A correspondence exists when the source field and a target key describe the same
+property of the same kind of entity, and one general rule can convert source
+values into the target representation. Consider:
 
-The source field corresponds to a target key only when their values represent
-the same property, or generally convertible representations of the same
-property, for the same kind of entity. Consider:
-
-- Semantic meaning.
-- Data type.
-- Format and structure.
-- Units, labels, prefixes, and suffixes.
+- Meaning, from the field name and from the source document's context.
+- Data type, format, and structure.
+- Units, prefixes, suffixes, and labels.
+- Whether the source value is relative, abbreviated, or encoded, and whether the
+  source document establishes what it is relative to.
 - Plausible value ranges.
-- Whether one general deterministic rule can convert source values into the
-  target representation.
 
 Rules:
 
-- The single source field may map to at most one target key.
-- A shared broad topic or association is not enough. For example, an account
-  username and a person's display name are related to the same person but are
-  not interchangeable unless the values provide evidence of a general
-  conversion rule.
-- Do not infer correspondence from the order of source samples and target
-  examples. They are not paired.
-- Do not map fields merely because their values have the same primitive type.
-- Prefer the strongest semantic and representational match.
-- Include a plausible but uncertain mapping when the evidence supports the
-  same property and a general conversion rule. Do not include a mapping when
-  conversion would require an external lookup, unavailable context, or
-  guessing individual values.
-- If no target key has a defensible correspondence, return nothing
-  array.
+- A source field maps to at most one target key.
+- A shared topic is not enough. Two fields about the same entity are not
+  interchangeable unless a general conversion exists.
+- Do not align fields because their primitive types match, or because of their
+  position in the input.
+- A surface difference does not rule out a correspondence. If the source value
+  is a representation of the target property and the input gives what is needed
+  to resolve it into the target form, the correspondence holds.
+- Reject a mapping when conversion needs information the input does not provide,
+  such as an external lookup, or when it would require guessing individual
+  values.
+- If the source value already has the target key's meaning, type, and format,
+  the identity program `(lambda (value) value)` is the correct program.
 
 **STEP 2: WRITE THE PROGRAM**
 
-The program must be a single Scheme lambda expression with one argument named
-`value`:
+The program is a single Scheme lambda expression with one argument, `value`:
 
 (lambda (value) ...)
 
-`value` is the raw source value as a string. The program's result must have the
-same type and format as values of the matched target key.
-
-For example, a program that removes surrounding whitespace is:
-
-(lambda (value) (string-trim value))
+`value` is the raw source value as a string. The result must have the same type
+and format as values of the matched target key.
 
 Language and safety requirements:
 
-- Write R7RS-small Scheme.
-- Use only R7RS-small standard procedures and special forms, plus any helper
-  procedures explicitly provided in the input.
+- Write R7RS-small Scheme. Use only R7RS-small procedures and special forms,
+  plus any helper procedures explicitly provided in the input.
 - The program must be pure and deterministic.
 - Do not perform input or output.
 - Do not access the network, file system, environment, or current time.
 - Do not use randomness, `eval`, or `load`.
 - Do not mutate state outside the program's own local bindings.
 - Recursion and iteration must be bounded by the length of `value` or by data
-  derived from it. The runtime enforces an evaluation limit.
+  derived from it.
 
 Program rules:
 
-- Generalize beyond the samples. Encode a transformation rule that should work
-  for unseen source values.
-- Do not compare against, branch on, embed, or return individual sampled
-  values.
-- Do not construct a lookup table from the samples.
-- Do not invent missing information.
-- If conversion requires an external identity lookup or facts not present in
-  `value`, the fields are not transformable and must not be mapped.
-- Handle representational noise when appropriate. For example, remove a unit,
-  label, wrapper, or redundant representation if doing so yields the target
-  format.
-- Preserve information needed by the target field.
-- Mentally test the program against every source sample and verify that each
+- Generalize beyond the samples. The program should encode a transformation rule
+  that works for values not yet seen.
+- Do not compare against, branch on, embed, or return individual sampled values.
+  Do not build a lookup table from the samples.
+- Constants are allowed when the input establishes them, such as the origin or
+  base address of the source document. Do not embed constants the input does not
+  establish, and do not invent missing information.
+- Handle representational noise when appropriate. Remove a unit, label, wrapper,
+  or redundant representation when doing so yields the target format.
+- Preserve the information the target field needs.
+- Mentally test the program against every sampled value and check that each
   result has the target field's expected type and format.
-- Use the identity program `(lambda (value) value)` only when source values
-  already have the target field's required meaning, type, and format.
 
 **RESPONSE FORMAT**
 
-Respond with valid JSON only. Do not include Markdown, code fences, comments,
-or explanatory text outside the JSON.
-
-Use exactly this structure:
+Respond with valid JSON only. Do not include Markdown, code fences, comments, or
+text outside the JSON. Use exactly this structure:
 
 {
-  "target_field": "<target key>",
+  "target_field": "<a key from [RIGHT]>",
   "program": "<a single Scheme lambda expression>"
 }
 
-Additional response rules:
-
-- `target_field` must be copied exactly from a key in the [RIGHT] section.
-- `program` must contain exactly one Scheme lambda expression serialized as a
-  JSON string.
-- Ensure all JSON string escaping is valid.
-- If no target key aligns with the source field, return:
+- `target_field` must be copied exactly from a key in [RIGHT].
+- `program` must be exactly one Scheme lambda expression, serialized as a JSON
+  string with valid escaping.
+- If no target key corresponds to [FIELD], return:
 
 {
   "target_field": "",
