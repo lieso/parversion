@@ -52,6 +52,7 @@ fn handle_error(err: &Errors) {
         Errors::EmbeddingError(msg) => format!("embedding error: {}", msg),
         Errors::TaskJoinError(msg) => format!("task join error: {}", msg),
         Errors::XsltParseError(msg) => format!("failed to parse XSLT: {}", msg),
+        Errors::SchemeError(error) => format!("scheme error: {}", error),
     };
 
     eprintln!("Error: {}", message);

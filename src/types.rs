@@ -32,6 +32,13 @@ pub enum Errors {
     EmbeddingError(String),
     TaskJoinError(String),
     XsltParseError(String),
+    SchemeError(crate::scheme::Errors),
+}
+
+impl From<crate::scheme::Errors> for Errors {
+    fn from(e: crate::scheme::Errors) -> Self {
+        Errors::SchemeError(e)
+    }
 }
 
 impl From<JoinError> for Errors {
