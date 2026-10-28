@@ -1,8 +1,10 @@
 mod errors;
 mod lexer;
+mod parser;
 
 pub use errors::Errors;
 use lexer::tokenize;
+use parser::parse;
 
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -38,7 +40,8 @@ struct Frame {
 }
 
 pub fn eval(source: &str) -> Result<Value, Errors> {
-    let tokens = tokenize(source);
+    let tokens = tokenize(source)?;
+    let expression = parse(tokens)?;
     unimplemented!()
 }
 
