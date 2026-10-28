@@ -1,10 +1,10 @@
 use std::iter::Peekable;
-use std::str::Chars;
 use std::vec::IntoIter;
 
 use super::lexer::Token;
 use super::errors::Errors;
 
+#[derive(Debug)]
 pub enum Expr {
     Integer(i64),
     Float(f64),
