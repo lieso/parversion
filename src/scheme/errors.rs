@@ -6,6 +6,9 @@ pub enum Errors {
     UnexpectedCharacter(char),
     UnexpectedCloseParen,
     UnexpectedEndOfInput,
+    EmptyCall,
+    NotAProcedure,
+    TypeMismatch,
 }
 
 impl fmt::Display for Errors {
@@ -15,6 +18,9 @@ impl fmt::Display for Errors {
             Errors::UnexpectedCharacter(character) => write!(f, "unexpected character '{}'", character),
             Errors::UnexpectedCloseParen => write!(f, "unexpected close paren"),
             Errors::UnexpectedEndOfInput => write!(f, "unexpected end of input"),
+            Errors::EmptyCall => write!(f, "empty call"),
+            Errors::NotAProcedure => write!(f, "not a procedure"),
+            Errors::TypeMismatch => write!(f, "type mismatch"),
         }
     }
 }
