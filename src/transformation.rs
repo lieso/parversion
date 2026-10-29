@@ -5,6 +5,15 @@ use crate::data_node::{DataNode, DataNodeFields};
 use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Transformation {
+    pub id: ID,
+    pub description: String,
+    pub field: String,
+    pub procedure: Option<String>,
+    pub image: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FieldMetadata {
     pub data_type: String,
     pub format: Option<String>,

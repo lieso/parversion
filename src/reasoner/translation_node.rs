@@ -8,6 +8,8 @@ use crate::normal_context::NormalContext;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 use crate::translation_node::TranslationNode;
 use crate::data_node::DataNodeFields;
+use crate::scheme::{eval, apply};
+use crate::transformation::Transformation;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct TranslationNodeResponse {
@@ -37,6 +39,19 @@ pub async fn translation_node<R: Reasoner>(
 
         acc
     });
+
+
+
+
+
+    let mut transformations: Vec<Transformation> = Vec::new();
+    let mut total_tokens: u32 = 0;
+    let mut total_cost: f64 = 0.0;
+    let mut total_prompts = Vec::new();
+
+
+
+
 
     for field in fields {
         let user_prompt = get_user_prompt(
@@ -75,16 +90,43 @@ pub async fn translation_node<R: Reasoner>(
             .execute::<TranslationNodeResponse>(&capability, &system_prompt, &user_prompt, schema.clone())
             .await?;
 
-        let reasoner_metadata = ReasonerMetadata {
-            tokens: metadata.input_tokens + metadata.output_tokens,
-            prompts: vec![metadata.prompt_hash.clone()],
-            cost: metadata.cost.unwrap_or(0.0),
-        };
 
 
+        total_tokens += metadata.input_tokens + metadata.output_tokens;
+        total_cost += metadata.cost.unwrap_or(0.0);
+        total_prompts.push(metadata.prompt_hash.clone());
+
+
+
+        if !result.target_field.is_empty() {
+            let transformation = Transformation {
+                id: ID::new(),
+                field: field.clone(),
+                image: result.target_field.clone(),
+                description: "placeholder".to_string(),
+                procedure: Some(result.program.clone()),
+            };
+
+            transformations.push(transformation);
+        }
     }
 
-    unimplemented!()
+    let translation_node = if transformations.is_empty() {
+        None
+    } else {
+        Some(TranslationNode {
+            id: ID::new(),
+            transformations,
+        })
+    };
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: total_tokens,
+        cost: total_cost,
+        prompts: total_prompts,
+    };
+
+    Ok((translation_node, reasoner_metadata))
 }
 
 async fn get_system_prompt<R: Reasoner>(
