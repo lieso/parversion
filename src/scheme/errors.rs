@@ -9,6 +9,8 @@ pub enum Errors {
     EmptyCall,
     NotAProcedure,
     TypeMismatch,
+    UnboundSymbol,
+    MalformedLambda,
 }
 
 impl fmt::Display for Errors {
@@ -19,8 +21,10 @@ impl fmt::Display for Errors {
             Errors::UnexpectedCloseParen => write!(f, "unexpected close paren"),
             Errors::UnexpectedEndOfInput => write!(f, "unexpected end of input"),
             Errors::EmptyCall => write!(f, "empty call"),
-            Errors::NotAProcedure => write!(f, "not a procedure"),
             Errors::TypeMismatch => write!(f, "type mismatch"),
+            Errors::NotAProcedure => write!(f, "not a procedure"),
+            Errors::UnboundSymbol => write!(f, "unbound symbol"),
+            Errors::MalformedLambda => write!(f, "malformed lambda"),
         }
     }
 }

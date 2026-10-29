@@ -4,7 +4,7 @@ use std::vec::IntoIter;
 use super::lexer::Token;
 use super::errors::Errors;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Expr {
     Integer(i64),
     Float(f64),
