@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use super::{eval_expr, Errors, Expr, Frame, Procedure, Value};
 
-pub fn try_special_form(name: &str, args: &[Expr], frame: &Frame) -> Option<Result<Value, Errors>> {
+pub fn try_special_form(name: &str, args: &[Expr], frame: &Arc<Frame>) -> Option<Result<Value, Errors>> {
     match name {
         "if" => Some(eval_if(args, frame)),
         "lambda" => Some(eval_lambda(args, frame)),
@@ -9,7 +11,7 @@ pub fn try_special_form(name: &str, args: &[Expr], frame: &Frame) -> Option<Resu
     }
 }
 
-fn eval_and(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
+fn eval_and(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
     let mut result = Value::Bool(true);
 
     for expr in args {
@@ -23,7 +25,7 @@ fn eval_and(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
     Ok(result)
 }
 
-fn eval_if(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
+fn eval_if(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
     let [condition, consequent, alternative] = args else {
         return Err(Errors::MalformedIf);
     };
@@ -38,7 +40,7 @@ fn eval_if(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
     eval_expr(branch, frame)
 }
 
-fn eval_lambda(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
+fn eval_lambda(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
     let [params, body] = args else {
         return Err(Errors::MalformedLambda);
     };

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 mod builtins;
 mod errors;
@@ -45,17 +46,21 @@ impl From<&str> for Value {
 
 struct Frame {
     bindings: HashMap<String, Value>,
+    parent: Option<Arc<Frame>>,
 }
 
 impl Frame {
     fn new() -> Self {
         Frame {
             bindings: HashMap::new(),
+            parent: None,
         }
     }
 
     fn get(&self, name: &str) -> Option<&Value> {
-        self.bindings.get(name)
+        self.bindings
+            .get(name)
+            .or_else(|| self.parent.as_ref()?.get(name))
     }
 }
 
@@ -63,7 +68,7 @@ pub fn eval(source: &str) -> Result<Value, Errors> {
     let tokens = tokenize(source)?;
     let expression = parse(tokens)?;
 
-    eval_expr(&expression, &Frame::new())
+    eval_expr(&expression, &Arc::new(Frame::new()))
 }
 
 pub fn apply(procedure: &Value, args: Vec<Value>) -> Result<Value, Errors> {
@@ -76,10 +81,10 @@ pub fn apply(procedure: &Value, args: Vec<Value>) -> Result<Value, Errors> {
         frame.bindings.insert(name.clone(), value);
     }
 
-    eval_expr(&p.body, &frame)
+    eval_expr(&p.body, &Arc::new(frame))
 }
 
-fn eval_expr(expr: &Expr, frame: &Frame) -> Result<Value, Errors> {
+fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
     let value = match expr {
         Expr::Integer(i) => Value::Integer(*i),
         Expr::Float(f) => Value::Float(*f),
