@@ -25,8 +25,10 @@ pub enum Value {
 
 #[derive(Clone, Debug)]
 pub struct Procedure {
+    name: Option<String>,
     params: Vec<String>,
     body: Expr,
+    captured: Arc<Frame>,
 }
 
 impl Value {
@@ -44,6 +46,7 @@ impl From<&str> for Value {
     }
 }
 
+#[derive(Debug)]
 struct Frame {
     bindings: HashMap<String, Value>,
     parent: Option<Arc<Frame>>,
@@ -76,12 +79,22 @@ pub fn apply(procedure: &Value, args: Vec<Value>) -> Result<Value, Errors> {
         return Err(Errors::NotAProcedure);
     };
 
-    let mut frame = Frame::new();
-    for (name, value) in p.params.iter().zip(args) {
-        frame.bindings.insert(name.clone(), value);
+    let mut bindings = HashMap::new();
+    
+    if let Some(name) = &p.name {
+        bindings.insert(name.clone(), procedure.clone());
     }
 
-    eval_expr(&p.body, &Arc::new(frame))
+    for (name, value) in p.params.iter().zip(args) {
+        bindings.insert(name.clone(), value);
+    }
+
+    let frame = Arc::new(Frame {
+        bindings,
+        parent: Some(Arc::clone(&p.captured)),
+    });
+
+    eval_expr(&p.body, &frame)
 }
 
 fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
@@ -108,6 +121,10 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 .iter()
                 .map(|e| eval_expr(e, frame))
                 .collect::<Result<Vec<_>, _>>()?;
+
+            if let Some(procedure @ Value::Procedure(_)) = frame.get(name) {
+                return apply(procedure, values);
+            }
 
             match name.as_str() {
                 "string-append" => string_append(values)?,

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 
-use super::{eval_expr, Errors, Expr, Frame, Procedure, Value};
+use super::{eval_expr, Errors, Expr, Frame, Procedure, Value, apply};
 
 pub fn try_special_form(name: &str, args: &[Expr], frame: &Arc<Frame>) -> Option<Result<Value, Errors>> {
     match name {
@@ -14,6 +14,38 @@ pub fn try_special_form(name: &str, args: &[Expr], frame: &Arc<Frame>) -> Option
 }
 
 fn eval_let(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
+
+
+
+
+    if let [Expr::Symbol(loop_name), Expr::List(bindings), body] = args {
+        let [Expr::List(pair)] = bindings.as_slice() else {
+            return Err(Errors::MalformedLet);
+        };
+
+        let [Expr::Symbol(param), init] = pair.as_slice() else {
+            return Err(Errors::MalformedLet);
+        };
+
+        let init = eval_expr(init, frame)?;
+
+        let procedure = Value::Procedure(Procedure {
+            name: Some(loop_name.clone()),
+            params: vec![param.clone()],
+            body: body.clone(),
+            captured: Arc::clone(frame),
+        });
+
+        return apply(&procedure, vec![init]);
+    }
+
+
+
+
+
+
+
+
     let [binding_list, body] = args else {
         return Err(Errors::MalformedLet);
     };
@@ -92,7 +124,9 @@ fn eval_lambda(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Value::Procedure(Procedure {
+        name: None,
         params,
         body: body.clone(),
+        captured: Arc::clone(frame),
     }))
 }
