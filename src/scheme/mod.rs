@@ -207,4 +207,20 @@ mod tests {
 
         assert!(matches!(value, Value::Bool(false)));
     }
+
+    #[test]
+    fn eval_let_body_sees_enclosing_parameter() {
+        let procedure = eval(r#"(lambda (v) (let ((y 1)) v))"#).unwrap();
+
+        let result = apply(&procedure, vec![Value::from("a")]).unwrap();
+
+        assert_eq!(result.as_str(), Some("a"));
+    }
+
+    #[test]
+    fn eval_let_bindings_do_not_see_siblings() {
+        let result = eval(r#"(let ((x 1) (y x)) y)"#);
+
+        assert!(matches!(result, Err(Errors::UnboundSymbol)));
+    }
 }
