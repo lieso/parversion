@@ -1,8 +1,8 @@
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-use super::lexer::Token;
 use super::errors::Errors;
+use super::lexer::Token;
 
 #[derive(Clone, Debug)]
 pub enum Expr {

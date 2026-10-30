@@ -9,10 +9,10 @@ use crate::classification::Classification;
 use crate::hash::Hash;
 use crate::network_relationship::NetworkRelationship;
 use crate::node_relationship::NodeRelationship;
+use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::prompt_registry::PromptRegistry;
 use crate::translation_node::TranslationNode;
-use crate::normal_context::NormalContext;
 
 mod backend;
 mod basis_field;
@@ -199,9 +199,10 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         &self,
         translation_context: Arc<RwLock<TranslationContext>>,
         left_contexts: Vec<Arc<NormalContext>>,
-        right_contexts: Vec<Arc<NormalContext>>
+        right_contexts: Vec<Arc<NormalContext>>,
     ) -> Result<(Option<TranslationNode>, ReasonerMetadata), Errors> {
-        translation_node::translation_node(self, translation_context, left_contexts, right_contexts).await
+        translation_node::translation_node(self, translation_context, left_contexts, right_contexts)
+            .await
     }
 }
 

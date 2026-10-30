@@ -13,4 +13,3 @@ pub struct TranslationNode {
     pub id: ID,
     pub transformations: Vec<Transformation>,
 }
-

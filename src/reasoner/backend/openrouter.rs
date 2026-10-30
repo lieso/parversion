@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use http::StatusCode;
 use openrouter_rs::error::OpenRouterError;
+use openrouter_rs::types::Effort;
 use openrouter_rs::{
     api::chat::*,
     api::embeddings::*,
     types::{ResponseFormat, Role},
     OpenRouterClient,
 };
-use openrouter_rs::types::Effort;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Semaphore;

@@ -115,7 +115,7 @@ pub trait Provider: Send + Sync + Sized + 'static {
         &self,
         left: &Lineage,
         right: &Lineage,
-        translation_nodes: Vec<TranslationNode>
+        translation_nodes: Vec<TranslationNode>,
     ) -> Result<(), Errors>;
 }
 
@@ -274,7 +274,7 @@ impl Provider for VoidProvider {
         &self,
         _left: &Lineage,
         _right: &Lineage,
-        _translation_nodes: Vec<TranslationNode>
+        _translation_nodes: Vec<TranslationNode>,
     ) -> Result<(), Errors> {
         Ok(())
     }

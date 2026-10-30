@@ -11,9 +11,9 @@ use crate::normal_context::NormalContext;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::translation_node::TranslationNode;
+use crate::scheme::{apply, eval, Value};
 use crate::transformation::Transformation;
-use crate::scheme::{apply, Value, eval};
+use crate::translation_node::TranslationNode;
 
 pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -27,7 +27,10 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
     let left = group_by_acyclic_lineage(read_lock!(translation_context).source.clone())?;
     let right = group_by_acyclic_lineage(read_lock!(translation_context).target.clone())?;
 
-    let cartesian_product: Vec<((AcyclicLineage, Vec<Arc<NormalContext>>), (AcyclicLineage, Vec<Arc<NormalContext>>))> = left
+    let cartesian_product: Vec<(
+        (AcyclicLineage, Vec<Arc<NormalContext>>),
+        (AcyclicLineage, Vec<Arc<NormalContext>>),
+    )> = left
         .iter()
         .flat_map(|(left_lineage, left_contexts)| {
             right.iter().map(move |(right_lineage, right_contexts)| {
@@ -43,7 +46,9 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
 
     let mut handles = Vec::new();
 
-    for ((left_acyclic_lineage, left_contexts), (right_acyclic_lineage, right_contexts)) in cartesian_product {
+    for ((left_acyclic_lineage, left_contexts), (right_acyclic_lineage, right_contexts)) in
+        cartesian_product
+    {
         let cloned_provider = Arc::clone(&provider);
         let cloned_reasoner = Arc::clone(&reasoner);
         let cloned_translation_context = Arc::clone(&translation_context);
@@ -60,7 +65,7 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
                 right_acyclic_lineage,
                 right_contexts,
                 &cloned_options,
-                &cloned_stage_context
+                &cloned_stage_context,
             )
             .await?;
 
@@ -81,9 +86,7 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
 
     let transformations: Vec<Transformation> = results
         .iter()
-        .flat_map(|translation_node| {
-            translation_node.transformations.clone()
-        })
+        .flat_map(|translation_node| translation_node.transformations.clone())
         .collect();
 
     for transformation in transformations {
@@ -100,7 +103,6 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         }
     }
 
-    
     unimplemented!()
 }
 
@@ -115,9 +117,11 @@ async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
     options: &Options,
     stage_context: &StageContext,
 ) -> Result<Vec<TranslationNode>, Errors> {
-
     if !options.regenerate {
-        if let Some(translation_nodes) = provider.get_translation_nodes_by_lineages(&left_acyclic_lineage, &right_acyclic_lineage).await? {
+        if let Some(translation_nodes) = provider
+            .get_translation_nodes_by_lineages(&left_acyclic_lineage, &right_acyclic_lineage)
+            .await?
+        {
             stage_context.record_events("Node translation", 0, 0.0);
             return Ok(translation_nodes);
         }
@@ -132,17 +136,22 @@ async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
         .await?;
 
     stage_context.record_events("Node translation", metadata.tokens.into(), metadata.cost);
-    
-    let translation_nodes: Vec<TranslationNode> = if let Some(translation_node) = maybe_translation_node {
-        vec![translation_node.clone()]
-    } else {
-        Vec::new()
-    };
+
+    let translation_nodes: Vec<TranslationNode> =
+        if let Some(translation_node) = maybe_translation_node {
+            vec![translation_node.clone()]
+        } else {
+            Vec::new()
+        };
 
     provider
-        .save_translation_nodes(&left_acyclic_lineage, &right_acyclic_lineage, translation_nodes.clone())
+        .save_translation_nodes(
+            &left_acyclic_lineage,
+            &right_acyclic_lineage,
+            translation_nodes.clone(),
+        )
         .await?;
-    
+
     Ok(translation_nodes)
 }
 

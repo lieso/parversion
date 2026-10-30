@@ -616,7 +616,7 @@ impl Provider for SqliteProvider {
         &self,
         left_lineage: &Lineage,
         right_lineage: &Lineage,
-        translation_nodes: Vec<TranslationNode>
+        translation_nodes: Vec<TranslationNode>,
     ) -> Result<(), Errors> {
         let conn = self.connection.clone();
         let left_key = left_lineage.to_string();

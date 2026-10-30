@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
-use super::Value;
 use super::errors::Errors;
+use super::Value;
 
 pub fn string_append(values: Vec<Value>) -> Result<Value, Errors> {
     let mut result = String::new();
@@ -100,9 +100,10 @@ pub fn less_than(values: Vec<Value>) -> Result<Value, Errors> {
 
 fn add_two(a: &Value, b: &Value) -> Result<Value, Errors> {
     match (a, b) {
-        (Value::Integer(x), Value::Integer(y)) => {
-            x.checked_add(*y).map(Value::Integer).ok_or(Errors::Overflow)
-        }
+        (Value::Integer(x), Value::Integer(y)) => x
+            .checked_add(*y)
+            .map(Value::Integer)
+            .ok_or(Errors::Overflow),
         _ => Ok(Value::Float(as_float(a)? + as_float(b)?)),
     }
 }
@@ -118,7 +119,10 @@ fn expect_arity(values: &[Value], expected: usize) -> Result<(), Errors> {
     if values.len() == expected {
         Ok(())
     } else {
-        Err(Errors::ArityMismatch { expected, got: values.len() })
+        Err(Errors::ArityMismatch {
+            expected,
+            got: values.len(),
+        })
     }
 }
 

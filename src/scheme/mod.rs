@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
+mod builtins;
 mod errors;
 mod lexer;
 mod parser;
-mod builtins;
+mod special_forms;
 
+use builtins::*;
 pub use errors::Errors;
 use lexer::tokenize;
-use parser::{Expr, parse};
-use builtins::*;
+use parser::{parse, Expr};
+use special_forms::try_special_form;
 
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -23,7 +25,7 @@ pub enum Value {
 #[derive(Clone, Debug)]
 pub struct Procedure {
     params: Vec<String>,
-    body: Expr, 
+    body: Expr,
 }
 
 impl Value {
@@ -47,7 +49,9 @@ struct Frame {
 
 impl Frame {
     fn new() -> Self {
-        Frame { bindings: HashMap::new() }
+        Frame {
+            bindings: HashMap::new(),
+        }
     }
 
     fn get(&self, name: &str) -> Option<&Value> {
@@ -81,10 +85,7 @@ fn eval_expr(expr: &Expr, frame: &Frame) -> Result<Value, Errors> {
         Expr::Float(f) => Value::Float(*f),
         Expr::Str(s) => Value::Str(s.clone()),
         Expr::Bool(b) => Value::Bool(*b),
-        Expr::Symbol(q) => frame
-            .get(q)
-            .cloned()
-            .ok_or_else(|| Errors::UnboundSymbol)?,
+        Expr::Symbol(q) => frame.get(q).cloned().ok_or_else(|| Errors::UnboundSymbol)?,
         Expr::List(l) => {
             let Some((first, rest)) = l.split_first() else {
                 return Err(Errors::EmptyCall);
@@ -94,42 +95,14 @@ fn eval_expr(expr: &Expr, frame: &Frame) -> Result<Value, Errors> {
                 return Err(Errors::NotAProcedure);
             };
 
-            if name == "lambda" {
-                let [params, body] = rest else {
-                    return Err(Errors::MalformedLambda);
-                };
-
-                let Expr::List(param_exprs) = params else {
-                    return Err(Errors::MalformedLambda);
-                };
-
-                let params = param_exprs
-                    .iter()
-                    .map(|p| match p {
-                        Expr::Symbol(s) => Ok(s.clone()),
-                        _ => Err(Errors::MalformedLambda),
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-
-                return Ok(Value::Procedure(Procedure { params, body: body.clone() }));
+            if let Some(result) = special_forms::try_special_form(name, rest, frame) {
+                return result;
             }
 
-            if name == "if" {
-                let [condition, consequent, alternative] = rest else {
-                    return Err(Errors::MalformedIf);
-                };
-
-                let test = eval_expr(condition, frame)?;
-
-                let branch = match test {
-                    Value::Bool(false) => alternative,
-                    _ => consequent,
-                };
-
-                return eval_expr(branch, frame);
-            }
-
-            let values = rest.iter().map(|e| eval_expr(e, frame)).collect::<Result<Vec<_>, _>>()?;
+            let values = rest
+                .iter()
+                .map(|e| eval_expr(e, frame))
+                .collect::<Result<Vec<_>, _>>()?;
 
             match name.as_str() {
                 "string-append" => string_append(values)?,
@@ -169,13 +142,16 @@ mod tests {
 
     #[test]
     fn apply_lambda() {
-        let procedure = eval(
-            r#"(lambda (value) (string-append "https://news.ycombinator.com/" value))"#
-        ).unwrap();
+        let procedure =
+            eval(r#"(lambda (value) (string-append "https://news.ycombinator.com/" value))"#)
+                .unwrap();
 
         let result = apply(&procedure, vec![Value::from("item?id=1")]).unwrap();
 
-        assert_eq!(result.as_str(), Some("https://news.ycombinator.com/item?id=1"));
+        assert_eq!(
+            result.as_str(),
+            Some("https://news.ycombinator.com/item?id=1")
+        );
     }
 
     #[test]

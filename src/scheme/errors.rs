@@ -11,7 +11,7 @@ pub enum Errors {
     TypeMismatch,
     UnboundSymbol,
     MalformedLambda,
-    ArityMismatch{ expected: usize, got: usize },
+    ArityMismatch { expected: usize, got: usize },
     IndexOutOfRange,
     Overflow,
     MalformedIf,
@@ -21,7 +21,9 @@ impl fmt::Display for Errors {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Errors::UnterminatedString => write!(f, "unterminated string literal"),
-            Errors::UnexpectedCharacter(character) => write!(f, "unexpected character '{}'", character),
+            Errors::UnexpectedCharacter(character) => {
+                write!(f, "unexpected character '{}'", character)
+            }
             Errors::UnexpectedCloseParen => write!(f, "unexpected close paren"),
             Errors::UnexpectedEndOfInput => write!(f, "unexpected end of input"),
             Errors::EmptyCall => write!(f, "empty call"),
@@ -29,7 +31,9 @@ impl fmt::Display for Errors {
             Errors::NotAProcedure => write!(f, "not a procedure"),
             Errors::UnboundSymbol => write!(f, "unbound symbol"),
             Errors::MalformedLambda => write!(f, "malformed lambda"),
-            Errors::ArityMismatch { expected, got } => write!(f, "expected {} arguments, got {}", expected, got),
+            Errors::ArityMismatch { expected, got } => {
+                write!(f, "expected {} arguments, got {}", expected, got)
+            }
             Errors::IndexOutOfRange => write!(f, "index out of range"),
             Errors::Overflow => write!(f, "integer overflow"),
             Errors::MalformedIf => write!(f, "malformed if"),

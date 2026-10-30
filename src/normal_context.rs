@@ -19,34 +19,40 @@ impl NormalContext {
     pub fn generate_context_string_translation_node(
         &self,
         translation_context: Arc<RwLock<TranslationContext>>,
-        field: &String
+        field: &String,
     ) -> Result<String, Errors> {
-
         let groups = Self::group_contexts_by_normalization_context(
             self.contexts.clone(),
-            read_lock!(translation_context).source.clone()
+            read_lock!(translation_context).source.clone(),
         )?;
 
-        let source_document = groups.iter().try_fold(String::new(), |acc, (normalization_context, contexts)| -> Result<String, Errors> {
-            let context_string = Context::generate_spatial_context_multi(
-                Arc::clone(&normalization_context),
-                contexts.clone()
-            )?;
+        let source_document = groups.iter().try_fold(
+            String::new(),
+            |acc, (normalization_context, contexts)| -> Result<String, Errors> {
+                let context_string = Context::generate_spatial_context_multi(
+                    Arc::clone(&normalization_context),
+                    contexts.clone(),
+                )?;
 
-            if acc.is_empty() {
-                Ok(context_string)
-            } else {
-                Ok(format!("{}\n\n{}", acc, context_string))
-            }
-        })?;
+                if acc.is_empty() {
+                    Ok(context_string)
+                } else {
+                    Ok(format!("{}\n\n{}", acc, context_string))
+                }
+            },
+        )?;
 
         let object: String = serde_json::to_string_pretty(
-            &self.data_node.fields.iter()
+            &self
+                .data_node
+                .fields
+                .iter()
                 .map(|(key, value)| (key.clone(), serde_json::Value::String(value.clone())))
-                .collect::<serde_json::Map<String, serde_json::Value>>()
+                .collect::<serde_json::Map<String, serde_json::Value>>(),
         )?;
-            
-        let result = format!(r##"
+
+        let result = format!(
+            r##"
 [FIELD]
 {}
 
@@ -55,21 +61,24 @@ impl NormalContext {
 
 [SOURCE DOCUMENT]
 {}
-        "##, field, object, source_document);
+        "##,
+            field, object, source_document
+        );
 
         Ok(result)
     }
-    
+
     fn group_contexts_by_normalization_context(
         contexts: Vec<Arc<Context>>,
-        normalization_contexts: Vec<Arc<RwLock<NormalizationContext>>>
+        normalization_contexts: Vec<Arc<RwLock<NormalizationContext>>>,
     ) -> Result<Vec<(Arc<RwLock<NormalizationContext>>, Vec<Arc<Context>>)>, Errors> {
         let mut groups = Vec::with_capacity(normalization_contexts.len());
 
         for normalization_context in normalization_contexts {
             let contexts_lookup = {
                 let lock = read_lock!(normalization_context);
-                let contexts_lookup = &lock.meta_context
+                let contexts_lookup = &lock
+                    .meta_context
                     .as_ref()
                     .ok_or_else(|| {
                         Errors::DeficientNormalizationContextError(
@@ -81,7 +90,8 @@ impl NormalContext {
                 Arc::clone(&contexts_lookup)
             };
 
-            let members: Vec<Arc<Context>> = contexts.iter()
+            let members: Vec<Arc<Context>> = contexts
+                .iter()
                 .filter(|context| contexts_lookup.contains_key(&context.id))
                 .cloned()
                 .collect();
