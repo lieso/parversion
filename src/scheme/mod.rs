@@ -100,7 +100,7 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 return Err(Errors::NotAProcedure);
             };
 
-            if let Some(result) = special_forms::try_special_form(name, rest, frame) {
+            if let Some(result) = try_special_form(name, rest, frame) {
                 return result;
             }
 

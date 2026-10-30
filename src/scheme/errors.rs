@@ -15,6 +15,7 @@ pub enum Errors {
     IndexOutOfRange,
     Overflow,
     MalformedIf,
+    MalformedLet,
 }
 
 impl fmt::Display for Errors {
@@ -37,6 +38,7 @@ impl fmt::Display for Errors {
             Errors::IndexOutOfRange => write!(f, "index out of range"),
             Errors::Overflow => write!(f, "integer overflow"),
             Errors::MalformedIf => write!(f, "malformed if"),
+            Errors::MalformedLet => write!(f, "malformed let"),
         }
     }
 }

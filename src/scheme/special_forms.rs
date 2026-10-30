@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use super::{eval_expr, Errors, Expr, Frame, Procedure, Value};
 
@@ -7,8 +8,41 @@ pub fn try_special_form(name: &str, args: &[Expr], frame: &Arc<Frame>) -> Option
         "if" => Some(eval_if(args, frame)),
         "lambda" => Some(eval_lambda(args, frame)),
         "and" => Some(eval_and(args, frame)),
+        "let" => Some(eval_let(args, frame)),
         _ => None,
     }
+}
+
+fn eval_let(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
+    let [binding_list, body] = args else {
+        return Err(Errors::MalformedLet);
+    };
+
+    let Expr::List(binding_exprs) = binding_list else {
+        return Err(Errors::MalformedLet);
+    };
+
+    let mut new_bindings = HashMap::new();
+
+    for binding in binding_exprs {
+        let Expr::List(pair) = binding else {
+            return Err(Errors::MalformedLet);
+        };
+
+        let [Expr::Symbol(name), value_expr] = pair.as_slice() else {
+            return Err(Errors::MalformedLet);
+        };
+
+        let value = eval_expr(value_expr, frame)?;
+        new_bindings.insert(name.clone(), value);
+    }
+
+    let inner = Arc::new(Frame {
+        bindings: new_bindings,
+        parent: Some(Arc::clone(frame)),
+    });
+
+    eval_expr(body, &inner)
 }
 
 fn eval_and(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
