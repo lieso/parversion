@@ -4,8 +4,23 @@ pub fn try_special_form(name: &str, args: &[Expr], frame: &Frame) -> Option<Resu
     match name {
         "if" => Some(eval_if(args, frame)),
         "lambda" => Some(eval_lambda(args, frame)),
+        "and" => Some(eval_and(args, frame)),
         _ => None,
     }
+}
+
+fn eval_and(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
+    let mut result = Value::Bool(true);
+
+    for expr in args {
+        result = eval_expr(expr, frame)?;
+
+        if matches!(result, Value::Bool(false)) {
+            return Ok(result);
+        }
+    }
+
+    Ok(result)
 }
 
 fn eval_if(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
@@ -20,7 +35,7 @@ fn eval_if(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
         _ => consequent,
     };
 
-    return eval_expr(branch, frame);
+    eval_expr(branch, frame)
 }
 
 fn eval_lambda(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
@@ -40,8 +55,8 @@ fn eval_lambda(args: &[Expr], frame: &Frame) -> Result<Value, Errors> {
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    return Ok(Value::Procedure(Procedure {
+    Ok(Value::Procedure(Procedure {
         params,
         body: body.clone(),
-    }));
+    }))
 }

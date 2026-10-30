@@ -176,4 +176,30 @@ mod tests {
 
         assert!(matches!(result, Err(Errors::MalformedIf)));
     }
+
+    #[test]
+    fn eval_and_empty_is_true() {
+        let value = eval("(and)").unwrap();
+
+        assert!(matches!(value, Value::Bool(true)));
+    }
+
+    #[test]
+    fn eval_and_returns_last_value() {
+        assert_eq!(eval(r#"(and 1 "x")"#).unwrap().as_str(), Some("x"));
+    }
+
+    #[test]
+    fn eval_and_short_circuits_on_false() {
+        let value = eval(r#"(and #f (string-ref "" 5))"#).unwrap();
+
+        assert!(matches!(value, Value::Bool(false)));
+    }
+
+    #[test]
+    fn eval_and_stops_at_first_false() {
+        let value = eval(r#"(and 1 #f (string-ref "" 5))"#).unwrap();
+
+        assert!(matches!(value, Value::Bool(false)));
+    }
 }
