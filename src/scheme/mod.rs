@@ -114,6 +114,21 @@ fn eval_expr(expr: &Expr, frame: &Frame) -> Result<Value, Errors> {
                 return Ok(Value::Procedure(Procedure { params, body: body.clone() }));
             }
 
+            if name == "if" {
+                let [condition, consequent, alternative] = rest else {
+                    return Err(Errors::MalformedIf);
+                };
+
+                let test = eval_expr(condition, frame)?;
+
+                let branch = match test {
+                    Value::Bool(false) => alternative,
+                    _ => consequent,
+                };
+
+                return eval_expr(branch, frame);
+            }
+
             let values = rest.iter().map(|e| eval_expr(e, frame)).collect::<Result<Vec<_>, _>>()?;
 
             match name.as_str() {
@@ -161,5 +176,28 @@ mod tests {
         let result = apply(&procedure, vec![Value::from("item?id=1")]).unwrap();
 
         assert_eq!(result.as_str(), Some("https://news.ycombinator.com/item?id=1"));
+    }
+
+    #[test]
+    fn eval_if_chooses_branch() {
+        assert_eq!(eval(r#"(if #t "yes" "no")"#).unwrap().as_str(), Some("yes"));
+        assert_eq!(eval(r#"(if #f "yes" "no")"#).unwrap().as_str(), Some("no"));
+        assert_eq!(eval(r#"(if 0 "yes" "no")"#).unwrap().as_str(), Some("yes"));
+    }
+
+    #[test]
+    fn eval_if_skips_untaken_branch() {
+        let value = eval(r#"(if #t 1 (string-ref "" 5))"#).unwrap();
+
+        assert!(matches!(value, Value::Integer(1)));
+    }
+
+    // Only supporting two arguments to "if" statements
+    // Unlikely this will be required
+    #[test]
+    fn eval_if_missing_branch() {
+        let result = eval(r#"(if #t 1)"#);
+
+        assert!(matches!(result, Err(Errors::MalformedIf)));
     }
 }

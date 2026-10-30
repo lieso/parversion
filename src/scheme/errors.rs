@@ -14,6 +14,7 @@ pub enum Errors {
     ArityMismatch{ expected: usize, got: usize },
     IndexOutOfRange,
     Overflow,
+    MalformedIf,
 }
 
 impl fmt::Display for Errors {
@@ -31,6 +32,7 @@ impl fmt::Display for Errors {
             Errors::ArityMismatch { expected, got } => write!(f, "expected {} arguments, got {}", expected, got),
             Errors::IndexOutOfRange => write!(f, "index out of range"),
             Errors::Overflow => write!(f, "integer overflow"),
+            Errors::MalformedIf => write!(f, "malformed if"),
         }
     }
 }
