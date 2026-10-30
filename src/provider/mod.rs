@@ -111,6 +111,12 @@ pub trait Provider: Send + Sync + Sized + 'static {
         left: &Lineage,
         right: &Lineage,
     ) -> Result<Option<Vec<TranslationNode>>, Errors>;
+    async fn save_translation_nodes(
+        &self,
+        left: &Lineage,
+        right: &Lineage,
+        translation_nodes: Vec<TranslationNode>
+    ) -> Result<(), Errors>;
 }
 
 pub struct VoidProvider;
@@ -262,5 +268,14 @@ impl Provider for VoidProvider {
         _right_lineage: &Lineage,
     ) -> Result<Option<Vec<TranslationNode>>, Errors> {
         Ok(None)
+    }
+
+    async fn save_translation_nodes(
+        &self,
+        _left: &Lineage,
+        _right: &Lineage,
+        _translation_nodes: Vec<TranslationNode>
+    ) -> Result<(), Errors> {
+        Ok(())
     }
 }

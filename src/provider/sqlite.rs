@@ -611,6 +611,31 @@ impl Provider for SqliteProvider {
         .await
         .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
     }
+
+    async fn save_translation_nodes(
+        &self,
+        left_lineage: &Lineage,
+        right_lineage: &Lineage,
+        translation_nodes: Vec<TranslationNode>
+    ) -> Result<(), Errors> {
+        let conn = self.connection.clone();
+        let left_key = left_lineage.to_string();
+        let right_key = right_lineage.to_string();
+        let data = serialize(&translation_nodes)?;
+
+        task::spawn_blocking(move || {
+            let conn = conn.lock().map_err(|_| lock_err())?;
+            conn.execute(
+                "INSERT OR REPLACE INTO translation_nodes (left_lineage, right_lineage, data) VALUES (?1, ?2, ?3)",
+                params![left_key, right_key, data],
+            )
+            .map_err(|e| db_err(e))?;
+
+            Ok(())
+        })
+        .await
+        .map_err(|_| Errors::UnexpectedError("Database operation failed".to_string()))?
+    }
 }
 
 fn basis_basis_nodes(basis_nodes: &[Arc<BasisNode>]) -> Result<String, Errors> {

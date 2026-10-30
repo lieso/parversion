@@ -12,6 +12,8 @@ use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_node::TranslationNode;
+use crate::transformation::Transformation;
+use crate::scheme::{apply, Value, eval};
 
 pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -76,6 +78,28 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         .flatten()
         .map(Arc::new)
         .collect();
+
+    let transformations: Vec<Transformation> = results
+        .iter()
+        .flat_map(|translation_node| {
+            translation_node.transformations.clone()
+        })
+        .collect();
+
+    for transformation in transformations {
+        if let Some(program) = transformation.procedure {
+            log::debug!("program: {}", program);
+            let procedure = eval(&program)?;
+            log::debug!("program parsed");
+
+            let value = Value::Str("test".to_string());
+
+            let result = apply(&procedure, vec![value])?;
+
+            log::debug!("result: {:?}", result);
+        }
+    }
+
     
     unimplemented!()
 }
@@ -109,7 +133,17 @@ async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
 
     stage_context.record_events("Node translation", metadata.tokens.into(), metadata.cost);
     
-    unimplemented!()
+    let translation_nodes: Vec<TranslationNode> = if let Some(translation_node) = maybe_translation_node {
+        vec![translation_node.clone()]
+    } else {
+        Vec::new()
+    };
+
+    provider
+        .save_translation_nodes(&left_acyclic_lineage, &right_acyclic_lineage, translation_nodes.clone())
+        .await?;
+    
+    Ok(translation_nodes)
 }
 
 pub async fn generate_basis_nodes<P: Provider, R: Reasoner>(
