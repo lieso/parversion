@@ -15,6 +15,7 @@ pub enum Value {
     Integer(i64),
     Float(f64),
     Str(String),
+    Char(char),
     Bool(bool),
     Procedure(Procedure),
 }
@@ -117,7 +118,15 @@ fn eval_expr(expr: &Expr, frame: &Frame) -> Result<Value, Errors> {
 
             match name.as_str() {
                 "string-append" => string_append(values)?,
-                _ => unimplemented!(),
+                "string-length" => string_length(values)?,
+                "string-ref" => string_ref(values)?,
+                "substring" => substring(values)?,
+                "string->number" => string_to_number(values)?,
+                "char-whitespace?" => char_whitespace(values)?,
+                "char-numeric?" => char_numeric(values)?,
+                "<" => less_than(values)?,
+                "+" => add(values)?,
+                _ => return Err(Errors::UnboundSymbol),
             }
         }
     };
