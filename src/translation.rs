@@ -9,6 +9,7 @@ use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_context::TranslationContext;
+use crate::reports::report_translation_nodes;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -57,6 +58,11 @@ pub async fn translate<P: Provider, R: Reasoner>(
 
     let elapsed = start.elapsed();
     log::info!("generate_translation_nodes: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_translation_nodes(Arc::clone(&translation_context)).await?;
+    }
 
     stage.finish();
 

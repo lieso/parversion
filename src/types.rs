@@ -14,6 +14,7 @@ pub enum Errors {
     PathConversionError,
     FetchUrlError(String),
     DeficientNormalizationContextError(String),
+    DeficientTranslationContextError(String),
     ClassificationNotFound,
     InsufficientPrerequisites(String),
     XPathParseError(String),

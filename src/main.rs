@@ -35,6 +35,9 @@ fn handle_error(err: &Errors) {
         Errors::DeficientNormalizationContextError(msg) => {
             format!("deficient normalization context: {}", msg)
         }
+        Errors::DeficientTranslationContextError(msg) => {
+            format!("deficient translation context: {}", msg)
+        }
         Errors::ClassificationNotFound => "classification not found".to_string(),
         Errors::InsufficientPrerequisites(msg) => format!("insufficient prerequisites: {}", msg),
         Errors::XPathParseError(msg) => format!("failed to parse XPath: {}", msg),

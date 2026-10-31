@@ -14,6 +14,7 @@ const MAGENTA: &str = "\x1b[35m";
 const GREEN: &str = "\x1b[32m";
 const RESET: &str = "\x1b[0m";
 const YELLOW: &str = "\x1b[33m";
+const RED: &str = "\x1b[31m";
 
 pub async fn report_basis_fields(
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -532,6 +533,64 @@ pub async fn report_basis_graph(
 
     println!();
     println!("{}=== End Basis Graph Report ==={}", YELLOW, RESET);
+
+    Ok(())
+}
+
+pub async fn report_translation_nodes(
+    translation_context: Arc<RwLock<TranslationContext>>,
+) -> Result<(), Errors> {
+    let translation_nodes = {
+        let lock = read_lock!(translation_context);
+        lock.translation_nodes
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientTranslationContextError(
+                    "Translation nodes not provided in translation context".to_string(),
+                )
+            })?
+            .clone()
+    };
+
+    println!("{}=== Translation Node Report ==={}", RED, RESET);
+    println!(
+        "{}Number of translation nodes: {}{}",
+        RED,
+        translation_nodes.len(),
+        RESET
+    );
+
+    for (id, translation_node) in &translation_nodes {
+        println!("{}{}{}", RED, "-----------------------------------------------------------------------------------------------------", RESET);
+        println!("{}--- Node [{}] ---{}", RED, id.to_string(), RESET);
+        println!(
+            "{}  transformations: {} count{}",
+            RED,
+            translation_node.transformations.len(),
+            RESET
+        );
+
+        for (txn_idx, transformation) in translation_node.transformations.iter().enumerate() {
+            println!(
+                "{}  [Transformation {}] {}{}",
+                RED,
+                txn_idx + 1,
+                transformation.description,
+                RESET
+            );
+            println!(
+                "{}    field: {}, image: {}{}",
+                RED, transformation.field, transformation.image, RESET
+            );
+            println!(
+                "{}    procedure: {:?}{}",
+                RED, transformation.procedure, RESET
+            );
+        }
+    }
+
+    println!();
+    println!("{}=== End Translation Node Report ==={}", RED, RESET);
 
     Ok(())
 }
