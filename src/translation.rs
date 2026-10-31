@@ -10,6 +10,7 @@ use crate::prelude::*;
 use crate::provider::Provider;
 use crate::translation_context::TranslationContext;
 use crate::reports::report_translation_nodes;
+use crate::normal_meta_context::NormalMetaContext;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -65,6 +66,11 @@ pub async fn translate<P: Provider, R: Reasoner>(
     }
 
     stage.finish();
+
+    let start = Instant::now();
+    let stage = execution_context.enter_stage("Building translated graph");
+
+    let translated = build_translated_graph(Arc::clone(&translation_context), &options)?;
 
     unimplemented!()
 }
@@ -202,4 +208,13 @@ async fn init_translation_context<P: Provider, R: Reasoner>(
     Ok(Arc::new(RwLock::new(TranslationContext::new(
         source, target,
     ))))
+}
+
+fn build_translated_graph(
+    translation_context: Arc<RwLock<TranslationContext>>,
+    _options: &Options,
+) -> Result<NormalMetaContext, Errors> {
+    log::trace!("In build_translated_graph");
+
+    unimplemented!()
 }
