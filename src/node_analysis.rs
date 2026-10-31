@@ -11,7 +11,6 @@ use crate::normal_context::NormalContext;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::scheme::{apply, eval, Value};
 use crate::transformation::Transformation;
 use crate::translation_node::TranslationNode;
 
@@ -21,7 +20,7 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
     translation_context: Arc<RwLock<TranslationContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<(), Errors> {
+) -> Result<HashMap<TranslationNodeID, Arc<TranslationNode>>, Errors> {
     log::trace!("In generate_translation_nodes");
 
     let left = group_by_acyclic_lineage(read_lock!(translation_context).source.clone())?;
@@ -84,26 +83,12 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         .map(Arc::new)
         .collect();
 
-    let transformations: Vec<Transformation> = results
-        .iter()
-        .flat_map(|translation_node| translation_node.transformations.clone())
+    let hashmap: HashMap<TranslationNodeID, Arc<TranslationNode> = results
+        .into_iter()
+        .map(|translation_node| (translation_node.id.clone(), translation_node))
         .collect();
 
-    for transformation in transformations {
-        if let Some(program) = transformation.procedure {
-            log::debug!("program: {}", program);
-            let procedure = eval(&program)?;
-            log::debug!("program parsed");
-
-            let value = Value::Str("test".to_string());
-
-            let result = apply(&procedure, vec![value])?;
-
-            log::debug!("result: {:?}", result);
-        }
-    }
-
-    unimplemented!()
+    Ok(hashmap)
 }
 
 async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
