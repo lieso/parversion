@@ -1,9 +1,13 @@
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use super::{eval_expr, Errors, Expr, Frame, Procedure, Value, apply};
+use super::{apply, eval_expr, Errors, Expr, Frame, Procedure, Value};
 
-pub fn try_special_form(name: &str, args: &[Expr], frame: &Arc<Frame>) -> Option<Result<Value, Errors>> {
+pub fn try_special_form(
+    name: &str,
+    args: &[Expr],
+    frame: &Arc<Frame>,
+) -> Option<Result<Value, Errors>> {
     match name {
         "if" => Some(eval_if(args, frame)),
         "lambda" => Some(eval_lambda(args, frame)),
@@ -14,10 +18,6 @@ pub fn try_special_form(name: &str, args: &[Expr], frame: &Arc<Frame>) -> Option
 }
 
 fn eval_let(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
-
-
-
-
     if let [Expr::Symbol(loop_name), Expr::List(bindings), body] = args {
         let [Expr::List(pair)] = bindings.as_slice() else {
             return Err(Errors::MalformedLet);
@@ -38,13 +38,6 @@ fn eval_let(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
 
         return apply(&procedure, vec![init]);
     }
-
-
-
-
-
-
-
 
     let [binding_list, body] = args else {
         return Err(Errors::MalformedLet);

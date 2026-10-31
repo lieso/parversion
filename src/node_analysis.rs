@@ -11,7 +11,6 @@ use crate::normal_context::NormalContext;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::transformation::Transformation;
 use crate::translation_node::TranslationNode;
 
 pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
@@ -83,7 +82,7 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         .map(Arc::new)
         .collect();
 
-    let hashmap: HashMap<TranslationNodeID, Arc<TranslationNode> = results
+    let hashmap: HashMap<TranslationNodeID, Arc<TranslationNode>> = results
         .into_iter()
         .map(|translation_node| (translation_node.id.clone(), translation_node))
         .collect();

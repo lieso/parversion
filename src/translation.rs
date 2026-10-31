@@ -50,6 +50,11 @@ pub async fn translate<P: Provider, R: Reasoner>(
     )
     .await?;
 
+    {
+        let mut lock = write_lock!(translation_context);
+        lock.update_translation_nodes(translation_nodes);
+    }
+
     let elapsed = start.elapsed();
     log::info!("generate_translation_nodes: {:.2?}", elapsed);
 

@@ -80,7 +80,7 @@ pub fn apply(procedure: &Value, args: Vec<Value>) -> Result<Value, Errors> {
     };
 
     let mut bindings = HashMap::new();
-    
+
     if let Some(name) = &p.name {
         bindings.insert(name.clone(), procedure.clone());
     }
