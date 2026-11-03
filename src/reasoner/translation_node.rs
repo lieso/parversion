@@ -22,7 +22,9 @@ pub struct TranslationNodeResponse {
 pub async fn translation_node<R: Reasoner>(
     reasoner: &R,
     translation_context: Arc<RwLock<TranslationContext>>,
+    left_lineage: Lineage,
     left_contexts: Vec<Arc<NormalContext>>,
+    right_lineage: Lineage,
     right_contexts: Vec<Arc<NormalContext>>,
 ) -> Result<(Option<TranslationNode>, ReasonerMetadata), Errors> {
     log::trace!("In translation_node");
@@ -111,6 +113,8 @@ pub async fn translation_node<R: Reasoner>(
     } else {
         Some(TranslationNode {
             id: ID::new(),
+            left_lineage: left_lineage.clone(),
+            right_lineage: right_lineage.clone(),
             transformations,
         })
     };

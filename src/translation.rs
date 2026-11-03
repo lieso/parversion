@@ -11,6 +11,7 @@ use crate::provider::Provider;
 use crate::translation_context::TranslationContext;
 use crate::reports::report_translation_nodes;
 use crate::normal_meta_context::NormalMetaContext;
+use crate::graph_node::Graph;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -43,7 +44,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Node translation");
 
-    let translation_nodes = generate_translation_nodes(
+    let (translation_nodes, translation_nodes_lookup) = generate_translation_nodes(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         Arc::clone(&translation_context),
@@ -54,7 +55,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
 
     {
         let mut lock = write_lock!(translation_context);
-        lock.update_translation_nodes(translation_nodes);
+        lock.update_translation_nodes(translation_nodes, translation_nodes_lookup);
     }
 
     let elapsed = start.elapsed();
@@ -215,6 +216,41 @@ fn build_translated_graph(
     _options: &Options,
 ) -> Result<NormalMetaContext, Errors> {
     log::trace!("In build_translated_graph");
+
+    let normalization_contexts = {
+        let lock = read_lock!(translation_context);
+        lock.source.clone()
+    };
+
+    if normalization_contexts.len() > 1 {
+        unimplemented!();
+    }
+
+    let normalization_context = normalization_contexts.first().unwrap();
+
+    let normal_meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.normalized
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(
+                    "Normalized graph not provided in normalization context".to_string()
+                )
+            })?
+            .clone()
+    };
+
+    let graph_root = normal_meta_context.graph_root.clone();
+
+    fn recurse(
+        current: Graph,
+    ) {
+        unimplemented!()
+    }
+    
+    recurse(
+        graph_root,
+    );
 
     unimplemented!()
 }

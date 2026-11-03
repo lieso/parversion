@@ -19,7 +19,10 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
     translation_context: Arc<RwLock<TranslationContext>>,
     options: &Options,
     stage_context: &StageContext,
-) -> Result<HashMap<TranslationNodeID, Arc<TranslationNode>>, Errors> {
+) -> Result<(
+    HashMap<TranslationNodeID, Arc<TranslationNode>>,
+    HashMap<Lineage, Arc<TranslationNode>>,
+), Errors> {
     log::trace!("In generate_translation_nodes");
 
     let left = group_by_acyclic_lineage(read_lock!(translation_context).source.clone())?;
@@ -87,7 +90,17 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         .map(|translation_node| (translation_node.id.clone(), translation_node))
         .collect();
 
-    Ok(hashmap)
+    let lookup: HashMap<Lineage, Arc<TranslationNode>> = hashmap
+        .values()
+        .flat_map(|translation_node| {
+            vec![
+                (translation_node.left_lineage.clone(), Arc::clone(&translation_node)),
+                (translation_node.right_lineage.clone(), Arc::clone(&translation_node)),
+            ]
+        })
+        .collect();
+
+    Ok((hashmap, lookup))
 }
 
 async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
@@ -114,7 +127,9 @@ async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(
     let (maybe_translation_node, metadata) = reasoner
         .translation_node(
             Arc::clone(&translation_context),
+            left_acyclic_lineage.clone(),
             left_contexts,
+            right_acyclic_lineage.clone(),
             right_contexts,
         )
         .await?;

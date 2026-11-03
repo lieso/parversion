@@ -11,5 +11,7 @@ pub struct TranslationNodeMetadata {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TranslationNode {
     pub id: ID,
+    pub left_lineage: Lineage,
+    pub right_lineage: Lineage,
     pub transformations: Vec<Transformation>,
 }
