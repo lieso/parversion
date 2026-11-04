@@ -3,12 +3,14 @@ use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::translation_node::TranslationNode;
+use crate::normal_context::NormalContext;
 
 pub struct TranslationContext {
     pub source: Vec<Arc<RwLock<NormalizationContext>>>,
     pub target: Vec<Arc<RwLock<NormalizationContext>>>,
     pub translation_nodes: Option<HashMap<TranslationNodeID, Arc<TranslationNode>>>,
     pub translation_nodes_lookup: Option<HashMap<Lineage, Arc<TranslationNode>>>,
+    pub target_node_lookup: Option<HashMap<Lineage, Vec<Arc<NormalContext>>>>,
 }
 
 impl TranslationContext {
@@ -21,6 +23,7 @@ impl TranslationContext {
             target,
             translation_nodes: None,
             translation_nodes_lookup: None,
+            target_node_lookup: None,
         }
     }
 
@@ -28,8 +31,10 @@ impl TranslationContext {
         &mut self,
         translation_nodes: HashMap<TranslationNodeID, Arc<TranslationNode>>,
         lookup: HashMap<Lineage, Arc<TranslationNode>>,
+        target_lookup: HashMap<Lineage, Vec<Arc<NormalContext>>>
     ) {
         self.translation_nodes = Some(translation_nodes);
         self.translation_nodes_lookup = Some(lookup);
+        self.target_node_lookup = Some(target_lookup);
     }
 }

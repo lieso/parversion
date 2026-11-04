@@ -22,6 +22,7 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
 ) -> Result<(
     HashMap<TranslationNodeID, Arc<TranslationNode>>,
     HashMap<Lineage, Arc<TranslationNode>>,
+    HashMap<Lineage, Vec<Arc<NormalContext>>>
 ), Errors> {
     log::trace!("In generate_translation_nodes");
 
@@ -100,7 +101,7 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
         })
         .collect();
 
-    Ok((hashmap, lookup))
+    Ok((hashmap, lookup, right))
 }
 
 async fn generate_acyclic_translation_node<P: Provider, R: Reasoner>(

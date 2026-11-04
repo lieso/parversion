@@ -37,6 +37,20 @@ impl GraphNode {
         }
     }
 
+    pub fn clone_without_relations(&self) -> Self {
+        GraphNode {
+            id: ID::new(),
+            parents: Vec::new(),
+            children: Vec::new(),
+            description: self.description.clone(),
+            hash: self.hash.clone(),
+            acyclic_lineage: self.acyclic_lineage.clone(),
+            lineage: self.lineage.clone(),
+            subgraph_hash: self.subgraph_hash.clone(),
+            indexed_lineages: self.indexed_lineages.clone(),
+        }
+    }
+
     pub fn set_lineage(&mut self, lineage: Lineage) {
         self.lineage = lineage.clone();
         self.acyclic_lineage = lineage.acyclic();

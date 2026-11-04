@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
+use std::collections::HashMap;
 
 use crate::document::{Document, DocumentRole};
 use crate::document_format::DocumentFormat;
@@ -11,7 +12,7 @@ use crate::provider::Provider;
 use crate::translation_context::TranslationContext;
 use crate::reports::report_translation_nodes;
 use crate::normal_meta_context::NormalMetaContext;
-use crate::graph_node::Graph;
+use crate::graph_node::{Graph, GraphNode};
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -44,7 +45,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Node translation");
 
-    let (translation_nodes, translation_nodes_lookup) = generate_translation_nodes(
+    let (translation_nodes, translation_nodes_lookup, target_node_lookup) = generate_translation_nodes(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         Arc::clone(&translation_context),
@@ -55,7 +56,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
 
     {
         let mut lock = write_lock!(translation_context);
-        lock.update_translation_nodes(translation_nodes, translation_nodes_lookup);
+        lock.update_translation_nodes(translation_nodes, translation_nodes_lookup, target_node_lookup);
     }
 
     let elapsed = start.elapsed();
@@ -240,16 +241,160 @@ fn build_translated_graph(
             .clone()
     };
 
+    let root = Arc::new(RwLock::new(GraphNode::detached()));
     let graph_root = normal_meta_context.graph_root.clone();
 
     fn recurse(
+        result: Graph,
         current: Graph,
-    ) {
-        unimplemented!()
+        translation_context: Arc<RwLock<TranslationContext>>,
+        instance_counter: &mut HashMap<TranslationNodeID, usize>,
+    ) -> Result<(), Errors> {
+
+        if let Some(translation_node) = {
+            let acyclic_lineage = &read_lock!(current).acyclic_lineage;
+            let lock = read_lock!(translation_context);
+            let lookup = lock.translation_nodes_lookup
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientTranslationContextError(
+                        "Translation node lookup not provided in translation context".to_string()
+                    )
+                })?;
+
+            lookup.get(acyclic_lineage).cloned()
+        } {
+            log::info!("Found a translation node");
+
+
+
+
+            let instance = instance_counter
+                .entry(translation_node.id.clone())
+                .or_insert(0);
+
+
+
+
+
+
+            let Some(target_contexts) = ({
+                let lock = read_lock!(translation_context);
+                let lookup = lock
+                    .target_node_lookup
+                    .as_ref()
+                    .ok_or_else(|| {
+                        Errors::DeficientTranslationContextError(
+                            "Target node lookup not provided in translation context".to_string()
+                        )
+                    })?;
+
+                lookup.get(&translation_node.right_lineage).cloned()
+            }) else {
+                return Err(Errors::UnexpectedError("Found a translation node, but could not find target document node".to_string()));
+            };
+
+            if target_contexts.is_empty() {
+                return Err(Errors::UnexpectedError("Found zero target contexts".to_string()));
+            }
+
+
+
+
+
+            let canonical_target_graph_node = target_contexts
+                .first()
+                .unwrap()
+                .graph_node
+                .clone();
+
+
+
+            let ancestors = {
+                let mut ancestors: Vec<Graph> = Vec::new();
+                let mut current_parents = read_lock!(canonical_target_graph_node).parents.clone();
+
+                while !current_parents.is_empty() {
+                    let parent = current_parents[0].clone();
+                    ancestors.push(parent.clone());
+                    current_parents = read_lock!(parent).parents.clone();
+                }
+
+                ancestors.reverse();
+                ancestors
+            };
+
+
+
+            let mut current_result_node = Arc::clone(&result);
+
+            for ancestor in ancestors {
+
+                let current_children = {
+                    let lock = read_lock!(current_result_node);
+                    lock.children.clone()
+                };
+
+
+                if let Some(existing_ancestor) = current_children.iter().find(|item| {
+                    read_lock!(item).acyclic_lineage == read_lock!(ancestor).acyclic_lineage
+                }) {
+
+                    current_result_node = Arc::clone(&existing_ancestor);
+
+                } else {
+
+                    let child = Arc::new(RwLock::new(read_lock!(ancestor).clone_without_relations()));
+
+                    {
+                        let mut parent_lock = write_lock!(current_result_node);
+                        
+                        parent_lock.children.push(Arc::clone(&child));
+                    }
+
+                    {
+                        let mut child_lock = write_lock!(child);
+
+                        child_lock.parents.push(Arc::clone(&current_result_node));
+                    }
+
+                    current_result_node = Arc::clone(&child);
+
+                }
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+        for child in &read_lock!(current).children {
+            recurse(
+                Arc::clone(&result),
+                Arc::clone(&child),
+                Arc::clone(&translation_context),
+                instance_counter
+            )?;
+        }
+
+
+        Ok(())
     }
     
     recurse(
+        Arc::clone(&root),
         graph_root,
+        Arc::clone(&translation_context),
+        &mut HashMap::new(),
     );
 
     unimplemented!()
