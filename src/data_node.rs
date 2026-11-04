@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::collections::{BTreeSet, HashMap};
 
 use crate::json_node::{Json, JsonNode};
@@ -11,6 +12,17 @@ pub enum FieldValue {
     Integer(i64),
     Float(f64),
     Text(String),
+}
+
+impl fmt::Display for FieldValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FieldValue::Bool(b) => write!(f, "{:?}", b),
+            FieldValue::Integer(i) => write!(f, "{}", i),
+            FieldValue::Float(f) => write!(f, "{}", f),
+            FieldValue::Text(t) => write!(f, "{}", t),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
