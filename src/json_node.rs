@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::prelude::*;
 
@@ -14,5 +15,5 @@ pub struct JsonNode {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Json {
     pub key: String,
-    pub value: String,
+    pub value: Value,
 }

@@ -35,6 +35,15 @@ impl FieldValue {
             s
         }
     }
+
+    pub fn to_json_value(&self) -> serde_json::Value {
+        match self {
+            FieldValue::Bool(b) => serde_json::Value::Bool(*b),
+            FieldValue::Integer(i) => serde_json::Value::from(*i),
+            FieldValue::Float(n) => serde_json::Value::from(*n),
+            FieldValue::Text(t) => serde_json::Value::String(t.trim().to_string()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -168,7 +177,7 @@ impl DataNode {
             .map(|(key, value)| {
                 let json = Json {
                     key: key.clone(),
-                    value: value.clone(),
+                    value: value.to_json_value(),
                 };
                 JsonNode {
                     id: ID::new(),

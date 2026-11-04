@@ -155,8 +155,8 @@ impl Json {
                 let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
                 for json_node in json_nodes {
                     let json = json_node.json;
+                    let value = json.value;
 
-                    let value = json!(json.value.trim().to_string());
                     if let Value::Object(ref mut map) = result {
                         match map.get_mut(&json.key) {
                             Some(Value::Array(arr)) => {
@@ -255,7 +255,7 @@ impl Json {
                 let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
                 for json_node in json_nodes {
                     let json = json_node.json;
-                    let value = json!(json.value.trim().to_string());
+                    let value = json.value;
                     if let Value::Object(ref mut map) = result {
                         map.insert(json.key, value);
                     }
