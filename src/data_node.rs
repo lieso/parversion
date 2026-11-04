@@ -96,8 +96,8 @@ impl DataNodeFields {
 }
 
 impl IntoIterator for DataNodeFields {
-    type Item = (String, String);
-    type IntoIter = std::vec::IntoIter<(String, String)>;
+    type Item = (String, FieldValue);
+    type IntoIter = std::vec::IntoIter<(String, FieldValue)>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.into_iter()
@@ -105,8 +105,8 @@ impl IntoIterator for DataNodeFields {
 }
 
 impl<'a> IntoIterator for &'a DataNodeFields {
-    type Item = &'a (String, String);
-    type IntoIter = std::slice::Iter<'a, (String, String)>;
+    type Item = &'a (String, FieldValue);
+    type IntoIter = std::slice::Iter<'a, (String, FieldValue)>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.iter()
