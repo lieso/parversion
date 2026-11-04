@@ -16,6 +16,7 @@ pub enum Errors {
     Overflow,
     MalformedIf,
     MalformedLet,
+    FieldConversionError(String),
 }
 
 impl fmt::Display for Errors {
@@ -39,6 +40,7 @@ impl fmt::Display for Errors {
             Errors::Overflow => write!(f, "integer overflow"),
             Errors::MalformedIf => write!(f, "malformed if"),
             Errors::MalformedLet => write!(f, "malformed let"),
+            Errors::FieldConversionError(error) => write!(f, "{}", error),
         }
     }
 }

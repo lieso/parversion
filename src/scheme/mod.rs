@@ -12,6 +12,7 @@ pub use errors::Errors;
 use lexer::tokenize;
 use parser::{parse, Expr};
 use special_forms::try_special_form;
+use crate::data_node::FieldValue;
 
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -36,6 +37,26 @@ impl Value {
         match self {
             Value::Str(s) => Some(s),
             _ => None,
+        }
+    }
+
+    pub fn to_field_value(&self) -> Result<FieldValue, Errors> {
+        match self {
+            Value::Integer(i) => Ok(FieldValue::Integer(i.clone())),
+            Value::Float(f) => Ok(FieldValue::Float(f.clone())),
+            Value::Str(s) => Ok(FieldValue::Text(s.to_string())),
+            Value::Char(c) => Ok(FieldValue::Text(c.to_string())),
+            Value::Bool(b) => Ok(FieldValue::Bool(b.clone())),
+            Value::Procedure { .. } => Err(Errors::FieldConversionError("Attempted to convert a Scheme procedure to a FieldValue variant".to_string())),
+        }
+    }
+
+    pub fn from_field_value(value: FieldValue) -> Self {
+        match value {
+            FieldValue::Bool(b) => Value::Bool(b.clone()),
+            FieldValue::Integer(i) => Value::Integer(i.clone()),
+            FieldValue::Float(n) => Value::Float(n.clone()),
+            FieldValue::Text(t) => Value::Str(t.clone()),
         }
     }
 }
