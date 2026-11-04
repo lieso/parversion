@@ -4,9 +4,18 @@ use std::collections::{BTreeSet, HashMap};
 use crate::json_node::{Json, JsonNode};
 use crate::prelude::*;
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum FieldValue {
+    Bool(bool),
+    Integer(i64),
+    Float(f64),
+    Text(String),
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DataNodeFields {
-    inner: Vec<(String, String)>,
+    inner: Vec<(String, FieldValue)>,
 }
 
 impl DataNodeFields {
@@ -14,17 +23,20 @@ impl DataNodeFields {
         Self { inner: Vec::new() }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &(String, String)> {
+    pub fn iter(&self) -> impl Iterator<Item = &(String, FieldValue)> {
         self.inner.iter()
     }
 
     pub fn from_hash_map(map: HashMap<String, String>) -> Self {
         Self {
-            inner: map.into_iter().collect(),
+            inner: map
+                .into_iter()
+                .map(|(k, v)| (k, FieldValue::Text(v)))
+                .collect(),
         }
     }
 
-    pub fn get(&self, key: &str) -> Vec<&String> {
+    pub fn get(&self, key: &str) -> Vec<&FieldValue> {
         self.inner
             .iter()
             .filter(|(k, _)| k == key)
@@ -40,13 +52,13 @@ impl DataNodeFields {
         self.inner.iter().map(|(k, _)| k)
     }
 
-    pub fn insert(&mut self, key: String, value: String) {
+    pub fn insert(&mut self, key: String, value: FieldValue) {
         if !self.inner.iter().any(|(k, v)| *k == key && *v == value) {
             self.inner.push((key, value));
         }
     }
 
-    pub fn get_all(&self, key: &str) -> impl Iterator<Item = &String> {
+    pub fn get_all(&self, key: &str) -> impl Iterator<Item = &FieldValue> {
         let key_str = key.to_string();
         self.inner
             .iter()
