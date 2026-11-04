@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
 
-use crate::data_node::DataNodeFields;
+use crate::data_node::{DataNodeFields, FieldValue};
 use crate::prelude::*;
 
 pub struct Json;
@@ -32,22 +32,33 @@ impl Json {
 
     pub fn get_fields(map: &Map<String, Value>) -> DataNodeFields {
         map.iter()
-            .filter_map(|(k, v)| match v {
-                Value::Object(_) => None,
-                Value::Array(arr) if arr.iter().any(|e| e.is_object()) => None,
-                Value::String(s) => Some((k.clone(), s.clone())),
-                Value::Number(n) => Some((k.clone(), n.to_string())),
-                Value::Bool(b) => Some((k.clone(), b.to_string())),
-                Value::Null => Some((k.clone(), "null".to_string())),
-                Value::Array(arr) => Some((
-                    k.clone(),
-                    arr.iter()
-                        .map(|e| e.to_string())
-                        .collect::<Vec<_>>()
-                        .join(","),
-                )),
+            .flat_map(|(k, v)| -> Vec<(String, FieldValue)> {
+                match v {
+                    Value::Object(_) => vec![],
+                    Value::Array(arr) if arr.iter().any(|e| e.is_object()) => vec![],
+                    Value::Array(arr) => arr
+                        .iter()
+                        .map(|e| (k.clone(), Self::serde_value_to_field_value(e)))
+                        .collect(),
+                    scalar => vec![(k.clone(), Self::serde_value_to_field_value(scalar))],
+                }
             })
             .collect()
+    }
+
+    fn serde_value_to_field_value(value: &Value) -> FieldValue {
+        match value {
+            Value::String(s) => FieldValue::Text(s.clone()),
+            Value::Number(n) => {
+                match n.as_f64() {
+                    Some(f) => FieldValue::Float(f),
+                    None => FieldValue::Text(n.to_string()),
+                }
+            }
+            Value::Bool(b) => FieldValue::Bool(b.clone()),
+            Value::Null => FieldValue::Text("null".to_string()),
+            other => FieldValue::Text(other.to_string()),
+        }
     }
 
     pub fn get_attribute_value(map: &Map<String, Value>, attribute: &str) -> Option<String> {
