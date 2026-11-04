@@ -46,9 +46,6 @@ impl NormalContext {
             &self
                 .data_node
                 .fields
-                .iter()
-                .map(|(key, value)| (key.clone(), serde_json::Value::String(value.clone())))
-                .collect::<serde_json::Map<String, serde_json::Value>>(),
         )?;
 
         let result = format!(

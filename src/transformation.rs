@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::data_node::{DataNode, DataNodeFields};
+use crate::data_node::{DataNode, DataNodeFields, FieldValue};
 use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -33,7 +33,7 @@ impl FieldTransformation {
         let mut fields = DataNodeFields::new();
 
         for value in data_node.fields.get(&self.field) {
-            fields.insert(self.image.clone(), value.to_string());
+            fields.insert(self.image.clone(), FieldValue::Text(value.to_string()));
         }
 
         let transformed = DataNode {
