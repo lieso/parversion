@@ -249,6 +249,7 @@ fn build_translated_graph(
         current: Graph,
         translation_context: Arc<RwLock<TranslationContext>>,
         instance_counter: &mut HashMap<TranslationNodeID, usize>,
+        normal_meta_context: &NormalMetaContext
     ) -> Result<(), Errors> {
 
         if let Some(translation_node) = {
@@ -265,6 +266,25 @@ fn build_translated_graph(
             lookup.get(acyclic_lineage).cloned()
         } {
             log::info!("Found a translation node");
+
+
+
+
+            let data_node = {
+                if let Some(context) = normal_meta_context
+                    .contexts_lookup
+                    .get(&read_lock!(current).id)
+                {
+                    let data_node = &context.data_node;
+
+                    
+
+
+                } else {
+                    return Err(Errors::UnexpectedError("Found a translation node, but did not find a data node to translate".to_string()));
+                }
+            };
+
 
 
 
@@ -361,9 +381,23 @@ fn build_translated_graph(
                     current_result_node = Arc::clone(&child);
 
                 }
-
             }
 
+
+
+
+
+
+
+
+            //let normal_context = NormalContext {
+            //    id: ID::new(),
+            //    network_name: None,
+            //    network_description: None,
+            //    graph_node: Arc::clone(&current_result_node),
+            //    data_node,
+            //    contexts: Vec::new(),
+            //};
 
 
 
@@ -382,7 +416,8 @@ fn build_translated_graph(
                 Arc::clone(&result),
                 Arc::clone(&child),
                 Arc::clone(&translation_context),
-                instance_counter
+                instance_counter,
+                normal_meta_context
             )?;
         }
 
@@ -395,6 +430,7 @@ fn build_translated_graph(
         graph_root,
         Arc::clone(&translation_context),
         &mut HashMap::new(),
+        &normal_meta_context
     );
 
     unimplemented!()
