@@ -113,16 +113,16 @@ impl<'a> IntoIterator for &'a DataNodeFields {
     }
 }
 
-impl FromIterator<(String, String)> for DataNodeFields {
-    fn from_iter<T: IntoIterator<Item = (String, String)>>(iter: T) -> Self {
+impl FromIterator<(String, FieldValue)> for DataNodeFields {
+    fn from_iter<T: IntoIterator<Item = (String, FieldValue)>>(iter: T) -> Self {
         let mut fields = Self::new();
         fields.extend(iter);
         fields
     }
 }
 
-impl Extend<(String, String)> for DataNodeFields {
-    fn extend<T: IntoIterator<Item = (String, String)>>(&mut self, iter: T) {
+impl Extend<(String, FieldValue)> for DataNodeFields {
+    fn extend<T: IntoIterator<Item = (String, FieldValue)>>(&mut self, iter: T) {
         for (key, value) in iter {
             self.insert(key, value);
         }
