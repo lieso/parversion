@@ -19,8 +19,20 @@ impl fmt::Display for FieldValue {
         match self {
             FieldValue::Bool(b) => write!(f, "{:?}", b),
             FieldValue::Integer(i) => write!(f, "{}", i),
-            FieldValue::Float(f) => write!(f, "{}", f),
+            FieldValue::Float(n) => write!(f, "{}", n),
             FieldValue::Text(t) => write!(f, "{}", t),
+        }
+    }
+}
+
+impl FieldValue {
+    pub fn truncate(&self) -> String {
+        let s = self.to_string();
+
+        if s.chars().count() > 400 {
+            format!("{}...", s.chars().take(397).collect::<String>())
+        } else {
+            s
         }
     }
 }

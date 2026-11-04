@@ -137,11 +137,7 @@ impl Context {
             let transformed = transformation.transform(self.data_node.clone())?;
 
             for value in transformed.fields.get(&transformation.image) {
-                let truncated = if value.len() > 400 {
-                    format!("{}...", value.chars().take(397).collect::<String>())
-                } else {
-                    value.to_string()
-                };
+                let truncated = value.truncate();
                 transformed_context
                     .push_str(&format!("{} => {}\n", transformation.image, truncated));
             }
@@ -184,11 +180,7 @@ impl Context {
             let transformed = transformation.transform(self.data_node.clone())?;
 
             for value in transformed.fields.get(&transformation.image) {
-                let truncated = if value.len() > 400 {
-                    format!("{}...", value.chars().take(397).collect::<String>())
-                } else {
-                    value.to_string()
-                };
+                let truncated = value.truncate();
 
                 if truncated.is_empty() {
                     return Err(Errors::UnexpectedError("Basis node transformation resulting in an empty value during context string generation".to_string()));
