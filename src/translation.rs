@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use std::collections::HashMap;
 
-use crate::document::{Document, DocumentRole};
+use crate::document::{Document, DocumentType, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::node_analysis::generate_translation_nodes;
 use crate::normalization;
@@ -13,6 +13,8 @@ use crate::translation_context::TranslationContext;
 use crate::reports::report_translation_nodes;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::graph_node::{Graph, GraphNode};
+use crate::data_node::DataNode;
+use crate::normal_context::NormalContext;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -73,6 +75,42 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let stage = execution_context.enter_stage("Building translated graph");
 
     let translated = build_translated_graph(Arc::clone(&translation_context), &options)?;
+
+    {
+        let mut lock = write_lock!(translation_context);
+        lock.update_translated_graph(translated.clone());
+    }
+
+    let elapsed = start.elapsed();
+    log::info!("build_translated_graph: {:.2?}", elapsed);
+
+    stage.finish();
+
+
+
+
+    let format = DocumentFormat {
+        format_type: DocumentType::Json,
+        encoding: None,
+        indent: Some(2),
+        line_ending: None,
+        headers: None,
+        wrap_text: None,
+        exclude_nulls: None,
+        custom_delimiter: None,
+    };
+    match Document::from_normal_meta_context(&translated, &format) {
+        Ok(document) => {
+            println!("{}", document.data);
+        }
+        Err(e) => {
+            println!("  Error converting to document: {:?}", e);
+        }
+    }
+
+
+
+
 
     unimplemented!()
 }
@@ -249,8 +287,11 @@ fn build_translated_graph(
         current: Graph,
         translation_context: Arc<RwLock<TranslationContext>>,
         instance_counter: &mut HashMap<TranslationNodeID, usize>,
-        normal_meta_context: &NormalMetaContext
+        normal_meta_context: &NormalMetaContext,
+        contexts: &mut HashMap<ID, Arc<NormalContext>>,
+        contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
     ) -> Result<(), Errors> {
+        log::trace!("recursion");
 
         if let Some(translation_node) = {
             let acyclic_lineage = &read_lock!(current).acyclic_lineage;
@@ -275,11 +316,16 @@ fn build_translated_graph(
                     .contexts_lookup
                     .get(&read_lock!(current).id)
                 {
-                    let data_node = &context.data_node;
-
-                    
+                    let source_data_node = &context.data_node;
 
 
+                    let transformed = translation_node
+                        .transformations
+                        .iter()
+                        .map(|transformation| transformation.transform(source_data_node.clone()))
+                        .collect::<Result<Vec<DataNode>, Errors>>()?;
+
+                    DataNode::from_data_nodes(transformed)
                 } else {
                     return Err(Errors::UnexpectedError("Found a translation node, but did not find a data node to translate".to_string()));
                 }
@@ -390,16 +436,18 @@ fn build_translated_graph(
 
 
 
-            //let normal_context = NormalContext {
-            //    id: ID::new(),
-            //    network_name: None,
-            //    network_description: None,
-            //    graph_node: Arc::clone(&current_result_node),
-            //    data_node,
-            //    contexts: Vec::new(),
-            //};
+            let normal_context = Arc::new(NormalContext {
+                id: ID::new(),
+                network_name: None,
+                network_description: None,
+                graph_node: Arc::clone(&current_result_node),
+                data_node: Arc::new(data_node),
+                contexts: Vec::new(),
+            });
 
 
+            contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
+            contexts_lookup.insert(read_lock!(current_result_node).id.clone(), Arc::clone(&normal_context));
 
 
 
@@ -417,21 +465,37 @@ fn build_translated_graph(
                 Arc::clone(&child),
                 Arc::clone(&translation_context),
                 instance_counter,
-                normal_meta_context
+                normal_meta_context,
+                contexts,
+                contexts_lookup
             )?;
         }
 
 
         Ok(())
     }
+
+    let mut contexts: HashMap<ID, Arc<NormalContext>> = HashMap::new();
+    let mut contexts_lookup: HashMap<ID, Arc<NormalContext>> = HashMap::new();
     
     recurse(
         Arc::clone(&root),
         graph_root,
         Arc::clone(&translation_context),
         &mut HashMap::new(),
-        &normal_meta_context
+        &normal_meta_context,
+        &mut contexts,
+        &mut contexts_lookup,
+    )?;
+
+    log::debug!("contexts: {}", contexts.len());
+    log::debug!("contexts_lookup: {}", contexts_lookup.len());
+
+    let normal_meta_context = NormalMetaContext::new(
+        contexts,
+        Arc::clone(&root),
+        contexts_lookup,
     );
 
-    unimplemented!()
+    Ok(normal_meta_context)
 }

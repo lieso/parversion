@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 use crate::prelude::*;
 use crate::translation_node::TranslationNode;
 use crate::normal_context::NormalContext;
+use crate::normal_meta_context::NormalMetaContext;
 
 pub struct TranslationContext {
     pub source: Vec<Arc<RwLock<NormalizationContext>>>,
@@ -11,6 +12,7 @@ pub struct TranslationContext {
     pub translation_nodes: Option<HashMap<TranslationNodeID, Arc<TranslationNode>>>,
     pub translation_nodes_lookup: Option<HashMap<Lineage, Arc<TranslationNode>>>,
     pub target_node_lookup: Option<HashMap<Lineage, Vec<Arc<NormalContext>>>>,
+    pub translated: Option<NormalMetaContext>,
 }
 
 impl TranslationContext {
@@ -24,6 +26,7 @@ impl TranslationContext {
             translation_nodes: None,
             translation_nodes_lookup: None,
             target_node_lookup: None,
+            translated: None,
         }
     }
 
@@ -36,5 +39,9 @@ impl TranslationContext {
         self.translation_nodes = Some(translation_nodes);
         self.translation_nodes_lookup = Some(lookup);
         self.target_node_lookup = Some(target_lookup);
+    }
+
+    pub fn update_translated_graph(&mut self, translated: NormalMetaContext) {
+        self.translated = Some(translated);
     }
 }
