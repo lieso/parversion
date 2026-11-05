@@ -26,7 +26,14 @@ impl Transformation {
         for value in data_node.fields.get(&self.field) {
             let out = match &compiled {
                 Some(procedure) => {
-                    apply(procedure, vec![Value::from_field_value(value.clone())])?.to_field_value()?
+                    let arguments = vec![Value::from_field_value(value.clone())];
+                    let transformed_value = apply(procedure, arguments)
+                        .map_err(|e| {
+                            log::error!("Failed to apply procedure when transforming value: {:?}", self.procedure);
+                            e
+                        })?;
+
+                    transformed_value.to_field_value()?
                 }
                 None => value.clone(),
             };
