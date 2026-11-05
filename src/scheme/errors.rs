@@ -9,7 +9,7 @@ pub enum Errors {
     EmptyCall,
     NotAProcedure,
     TypeMismatch,
-    UnboundSymbol,
+    UnboundSymbol(String),
     MalformedLambda,
     ArityMismatch { expected: usize, got: usize },
     IndexOutOfRange,
@@ -31,7 +31,7 @@ impl fmt::Display for Errors {
             Errors::EmptyCall => write!(f, "empty call"),
             Errors::TypeMismatch => write!(f, "type mismatch"),
             Errors::NotAProcedure => write!(f, "not a procedure"),
-            Errors::UnboundSymbol => write!(f, "unbound symbol"),
+            Errors::UnboundSymbol(s) => write!(f, "unbound symbol: {}", s),
             Errors::MalformedLambda => write!(f, "malformed lambda"),
             Errors::ArityMismatch { expected, got } => {
                 write!(f, "expected {} arguments, got {}", expected, got)

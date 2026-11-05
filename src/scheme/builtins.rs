@@ -3,6 +3,27 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn equals(values: Vec<Value>) -> Result<Value, Errors> {
+    for pair in values.windows(2) {
+        let equal = match (&pair[0], &pair[1]) {
+            (Value::Integer(x), Value::Integer(y)) => x == y,
+            (a, b) => as_float(a)? == as_float(b)?,
+        };
+
+        if !equal {
+            return Ok(Value::Bool(false));
+        }
+    }
+
+    Ok(Value::Bool(true))
+}
+
+pub fn not(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    Ok(Value::Bool(matches!(values[0], Value::Bool(false))))
+}
+
 pub fn string_append(values: Vec<Value>) -> Result<Value, Errors> {
     let mut result = String::new();
 

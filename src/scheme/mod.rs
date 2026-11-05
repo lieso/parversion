@@ -124,7 +124,7 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
         Expr::Float(f) => Value::Float(*f),
         Expr::Str(s) => Value::Str(s.clone()),
         Expr::Bool(b) => Value::Bool(*b),
-        Expr::Symbol(q) => frame.get(q).cloned().ok_or_else(|| Errors::UnboundSymbol)?,
+        Expr::Symbol(q) => frame.get(q).cloned().ok_or_else(|| Errors::UnboundSymbol(q.to_string()))?,
         Expr::List(l) => {
             let Some((first, rest)) = l.split_first() else {
                 return Err(Errors::EmptyCall);
@@ -157,7 +157,9 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "char-numeric?" => char_numeric(values)?,
                 "<" => less_than(values)?,
                 "+" => add(values)?,
-                _ => return Err(Errors::UnboundSymbol),
+                "=" => equals(values)?,
+                "not" => not(values)?,
+                _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }
     };

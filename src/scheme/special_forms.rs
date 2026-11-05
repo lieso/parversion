@@ -13,8 +13,21 @@ pub fn try_special_form(
         "lambda" => Some(eval_lambda(args, frame)),
         "and" => Some(eval_and(args, frame)),
         "let" => Some(eval_let(args, frame)),
+        "or" => Some(eval_or(args, frame)),
         _ => None,
     }
+}
+
+fn eval_or(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
+    for expr in args {
+        let result = eval_expr(expr, frame)?;
+
+        if !matches!(result, Value::Bool(false)) {
+            return Ok(result);
+        }
+    }
+
+    Ok(Value::Bool(false))
 }
 
 fn eval_let(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
