@@ -13,7 +13,7 @@ use crate::translation_context::TranslationContext;
 use crate::reports::report_translation_nodes;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::graph_node::{Graph, GraphNode};
-use crate::data_node::DataNode;
+use crate::data_node::{DataNode, DataNodeFields};
 use crate::normal_context::NormalContext;
 
 pub async fn translate<P: Provider, R: Reasoner>(
@@ -86,33 +86,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
 
     stage.finish();
 
-
-
-
-    let format = DocumentFormat {
-        format_type: DocumentType::Json,
-        encoding: None,
-        indent: Some(2),
-        line_ending: None,
-        headers: None,
-        wrap_text: None,
-        exclude_nulls: None,
-        custom_delimiter: None,
-    };
-    match Document::from_normal_meta_context(&translated, &format) {
-        Ok(document) => {
-            println!("{}", document.data);
-        }
-        Err(e) => {
-            println!("  Error converting to document: {:?}", e);
-        }
-    }
-
-
-
-
-
-    unimplemented!()
+    Ok(translation_context)
 }
 
 pub async fn translate_text_to_document<P: Provider, R: Reasoner>(
@@ -265,10 +239,10 @@ fn build_translated_graph(
         unimplemented!();
     }
 
-    let normalization_context = normalization_contexts.first().unwrap();
+    let source_normalization_context = normalization_contexts.first().unwrap();
 
     let normal_meta_context = {
-        let lock = read_lock!(normalization_context);
+        let lock = read_lock!(source_normalization_context);
         lock.normalized
             .as_ref()
             .ok_or_else(|| {
@@ -394,17 +368,26 @@ fn build_translated_graph(
 
             let mut current_result_node = Arc::clone(&result);
 
-            for ancestor in ancestors {
+            let last_index = ancestors.len().saturating_sub(1);
+
+            for (index, ancestor) in ancestors.into_iter().enumerate() {
 
                 let current_children = {
                     let lock = read_lock!(current_result_node);
                     lock.children.clone()
                 };
 
+                
+                let matching_children: Vec<Graph> = current_children
+                    .iter()
+                    .filter(|item| {
+                        read_lock!(item).acyclic_lineage == read_lock!(ancestor).acyclic_lineage
+                    })
+                    .cloned()
+                    .collect();
 
-                if let Some(existing_ancestor) = current_children.iter().find(|item| {
-                    read_lock!(item).acyclic_lineage == read_lock!(ancestor).acyclic_lineage
-                }) {
+
+                if let Some(existing_ancestor) = matching_children.get(*instance) {
 
                     current_result_node = Arc::clone(&existing_ancestor);
 
@@ -412,10 +395,59 @@ fn build_translated_graph(
 
                     let child = Arc::new(RwLock::new(read_lock!(ancestor).clone_without_relations()));
 
+
+
+
+
+
+                    let ancestor_id = read_lock!(ancestor).id.clone();
+
+                    let original: Option<Arc<NormalContext>> = {
+                        let lock = read_lock!(translation_context);
+                        let mut found = None;
+
+                        for target in &lock.target {
+                            let target_lock = read_lock!(target);
+
+                            if let Some(normalized) = target_lock.normalized.as_ref() {
+                                if let Some(context) = normalized.contexts_lookup.get(&ancestor_id) {
+                                    found = Some(Arc::clone(context));
+                                    break;
+                                }
+                            }
+                        }
+
+                        found
+                    };
+
+
+                    if let Some(original) = original {
+                        let normal_context = Arc::new(NormalContext {
+                            id: ID::new(),
+                            network_name: original.network_name.clone(),
+                            network_description: original.network_description.clone(),
+                            graph_node: Arc::clone(&child),
+                            data_node: Arc::new(DataNode {
+                                id: ID::new(),
+                                fields: DataNodeFields::new(),
+                                description: "placeholder".to_string(),
+                            }),
+                            contexts: Vec::new(),
+                        });
+
+                        contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
+                        contexts_lookup.insert(read_lock!(child).id.clone(), Arc::clone(&normal_context));
+                    }
+
+
+
+
+
                     {
                         let mut parent_lock = write_lock!(current_result_node);
                         
                         parent_lock.children.push(Arc::clone(&child));
+
                     }
 
                     {
@@ -435,11 +467,21 @@ fn build_translated_graph(
 
 
 
+            let (network_name, network_description) = {
+                let canonical_target_context = target_contexts
+                    .first()
+                    .unwrap();
+
+                (
+                    canonical_target_context.network_name.clone(),
+                    canonical_target_context.network_description.clone(),
+                )
+            };
 
             let normal_context = Arc::new(NormalContext {
                 id: ID::new(),
-                network_name: None,
-                network_description: None,
+                network_name,
+                network_description,
                 graph_node: Arc::clone(&current_result_node),
                 data_node: Arc::new(data_node),
                 contexts: Vec::new(),
@@ -449,6 +491,8 @@ fn build_translated_graph(
             contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
             contexts_lookup.insert(read_lock!(current_result_node).id.clone(), Arc::clone(&normal_context));
 
+
+            *instance += 1;
 
 
 

@@ -264,13 +264,33 @@ impl Document {
     }
 
     pub fn from_translation(
-        _translation_context: Arc<RwLock<TranslationContext>>,
+        translation_context: Arc<RwLock<TranslationContext>>,
         document_format: &DocumentFormat,
     ) -> Result<Self, Errors> {
         log::trace!("In from_translation");
 
         match document_format.format_type {
-            DocumentType::Json => unimplemented!(),
+            DocumentType::Json => {
+                let translated = {
+                    let lock = read_lock!(translation_context);
+                    lock.translated.clone().unwrap()
+                };
+                let data = Json::from_normal_meta_context(&translated)?;
+
+                let document = Document {
+                    document_type: DocumentType::Json,
+                    data,
+                    metadata: DocumentMetadata {
+                        origin: None,
+                        date: None,
+                        name: None,
+                        description: None,
+                        semantic_content_types: None,
+                    },
+                };
+
+                Ok(document)
+            }
             DocumentType::PlainText => unimplemented!(),
             DocumentType::JavaScript => unimplemented!(),
             DocumentType::Xml => unimplemented!(),
