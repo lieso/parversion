@@ -277,7 +277,7 @@ fn build_translated_graph(
 }
 
 fn recurse_source_graph(
-    result: Graph,
+    target: Graph,
     source: Graph,
     translation_context: Arc<RwLock<TranslationContext>>,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -301,61 +301,42 @@ fn recurse_source_graph(
     } {
         log::info!("Found a translation node");
 
-
-
-
-
-
-
-
         let instance = instance_counter
             .entry(translation_node.id.clone())
             .or_insert(0);
 
-
-
-
+        let canonical_target_context = get_canonical_target_context(
+            Arc::clone(&translation_context),
+            Arc::clone(&translation_node),
+        )?;
 
         let leaf = build_ancestral_chain(
-            Arc::clone(&result),
+            Arc::clone(&target),
             Arc::clone(&translation_context),
             Arc::clone(&translation_node),
             contexts,
             contexts_lookup,
             &instance,
+            Arc::clone(&canonical_target_context),
         )?;
-
-
 
         build_translated_node(
             Arc::clone(&normalization_context),
-            Arc::clone(&translation_context),
             Arc::clone(&translation_node),
             Arc::clone(&source),
             Arc::clone(&leaf),
             contexts,
             contexts_lookup,
+            Arc::clone(&canonical_target_context),
         )?;
 
-
-
-
-
         *instance += 1;
-
-
-
-
-
-
-
-
     }
 
-    for child in &read_lock!(source).children {
+    for source_child in &read_lock!(source).children {
         recurse_source_graph(
-            Arc::clone(&result),
-            Arc::clone(&child),
+            Arc::clone(&target),
+            Arc::clone(&source_child),
             Arc::clone(&translation_context),
             Arc::clone(&normalization_context),
             instance_counter,
@@ -364,53 +345,19 @@ fn recurse_source_graph(
         )?;
     }
 
-
     Ok(())
 }
 
 fn build_translated_node(
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    translation_context: Arc<RwLock<TranslationContext>>,
     translation_node: Arc<TranslationNode>,
     source_node: Graph,
     leaf: Graph,
     contexts: &mut HashMap<ID, Arc<NormalContext>>,
     contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
+    canonical_target_context: Arc<NormalContext>
 ) -> Result<(), Errors> {
-
-    let Some(target_contexts) = ({
-        let lock = read_lock!(translation_context);
-        let lookup = lock
-            .target_node_lookup
-            .as_ref()
-            .ok_or_else(|| {
-                Errors::DeficientTranslationContextError(
-                    "Target node lookup not provided in translation context".to_string()
-                )
-            })?;
-
-        lookup.get(&translation_node.right_lineage).cloned()
-    }) else {
-        return Err(Errors::UnexpectedError("Found a translation node, but could not find target document node".to_string()));
-    };
-
-    if target_contexts.is_empty() {
-        return Err(Errors::UnexpectedError("Found zero target contexts".to_string()));
-    }
-
-
-
-
-    let (network_name, network_description) = {
-        let canonical_target_context = target_contexts
-            .first()
-            .unwrap();
-
-        (
-            canonical_target_context.network_name.clone(),
-            canonical_target_context.network_description.clone(),
-        )
-    };
+    log::trace!("In build_translated_node");
 
     let translated_data_node = {
         let source_context = {
@@ -446,13 +393,12 @@ fn build_translated_node(
 
     let normal_context = Arc::new(NormalContext {
         id: ID::new(),
-        network_name,
-        network_description,
+        network_name: canonical_target_context.network_name.clone(),
+        network_description: canonical_target_context.network_description.clone(),
         graph_node: Arc::clone(&leaf),
         data_node: Arc::new(translated_data_node),
         contexts: Vec::new(),
     });
-
 
     contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
     contexts_lookup.insert(read_lock!(leaf).id.clone(), Arc::clone(&normal_context));
@@ -466,45 +412,14 @@ fn build_ancestral_chain(
     translation_node: Arc<TranslationNode>,
     contexts: &mut HashMap<ID, Arc<NormalContext>>,
     contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
-    instance: &usize
+    instance: &usize,
+    canonical_target_context: Arc<NormalContext>
 ) -> Result<Graph, Errors> {
-
-
-    let Some(target_contexts) = ({
-        let lock = read_lock!(translation_context);
-        let lookup = lock
-            .target_node_lookup
-            .as_ref()
-            .ok_or_else(|| {
-                Errors::DeficientTranslationContextError(
-                    "Target node lookup not provided in translation context".to_string()
-                )
-            })?;
-
-        lookup.get(&translation_node.right_lineage).cloned()
-    }) else {
-        return Err(Errors::UnexpectedError("Found a translation node, but could not find target document node".to_string()));
-    };
-
-    if target_contexts.is_empty() {
-        return Err(Errors::UnexpectedError("Found zero target contexts".to_string()));
-    }
-
-
-
-
-
-    let canonical_target_graph_node = target_contexts
-        .first()
-        .unwrap()
-        .graph_node
-        .clone();
-
-
+    log::trace!("In build_ancestral_chain");
 
     let ancestors = {
         let mut ancestors: Vec<Graph> = Vec::new();
-        let mut current_parents = read_lock!(canonical_target_graph_node).parents.clone();
+        let mut current_parents = read_lock!(canonical_target_context.graph_node).parents.clone();
 
         while !current_parents.is_empty() {
             let parent = current_parents[0].clone();
@@ -612,4 +527,37 @@ fn build_ancestral_chain(
     }
 
     Ok(Arc::clone(&current_result_node))
+}
+
+fn get_canonical_target_context(
+    translation_context: Arc<RwLock<TranslationContext>>,
+    translation_node: Arc<TranslationNode>,
+) -> Result<Arc<NormalContext>, Errors> {
+    log::trace!("In get_canonical_target_context");
+
+    let Some(target_contexts) = ({
+        let lock = read_lock!(translation_context);
+        let lookup = lock
+            .target_node_lookup
+            .as_ref()
+            .ok_or_else(|| {
+                Errors::DeficientTranslationContextError(
+                    "Target node lookup not provided in translation context".to_string()
+                )
+            })?;
+
+        lookup.get(&translation_node.right_lineage).cloned()
+    }) else {
+        return Err(Errors::UnexpectedError("Found a translation node, but could not find target document node".to_string()));
+    };
+
+    if target_contexts.is_empty() {
+        return Err(Errors::UnexpectedError("Found zero target contexts".to_string()));
+    }
+
+    let canonical_target_context = target_contexts
+        .first()
+        .unwrap();
+
+    Ok(Arc::clone(&canonical_target_context))
 }
