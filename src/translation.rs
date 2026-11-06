@@ -265,7 +265,6 @@ fn build_translated_graph(
             contexts: &mut HashMap<ID, Arc<NormalContext>>,
             contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
         ) -> Result<(), Errors> {
-            log::trace!("recursion");
 
             if let Some(translation_node) = {
                 let acyclic_lineage = &read_lock!(current).acyclic_lineage;
@@ -285,13 +284,12 @@ fn build_translated_graph(
 
 
 
-                let data_node = {
+                let translated_data_node = {
                     if let Some(context) = normal_meta_context
                         .contexts_lookup
                         .get(&read_lock!(current).id)
                     {
                         let source_data_node = &context.data_node;
-
 
                         let transformed = translation_node
                             .transformations
@@ -368,9 +366,7 @@ fn build_translated_graph(
 
                 let mut current_result_node = Arc::clone(&result);
 
-                let last_index = ancestors.len().saturating_sub(1);
-
-                for (index, ancestor) in ancestors.into_iter().enumerate() {
+                for ancestor in ancestors {
 
                     let current_children = {
                         let lock = read_lock!(current_result_node);
@@ -483,7 +479,7 @@ fn build_translated_graph(
                     network_name,
                     network_description,
                     graph_node: Arc::clone(&current_result_node),
-                    data_node: Arc::new(data_node),
+                    data_node: Arc::new(translated_data_node),
                     contexts: Vec::new(),
                 });
 
