@@ -2,6 +2,7 @@ use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
+use crate::prelude::*;
 use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::document::{Document, DocumentMetadata, DocumentType};
@@ -10,7 +11,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
 use crate::normal_meta_context::NormalMetaContext;
-use crate::prelude::*;
+use crate::normal_context::NormalContext;
 
 pub struct Json {}
 
@@ -219,6 +220,24 @@ impl Json {
         normalization_context: Arc<RwLock<NormalizationContext>>,
     ) -> Result<String, Errors> {
         log::trace!("In from_denormalization");
+
+
+
+        let mut context_to_normal_context: HashMap<ContextID, Vec<Arc<NormalContext>>> = HashMap::new();
+
+        for normal_context in normal_meta_context.contexts.values() {
+            for context in &normal_context.contexts {
+                context_to_normal_context
+                    .entry(context.id.clone())
+                    .or_default()
+                    .push(Arc::clone(normal_context));
+            }
+        }
+
+
+
+
+
         
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -240,6 +259,7 @@ impl Json {
             graph_node: Graph,
             network_name: &str,
             result: &mut Value,
+            context_to_normal_context: &HashMap<ContextID, Vec<Arc<NormalContext>>>,
         ) {
             let context = meta_context
                 .contexts_lookup
@@ -276,6 +296,7 @@ impl Json {
                         Arc::clone(&child),
                         next_network_name,
                         &mut inner_result,
+                        context_to_normal_context,
                     );
 
                     let inner_result_value = inner_result.clone();
@@ -297,6 +318,7 @@ impl Json {
                         Arc::clone(&child),
                         next_network_name,
                         &mut inner_result,
+                        context_to_normal_context,
                     );
 
                     let inner_result_value = inner_result.clone();
@@ -331,6 +353,7 @@ impl Json {
             Arc::clone(&graph_root),
             "",
             &mut result,
+            &context_to_normal_context,
         );
 
         let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
