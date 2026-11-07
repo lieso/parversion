@@ -396,7 +396,7 @@ fn build_translated_node(
         network_description: canonical_target_context.network_description.clone(),
         graph_node: Arc::clone(&leaf),
         data_node: Arc::new(translated_data_node),
-        contexts: Vec::new(),
+        contexts: canonical_target_context.contexts.clone(),
     });
 
     contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
@@ -496,7 +496,7 @@ fn build_ancestral_chain(
                         fields: DataNodeFields::new(),
                         description: "placeholder".to_string(),
                     }),
-                    contexts: Vec::new(),
+                    contexts: original.contexts.clone(),
                 });
 
                 contexts.insert(normal_context.id.clone(), Arc::clone(&normal_context));
