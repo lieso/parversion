@@ -285,7 +285,6 @@ fn recurse_source_graph(
     contexts: &mut HashMap<ID, Arc<NormalContext>>,
     contexts_lookup: &mut HashMap<ID, Arc<NormalContext>>,
 ) -> Result<(), Errors> {
-
     if let Some(translation_node) = {
         let acyclic_lineage = &read_lock!(source).acyclic_lineage;
         let lock = read_lock!(translation_context);
