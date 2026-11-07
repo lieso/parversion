@@ -214,6 +214,130 @@ impl Json {
         Ok(data)
     }
 
+    pub fn from_denormalization(
+        normal_meta_context: &NormalMetaContext,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+    ) -> Result<String, Errors> {
+        log::trace!("In from_denormalization");
+        
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
+                })?
+                .clone()
+        };
+        let graph_root = meta_context.graph_root.clone();
+
+        let mut result: Value = Value::Object(Map::new());
+
+        fn recurse(
+            meta_context: &MetaContext,
+            graph_node: Graph,
+            network_name: &str,
+            result: &mut Value,
+        ) {
+            let context = meta_context
+                .contexts_lookup
+                .get(&read_lock!(graph_node).id)
+                .unwrap();
+
+            let data_node = &context.data_node;
+            let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
+            for json_node in json_nodes {
+                let json = json_node.json;
+                let value = json.value;
+
+                if let Value::Object(ref mut map) = result {
+                    map.insert(json.key, value);
+                }
+            }
+
+            for child in &read_lock!(graph_node).children {
+                let child_context = meta_context
+                    .contexts_lookup
+                    .get(&read_lock!(child).id)
+                    .unwrap();
+                let next_network_name = if child_context.network_name.is_empty() {
+                    network_name
+                } else {
+                    &child_context.network_name
+                };
+
+                if child_context.network_name.is_empty() {
+                    let mut inner_result: Value = Value::Object(Map::new());
+
+                    recurse(
+                        meta_context,
+                        Arc::clone(&child),
+                        next_network_name,
+                        &mut inner_result,
+                    );
+
+                    let inner_result_value = inner_result.clone();
+
+                    if result.is_object() && result.as_object().unwrap().is_empty() {
+                        *result = inner_result;
+                    } else if result.is_array() {
+                        if let Value::Array(ref mut arr) = result {
+                            arr.push(inner_result_value.clone());
+                        }
+                    } else {
+                        *result = json!(vec![result.clone(), inner_result_value.clone()]);
+                    }
+                } else {
+                    let mut inner_result: Value = Value::Object(Map::new());
+
+                    recurse(
+                        meta_context,
+                        Arc::clone(&child),
+                        next_network_name,
+                        &mut inner_result,
+                    );
+
+                    let inner_result_value = inner_result.clone();
+
+                    if !result.is_object() {
+                        *result = Value::Object(Map::new());
+                    }
+
+                    if let Value::Object(ref mut map) = result {
+                        if let Some(existing_object) = map.get_mut(next_network_name) {
+                            if let Value::Array(ref mut arr) = existing_object {
+                                arr.push(inner_result_value.clone());
+                            } else {
+                                *existing_object = json!(vec![
+                                    existing_object.clone(),
+                                    inner_result_value.clone()
+                                ]);
+                            }
+                        } else {
+                            map.insert(next_network_name.to_string(), inner_result_value);
+                        }
+                    }
+                }
+                
+
+            }
+
+        }
+
+        recurse(
+            &meta_context,
+            Arc::clone(&graph_root),
+            "",
+            &mut result,
+        );
+
+        let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
+
+        Ok(data)
+    }
+
     pub fn from_meta_context(
         meta_context: &MetaContext,
         render_ids: Option<&HashSet<GraphNodeID>>,

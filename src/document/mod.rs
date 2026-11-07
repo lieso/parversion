@@ -269,13 +269,27 @@ impl Document {
     ) -> Result<Self, Errors> {
         log::trace!("In from_translation");
 
+        let normalization_contexts = {
+            let lock = read_lock!(translation_context);
+            lock.target.clone()
+        };
+
+        if normalization_contexts.len() > 1 {
+            unimplemented!();
+        }
+
+        let normalization_context = normalization_contexts.first().unwrap();
+
         match document_format.format_type {
             DocumentType::Json => {
                 let translated = {
                     let lock = read_lock!(translation_context);
                     lock.translated.clone().unwrap()
                 };
-                let data = Json::from_normal_meta_context(&translated)?;
+                let data = Json::from_denormalization(
+                    &translated,
+                    Arc::clone(&normalization_context)
+                )?;
 
                 let document = Document {
                     document_type: DocumentType::Json,
