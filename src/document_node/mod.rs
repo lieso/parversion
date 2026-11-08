@@ -44,42 +44,42 @@ impl DocumentNode {
 
     pub fn to_string(&self) -> String {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::to_string(&node),
+            DocumentNodeData::Xml(node) => Xml::to_string(node),
             DocumentNodeData::Json(map) => Json::to_string(map),
         }
     }
 
     pub fn to_string_components(&self) -> (String, Option<String>) {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::to_string_components(&node),
+            DocumentNodeData::Xml(node) => Xml::to_string_components(node),
             DocumentNodeData::Json(map) => (Json::to_string(map), None),
         }
     }
 
     pub fn get_fields(&self) -> DataNodeFields {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::get_fields(&node),
+            DocumentNodeData::Xml(node) => Xml::get_fields(node),
             DocumentNodeData::Json(map) => Json::get_fields(map),
         }
     }
 
     pub fn get_attribute_value(&self, attribute: &str) -> Option<String> {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::get_attribute_value(&node, attribute),
+            DocumentNodeData::Xml(node) => Xml::get_attribute_value(node, attribute),
             DocumentNodeData::Json(map) => Json::get_attribute_value(map, attribute),
         }
     }
 
     pub fn get_description(&self) -> String {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::get_description(&node),
-            DocumentNodeData::Json(value) => Json::get_description(&value),
+            DocumentNodeData::Xml(node) => Xml::get_description(node),
+            DocumentNodeData::Json(value) => Json::get_description(value),
         }
     }
 
     pub fn get_children(&self) -> Vec<DocumentNode> {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::get_children(&node)
+            DocumentNodeData::Xml(node) => Xml::get_children(node)
                 .into_iter()
                 .map(|xml_node| DocumentNode::new(DocumentNodeData::Xml(xml_node)))
                 .collect(),
@@ -92,14 +92,14 @@ impl DocumentNode {
 
     pub fn get_element_name(&self) -> String {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::get_element_name(&node),
+            DocumentNodeData::Xml(node) => Xml::get_element_name(node),
             DocumentNodeData::Json(map) => Json::get_name(map),
         }
     }
 
     pub fn get_hash(&self) -> Hash {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::get_hash(&node),
+            DocumentNodeData::Xml(node) => Xml::get_hash(node),
             DocumentNodeData::Json(map) => Json::get_hash(map),
         }
     }
