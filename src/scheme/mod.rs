@@ -266,6 +266,6 @@ mod tests {
     fn eval_let_bindings_do_not_see_siblings() {
         let result = eval(r#"(let ((x 1) (y x)) y)"#);
 
-        assert!(matches!(result, Err(Errors::UnboundSymbol)));
+        assert!(matches!(result, Err(Errors::UnboundSymbol { .. })));
     }
 }

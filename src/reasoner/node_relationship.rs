@@ -557,7 +557,7 @@ fn validate_node_relationship(
 async fn get_user_prompt_self(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     node: Arc<BasisNode>,
-    node_contexts: &Vec<Arc<Context>>,
+    node_contexts: &[Arc<Context>],
 ) -> Result<String, Errors> {
     let node_contexts_sample: Vec<Arc<Context>> = node_contexts.iter().take(10).cloned().collect();
 
@@ -580,11 +580,11 @@ async fn get_user_prompt_other<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNode>,
-    left_contexts: &Vec<Arc<Context>>,
+    left_contexts: &[Arc<Context>],
     right: Arc<BasisNode>,
-    right_contexts: &Vec<Arc<Context>>,
+    right_contexts: &[Arc<Context>],
 ) -> Result<String, Errors> {
-    let left_contexts_presample = pre_sample_context_group(left_contexts.clone());
+    let left_contexts_presample = pre_sample_context_group(left_contexts.to_vec());
 
     let left_context_strings: Vec<String> = left_contexts_presample
         .iter()
@@ -600,7 +600,7 @@ async fn get_user_prompt_other<R: Reasoner>(
     let samples = sample_most_different(left_context_strings, &embeddings);
     let left_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-    let right_contexts_presample = pre_sample_context_group(right_contexts.clone());
+    let right_contexts_presample = pre_sample_context_group(right_contexts.to_vec());
 
     let right_context_strings: Vec<String> = right_contexts_presample
         .iter()

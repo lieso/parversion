@@ -141,10 +141,10 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> 
 fn get_user_prompt(
     translation_context: Arc<RwLock<TranslationContext>>,
     field: &String,
-    left_contexts: &Vec<Arc<NormalContext>>,
-    right_contexts: &Vec<Arc<NormalContext>>,
+    left_contexts: &[Arc<NormalContext>],
+    right_contexts: &[Arc<NormalContext>],
 ) -> Result<String, Errors> {
-    let render = |contexts: &Vec<Arc<NormalContext>>| -> String {
+    let render = |contexts: &[Arc<NormalContext>]| -> String {
         contexts.iter().take(7).fold(String::new(), |acc, context| {
             let data = context
                 .data_node
