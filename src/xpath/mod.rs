@@ -304,8 +304,8 @@ impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             Expr::Path(path) => path.to_string(),
-            Expr::Function { name, arg } => format!("{}({})", name, arg.to_string()),
-            Expr::Filter { base, position } => format!("({})[{}]", base.to_string(), position),
+            Expr::Function { name, arg } => format!("{}({})", name, arg),
+            Expr::Filter { base, position } => format!("({})[{}]", base, position),
         };
 
 	write!(f, "{}", s)
@@ -313,20 +313,6 @@ impl fmt::Display for Expr {
 }
 
 impl Operand {
-    pub fn to_string(&self) -> String {
-        match self {
-            Operand::Number(n) => n.clone(),
-            Operand::Variable(name) => format!("${}", name),
-            Operand::Arith { op, lhs, rhs } => {
-                let sym = match op {
-                    ArithOp::Add => "+",
-                    ArithOp::Sub => "-",
-                };
-                format!("{} {} {}", lhs.to_string(), sym, rhs.to_string())
-            }
-        }
-    }
-
     pub fn evaluate(&self) -> Result<f64, Errors> {
         match self {
             Operand::Number(n) => n
@@ -347,6 +333,25 @@ impl Operand {
         }
     }
 }
+
+impl fmt::Display for Operand {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Operand::Number(n) => n.clone(),
+            Operand::Variable(name) => format!("${}", name),
+            Operand::Arith { op, lhs, rhs } => {
+                let sym = match op {
+                    ArithOp::Add => "+",
+                    ArithOp::Sub => "-",
+                };
+                format!("{} {} {}", lhs, sym, rhs)
+            }
+        };
+
+	write!(f, "{}", s)
+    }
+}
+
 
 impl XPath {
     pub fn substitute(&self, variables: &Variables) -> Result<XPath, Errors> {
@@ -994,7 +999,7 @@ impl fmt::Display for XPathPredicate {
                 )
             }
             XPathPredicate::Equals { lhs, rhs } => {
-                format!("{} = {}", lhs.to_string(), rhs.to_string())
+                format!("{} = {}", lhs, rhs)
             }
         };
 
