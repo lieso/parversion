@@ -259,14 +259,6 @@ impl Operand {
 }
 
 impl Expr {
-    pub fn to_string(&self) -> String {
-        match self {
-            Expr::Path(path) => path.to_string(),
-            Expr::Function { name, arg } => format!("{}({})", name, arg.to_string()),
-            Expr::Filter { base, position } => format!("({})[{}]", base.to_string(), position),
-        }
-    }
-
     pub fn evaluate(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -305,6 +297,18 @@ impl Expr {
                 ))),
             },
         }
+    }
+}
+
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Expr::Path(path) => path.to_string(),
+            Expr::Function { name, arg } => format!("{}({})", name, arg.to_string()),
+            Expr::Filter { base, position } => format!("({})[{}]", base.to_string(), position),
+        };
+
+	write!(f, "{}", s)
     }
 }
 
