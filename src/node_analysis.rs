@@ -100,11 +100,11 @@ pub async fn generate_translation_nodes<P: Provider, R: Reasoner>(
             vec![
                 (
                     translation_node.left_lineage.clone(),
-                    Arc::clone(&translation_node),
+                    Arc::clone(translation_node),
                 ),
                 (
                     translation_node.right_lineage.clone(),
-                    Arc::clone(&translation_node),
+                    Arc::clone(translation_node),
                 ),
             ]
         })

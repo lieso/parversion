@@ -28,7 +28,7 @@ impl BasisNode {
             .into_iter()
             .map(|transformation| {
                 transformation
-                    .transform(Arc::clone(&data_node))
+                    .transform(Arc::clone(data_node))
                     .expect("Could not transform data node")
             })
             .collect();

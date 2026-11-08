@@ -166,12 +166,12 @@ impl BasisGraph {
 
                 write_lock!(parent_instance.graph_node)
                     .children
-                    .push(Arc::clone(&instance));
+                    .push(Arc::clone(instance));
                 write_lock!(instance).parents = vec![Arc::clone(&parent_instance.graph_node)];
             } else {
                 log::info!("Instance has no parent");
                 write_lock!(instance).parents = vec![Arc::clone(&parent)];
-                write_lock!(parent).children.push(Arc::clone(&instance));
+                write_lock!(parent).children.push(Arc::clone(instance));
             }
         }
 

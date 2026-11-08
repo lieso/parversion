@@ -30,7 +30,7 @@ impl DocumentNode {
 
     pub fn get_name(&self) -> String {
         match &self.data {
-            DocumentNodeData::Xml(node) => Xml::get_name(&node),
+            DocumentNodeData::Xml(node) => Xml::get_name(node),
             DocumentNodeData::Json(map) => Json::get_name(map),
         }
     }

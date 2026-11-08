@@ -43,7 +43,7 @@ pub async fn normalize<P: Provider, R: Reasoner>(
 
     let normalizations = try_join_all(normalization_contexts.iter().map(|normalization_context| {
         run_pipeline(
-            Arc::clone(&normalization_context),
+            Arc::clone(normalization_context),
             Arc::clone(&provider),
             Arc::clone(&reasoner),
             options,
@@ -77,7 +77,7 @@ pub async fn normalize_document<P: Provider, R: Reasoner>(
     let normalized_documents: Vec<Document> = normalization_contexts
         .iter()
         .map(|normalization_context| {
-            Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
+            Document::from_normalized_graph(Arc::clone(normalization_context), document_format)
         })
         .collect::<Result<_, _>>()?;
 
@@ -132,7 +132,7 @@ pub async fn normalize_text_to_document<P: Provider, R: Reasoner>(
     normalization_contexts
         .iter()
         .map(|normalization_context| {
-            Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
+            Document::from_normalized_graph(Arc::clone(normalization_context), document_format)
         })
         .collect::<Result<_, _>>()
 }
@@ -189,7 +189,7 @@ pub async fn normalize_file_to_document<P: Provider, R: Reasoner>(
     normalization_contexts
         .iter()
         .map(|normalization_context| {
-            Document::from_normalized_graph(Arc::clone(&normalization_context), document_format)
+            Document::from_normalized_graph(Arc::clone(normalization_context), document_format)
         })
         .collect::<Result<_, _>>()
 }
@@ -280,7 +280,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         Arc::clone(&normalization_context),
-        &options,
+        options,
         &stage,
     )
     .await?;
@@ -307,7 +307,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         Arc::clone(&normalization_context),
-        &options,
+        options,
         &stage,
     )
     .await?;
@@ -343,7 +343,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         normalization_context.clone(),
-        &options,
+        options,
         &stage,
     )
     .await?;
@@ -371,7 +371,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         normalization_context.clone(),
-        &options,
+        options,
         &stage,
     )
     .await?;

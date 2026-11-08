@@ -111,7 +111,7 @@ pub async fn basis_network<R: Reasoner>(
                 NodeRelationshipType::NoRelationship | NodeRelationshipType::Equal { .. }
             )
         })
-        .map(|relationship| Traversal::from_node_relationship(&relationship))
+        .map(|relationship| Traversal::from_node_relationship(relationship))
         .collect::<Result<Vec<_>, _>>()?;
 
     let basis_network = BasisNetwork {

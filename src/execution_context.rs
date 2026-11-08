@@ -109,7 +109,7 @@ impl ExecutionContext {
         }
 
         StageContext {
-            execution_context: Arc::clone(&self),
+            execution_context: Arc::clone(self),
             id: stage_id,
         }
     }

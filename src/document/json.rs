@@ -184,7 +184,7 @@ impl Json {
                 if let Some(network_name) = &child_context.network_name {
                     let mut inner_result: Value = Value::Object(Map::new());
 
-                    recurse(normal_meta_context, Arc::clone(&child), &mut inner_result);
+                    recurse(normal_meta_context, Arc::clone(child), &mut inner_result);
 
                     let inner_result_value = inner_result.clone();
 
@@ -203,7 +203,7 @@ impl Json {
                         }
                     }
                 } else {
-                    recurse(normal_meta_context, Arc::clone(&child), result);
+                    recurse(normal_meta_context, Arc::clone(child), result);
                 }
             }
         }
@@ -309,7 +309,7 @@ impl Json {
 
                     recurse(
                         meta_context,
-                        Arc::clone(&child),
+                        Arc::clone(child),
                         next_network_name,
                         &mut inner_result,
                         context_to_normal_context,
@@ -430,7 +430,7 @@ impl Json {
                         recurse(
                             meta_context,
                             render_ids.clone(),
-                            Arc::clone(&child),
+                            Arc::clone(child),
                             next_network_name,
                             context_string_target_ids,
                             &mut inner_result,
@@ -453,7 +453,7 @@ impl Json {
                         recurse(
                             meta_context,
                             render_ids.clone(),
-                            Arc::clone(&child),
+                            Arc::clone(child),
                             next_network_name,
                             context_string_target_ids,
                             &mut inner_result,
@@ -487,7 +487,7 @@ impl Json {
                     recurse(
                         meta_context,
                         render_ids.clone(),
-                        Arc::clone(&child),
+                        Arc::clone(child),
                         next_network_name,
                         context_string_target_ids,
                         result,

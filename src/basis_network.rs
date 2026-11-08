@@ -123,7 +123,7 @@ impl BasisNetwork {
                 normal_contexts,
                 normal_contexts_lookup,
                 processed_contexts,
-                Arc::clone(&child),
+                Arc::clone(child),
                 Arc::clone(&parent),
             )?;
         }

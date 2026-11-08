@@ -54,7 +54,7 @@ impl NormalizationContext {
 
         for basis_node in basis_nodes.values() {
             if basis_node.lineage == *lineage {
-                return Ok(Some(Arc::clone(&basis_node)));
+                return Ok(Some(Arc::clone(basis_node)));
             }
         }
 

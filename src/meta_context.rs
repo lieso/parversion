@@ -66,7 +66,7 @@ fn get_render_ids(start_node: Graph, max_lineages: &usize) -> HashSet<GraphNodeI
         }
 
         for child in &lock.children {
-            queue.push_back(Arc::clone(&child));
+            queue.push_back(Arc::clone(child));
         }
     }
 

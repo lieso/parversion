@@ -341,7 +341,7 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
             }
             "type" => {
                 log::debug!("type={}", value);
-                partial.document_type = Some(parse_document_type(&value)?);
+                partial.document_type = Some(parse_document_type(value)?);
             }
             "origin" => {
                 log::debug!("origin={}", value);

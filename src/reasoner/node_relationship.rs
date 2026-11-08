@@ -438,7 +438,7 @@ fn validate_node_relationship(
             xpath_rtl,
             ..
         } => {
-            let xpath: XPath = XPath::from_str(&xpath_ltr)?;
+            let xpath: XPath = XPath::from_str(xpath_ltr)?;
 
             let coverage_ltr =
                 left_contexts
@@ -492,7 +492,7 @@ fn validate_node_relationship(
                 return Ok(false);
             }
 
-            let xpath: XPath = XPath::from_str(&xpath_rtl)?;
+            let xpath: XPath = XPath::from_str(xpath_rtl)?;
 
             let coverage_rtl =
                 right_contexts

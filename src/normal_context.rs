@@ -30,7 +30,7 @@ impl NormalContext {
             String::new(),
             |acc, (normalization_context, contexts)| -> Result<String, Errors> {
                 let context_string = Context::generate_spatial_context_multi(
-                    Arc::clone(&normalization_context),
+                    Arc::clone(normalization_context),
                     contexts.clone(),
                 )?;
 
@@ -80,7 +80,7 @@ impl NormalContext {
                     })?
                     .contexts_lookup;
 
-                Arc::clone(&contexts_lookup)
+                Arc::clone(contexts_lookup)
             };
 
             let members: Vec<Arc<Context>> = contexts

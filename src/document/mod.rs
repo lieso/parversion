@@ -287,7 +287,7 @@ impl Document {
                     lock.translated.clone().unwrap()
                 };
                 let data =
-                    Json::from_denormalization(&translated, Arc::clone(&normalization_context))?;
+                    Json::from_denormalization(&translated, Arc::clone(normalization_context))?;
 
                 let document = Document {
                     document_type: DocumentType::Json,

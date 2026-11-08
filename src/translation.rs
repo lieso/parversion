@@ -311,7 +311,7 @@ fn recurse_source_graph(
             Arc::clone(&translation_context),
             contexts,
             contexts_lookup,
-            &instance,
+            instance,
             Arc::clone(&canonical_target_context),
         )?;
 
@@ -331,7 +331,7 @@ fn recurse_source_graph(
     for source_child in &read_lock!(source).children {
         recurse_source_graph(
             Arc::clone(&target),
-            Arc::clone(&source_child),
+            Arc::clone(source_child),
             Arc::clone(&translation_context),
             Arc::clone(&normalization_context),
             instance_counter,
@@ -442,7 +442,7 @@ fn build_ancestral_chain(
             .collect();
 
         if let Some(existing_ancestor) = matching_children.get(*instance) {
-            current_result_node = Arc::clone(&existing_ancestor);
+            current_result_node = Arc::clone(existing_ancestor);
         } else {
             let child = Arc::new(RwLock::new(read_lock!(ancestor).clone_without_relations()));
 
@@ -532,5 +532,5 @@ fn get_canonical_target_context(
 
     let canonical_target_context = target_contexts.first().unwrap();
 
-    Ok(Arc::clone(&canonical_target_context))
+    Ok(Arc::clone(canonical_target_context))
 }

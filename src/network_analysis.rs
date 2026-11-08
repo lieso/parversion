@@ -71,7 +71,7 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         for child in &read_lock!(current).children {
             recurse(
                 Arc::clone(&normalization_context),
-                Arc::clone(&child),
+                Arc::clone(child),
                 comparisons,
             )?;
         }
@@ -230,7 +230,7 @@ fn get_basis_node_neighbours(
 
         for child in &read_lock!(current).children {
             if enqueued.insert(read_lock!(child).id.clone()) {
-                queue.push_back(Arc::clone(&child));
+                queue.push_back(Arc::clone(child));
             }
         }
 

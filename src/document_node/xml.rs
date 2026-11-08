@@ -22,8 +22,8 @@ impl Xml {
     pub fn to_string_components(xml_node: &XMLNode) -> (String, Option<String>) {
         match xml_node {
             XMLNode::Element(element_node) => {
-                let opening_tag = Self::get_opening_tag(&element_node);
-                let closing_tag = Self::get_closing_tag(&element_node);
+                let opening_tag = Self::get_opening_tag(element_node);
+                let closing_tag = Self::get_closing_tag(element_node);
 
                 (opening_tag, Some(closing_tag))
             }
