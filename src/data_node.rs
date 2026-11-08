@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::collections::{BTreeSet, HashMap};
+use std::fmt;
 
 use crate::json_node::{Json, JsonNode};
 use crate::prelude::*;

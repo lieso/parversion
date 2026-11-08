@@ -7,12 +7,12 @@ mod lexer;
 mod parser;
 mod special_forms;
 
+use crate::data_node::FieldValue;
 use builtins::*;
 pub use errors::Errors;
 use lexer::tokenize;
 use parser::{parse, Expr};
 use special_forms::try_special_form;
-use crate::data_node::FieldValue;
 
 #[derive(Clone, Debug)]
 pub enum Value {
@@ -47,7 +47,9 @@ impl Value {
             Value::Str(s) => Ok(FieldValue::Text(s.to_string())),
             Value::Char(c) => Ok(FieldValue::Text(c.to_string())),
             Value::Bool(b) => Ok(FieldValue::Bool(b.clone())),
-            Value::Procedure { .. } => Err(Errors::FieldConversionError("Attempted to convert a Scheme procedure to a FieldValue variant".to_string())),
+            Value::Procedure { .. } => Err(Errors::FieldConversionError(
+                "Attempted to convert a Scheme procedure to a FieldValue variant".to_string(),
+            )),
         }
     }
 
@@ -124,7 +126,10 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
         Expr::Float(f) => Value::Float(*f),
         Expr::Str(s) => Value::Str(s.clone()),
         Expr::Bool(b) => Value::Bool(*b),
-        Expr::Symbol(q) => frame.get(q).cloned().ok_or_else(|| Errors::UnboundSymbol(q.to_string()))?,
+        Expr::Symbol(q) => frame
+            .get(q)
+            .cloned()
+            .ok_or_else(|| Errors::UnboundSymbol(q.to_string()))?,
         Expr::List(l) => {
             let Some((first, rest)) = l.split_first() else {
                 return Err(Errors::EmptyCall);

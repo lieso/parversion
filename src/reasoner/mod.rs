@@ -203,8 +203,15 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         right_lineage: Lineage,
         right_contexts: Vec<Arc<NormalContext>>,
     ) -> Result<(Option<TranslationNode>, ReasonerMetadata), Errors> {
-        translation_node::translation_node(self, translation_context, left_lineage, left_contexts, right_lineage, right_contexts)
-            .await
+        translation_node::translation_node(
+            self,
+            translation_context,
+            left_lineage,
+            left_contexts,
+            right_lineage,
+            right_contexts,
+        )
+        .await
     }
 }
 

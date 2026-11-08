@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::data_node::{DataNode, DataNodeFields, FieldValue};
 use crate::prelude::*;
-use crate::scheme::{eval, apply, Value};
+use crate::scheme::{apply, eval, Value};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Transformation {
@@ -27,11 +27,13 @@ impl Transformation {
             let out = match &compiled {
                 Some(procedure) => {
                     let arguments = vec![Value::from_field_value(value.clone())];
-                    let transformed_value = apply(procedure, arguments)
-                        .map_err(|e| {
-                            log::error!("Failed to apply procedure when transforming value: {:?}", self.procedure);
-                            e
-                        })?;
+                    let transformed_value = apply(procedure, arguments).map_err(|e| {
+                        log::error!(
+                            "Failed to apply procedure when transforming value: {:?}",
+                            self.procedure
+                        );
+                        e
+                    })?;
 
                     transformed_value.to_field_value()?
                 }

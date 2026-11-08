@@ -49,12 +49,10 @@ impl Json {
     fn serde_value_to_field_value(value: &Value) -> FieldValue {
         match value {
             Value::String(s) => FieldValue::Text(s.clone()),
-            Value::Number(n) => {
-                match n.as_f64() {
-                    Some(f) => FieldValue::Float(f),
-                    None => FieldValue::Text(n.to_string()),
-                }
-            }
+            Value::Number(n) => match n.as_f64() {
+                Some(f) => FieldValue::Float(f),
+                None => FieldValue::Text(n.to_string()),
+            },
             Value::Bool(b) => FieldValue::Bool(b.clone()),
             Value::Null => FieldValue::Text("null".to_string()),
             other => FieldValue::Text(other.to_string()),

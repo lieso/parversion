@@ -3,11 +3,9 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
-use crate::data_node::DataNodeFields;
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
-use crate::scheme::{apply, eval};
 use crate::transformation::Transformation;
 use crate::translation_node::TranslationNode;
 

@@ -2,7 +2,6 @@ use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
 use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::document::{Document, DocumentMetadata, DocumentType};
@@ -10,8 +9,9 @@ use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
-use crate::normal_meta_context::NormalMetaContext;
 use crate::normal_context::NormalContext;
+use crate::normal_meta_context::NormalMetaContext;
+use crate::prelude::*;
 
 pub struct Json {}
 
@@ -221,9 +221,8 @@ impl Json {
     ) -> Result<String, Errors> {
         log::trace!("In from_denormalization");
 
-
-
-        let mut context_to_normal_context: HashMap<ContextID, Vec<Arc<NormalContext>>> = HashMap::new();
+        let mut context_to_normal_context: HashMap<ContextID, Vec<Arc<NormalContext>>> =
+            HashMap::new();
 
         for normal_context in normal_meta_context.contexts.values() {
             for context in &normal_context.contexts {
@@ -234,11 +233,6 @@ impl Json {
             }
         }
 
-
-
-
-
-        
         let meta_context = {
             let lock = read_lock!(normalization_context);
             lock.meta_context
@@ -342,10 +336,7 @@ impl Json {
                         }
                     }
                 }
-                
-
             }
-
         }
 
         recurse(

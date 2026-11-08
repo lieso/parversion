@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
-use crate::translation_node::TranslationNode;
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
+use crate::prelude::*;
+use crate::translation_node::TranslationNode;
 
 pub struct TranslationContext {
     pub source: Vec<Arc<RwLock<NormalizationContext>>>,
@@ -34,7 +34,7 @@ impl TranslationContext {
         &mut self,
         translation_nodes: HashMap<TranslationNodeID, Arc<TranslationNode>>,
         lookup: HashMap<Lineage, Arc<TranslationNode>>,
-        target_lookup: HashMap<Lineage, Vec<Arc<NormalContext>>>
+        target_lookup: HashMap<Lineage, Vec<Arc<NormalContext>>>,
     ) {
         self.translation_nodes = Some(translation_nodes);
         self.translation_nodes_lookup = Some(lookup);

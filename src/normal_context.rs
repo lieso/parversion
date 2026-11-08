@@ -42,11 +42,7 @@ impl NormalContext {
             },
         )?;
 
-        let object: String = serde_json::to_string_pretty(
-            &self
-                .data_node
-                .fields
-        )?;
+        let object: String = serde_json::to_string_pretty(&self.data_node.fields)?;
 
         let result = format!(
             r##"
