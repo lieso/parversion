@@ -90,9 +90,7 @@ pub async fn node_relationship_self<R: Reasoner>(
     let contexts: Vec<Arc<Context>> = basis_node_contexts
         .get(&node.id)
         .unwrap()
-        .iter()
-        .cloned()
-        .collect();
+        .to_vec();
 
     let user_prompt =
         get_user_prompt_self(Arc::clone(&normalization_context), node.clone(), &contexts).await?;
@@ -330,16 +328,12 @@ async fn determine_node_relationship_other<R: Reasoner>(
     let left_contexts: Vec<Arc<Context>> = basis_node_contexts
         .get(&left.id)
         .unwrap()
-        .iter()
-        .cloned()
-        .collect();
+        .to_vec();
 
     let right_contexts: Vec<Arc<Context>> = basis_node_contexts
         .get(&right.id)
         .unwrap()
-        .iter()
-        .cloned()
-        .collect();
+        .to_vec();
 
     let user_prompt = get_user_prompt_other(
         reasoner,
@@ -446,16 +440,12 @@ fn validate_node_relationship(
     let left_contexts: Vec<Arc<Context>> = basis_node_contexts
         .get(&left.id)
         .unwrap()
-        .iter()
-        .cloned()
-        .collect();
+        .to_vec();
 
     let right_contexts: Vec<Arc<Context>> = basis_node_contexts
         .get(&right.id)
         .unwrap()
-        .iter()
-        .cloned()
-        .collect();
+        .to_vec();
 
     match &node_relationship.relationship_type {
         NodeRelationshipType::Combine {
