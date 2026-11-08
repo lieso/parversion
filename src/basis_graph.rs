@@ -111,7 +111,7 @@ impl BasisGraph {
 
         for instance in &instances {
             write_lock!(instance).parents = vec![Arc::clone(&parent)];
-            write_lock!(parent).children.push(Arc::clone(&instance));
+            write_lock!(parent).children.push(Arc::clone(instance));
         }
 
         Ok(())

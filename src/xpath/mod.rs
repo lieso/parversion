@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use std::fmt;
 
 use crate::graph_node::Graph;
 use crate::prelude::*;
@@ -444,7 +445,7 @@ impl XPath {
             traversal_id,
             start_id.to_string()
         );
-        log::error!("[{}] XPath: {}", traversal_id, self.to_string());
+        log::error!("[{}] XPath: {}", traversal_id, self);
         log::error!("[{}] Total segments: {}", traversal_id, self.segments.len());
         log::error!(
             "[{}] ─────────────────────────────────────────────────────────────────────────────",
@@ -460,7 +461,7 @@ impl XPath {
                 traversal_id,
                 index + 1,
                 self.segments.len(),
-                segment.to_string()
+                segment
             );
             log::error!("[{}] │  Current graphs: {}", traversal_id, current.len());
 
@@ -495,7 +496,7 @@ impl XPath {
                 .map(|value| {
                     traverse::traverse_using_xpath_segment(
                         Arc::clone(&normalization_context),
-                        &value,
+                        value,
                         segment,
                     )
                 })
@@ -576,13 +577,13 @@ impl XPath {
                 '[' => depth += 1,
                 ']' => depth -= 1,
                 '/' if depth == 0 => {
-                    parts.push(&s[start..i].trim());
+                    parts.push(s[start..i].trim());
                     start = i + 1;
                 }
                 _ => {}
             }
         }
-        parts.push(&s[start..].trim());
+        parts.push(s[start..].trim());
 
         let start_variable = match parts.first() {
             Some(p) if p.starts_with('$') => {
@@ -620,8 +621,10 @@ impl XPath {
             union: Vec::new(),
         })
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for XPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let path = self
             .segments
             .iter()
@@ -635,10 +638,12 @@ impl XPath {
             None => path,
         };
 
-        std::iter::once(head)
+        let s = std::iter::once(head)
             .chain(self.union.iter().map(|b| b.to_string()))
             .collect::<Vec<_>>()
-            .join(" | ")
+            .join(" | ");
+
+        write!(f, "{}", s)
     }
 }
 
@@ -682,7 +687,7 @@ impl XPathSegment {
             })?;
 
             predicate_strs.push(&rest[open_pos + 1..rest.len() - 1]);
-            rest = &rest[..open_pos].trim_end();
+            rest = rest[..open_pos].trim_end();
         }
         predicate_strs.reverse(); // preserve left-to-right predicate order
 
@@ -742,8 +747,10 @@ impl XPathSegment {
             predicates,
         })
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for XPathSegment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let axis_prefix = if self.axis == XPathAxis::Child {
             String::new()
         } else {
@@ -752,9 +759,11 @@ impl XPathSegment {
         let predicate_suffix: String = self
             .predicates
             .iter()
-            .map(|pred| format!("[{}]", pred.to_string()))
+            .map(|pred| format!("[{}]", pred))
             .collect();
-        format!("{}{}{}", axis_prefix, self.node_test, predicate_suffix)
+        let s = format!("{}{}{}", axis_prefix, self.node_test, predicate_suffix);
+
+        write!(f, "{}", s)
     }
 }
 
@@ -947,9 +956,11 @@ impl XPathPredicate {
         let token = value.strip_prefix(' ')?.strip_suffix(' ')?;
         Some((name.to_string(), token.to_string()))
     }
+}
 
-    pub fn to_string(&self) -> String {
-        match self {
+impl fmt::Display for XPathPredicate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
             XPathPredicate::Position(n) => n.to_string(),
             XPathPredicate::Attribute { name, value } => format!("@{}='{}'", name, value),
             XPathPredicate::Contains { name, value } => format!("contains(@{},'{}')", name, value),
@@ -971,7 +982,7 @@ impl XPathPredicate {
             XPathPredicate::ContainsNormalized { value } => {
                 format!("contains(normalize-space(.),'{}'')", value)
             }
-            XPathPredicate::Not(pred) => format!("not({})", pred.to_string()),
+            XPathPredicate::Not(pred) => format!("not({})", pred),
             XPathPredicate::ContainsToken { name, value } => {
                 format!(
                     "contains(concat(' ', normalize-space(@{}), ' '), ' {} ')",
@@ -981,7 +992,9 @@ impl XPathPredicate {
             XPathPredicate::Equals { lhs, rhs } => {
                 format!("{} = {}", lhs.to_string(), rhs.to_string())
             }
-        }
+        };
+
+        write!(f, "{}", s)
     }
 }
 
