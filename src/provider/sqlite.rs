@@ -92,11 +92,11 @@ fn db_err(e: impl std::fmt::Display) -> Errors {
 }
 
 fn serialize<T: serde::Serialize>(value: &T) -> Result<String, Errors> {
-    serde_json::to_string(value).map_err(|e| db_err(e))
+    serde_json::to_string(value).map_err(db_err)
 }
 
 fn deserialize<T: serde::de::DeserializeOwned>(data: String) -> Result<T, Errors> {
-    serde_json::from_str(&data).map_err(|e| db_err(e))
+    serde_json::from_str(&data).map_err(db_err)
 }
 
 #[cfg(feature = "sqlite-provider")]
@@ -140,7 +140,7 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO basis_nodes (lineage_hash, data) VALUES (?1, ?2)",
                 params![key, data],
             )
-            .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
             Ok(())
         })
         .await
@@ -185,7 +185,7 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO classifications (lineage_hash, data) VALUES (?1, ?2)",
                 params![key, data],
             )
-            .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
             Ok(())
         })
         .await
@@ -203,13 +203,13 @@ impl Provider for SqliteProvider {
             let conn = conn.lock().map_err(|_| lock_err())?;
             let mut stmt = conn
                 .prepare("SELECT data FROM basis_groups WHERE acyclic_lineage_hash = ?1")
-                .map_err(|e| db_err(e))?;
+                .map_err(db_err)?;
 
             let rows: Vec<Option<String>> = stmt
                 .query_map(params![key], |row| row.get::<_, Option<String>>(0))
-                .map_err(|e| db_err(e))?
+                .map_err(db_err)?
                 .collect::<rusqlite::Result<_>>()
-                .map_err(|e| db_err(e))?;
+                .map_err(db_err)?;
 
             if rows.is_empty() {
                 return Ok(None);
@@ -243,15 +243,15 @@ impl Provider for SqliteProvider {
                     "SELECT data FROM basis_groups
                      WHERE acyclic_lineage_hash = ?1 AND lineage_hash = ?2",
                 )
-                .map_err(|e| db_err(e))?;
+                .map_err(db_err)?;
 
             let rows: Vec<Option<String>> = stmt
                 .query_map(params![acyclic_key, lineage_key], |row| {
                     row.get::<_, Option<String>>(0)
                 })
-                .map_err(|e| db_err(e))?
+                .map_err(db_err)?
                 .collect::<rusqlite::Result<_>>()
-                .map_err(|e| db_err(e))?;
+                .map_err(db_err)?;
 
             if rows.is_empty() {
                 return Ok(None);
@@ -289,15 +289,15 @@ impl Provider for SqliteProvider {
                        AND lineage_hash = ?2
                        AND indexed_lineage_hash = ?3",
                 )
-                .map_err(|e| db_err(e))?;
+                .map_err(db_err)?;
 
             let rows: Vec<Option<String>> = stmt
                 .query_map(params![acyclic_key, lineage_key, indexed_key], |row| {
                     row.get::<_, Option<String>>(0)
                 })
-                .map_err(|e| db_err(e))?
+                .map_err(db_err)?
                 .collect::<rusqlite::Result<_>>()
-                .map_err(|e| db_err(e))?;
+                .map_err(db_err)?;
 
             if rows.is_empty() {
                 return Ok(None);
@@ -336,7 +336,7 @@ impl Provider for SqliteProvider {
              VALUES (?1, ?2, ?3, ?4)",
                 params![acyclic_key, lineage_key, indexed_key, data],
             )
-            .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
             Ok(())
         })
         .await
@@ -384,7 +384,7 @@ impl Provider for SqliteProvider {
                 VALUES (?1, ?2)",
                 params![key, data],
             )
-            .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
 
             Ok(())
         })
@@ -409,7 +409,7 @@ impl Provider for SqliteProvider {
 				 VALUES (?1, ?2)",
                 params![key, data],
             )
-            .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
 
             Ok(())
         })
@@ -486,7 +486,7 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO node_relationships (left_basis_lineage, right_basis_lineage, data) VALUES (?1, ?2, ?3)",
                 params![key1, key2, data],
             )
-                .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
             Ok(())
         })
         .await
@@ -531,7 +531,7 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO basis_networks (basis_nodes, data) VALUES (?1, ?2)",
                 params![key, data],
             )
-            .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
             Ok(())
         })
         .await
@@ -578,7 +578,7 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO network_relationships (left_network, right_network, data) VALUES (?1, ?2, ?3)",
                 params![left_key, right_key, data],
             )
-                .map_err(|e| db_err(e))?;
+                .map_err(db_err)?;
             Ok(())
         })
         .await
@@ -629,7 +629,7 @@ impl Provider for SqliteProvider {
                 "INSERT OR REPLACE INTO translation_nodes (left_lineage, right_lineage, data) VALUES (?1, ?2, ?3)",
                 params![left_key, right_key, data],
             )
-            .map_err(|e| db_err(e))?;
+            .map_err(db_err)?;
 
             Ok(())
         })

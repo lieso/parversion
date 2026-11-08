@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use std::fmt;
+use std::sync::{Arc, RwLock};
 
 use crate::graph_node::Graph;
 use crate::prelude::*;
