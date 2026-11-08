@@ -84,7 +84,7 @@ impl Xslt {
             Errors::XsltParseError("xsl:template requires a match attribute".to_string())
         })?;
 
-        let pattern = XPath::from_str(match_attribute)?;
+        let pattern = match_attribute.parse()?;
 
         let mut body: Vec<Instruction> = Vec::new();
 
@@ -106,7 +106,7 @@ impl Xslt {
                     select: Expr::from_str(&required_attribute(element, "select")?)?,
                 },
                 "copy-of" => Instruction::CopyOf {
-                    select: XPath::from_str(&required_attribute(element, "select")?)?,
+                    select: required_attribute(element, "select")?.parse()?,
                 },
                 other => {
                     return Err(Errors::XsltParseError(format!(

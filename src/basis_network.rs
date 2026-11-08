@@ -469,7 +469,7 @@ impl BasisNetwork {
             }
         };
 
-        let xpath: XPath = XPath::from_str(&xpath_str)?;
+        let xpath: XPath = xpath_str.parse()?;
 
         let target_values = xpath.traverse(
             Arc::clone(&normalization_context),

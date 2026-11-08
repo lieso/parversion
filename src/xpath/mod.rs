@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, RwLock};
+use std::str::FromStr;
 
 use crate::graph_node::Graph;
 use crate::prelude::*;
@@ -560,8 +561,12 @@ impl XPath {
 
         Ok(current.clone())
     }
+}
 
-    pub fn from_str(s: &str) -> Result<Self, Errors> {
+impl FromStr for XPath {
+    type Err = Errors;
+
+    fn from_str(s: &str) -> Result<Self, Errors> {
         log::debug!("xpath: {}", s);
 
         let branches = split_top_level_union(s.trim());
