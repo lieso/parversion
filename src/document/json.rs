@@ -1,4 +1,5 @@
 use serde_json::{json, Map, Value};
+use serde_json::map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
@@ -221,17 +222,44 @@ impl Json {
     ) -> Result<String, Errors> {
         log::trace!("In from_denormalization");
 
-        let mut context_to_normal_context: HashMap<ContextID, Vec<Arc<NormalContext>>> =
-            HashMap::new();
 
-        for normal_context in normal_meta_context.contexts.values() {
-            for context in &normal_context.contexts {
-                context_to_normal_context
-                    .entry(context.id.clone())
-                    .or_default()
-                    .push(Arc::clone(normal_context));
+
+
+        fn descend_new_instance<'a>(
+            current: &'a mut Map<String, Value>,
+            network_name: &str,
+        ) -> &'a mut Map<String, Value> {
+            let instance = Value::Object(Map::new());
+
+            let slot = match current.entry(network_name.to_string()) {
+                Entry::Vacant(vacant) => {
+                    // First instance stays a plain object
+                    return vacant
+                        .insert(instance)
+                        .as_object_mut()
+                        .expect("Network should be a JSON object");
+                    }
+                Entry::Occupied(occupied) => occupied.into_mut(),
+            };
+
+            match &mut *slot {
+                Value::Array(arr) => arr.push(instance),
+                _ => {
+                    let existing = slot.take();
+                    *slot = Value::Array(vec![existing, instance]);
+                }
             }
+
+            slot.as_array_mut()
+                .and_then(|arr| arr.last_mut())
+                .and_then(|last| last.as_object_mut())
+                .expect("Network instance should be a JSON object")
         }
+
+
+
+
+
 
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -242,110 +270,110 @@ impl Json {
                         "Meta context not provided in normalization context".to_string(),
                     )
                 })?
-                .clone()
+            .clone()
         };
-        let graph_root = meta_context.graph_root.clone();
+
 
         let mut result: Value = Value::Object(Map::new());
 
-        fn recurse(
-            meta_context: &MetaContext,
-            graph_node: Graph,
-            network_name: &str,
-            result: &mut Value,
-            context_to_normal_context: &HashMap<ContextID, Vec<Arc<NormalContext>>>,
-        ) {
-            let context = meta_context
-                .contexts_lookup
-                .get(&read_lock!(graph_node).id)
-                .unwrap();
 
-            let data_node = &context.data_node;
-            let json_nodes: Vec<JsonNode> = data_node.to_json_nodes();
-            for json_node in json_nodes {
-                let json = json_node.json;
-                let value = json.value;
 
-                if let Value::Object(ref mut map) = result {
-                    map.insert(json.key, value);
-                }
-            }
+        for normal_context in normal_meta_context.contexts.values() {
 
-            for child in &read_lock!(graph_node).children {
-                let child_context = meta_context
-                    .contexts_lookup
-                    .get(&read_lock!(child).id)
-                    .unwrap();
-                let next_network_name = if child_context.network_name.is_empty() {
-                    network_name
-                } else {
-                    &child_context.network_name
+            if let Some(canonical_context) = normal_context.contexts.first() {
+
+                log::debug!("canonical_context: {:?}", canonical_context.id);
+
+
+                let ancestors = {
+                    let mut ancestors: Vec<Graph> = Vec::new();
+                    let mut current_parents = read_lock!(canonical_context.graph_node)
+                        .parents
+                        .clone();
+
+                    while !current_parents.is_empty() {
+                        let parent = current_parents[0].clone();
+                        ancestors.push(parent.clone());
+                        current_parents = read_lock!(parent).parents.clone();
+                    }
+
+                    ancestors.reverse();
+                    ancestors
                 };
 
-                if child_context.network_name.is_empty() {
-                    let mut inner_result: Value = Value::Object(Map::new());
+                
 
-                    recurse(
-                        meta_context,
-                        Arc::clone(child),
-                        next_network_name,
-                        &mut inner_result,
-                        context_to_normal_context,
-                    );
 
-                    let inner_result_value = inner_result.clone();
 
-                    if result.is_object() && result.as_object().unwrap().is_empty() {
-                        *result = inner_result;
-                    } else if result.is_array() {
-                        if let Value::Array(ref mut arr) = result {
-                            arr.push(inner_result_value.clone());
+                let mut current: &mut Map<String, Value> = result
+                    .as_object_mut()
+                    .expect("Result should be a JSON object");
+
+                for ancestor in ancestors {
+                    let Some(ancestor_context) = meta_context
+                        .contexts_lookup
+                        .get(&read_lock!(ancestor).id)
+                    else {
+                        continue;
+                    };
+
+                    if ancestor_context.network_name.is_empty() {
+                        continue;
+                    }
+
+
+                    current = descend_new_instance(current, &ancestor_context.network_name)
+                }
+
+
+
+
+
+
+                if !canonical_context.network_name.is_empty() {
+                    current = current
+                        .entry(canonical_context.network_name.clone())
+                        .or_insert_with(|| Value::Object(Map::new()))
+                        .as_object_mut()
+                        .expect("Network should be a json object");
+                }
+
+
+
+
+                for json_node in normal_context.data_node.to_json_nodes() {
+                    let json = json_node.json;
+
+                    match current.get_mut(&json.key) {
+                        Some(Value::Array(arr)) => {
+                            arr.push(json.value);
                         }
-                    } else {
-                        *result = json!(vec![result.clone(), inner_result_value.clone()]);
-                    }
-                } else {
-                    let mut inner_result: Value = Value::Object(Map::new());
-
-                    recurse(
-                        meta_context,
-                        Arc::clone(child),
-                        next_network_name,
-                        &mut inner_result,
-                        context_to_normal_context,
-                    );
-
-                    let inner_result_value = inner_result.clone();
-
-                    if !result.is_object() {
-                        *result = Value::Object(Map::new());
-                    }
-
-                    if let Value::Object(ref mut map) = result {
-                        if let Some(existing_object) = map.get_mut(next_network_name) {
-                            if let Value::Array(ref mut arr) = existing_object {
-                                arr.push(inner_result_value.clone());
-                            } else {
-                                *existing_object = json!(vec![
-                                    existing_object.clone(),
-                                    inner_result_value.clone()
-                                ]);
-                            }
-                        } else {
-                            map.insert(next_network_name.to_string(), inner_result_value);
+                        Some(existing) => {
+                            let existing_value = existing.take();
+                            *existing = json!(vec![existing_value, json.value]);
+                        }
+                        None => {
+                            current.insert(json.key, json.value);
                         }
                     }
                 }
+
+
+
+
+
+
+
+
+
+
             }
+
+
+
+
         }
 
-        recurse(
-            &meta_context,
-            Arc::clone(&graph_root),
-            "",
-            &mut result,
-            &context_to_normal_context,
-        );
 
         let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
 
