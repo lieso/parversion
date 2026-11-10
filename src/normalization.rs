@@ -399,7 +399,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         Arc::clone(&normalization_context),
-        &options,
+        options,
         &stage,
     )
     .await?;
@@ -422,7 +422,7 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = process.enter_stage("Building normalized graph");
 
-    let normalized = build_normalized_graph(Arc::clone(&normalization_context), &options)?;
+    let normalized = build_normalized_graph(Arc::clone(&normalization_context), options)?;
 
     {
         let mut lock = write_lock!(normalization_context);

@@ -80,7 +80,7 @@ pub async fn translate<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = execution_context.enter_stage("Building translated graph");
 
-    let translated = build_translated_graph(Arc::clone(&translation_context), &options)?;
+    let translated = build_translated_graph(Arc::clone(&translation_context), options)?;
 
     {
         let mut lock = write_lock!(translation_context);

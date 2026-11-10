@@ -287,7 +287,7 @@ impl Json {
 
                     recurse(
                         meta_context,
-                        Arc::clone(&child),
+                        Arc::clone(child),
                         next_network_name,
                         &mut inner_result,
                         context_to_normal_context,

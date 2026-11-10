@@ -158,7 +158,7 @@ impl BasisGraph {
                 Arc::clone(&normalization_context),
                 &xslt,
                 normal_context.clone(),
-                &normal_meta_context,
+                normal_meta_context,
             )?;
 
             if let Some(parent_instance) = parent_instance {

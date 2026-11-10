@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::{Arc, RwLock};
 use std::str::FromStr;
+use std::sync::{Arc, RwLock};
 
 use crate::graph_node::Graph;
 use crate::prelude::*;
@@ -309,7 +309,7 @@ impl fmt::Display for Expr {
             Expr::Filter { base, position } => format!("({})[{}]", base, position),
         };
 
-	write!(f, "{}", s)
+        write!(f, "{}", s)
     }
 }
 
@@ -349,10 +349,9 @@ impl fmt::Display for Operand {
             }
         };
 
-	write!(f, "{}", s)
+        write!(f, "{}", s)
     }
 }
-
 
 impl XPath {
     pub fn substitute(&self, variables: &Variables) -> Result<XPath, Errors> {

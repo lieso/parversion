@@ -162,11 +162,11 @@ fn get_user_prompt(
 
     let context_strings: Vec<String> = left_contexts
         .iter()
-        .filter(|context| context.data_node.fields.contains_key(&field))
+        .filter(|context| context.data_node.fields.contains_key(field))
         .take(11)
         .map(|context| {
             context
-                .generate_context_string_translation_node(Arc::clone(&translation_context), &field)
+                .generate_context_string_translation_node(Arc::clone(&translation_context), field)
         })
         .collect::<Result<Vec<String>, Errors>>()?;
     let left = context_strings.join("\n\n---EXAMPLE SEPARATOR---\n\n");
