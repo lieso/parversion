@@ -280,7 +280,7 @@ impl Json {
 
         for normal_context in normal_meta_context.contexts.values() {
 
-            if let Some(canonical_context) = normal_context.contexts.first() {
+            for (index, canonical_context) in normal_context.contexts.clone().into_iter().enumerate() {
 
                 log::debug!("canonical_context: {:?}", canonical_context.id);
 
@@ -322,8 +322,27 @@ impl Json {
                     }
 
 
-                    current = descend_new_instance(current, &ancestor_context.network_name)
+                    if index == 0 {
+                        // First context of this normal context starts a new instance
+                        current = descend_new_instance(current, &ancestor_context.network_name);
+                    } else {
+                        // Later contexts reuse the instance the first one just created
+                        let slot = current
+                            .entry(ancestor_context.network_name.clone())
+                            .or_insert_with(|| Value::Object(Map::new()));
+
+                        current = match slot {
+                            Value::Array(arr) => arr
+                                .last_mut()
+                                .and_then(|last| last.as_object_mut())
+                                .expect("Network instance should be a JSON object"),
+                            other => other
+                                .as_object_mut()
+                                .expect("Network should be a JSON object"),
+                        };
+                    }
                 }
+
 
 
 
