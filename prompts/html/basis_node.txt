@@ -6,7 +6,9 @@ page renders a product listing, it came from something like:
   [{id: 123, name: "Widget", price: 19.99, image_url: "...", ...}]
 
 We want to extract that structure, filtering out everything else: UI chrome,
-framework artifacts, presentation noise, and advertisements.
+framework artifacts, presentation noise, and advertisements. For each meaningful
+field we also want a program that normalizes its values into a consistent
+canonical form.
 
 **HOW TO READ THE CONTEXT INSTANCES:**
 Multiple context instances are provided below (separated by ---OCCURRENCE SEPARATOR---).
@@ -74,11 +76,11 @@ EXAMPLES - MEANINGFUL:
   user-generated content that changes per item.
 
 For meaningful fields, provide exactly one mapping per source field:
-- source_field: The original field from the extracted fields (e.g., "TEXT", "FIELD=href")
+- source_field: The original field from the extracted fields (e.g., "text", "href")
 - field_name: Semantic snake_case identifier reflecting its role in the data model
 - description: Brief description of what this field represents
-- data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.)
-- format: Optional. More specific type hint if applicable.
+- normalization_program: A Scheme program that converts a raw value of this
+  source field into its normalized form, as described under NORMALIZATION below.
 
 **Important:** Each source field should map to exactly one output field_name. Do not provide multiple mappings for the same source field.
 
@@ -88,28 +90,31 @@ When reporting `source_field` in your response, copy ONLY the field name token t
 
 **NORMALIZATION:**
 
-For each meaningful field, write a Scheme program that normalizes its values.
-Raw values vary in representation across occurrences: stray whitespace, units
-and labels, wrappers, inconsistent casing, mixed date or number formats, entity
-encoding, and so on. The program converts any raw value of this field into one
-canonical form, so that equivalent values compare equal and every value matches
-the `data_type` and `format` you declared.
+Raw values of the same field vary in representation across occurrences: stray
+whitespace, units and labels, wrappers, inconsistent casing, mixed date or number
+formats, entity encoding, and so on. For each meaningful field, write a Scheme
+program that converts any raw value of that field into one canonical form, so
+that equivalent values become identical.
+
+Decide the canonical form from what the field is: its role, its values across
+all occurrences, and its context in the document. Use the conventional
+representation for that kind of value. For example:
+
+- numbers (prices, counts, ratings): plain decimal digits with an optional
+  leading `-` and a `.` decimal point, with no thousands separators, currency
+  symbols, or units
+- dates and times: ISO 8601 (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS`), keeping
+  only the precision the value actually has
+- booleans: exactly `true` or `false`
+- URLs: the URL with surrounding whitespace removed
+- free text and names: surrounding whitespace removed and internal whitespace
+  runs collapsed to a single space
 
 The program is a single Scheme lambda expression with one argument, `value`:
 
 (lambda (value) ...)
 
-`value` is the raw source value as a string. The result must be a string in the
-canonical form of the declared `data_type` and `format`. For example:
-
-- number: plain decimal digits, optional leading `-` and a `.` decimal point,
-  with no thousands separators, currency symbols, or units
-- datetime: ISO 8601 (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS`), keeping only the
-  precision the value actually has
-- boolean: exactly `true` or `false`
-- url: the URL with surrounding whitespace removed
-- string: surrounding whitespace removed and internal whitespace runs collapsed
-  to a single space
+`value` is the raw source value as a string. The result must be a string.
 
 Language and safety requirements:
 
@@ -132,21 +137,24 @@ Program rules:
   that is not shown), do not attempt it. Normalize only what the value itself
   determines.
 - Remove representational noise (units, labels, wrappers, redundant
-  representation) only when doing so yields the declared format. Preserve all
-  information the field carries.
-- If values already have the canonical form, the identity program
+  representation) only when the result is the canonical form of the value.
+  Preserve all information the field carries.
+- Values that mean the same thing must produce the same output. Values that mean
+  different things must produce different outputs.
+- If values already have a consistent canonical form, the identity program
   `(lambda (value) value)` is the correct program. Do not add transformations
   for the sake of it.
 - A value that cannot be normalized should pass through unchanged rather than
   being dropped or guessed.
-- The `format` you declare must describe the program's output, not the raw
-  input. If the raw values are in a messy format, declare the format that the
-  program produces.
-- Mentally test the program against every sampled value and check that each
-  result matches the declared `data_type` and `format`.
+- Mentally test the program against every sampled value and check that the
+  results are consistent with each other and appropriate for the field.
 
 **Response Format:**
-Respond with valid JSON. Return one entry per meaningful field identified:
+Respond with valid JSON only. Do not include Markdown, code fences, comments, or
+text outside the JSON. Return one entry per meaningful field identified. The
+`normalization_program` must be exactly one Scheme lambda expression, serialized
+as a JSON string with valid escaping (for example, the character literal `#\.`
+is written `#\\.`):
 
 {
   "fields": [
@@ -154,8 +162,6 @@ Respond with valid JSON. Return one entry per meaningful field identified:
       "source_field": "text",
       "field_name": "price",
       "description": "Listed price of the product",
-      "data_type": "number",
-      "format": "decimal",
       "normalization_program": "(lambda (value) (let loop ((cs (string->list value)) (acc '())) (cond ((null? cs) (list->string (reverse acc))) ((or (char-numeric? (car cs)) (char=? (car cs) #\\.)) (loop (cdr cs) (cons (car cs) acc))) (else (loop (cdr cs) acc)))))"
     }
   ]
