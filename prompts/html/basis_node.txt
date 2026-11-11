@@ -86,17 +86,77 @@ Note on field notation: In EXTRACTED FIELDS, href attributes are shown as "FIELD
 
 When reporting `source_field` in your response, copy ONLY the field name token that follows "FIELD:" — do not include the "FIELD:" prefix, the "VALUE: ..." portion, or any surrounding punctuation. For example, given "FIELD: href, VALUE: /page", report source_field as exactly "href". For the text node's own content, report source_field as exactly "text".
 
+**NORMALIZATION:**
+
+For each meaningful field, write a Scheme program that normalizes its values.
+Raw values vary in representation across occurrences: stray whitespace, units
+and labels, wrappers, inconsistent casing, mixed date or number formats, entity
+encoding, and so on. The program converts any raw value of this field into one
+canonical form, so that equivalent values compare equal and every value matches
+the `data_type` and `format` you declared.
+
+The program is a single Scheme lambda expression with one argument, `value`:
+
+(lambda (value) ...)
+
+`value` is the raw source value as a string. The result must be a string in the
+canonical form of the declared `data_type` and `format`. For example:
+
+- number: plain decimal digits, optional leading `-` and a `.` decimal point,
+  with no thousands separators, currency symbols, or units
+- datetime: ISO 8601 (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS`), keeping only the
+  precision the value actually has
+- boolean: exactly `true` or `false`
+- url: the URL with surrounding whitespace removed
+- string: surrounding whitespace removed and internal whitespace runs collapsed
+  to a single space
+
+Language and safety requirements:
+
+- Write R7RS-small Scheme. Use only R7RS-small procedures and special forms.
+- The program must be pure and deterministic.
+- Do not perform input or output.
+- Do not access the network, file system, environment, or current time.
+- Do not use randomness, `eval`, or `load`.
+- Do not mutate state outside the program's own local bindings.
+- Recursion and iteration must be bounded by the length of `value`.
+
+Program rules:
+
+- Generalize beyond the samples. Encode a rule that works for values not yet
+  seen, not one that fits only the occurrences shown.
+- Do not compare against, branch on, embed, or return individual sampled values.
+  Do not build a lookup table from the samples.
+- Do not invent missing information. If making a value canonical would need data
+  the input does not provide (an external lookup, the current date, a base URL
+  that is not shown), do not attempt it. Normalize only what the value itself
+  determines.
+- Remove representational noise (units, labels, wrappers, redundant
+  representation) only when doing so yields the declared format. Preserve all
+  information the field carries.
+- If values already have the canonical form, the identity program
+  `(lambda (value) value)` is the correct program. Do not add transformations
+  for the sake of it.
+- A value that cannot be normalized should pass through unchanged rather than
+  being dropped or guessed.
+- The `format` you declare must describe the program's output, not the raw
+  input. If the raw values are in a messy format, declare the format that the
+  program produces.
+- Mentally test the program against every sampled value and check that each
+  result matches the declared `data_type` and `format`.
+
 **Response Format:**
 Respond with valid JSON. Return one entry per meaningful field identified:
 
 {
   "fields": [
     {
-      "source_field": "FIELD=href",
-      "field_name": "article_url",
-      "description": "URL to the full article",
-      "data_type": "string",
-      "format": "absolute-url"
+      "source_field": "text",
+      "field_name": "price",
+      "description": "Listed price of the product",
+      "data_type": "number",
+      "format": "decimal",
+      "normalization_program": "(lambda (value) (let loop ((cs (string->list value)) (acc '())) (cond ((null? cs) (list->string (reverse acc))) ((or (char-numeric? (car cs)) (char=? (car cs) #\\.)) (loop (cdr cs) (cons (car cs) acc))) (else (loop (cdr cs) acc)))))"
     }
   ]
 }
