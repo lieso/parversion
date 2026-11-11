@@ -27,57 +27,58 @@ Do not assume the document is clean: values may be inconsistent in type or
 format across occurrences, and keys may be unconventional.
 
 **EVALUATION TASK:**
-For each EXTRACTED FIELD shown, evaluat carries
+For each EXTRACTED FIELD shown, evaluate whether the key carries
 meaningful data or is noise. Use the multiple occurrences as samples: a key is
-meaningful if its values consistently css
+meaningful if its values consistently carry information across
 occurrences, not merely in one. Judge meaning relative to what the document
-appears to record. Technical or adminiss, timestamps,
-counters, statuses, measurements) are meaningful when they are part of what is
-recorded, and are not noise merely beca
+appears to record. Technical or administrative fields (such as identifiers,
+timestamps, counters, statuses, measurements) are meaningful when they are part
+of what is recorded, and are not noise merely because they are technical.
 
-**ELIMINATION CRITERIA (do not include
-
-1. **Empty or Placeholder Content:** Va or stand-ins
+**ELIMINATION CRITERIA (do not include in response):**
+1. **Empty or Placeholder Content:** Values that are empty or stand-ins
    for the absence of a value (e.g., empty strings, "N/A", "undefined"), or
-   loading or template placeholders, coces.
+   loading or template placeholders, consistent across all instances.
 
-2. **No Discernible Role:** Opaque or rwhich no
+2. **No Discernible Role:** Opaque or random values for which no
    semantic role can be inferred from the key, the values, or the surrounding
    structure.
 
-3. **Incidental Content:** Content thate document
+3. **Incidental Content:** Content that does not describe what the document
    records, such as advertising or promotional payloads, tracking or campaign
-   identifiers, presentation or layout nd actions,
+   identifiers, presentation or layout details, and user-interface labels and actions,
    when they sit alongside the real data.
 
 4. **Constant Boilerplate:** Values that are identical across every occurrence
-   and are not specific to any one of t or
+   and are not specific to any one of the recorded things, such as page chrome or
    site-wide settings, unless the constant is itself part of what is recorded.
 
 Malformed or unusual values alone are NOT grounds for elimination. If a key
-clearly has a meaningful role but its v format,
+clearly has a meaningful role but its values are messy (e.g., inconsistent format,
 mixed types), include it and describe the intended role.
 
 **INCLUSION CRITERIA (include in response):**
-A key is meaningful if its values conveing being
+A key is meaningful if its values convey information about the thing being
 recorded. Ask: "Does this key describe a property, measurement, identity,
-relationship, or state of something in  value
+relationship, or state of something in the document, such that its value would
 vary with that thing?"
 
 For meaningful fields, provide exactly one mapping per source field:
-- source_field: The key of the extracteafter "FIELD:"
+- source_field: The key of the extracted field, copied exactly as it appears after "FIELD:"
 - field_name: Semantic snake_case identifier reflecting its role in the data model
-- description: Brief description of wha
+- description: Brief description of what the field represents
 - data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.). If values are
-inconsistent, choose the type that bestole.
+inconsistent, choose the type that best describes the field's role.
 - format: Optional. More specific type hint if applicable.
 
 **Important:** Each source field should map to exactly one output field_name. Do not provide multiple
-mappings for the same source field. If cribes the field's role well, it is fine to report it unchanged as the field_name (converted to snake_case if needed). Only choose a different
-name when it would be more precise or c
+mappings for the same source field. If the existing key describes the field's role well, it is fine to
+report it unchanged as the field_name (converted to snake_case if needed). Only choose a different
+name when it would be more precise or clearer.
 
-When reporting `source_field`, copy ONLws "FIELD:" — do not include the"FIELD:" prefix, the "VALUE: ..." portion, or any surrounding punctuation. For example, given "FIELD: id,
-VALUE: 42", report source_field as exac
+When reporting `source_field`, copy ONLY the key that follows "FIELD:" — do not include the
+"FIELD:" prefix, the "VALUE: ..." portion, or any surrounding punctuation. For example, given "FIELD: id,
+VALUE: 42", report source_field as exactly "id".
 
 **Response Format:**
 Respond with valid JSON. Return one entry per meaningful field identified:
@@ -87,7 +88,7 @@ Respond with valid JSON. Return one entry per meaningful field identified:
     {
       "source_field": "id",
       "field_name": "record_id",
-      "description": "Unique identifier
+      "description": "Unique identifier of the record",
       "data_type": "string",
       "format": "uuid"
     }
