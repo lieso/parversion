@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::data_node::DataNode;
 use crate::prelude::*;
-use crate::transformation::FieldTransformation;
+use crate::transformation::Transformation;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNodeMetadata {
@@ -14,7 +14,7 @@ pub struct BasisNodeMetadata {
 pub struct BasisNode {
     pub id: ID,
     pub lineage: BasisLineage,
-    pub transformations: Vec<FieldTransformation>,
+    pub transformations: Vec<Transformation>,
     pub metadata: BasisNodeMetadata,
 }
 

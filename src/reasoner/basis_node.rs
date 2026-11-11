@@ -7,21 +7,20 @@ use crate::basis_group::BasisGroup;
 use crate::basis_node::{BasisNode, BasisNodeMetadata};
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
-use crate::transformation::{FieldMetadata, FieldTransformation};
+use crate::transformation::Transformation;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisNodeResponseItem {
-    /// The original field being analyzed (e.g., "TEXT", "FIELD=href")
+    /// The original field being analyzed (e.g., "text", "href")
     pub source_field: String,
     /// Semantic snake_case identifier reflecting the field's role in the data model
     pub field_name: String,
     /// Brief description of what this data represents, as if documenting an API field
     pub description: String,
-    /// Inferred primitive type (string, number, boolean, url, datetime, etc.)
-    pub data_type: String,
-    /// Optional. More specific type hint if applicable (email, uuid, slug, iso-date, iso-datetime, currency, percentage, phone, relative-url, absolute-url, base64, hex-color, etc.)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub format: Option<String>,
+    /// A single R7RS-small Scheme lambda expression `(lambda (value) ...)` that
+    /// converts a raw string value of the source field into its normalized string
+    /// form. Use `(lambda (value) value)` when no normalization is needed.
+    pub normalization_program: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -94,7 +93,7 @@ pub async fn basis_node<R: Reasoner>(
             .collect::<Vec<_>>()
     };
 
-    let transformations: Vec<FieldTransformation> = result
+    let transformations: Vec<Transformation> = result
         .fields
         .iter()
         .map(|response_field| {
@@ -132,15 +131,12 @@ pub async fn basis_node<R: Reasoner>(
                 );
             }
 
-            FieldTransformation {
+            Transformation {
                 id: ID::new(),
                 description: response_field.description.clone(),
                 field,
                 image: response_field.field_name.clone(),
-                meta: FieldMetadata {
-                    data_type: response_field.data_type.clone(),
-                    format: response_field.format.clone(),
-                },
+                procedure: Some(response_field.normalization_program.clone()),
             }
         })
         .collect();
