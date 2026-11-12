@@ -363,8 +363,6 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
 
     stage.finish();
 
-    panic!();
-
     let start = Instant::now();
     let stage = process.enter_stage("Network analysis");
 

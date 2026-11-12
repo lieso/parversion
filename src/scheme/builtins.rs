@@ -3,6 +3,34 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn subtract(values: Vec<Value>) -> Result<Value, Errors> {
+    let Some((first, rest)) = values.split_first() else {
+        return Err(Errors::ArityMismatch { expected: 1, got: 0 });
+    };
+
+    // (- x) negates
+    if rest.is_empty() {
+        return sub_two(&Value::Integer(0), first);
+    }
+
+    let mut total = first.clone();
+    for value in rest {
+        total = sub_two(&total, value)?;
+    }
+
+    Ok(total)
+}
+
+fn sub_two(a: &Value, b: &Value) -> Result<Value, Errors> {
+    match (a, b) {
+        (Value::Integer(x), Value::Integer(y)) => x
+            .checked_sub(*y)
+            .map(Value::Integer)
+            .ok_or(Errors::Overflow),
+        _ => Ok(Value::Float(as_float(a)? - as_float(b)?)),
+    }
+}
+
 pub fn string_foldcase(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
 

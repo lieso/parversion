@@ -16,8 +16,39 @@ pub fn try_special_form(
         "or" => Some(eval_or(args, frame)),
         "quote" => Some(eval_quote(args)),
         "cond" => Some(eval_cond(args, frame)),
+        "let*" => Some(eval_let_star(args, frame)),
         _ => None,
     }
+}
+
+fn eval_let_star(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
+    let [Expr::List(bindings), body] = args else {
+        return Err(Errors::MalformedLet);
+    };
+
+    let mut current = Arc::clone(frame);
+
+    for binding in bindings {
+        let Expr::List(pair) = binding else {
+            return Err(Errors::MalformedLet);
+        };
+
+        let [Expr::Symbol(name), init] = pair.as_slice() else {
+            return Err(Errors::MalformedLet);
+        };
+
+        let value = eval_expr(init, &current)?;
+
+        let mut bindings = HashMap::new();
+        bindings.insert(name.clone(), value);
+
+        current = Arc::new(Frame {
+            bindings,
+            parent: Some(current),
+        });
+    }
+
+    eval_expr(body, &current)
 }
 
 fn eval_cond(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {

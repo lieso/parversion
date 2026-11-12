@@ -177,6 +177,7 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "string->list" => string_to_list(values)?,
                 "list->string" => list_to_string(values)?,
                 "string-foldcase" => string_foldcase(values)?,
+                "-" => subtract(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }
