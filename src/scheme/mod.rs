@@ -178,6 +178,8 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "list->string" => list_to_string(values)?,
                 "string-foldcase" => string_foldcase(values)?,
                 "-" => subtract(values)?,
+                "pair?" => pair_p(values)?,
+                "char=?" => char_equals(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }

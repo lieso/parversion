@@ -3,6 +3,21 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn char_equals(values: Vec<Value>) -> Result<Value, Errors> {
+    let mut chars = Vec::with_capacity(values.len());
+    for value in &values {
+        chars.push(expect_char(value)?);   // type-check every argument first
+    }
+
+    Ok(Value::Bool(chars.windows(2).all(|pair| pair[0] == pair[1])))
+}
+
+pub fn pair_p(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    Ok(Value::Bool(matches!(&values[0], Value::List(l) if !l.is_empty())))
+}
+
 pub fn subtract(values: Vec<Value>) -> Result<Value, Errors> {
     let Some((first, rest)) = values.split_first() else {
         return Err(Errors::ArityMismatch { expected: 1, got: 0 });
