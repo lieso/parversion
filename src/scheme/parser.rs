@@ -12,6 +12,7 @@ pub enum Expr {
     Bool(bool),
     Symbol(String),
     List(Vec<Expr>),
+    Char(char),
 }
 
 pub fn parse(tokens: Vec<Token>) -> Result<Expr, Errors> {
@@ -49,5 +50,6 @@ fn parse_expr(tokens: &mut Peekable<IntoIter<Token>>) -> Result<Expr, Errors> {
             let datum = parse_expr(tokens)?;
             Ok(Expr::List(vec![Expr::Symbol("quote".to_string()), datum]))
         }
+        Some(Token::Char(c)) => Ok(Expr::Char(c)),
     }
 }

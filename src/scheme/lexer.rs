@@ -13,6 +13,7 @@ pub enum Token {
     Bool(bool),
     Symbol(String),
     Quote,
+    Char(char),
 }
 
 pub fn tokenize(source: &str) -> Result<Vec<Token>, Errors> {
@@ -40,6 +41,9 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, Errors> {
                 chars.next();
                 tokens.push(Token::Quote);
             }
+            '#' if is_char_literal(&chars) => {
+                tokens.push(Token::Char(read_char(&mut chars)?));
+            }
             _ => {
                 tokens.push(classify(read_atom(&mut chars)));
             }
@@ -65,7 +69,7 @@ fn read_atom(chars: &mut Peekable<Chars<'_>>) -> String {
     let mut atom = String::new();
 
     while let Some(&c) = chars.peek() {
-        if c.is_whitespace() || c == '(' || c == ')' || c == '"' || c == '\'' {
+        if is_delimiter(c) {
             break;
         }
         atom.push(c);
@@ -73,6 +77,10 @@ fn read_atom(chars: &mut Peekable<Chars<'_>>) -> String {
     }
 
     atom
+}
+
+fn is_delimiter(c: char) -> bool {
+    c.is_whitespace() || matches!(c, '(' | ')' | '"' | '\'')
 }
 
 fn classify(atom: String) -> Token {
@@ -91,4 +99,48 @@ fn classify(atom: String) -> Token {
     }
 
     Token::Symbol(atom)
+}
+
+fn is_char_literal(chars: &Peekable<Chars<'_>>) -> bool {
+    let mut ahead = chars.clone();
+    ahead.next();
+    ahead.next() == Some('\\')
+}
+
+fn read_char(chars: &mut Peekable<Chars<'_>>) -> Result<char, Errors> {
+    chars.next(); // '#'
+    chars.next(); // '\'
+
+    // The first character is taken unconditionally, so #\( #\) #\" #\' work.
+    let first = chars.next().ok_or(Errors::UnexpectedEndOfInput)?;
+    let mut name = String::from(first);
+
+    while let Some(&c) = chars.peek() {
+        if is_delimiter(c) {
+            break;
+        }
+        name.push(c);
+        chars.next();
+    }
+
+    let mut it = name.chars();
+    match (it.next(), it.next()) {
+        (Some(c), None) => Ok(c),
+        _ => named_char(&name),
+    }
+}
+
+fn named_char(name: &str) -> Result<char, Errors> {
+    match name {
+        "space" => Ok(' '),
+        "newline" => Ok('\n'),
+        "tab" => Ok('\t'),
+        "return" => Ok('\r'),
+        "nul" | "null" => Ok('\0'),
+        "alarm" => Ok('\x07'),
+        "backspace" => Ok('\x08'),
+        "delete" => Ok('\x7f'),
+        "escape" => Ok('\x1b'),
+        _ => Err(Errors::InvalidCharLiteral(name.to_string())),
+    }
 }

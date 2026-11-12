@@ -20,6 +20,7 @@ pub enum Errors {
     MalformedQuote,
     UnsupportedQuote,
     MalformedCond,
+    InvalidCharLiteral(String),
 }
 
 impl fmt::Display for Errors {
@@ -47,6 +48,7 @@ impl fmt::Display for Errors {
             Errors::MalformedQuote => write!(f, "malformed quote"),
             Errors::UnsupportedQuote => write!(f, "unsupported quote"),
             Errors::MalformedCond => write!(f, "malformed cond"),
+            Errors::InvalidCharLiteral(error) => write!(f, "{}", error),
         }
     }
 }

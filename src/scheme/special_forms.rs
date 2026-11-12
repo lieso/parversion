@@ -65,6 +65,7 @@ fn quote_datum(expr: &Expr) -> Result<Value, Errors> {
             items.iter().map(quote_datum).collect::<Result<Vec<_>, _>>()?,
         ),
         Expr::Symbol(_) => return Err(Errors::UnsupportedQuote),
+        Expr::Char(c) => Value::Char(*c),
     })
 }
 

@@ -134,6 +134,7 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
             .get(q)
             .cloned()
             .ok_or_else(|| Errors::UnboundSymbol(q.to_string()))?,
+        Expr::Char(c) => Value::Char(*c),
         Expr::List(l) => {
             let Some((first, rest)) = l.split_first() else {
                 return Err(Errors::EmptyCall);
