@@ -3,6 +3,32 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+fn chain_compare(values: &[Value], accept: fn(Ordering) -> bool) -> Result<Value, Errors> {
+    for value in values {
+        as_float(value)?; // every argument must be a number
+    }
+
+    for pair in values.windows(2) {
+        if !accept(compare(&pair[0], &pair[1])?) {
+            return Ok(Value::Bool(false));
+        }
+    }
+
+    Ok(Value::Bool(true))
+}
+
+pub fn greater_than(values: Vec<Value>) -> Result<Value, Errors> {
+    chain_compare(&values, |o| o == Ordering::Greater)
+}
+
+pub fn less_equal(values: Vec<Value>) -> Result<Value, Errors> {
+    chain_compare(&values, |o| o != Ordering::Greater)
+}
+
+pub fn greater_equal(values: Vec<Value>) -> Result<Value, Errors> {
+    chain_compare(&values, |o| o != Ordering::Less)
+}
+
 pub fn char_equals(values: Vec<Value>) -> Result<Value, Errors> {
     let mut chars = Vec::with_capacity(values.len());
     for value in &values {

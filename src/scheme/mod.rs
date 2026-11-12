@@ -180,6 +180,9 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "-" => subtract(values)?,
                 "pair?" => pair_p(values)?,
                 "char=?" => char_equals(values)?,
+                ">" => greater_than(values)?,
+                "<=" => less_equal(values)?,
+                ">=" => greater_equal(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }
