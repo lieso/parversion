@@ -19,7 +19,17 @@ impl Transformation {
         let mut fields = DataNodeFields::new();
 
         let compiled = match &self.procedure {
-            Some(source) => Some(eval(source)?),
+            Some(source) => {
+                let program = eval(source).map_err(|e| {
+                    log::error!(
+                        "Failed to compile Scheme program during transformation: {:?}",
+                        self.procedure
+                    );
+                    e
+                })?;
+
+                Some(program)
+            },
             None => None,
         };
 
