@@ -3,6 +3,74 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn string_foldcase(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    Ok(Value::Str(expect_str(&values[0])?.to_lowercase()))
+}
+
+pub fn null_p(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    // (null? x) is #f for non-lists, not an error, as in standard Scheme.
+    Ok(Value::Bool(matches!(&values[0], Value::List(l) if l.is_empty())))
+}
+
+pub fn car(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let items = expect_list(&values[0])?;
+
+    items.first().cloned().ok_or(Errors::IndexOutOfRange)
+}
+
+pub fn cdr(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let items = expect_list(&values[0])?;
+
+    if items.is_empty() {
+        return Err(Errors::IndexOutOfRange);
+    }
+
+    Ok(Value::List(items[1..].to_vec()))
+}
+
+pub fn cons(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 2)?;
+    let tail = expect_list(&values[1])?;
+
+    let mut items = Vec::with_capacity(tail.len() + 1);
+    items.push(values[0].clone());
+    items.extend(tail.iter().cloned());
+
+    Ok(Value::List(items))
+}
+
+pub fn reverse(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let items = expect_list(&values[0])?;
+
+    Ok(Value::List(items.iter().rev().cloned().collect()))
+}
+
+pub fn string_to_list(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let s = expect_str(&values[0])?;
+
+    Ok(Value::List(s.chars().map(Value::Char).collect()))
+}
+
+pub fn list_to_string(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let items = expect_list(&values[0])?;
+
+    let mut result = String::new();
+    for item in items {
+        result.push(expect_char(item)?);
+    }
+
+    Ok(Value::Str(result))
+}
+
 pub fn equals(values: Vec<Value>) -> Result<Value, Errors> {
     for pair in values.windows(2) {
         let equal = match (&pair[0], &pair[1]) {
@@ -154,6 +222,13 @@ fn expect_str(value: &Value) -> Result<&str, Errors> {
 fn expect_char(value: &Value) -> Result<char, Errors> {
     match value {
         Value::Char(c) => Ok(*c),
+        _ => Err(Errors::TypeMismatch),
+    }
+}
+
+fn expect_list(value: &Value) -> Result<&Vec<Value>, Errors> {
+    match value {
+        Value::List(items) => Ok(items),
         _ => Err(Errors::TypeMismatch),
     }
 }

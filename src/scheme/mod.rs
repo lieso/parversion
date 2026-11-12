@@ -168,6 +168,14 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "+" => add(values)?,
                 "=" => equals(values)?,
                 "not" => not(values)?,
+                "null?" => null_p(values)?,
+                "car" => car(values)?,
+                "cdr" => cdr(values)?,
+                "cons" => cons(values)?,
+                "reverse" => reverse(values)?,
+                "string->list" => string_to_list(values)?,
+                "list->string" => list_to_string(values)?,
+                "string-foldcase" => string_foldcase(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }
