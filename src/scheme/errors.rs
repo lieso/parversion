@@ -17,6 +17,8 @@ pub enum Errors {
     MalformedIf,
     MalformedLet,
     FieldConversionError(String),
+    MalformedQuote,
+    UnsupportedQuote,
 }
 
 impl fmt::Display for Errors {
@@ -41,6 +43,8 @@ impl fmt::Display for Errors {
             Errors::MalformedIf => write!(f, "malformed if"),
             Errors::MalformedLet => write!(f, "malformed let"),
             Errors::FieldConversionError(error) => write!(f, "{}", error),
+            Errors::MalformedQuote => write!(f, "malformed quote"),
+            Errors::UnsupportedQuote => write!(f, "unsupported quote"),
         }
     }
 }

@@ -12,6 +12,7 @@ pub enum Token {
     Float(f64),
     Bool(bool),
     Symbol(String),
+    Quote,
 }
 
 pub fn tokenize(source: &str) -> Result<Vec<Token>, Errors> {
@@ -34,6 +35,10 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, Errors> {
             '"' => {
                 chars.next();
                 tokens.push(Token::Str(read_string(&mut chars)?));
+            }
+            '\'' => {
+                chars.next();
+                tokens.push(Token::Quote);
             }
             _ => {
                 tokens.push(classify(read_atom(&mut chars)));
@@ -60,7 +65,7 @@ fn read_atom(chars: &mut Peekable<Chars<'_>>) -> String {
     let mut atom = String::new();
 
     while let Some(&c) = chars.peek() {
-        if c.is_whitespace() || c == '(' || c == ')' || c == '"' {
+        if c.is_whitespace() || c == '(' || c == ')' || c == '"' || c == '\'' {
             break;
         }
         atom.push(c);

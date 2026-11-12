@@ -45,5 +45,9 @@ fn parse_expr(tokens: &mut Peekable<IntoIter<Token>>) -> Result<Expr, Errors> {
         Some(Token::Str(s)) => Ok(Expr::Str(s)),
         Some(Token::Bool(b)) => Ok(Expr::Bool(b)),
         Some(Token::Symbol(s)) => Ok(Expr::Symbol(s)),
+        Some(Token::Quote) => {
+            let datum = parse_expr(tokens)?;
+            Ok(Expr::List(vec![Expr::Symbol("quote".to_string()), datum]))
+        }
     }
 }

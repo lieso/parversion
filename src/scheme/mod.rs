@@ -16,6 +16,7 @@ use special_forms::try_special_form;
 
 #[derive(Clone, Debug)]
 pub enum Value {
+    List(Vec<Value>),
     Integer(i64),
     Float(f64),
     Str(String),
@@ -42,6 +43,9 @@ impl Value {
 
     pub fn to_field_value(&self) -> Result<FieldValue, Errors> {
         match self {
+            Value::List(l) => Err(Errors::FieldConversionError(
+                "Attempted to convert a Schem list to a FieldValue variant".to_string(),
+            )),
             Value::Integer(i) => Ok(FieldValue::Integer(i.clone())),
             Value::Float(f) => Ok(FieldValue::Float(f.clone())),
             Value::Str(s) => Ok(FieldValue::Text(s.to_string())),

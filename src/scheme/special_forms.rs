@@ -14,8 +14,30 @@ pub fn try_special_form(
         "and" => Some(eval_and(args, frame)),
         "let" => Some(eval_let(args, frame)),
         "or" => Some(eval_or(args, frame)),
+        "quote" => Some(eval_quote(args)),
         _ => None,
     }
+}
+
+fn eval_quote(args: &[Expr]) -> Result<Value, Errors> {
+    let [datum] = args else {
+        return Err(Errors::MalformedQuote);
+    };
+
+    quote_datum(datum)
+}
+
+fn quote_datum(expr: &Expr) -> Result<Value, Errors> {
+    Ok(match expr {
+        Expr::Integer(i) => Value::Integer(*i),
+        Expr::Float(f) => Value::Float(*f),
+        Expr::Str(s) => Value::Str(s.clone()),
+        Expr::Bool(b) => Value::Bool(*b),
+        Expr::List(items) => Value::List(
+            items.iter().map(quote_datum).collect::<Result<Vec<_>, _>>()?,
+        ),
+        Expr::Symbol(_) => return Err(Errors::UnsupportedQuote),
+    })
 }
 
 fn eval_or(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
