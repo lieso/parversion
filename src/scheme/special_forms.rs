@@ -15,8 +15,36 @@ pub fn try_special_form(
         "let" => Some(eval_let(args, frame)),
         "or" => Some(eval_or(args, frame)),
         "quote" => Some(eval_quote(args)),
+        "cond" => Some(eval_cond(args, frame)),
         _ => None,
     }
+}
+
+fn eval_cond(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
+    for (i, clause) in args.iter().enumerate() {
+        let Expr::List(parts) = clause else {
+            return Err(Errors::MalformedCond);
+        };
+
+        let [test, body] = parts.as_slice() else {
+            return Err(Errors::MalformedCond);
+        };
+
+        if matches!(test, Expr::Symbol(s) if s == "else") {
+            if i != args.len() - 1 {
+                return Err(Errors::MalformedCond);   // else must be last
+            }
+            return eval_expr(body, frame);
+        }
+
+        let result = eval_expr(test, frame)?;
+
+        if !matches!(result, Value::Bool(false)) {
+            return eval_expr(body, frame);
+        }
+    }
+
+    Ok(Value::Bool(false))
 }
 
 fn eval_quote(args: &[Expr]) -> Result<Value, Errors> {
@@ -54,24 +82,30 @@ fn eval_or(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
 
 fn eval_let(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
     if let [Expr::Symbol(loop_name), Expr::List(bindings), body] = args {
-        let [Expr::List(pair)] = bindings.as_slice() else {
-            return Err(Errors::MalformedLet);
-        };
+        let mut params = Vec::with_capacity(bindings.len());
+        let mut inits = Vec::with_capacity(bindings.len());
 
-        let [Expr::Symbol(param), init] = pair.as_slice() else {
-            return Err(Errors::MalformedLet);
-        };
+        for binding in bindings {
+            let Expr::List(pair) = binding else {
+                return Err(Errors::MalformedLet);
+            };
 
-        let init = eval_expr(init, frame)?;
+            let [Expr::Symbol(param), init_expr] = pair.as_slice() else {
+                return Err(Errors::MalformedLet);
+            };
+
+            params.push(param.clone());
+            inits.push(eval_expr(init_expr, frame)?);   // outer frame
+        }
 
         let procedure = Value::Procedure(Procedure {
             name: Some(loop_name.clone()),
-            params: vec![param.clone()],
+            params,
             body: body.clone(),
             captured: Arc::clone(frame),
         });
 
-        return apply(&procedure, vec![init]);
+        return apply(&procedure, inits);
     }
 
     let [binding_list, body] = args else {
