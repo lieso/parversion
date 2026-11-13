@@ -1,28 +1,47 @@
 You are normalizing the values of one field into a canonical form that is easy to
-work with programmatically. Write two Scheme programs: one that converts a raw
-value into its canonical form (normalize), and one that converts a canonical
-value back into a raw form of the kind found in the source (denormalize).
+work with programmatically. Write two Scheme programs: a forward program that
+converts a raw value into its canonical form, and an inverse program that
+converts a canonical value back into a raw form of the kind found in the source.
 
 **INPUT**
 
-[FIELD]
-The name of the field.
+The input has four sections.
 
-[DESCRIPTION]
-A short description of what the field represents.
+[DOCUMENT TYPE]
+The format of the document the values were extracted from, such as `html` or
+`json`.
 
-[CONTEXT]
-Facts about where the values came from, such as the address of the document they
-were extracted from. These facts are established by the input and may be used as
-constants in a program. Anything not stated here is not known.
+[ORIGIN]
+The address of the document the values were extracted from. This is the only
+established fact about where the values came from, and it may be used as a
+constant in a program. If it is `Unknown`, no address is available and none may
+be assumed.
 
 [VALUES]
-One or more raw sample values of the field, separated by
-`---VALUE SEPARATOR---`. A value is arbitrary text. It is the exact string the
-normalize program will receive.
+A JSON array of strings. Each string is one raw value of the field, taken from a
+different location in the document, and is exactly the string that the programs
+will receive. The array shows the range of values the field takes, but it is a
+sample, not the complete set.
 
-Field names are hints, not proof. Confirm what a field means from its values,
-its description, and the context.
+[SNIPPETS]
+A few of the locations the values were extracted from, separated by
+`---SNIPPET SEPARATOR---`. They show how the values appear in the document and
+what surrounds them. Each snippet contains three parts, each introduced by its
+own heading:
+
+- [SPATIAL CONTEXT]: the part of the document around the value. Content between
+  `<!-- TARGET_START -->` and `<!-- TARGET_END -->` marks the location of the
+  value. The markers are not data. Whitespace in the document markup around the
+  markers is not part of the value. Surrounding content is context only.
+- [POSITIONAL CONTEXT]: the path from the document root to the value.
+- [EXTRACTED FIELDS]: the kind of field extracted at that location and its value.
+
+The headings [SPATIAL CONTEXT], [POSITIONAL CONTEXT], and [EXTRACTED FIELDS]
+belong to a snippet. They are not top-level sections.
+
+You are not told what the field means. Work out its role from the values, the
+snippets, the surrounding document, and the structure around it. Names and
+surrounding words are hints, not proof.
 
 **THE GOAL**
 
@@ -36,9 +55,8 @@ canonical outputs.
 
 **STEP 1: DECIDE THE CANONICAL FORM**
 
-Decide what kind of value the field holds from its description, its values, and
-the context, then use the conventional representation for that kind. The result
-is always a string. Use these forms:
+Decide what kind of value the field holds, then use the conventional
+representation for that kind. The result is always a string. Use these forms:
 
 - Whole numbers and counts: decimal digits with an optional leading `-`, with no
   thousands separators, no decimal point, and no surrounding words, labels, or
@@ -48,15 +66,17 @@ is always a string. Use these forms:
   symbols, or units.
 - Elapsed or remaining time expressed relative to some moment: a number of
   seconds, as an integer. Where a unit has no exact length, apply one fixed
-  convention consistently. If [CONTEXT] gives a reference moment that makes the
-  value absolute, you may resolve it against that moment instead.
-- Dates and times: ISO 8601 (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS`), keeping only
-  the precision the value actually has.
+  convention consistently. No current time is available, so do not try to
+  convert a relative value into an absolute one.
+- Dates and times that are already absolute: ISO 8601 (`YYYY-MM-DD` or
+  `YYYY-MM-DDTHH:MM:SS`), keeping only the precision the value actually has.
 - Booleans: exactly `true` or `false`.
-- Addresses and links: a complete absolute URL. If a value is relative and
-  [CONTEXT] establishes the address it is relative to, resolve it against that
-  address following standard URL reference resolution. A value that is already
-  absolute is left unchanged.
+- Links and addresses of resources: a complete absolute URL. If a value is
+  relative and [ORIGIN] establishes the address it is relative to, resolve it
+  against that address following standard URL reference resolution. If [ORIGIN]
+  has no path, treat its path as `/`. A value that is already absolute is left
+  unchanged. Text that merely names or labels something is not a link: treat a
+  value as an address only when the snippets show that it is one.
 - Free text and names: surrounding whitespace removed and internal whitespace
   runs collapsed to a single space.
 
@@ -66,20 +86,20 @@ most standard machine-friendly representation that exists for it.
 Rules:
 
 - Choose one canonical form for the field and use it for every value.
-- Normalize only what the value and the context determine. Do not invent missing
+- Normalize only what the value and [ORIGIN] determine. Do not invent missing
   information, and do not guess. If making a value canonical would need data the
   input does not provide, such as an external lookup, the current time, or a base
-  address that is not shown, do not attempt it.
+  address that is not given, do not attempt it.
 - Remove representational noise (units, labels, wrappers, redundant
   representation) only when the result is the canonical form of the value.
   Preserve all information the field carries.
 - A value that cannot be normalized passes through unchanged. Never drop it or
   guess.
 - If the values already share a consistent canonical form, the identity program
-  `(lambda (value) value)` is the correct normalize program. Do not add
+  `(lambda (value) value)` is the correct forward program. Do not add
   transformations for the sake of it.
 
-**STEP 2: WRITE THE NORMALIZE PROGRAM**
+**STEP 2: WRITE THE FORWARD PROGRAM**
 
 The program is a single Scheme lambda expression with one argument, `value`:
 
@@ -88,10 +108,10 @@ The program is a single Scheme lambda expression with one argument, `value`:
 `value` is the raw value as a string. The result must be a string in the
 canonical form from Step 1.
 
-**STEP 3: WRITE THE DENORMALIZE PROGRAM**
+**STEP 3: WRITE THE INVERSE PROGRAM**
 
-The denormalize program goes in the other direction. It is a single Scheme
-lambda expression with one argument, `value`, which is a canonical string:
+The inverse program goes in the other direction. It is a single Scheme lambda
+expression with one argument, `value`, which is a canonical string:
 
 (lambda (value) ...)
 
@@ -99,17 +119,19 @@ The result must be a string that looks like a raw value of this field as it
 would appear in the source, such as one of the samples. The two programs must
 agree:
 
-- For every canonical value `x`, normalize applied to the result of denormalize
-  applied to `x` must equal `x`. This round trip is the requirement that matters
-  most.
-- Applying denormalize to the result of normalize is not required to reproduce
-  the original text exactly. Some information about the original wording is lost
-  by design. It must express the same meaning.
-- Choose the most natural, most common raw form for the field. If several raw
-  forms are equally valid, choose any one and use it consistently.
+- For every canonical value `x`, the forward program applied to the result of
+  the inverse program applied to `x` must equal `x`. This round trip is the
+  requirement that matters most.
+- Applying the inverse program to the result of the forward program is not
+  required to reproduce the original text exactly. Some information about the
+  original wording is lost by design. It must express the same meaning.
+- Choose the most natural, most common raw form for the field, and make the
+  result read naturally in the style of the samples, including any agreement or
+  pluralization they show. If several raw forms are equally valid, choose any one
+  and use it consistently.
 - A value that is not in canonical form passes through unchanged.
-- If normalize is the identity program, denormalize is also the identity
-  program.
+- If the forward program is the identity program, the inverse program is also the
+  identity program.
 
 **LANGUAGE AND SAFETY REQUIREMENTS (BOTH PROGRAMS)**
 
@@ -128,13 +150,13 @@ agree:
 - Do not compare against, branch on, embed, or return individual sampled values.
   Do not build a lookup table from the samples. A fixed vocabulary that belongs to
   the kind of value itself, such as unit names, is allowed.
-- Constants are allowed when [CONTEXT] establishes them, such as the base address
-  of the source document. Do not embed constants the input does not establish.
+- Constants are allowed when [ORIGIN] establishes them, such as the base address
+  of the document. Do not embed constants the input does not establish.
 - Where a raw value could be read in more than one way, use the reading that is
-  consistent with all of the samples and the context.
-- Mentally test both programs. Check that normalize produces a consistent
-  canonical form for every sample, and that the round trip holds for each
-  normalized result.
+  consistent with all of the samples and the snippets.
+- Mentally test both programs. Check that the forward program produces a
+  consistent canonical form for every sample, and that the round trip holds for
+  each normalized result.
 
 **RESPONSE FORMAT**
 
@@ -142,8 +164,8 @@ Respond with valid JSON only. Do not include Markdown, code fences, comments, or
 text outside the JSON. Use exactly this structure:
 
 {
-  "normalization_program": "<a single Scheme lambda expression>",
-  "denormalization_program": "<a single Scheme lambda expression>"
+  "forward_program": "<a single Scheme lambda expression>",
+  "inverse_program": "<a single Scheme lambda expression>"
 }
 
 Each program must be exactly one Scheme lambda expression, serialized as a JSON
@@ -152,6 +174,6 @@ a character literal such as `#\a` is written `#\\a`. For example, for a field
 holding a yes/no answer:
 
 {
-  "normalization_program": "(lambda (value) (cond ((member (string-downcase value) '(\"yes\" \"true\") string=?) \"true\") ((member (string-downcase value) '(\"no\" \"false\") string=?) \"false\") (else value)))",
-  "denormalization_program": "(lambda (value) (cond ((string=? value \"true\") \"yes\") ((string=? value \"false\") \"no\") (else value)))"
+  "forward_program": "(lambda (value) (cond ((member (string-downcase value) '(\"yes\" \"true\") string=?) \"true\") ((member (string-downcase value) '(\"no\" \"false\") string=?) \"false\") (else value)))",
+  "inverse_program": "(lambda (value) (cond ((string=? value \"true\") \"yes\") ((string=? value \"false\") \"no\") (else value)))"
 }
