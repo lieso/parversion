@@ -7,6 +7,14 @@ use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 use crate::transformation::Transformation;
 
+#[derive(Deserialize, JsonSchema)]
+pub struct TransformationResponse {
+    /// Scheme program that normalizes a value
+    pub forward_program: String,
+    /// Scheme program that denormalizes a value
+    pub inverse_program: String,
+}
+
 pub async fn transformation<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -17,19 +25,74 @@ pub async fn transformation<R: Reasoner>(
 ) -> Result<(Transformation, ReasonerMetadata), Errors> {
     log::trace!("In transformation");
 
+    let system_prompt = get_system_prompt(reasoner).await?;
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&normalization_context),
         &field,
         contexts.clone(),
     ).await?;
+    let schema = serde_json::to_value(schemars::schema_for!(TransformationResponse))
+        .expect("Failed to serialise TransformationResponse schema");
+    let capability = Capability::Capable;
 
+    log::debug!("");
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║                   TRANSFORMATION                              ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("");
+    log::debug!("  Capability : {:?}", capability);
+    log::debug!("");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
     log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
     log::debug!("{}", user_prompt);
     log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
 
+    let (result, metadata) = reasoner
+        .execute::<TransformationResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
 
-    unimplemented!()
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: metadata.input_tokens + metadata.output_tokens,
+        prompts: vec![metadata.prompt_hash.clone()],
+        cost: metadata.cost.unwrap_or(0.0),
+    };
+
+    let transformation = Transformation {
+        id: ID::new(),
+        description: description.clone(),
+        field: field.clone(),
+        image: image.clone(),
+        forward: result.forward_program.clone(),
+        inverse: result.inverse_program.clone(),
+    };
+
+    Ok((transformation, reasoner_metadata))
+}
+
+async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> {
+    reasoner
+        .prompts()
+        .get("", "transformation")
+        .await?
+        .ok_or_else(|| {
+            Errors::UnavailableSystemPrompt(
+                "Expected a transformation.txt system prompt in prompts directory".to_string(),
+            )
+        })
 }
 
 async fn get_user_prompt<R: Reasoner>(
