@@ -241,7 +241,8 @@ async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadat
 
             let md = Metadata {
                 document_type: Some(dt),
-                origin,
+                origin: Some(origin),
+                date: None,
                 role,
             };
 
@@ -287,7 +288,8 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
 
             let md = Metadata {
                 document_type: Some(dt),
-                origin,
+                origin: Some(origin),
+                date: None,
                 role,
             };
 
@@ -297,7 +299,8 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
         let dt = fallback_type.ok_or(Errors::DocumentTypeNotProvided)?;
         let metadata = Metadata {
             document_type: Some(dt),
-            origin: fallback_origin,
+            origin: Some(fallback_origin),
+            date: None,
             role: fallback_role,
         };
         return Ok(vec![(stdin, metadata)]);

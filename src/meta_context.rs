@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
 use crate::context::{Context, ContextID};
-use crate::document::{Document, DocumentType};
+use crate::document::{Document, DocumentType, DocumentMetadata};
 use crate::document_format::DocumentFormat;
 use crate::graph_node::Graph;
 use crate::prelude::*;
@@ -14,6 +14,7 @@ pub struct MetaContext {
     pub contexts_lookup: Arc<HashMap<ID, Arc<Context>>>,
     pub document_type: DocumentType,
     pub acyclic_subgraph_hash: Hash,
+    pub document_metadata: DocumentMetadata,
 }
 
 impl MetaContext {

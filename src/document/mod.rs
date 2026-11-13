@@ -106,8 +106,8 @@ impl Document {
         let document = Document {
             document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
-                origin: options.origin.clone(),
-                date: options.date.clone(),
+                origin: metadata.origin.clone(),
+                date: metadata.date.clone(),
                 name: None,
                 description: None,
                 semantic_content_types: None,
@@ -134,8 +134,8 @@ impl Document {
         let document = Document {
             document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
-                origin: options.origin.clone(),
-                date: options.date.clone(),
+                origin: metadata.origin.clone(),
+                date: metadata.date.clone(),
                 name: None,
                 description: None,
                 semantic_content_types: None,

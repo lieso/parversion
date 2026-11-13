@@ -154,6 +154,7 @@ impl Html {
                     graph_root,
                     contexts_lookup: Arc::new(contexts_lookup),
                     document_type: DocumentType::Html,
+                    document_metadata: metadata.clone(),
                     acyclic_subgraph_hash,
                 }
             })

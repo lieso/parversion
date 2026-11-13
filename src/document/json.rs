@@ -135,6 +135,7 @@ impl Json {
                 graph_root,
                 contexts_lookup: Arc::new(contexts_lookup),
                 document_type: DocumentType::Json,
+                document_metadata: metadata.clone(),
                 acyclic_subgraph_hash,
             }],
             Vec::new(),
