@@ -11,6 +11,7 @@ pub async fn transformation<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     field_name: String,
     image: String,
+    description: String,
     contexts: Vec<Arc<Context>>
 ) -> Result<(Transformation, ReasonerMetadata), Errors> {
     log::trace!("In transformation");

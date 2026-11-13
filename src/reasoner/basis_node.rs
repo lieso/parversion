@@ -124,10 +124,17 @@ pub async fn basis_node<R: Reasoner>(
         let cloned_normalization_context = Arc::clone(&normalization_context);
         let cloned_context_group = context_group.clone();
         let image = response_field.field_name;
+        let description = response_field.description;
 
         futures.push(async move {
             reasoner
-                .transformation(cloned_normalization_context, field, image, cloned_context_group)
+                .transformation(
+                    cloned_normalization_context,
+                    field,
+                    image,
+                    description,
+                    cloned_context_group
+                )
                 .await
         });
     }

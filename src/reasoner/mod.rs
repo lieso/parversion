@@ -221,6 +221,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         field_name: String,
         image: String,
+        description: String,
         contexts: Vec<Arc<Context>>,
     ) -> Result<(Transformation, ReasonerMetadata), Errors> {
         transformation::transformation(
@@ -228,6 +229,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
             normalization_context,
             field_name,
             image,
+            description,
             contexts,
         )
         .await
