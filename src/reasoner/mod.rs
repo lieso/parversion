@@ -13,6 +13,7 @@ use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::prompt_registry::PromptRegistry;
 use crate::translation_node::TranslationNode;
+use crate::transformation::Transformation;
 
 mod backend;
 mod basis_field;
@@ -25,6 +26,7 @@ mod node_relationship;
 mod sampling;
 mod translation;
 mod translation_node;
+mod transformation;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -210,6 +212,23 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
             left_contexts,
             right_lineage,
             right_contexts,
+        )
+        .await
+    }
+
+    async fn transformation(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        field_name: String,
+        image: String,
+        contexts: Vec<Arc<Context>>,
+    ) -> Result<(Transformation, ReasonerMetadata), Errors> {
+        transformation::transformation(
+            self,
+            normalization_context,
+            field_name,
+            image,
+            contexts,
         )
         .await
     }

@@ -1,6 +1,8 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
+use futures::future::try_join_all;
+use tokio::task;
 
 use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_group::BasisGroup;
@@ -17,10 +19,6 @@ pub struct BasisNodeResponseItem {
     pub field_name: String,
     /// Brief description of what this data represents, as if documenting an API field
     pub description: String,
-    /// A single R7RS-small Scheme lambda expression `(lambda (value) ...)` that
-    /// converts a raw string value of the source field into its normalized string
-    /// form. Use `(lambda (value) value)` when no normalization is needed.
-    pub normalization_program: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -39,7 +37,7 @@ pub async fn basis_node<R: Reasoner>(
 
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
     let user_prompt =
-        get_user_prompt(reasoner, Arc::clone(&normalization_context), context_group).await?;
+        get_user_prompt(reasoner, Arc::clone(&normalization_context), context_group.clone()).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisNodeResponse))
         .expect("Failed to serialise BasisNodeResponse schema");
     let capability = Capability::Fast;
@@ -73,7 +71,7 @@ pub async fn basis_node<R: Reasoner>(
         .execute::<BasisNodeResponse>(&capability, &system_prompt, &user_prompt, schema)
         .await?;
 
-    let reasoner_metadata = ReasonerMetadata {
+    let mut reasoner_metadata = ReasonerMetadata {
         tokens: metadata.input_tokens + metadata.output_tokens,
         prompts: vec![metadata.prompt_hash.clone()],
         cost: metadata.cost.unwrap_or(0.0),
@@ -93,53 +91,58 @@ pub async fn basis_node<R: Reasoner>(
             .collect::<Vec<_>>()
     };
 
-    let transformations: Vec<Transformation> = result
-        .fields
-        .iter()
-        .map(|response_field| {
-            log::debug!(
-                "Field: {} (source: {})",
-                response_field.field_name,
-                response_field.source_field
-            );
+    let mut futures = Vec::new();
 
-            let field = {
-                let source = response_field.source_field.trim();
-                let after_field_marker = source
-                    .strip_prefix("FIELD:")
-                    .or_else(|| source.strip_prefix("FIELD="))
-                    .unwrap_or(source);
-                let field_token = after_field_marker
-                    .split(',')
-                    .next()
-                    .unwrap_or(after_field_marker)
-                    .trim();
+    for response_field in result.fields {
+        let field = {
+            let source = response_field.source_field.trim();
+            let after_field_marker = source
+                .strip_prefix("FIELD:")
+                .or_else(|| source.strip_prefix("FIELD="))
+                .unwrap_or(source);
+            let field_token = after_field_marker
+                .split(',')
+                .next()
+                .unwrap_or(after_field_marker)
+                .trim();
 
-                if field_token.eq_ignore_ascii_case("text") {
-                    "text".to_string()
-                } else {
-                    field_token.to_string()
-                }
-            };
-
-            if !basis_fields.iter().any(|basis_field| basis_field.name == field) {
-                panic!(
-                    "Invalid source field in LLM response: parsed field '{}' (raw source_field: '{}') not found in basis_fields: {:?}",
-                    field,
-                    response_field.source_field,
-                    basis_fields.iter().map(|f| &f.name).collect::<Vec<_>>()
-                );
+            if field_token.eq_ignore_ascii_case("text") {
+                "text".to_string()
+            } else {
+                field_token.to_string()
             }
+        };
 
-            Transformation {
-                id: ID::new(),
-                description: response_field.description.clone(),
+        if !basis_fields.iter().any(|basis_field| basis_field.name == field) {
+            panic!(
+                "Invalid source field in LLM response: parsed field '{}' (raw source_field: '{}') not found in basis_fields: {:?}",
                 field,
-                image: response_field.field_name.clone(),
-                procedure: Some(response_field.normalization_program.clone()),
-            }
-        })
-        .collect();
+                response_field.source_field,
+                basis_fields.iter().map(|f| &f.name).collect::<Vec<_>>()
+            );
+        }
+
+        let cloned_reasoner = reasoner.clone();
+        let cloned_normalization_context = Arc::clone(&normalization_context);
+        let cloned_context_group = context_group.clone();
+        let image = response_field.field_name;
+
+        futures.push(async move {
+            reasoner
+                .transformation(cloned_normalization_context, field, image, cloned_context_group)
+                .await
+        });
+    }
+
+    let results = try_join_all(futures).await?;
+
+    let mut transformations: Vec<Transformation> = Vec::new();
+
+    for result in results {
+        let (transformation, metadata) = result;
+
+        transformations.push(transformation);
+    }
 
     let basis_node = BasisNode {
         id: ID::new(),
