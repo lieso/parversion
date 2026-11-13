@@ -71,11 +71,9 @@ pub async fn basis_node<R: Reasoner>(
         .execute::<BasisNodeResponse>(&capability, &system_prompt, &user_prompt, schema)
         .await?;
 
-    let mut reasoner_metadata = ReasonerMetadata {
-        tokens: metadata.input_tokens + metadata.output_tokens,
-        prompts: vec![metadata.prompt_hash.clone()],
-        cost: metadata.cost.unwrap_or(0.0),
-    };
+    let mut total_tokens: u32 = metadata.input_tokens + metadata.output_tokens;
+    let mut total_cost: f64 = metadata.cost.unwrap_or(0.0);
+    let mut total_prompts = vec![metadata.prompt_hash.clone()];
 
     let basis_fields = {
         let lock = read_lock!(normalization_context);
@@ -141,8 +139,18 @@ pub async fn basis_node<R: Reasoner>(
     for result in results {
         let (transformation, metadata) = result;
 
+        total_tokens += metadata.tokens;
+        total_cost += metadata.cost;
+        total_prompts.extend(metadata.prompts);
+
         transformations.push(transformation);
     }
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: total_tokens,
+        prompts: total_prompts,
+        cost: total_cost,
+    };
 
     let basis_node = BasisNode {
         id: ID::new(),
