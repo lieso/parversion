@@ -1,5 +1,6 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
+use serde_json;
 use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
@@ -64,24 +65,18 @@ async fn get_user_prompt<R: Reasoner>(
         .collect::<Result<Vec<String>, Errors>>()?;
     let snippets = context_strings.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-    let values: String = group
+    let values: Vec<String> = group
         .iter()
         .flat_map(|context| {
             context.data_node.fields.get_all(field)
         })
-        .fold(String::new(), |acc, field_value| {
-            if acc.is_empty() {
-                field_value.to_string()
-            } else {
-                format!("{}\n{}", acc, field_value.to_string())
-            }
-        });
+        .take(17)
+        .map(|field_value| field_value.to_string())
+        .collect();
+    let values = serde_json::to_string_pretty(&values).expect("Could not make a JSON string");
 
     Ok(format!(r##"
 [DOCUMENT TYPE]
-{}
-
-[SNIPPETS]
 {}
 
 [ORIGIN]
@@ -89,6 +84,9 @@ async fn get_user_prompt<R: Reasoner>(
 
 [VALUES]
 {}
-"##, document_type, snippets, origin, values
+
+[SNIPPETS]
+{}
+"##, document_type, origin, values, snippets
     ))
 }
