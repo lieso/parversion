@@ -67,9 +67,6 @@ For meaningful fields, provide exactly one mapping per source field:
 - source_field: The key of the extracted field, copied exactly as it appears after "FIELD:"
 - field_name: Semantic snake_case identifier reflecting its role in the data model
 - description: Brief description of what the field represents
-- data_type: Inferred primitive type (string, number, boolean, url, datetime, etc.). If values are
-inconsistent, choose the type that best describes the field's role.
-- format: Optional. More specific type hint if applicable.
 
 **Important:** Each source field should map to exactly one output field_name. Do not provide multiple
 mappings for the same source field. If the existing key describes the field's role well, it is fine to
@@ -88,9 +85,7 @@ Respond with valid JSON. Return one entry per meaningful field identified:
     {
       "source_field": "id",
       "field_name": "record_id",
-      "description": "Unique identifier of the record",
-      "data_type": "string",
-      "format": "uuid"
+      "description": "Unique identifier of the record"
     }
   ]
 }
