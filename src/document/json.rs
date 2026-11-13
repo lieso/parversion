@@ -1,5 +1,5 @@
-use serde_json::{json, Map, Value};
 use serde_json::map::Entry;
+use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
@@ -222,9 +222,6 @@ impl Json {
     ) -> Result<String, Errors> {
         log::trace!("In from_denormalization");
 
-
-
-
         fn descend_new_instance<'a>(
             current: &'a mut Map<String, Value>,
             network_name: &str,
@@ -238,7 +235,7 @@ impl Json {
                         .insert(instance)
                         .as_object_mut()
                         .expect("Network should be a JSON object");
-                    }
+                }
                 Entry::Occupied(occupied) => occupied.into_mut(),
             };
 
@@ -256,11 +253,6 @@ impl Json {
                 .expect("Network instance should be a JSON object")
         }
 
-
-
-
-
-
         let meta_context = {
             let lock = read_lock!(normalization_context);
             lock.meta_context
@@ -270,26 +262,21 @@ impl Json {
                         "Meta context not provided in normalization context".to_string(),
                     )
                 })?
-            .clone()
+                .clone()
         };
-
 
         let mut result: Value = Value::Object(Map::new());
 
-
-
         for normal_context in normal_meta_context.contexts.values() {
-
-            for (index, canonical_context) in normal_context.contexts.clone().into_iter().enumerate() {
-
+            for (index, canonical_context) in
+                normal_context.contexts.clone().into_iter().enumerate()
+            {
                 log::debug!("canonical_context: {:?}", canonical_context.id);
-
 
                 let ancestors = {
                     let mut ancestors: Vec<Graph> = Vec::new();
-                    let mut current_parents = read_lock!(canonical_context.graph_node)
-                        .parents
-                        .clone();
+                    let mut current_parents =
+                        read_lock!(canonical_context.graph_node).parents.clone();
 
                     while !current_parents.is_empty() {
                         let parent = current_parents[0].clone();
@@ -301,18 +288,13 @@ impl Json {
                     ancestors
                 };
 
-                
-
-
-
                 let mut current: &mut Map<String, Value> = result
                     .as_object_mut()
                     .expect("Result should be a JSON object");
 
                 for ancestor in ancestors {
-                    let Some(ancestor_context) = meta_context
-                        .contexts_lookup
-                        .get(&read_lock!(ancestor).id)
+                    let Some(ancestor_context) =
+                        meta_context.contexts_lookup.get(&read_lock!(ancestor).id)
                     else {
                         continue;
                     };
@@ -320,7 +302,6 @@ impl Json {
                     if ancestor_context.network_name.is_empty() {
                         continue;
                     }
-
 
                     if index == 0 {
                         // First context of this normal context starts a new instance
@@ -343,12 +324,6 @@ impl Json {
                     }
                 }
 
-
-
-
-
-
-
                 if !canonical_context.network_name.is_empty() {
                     current = current
                         .entry(canonical_context.network_name.clone())
@@ -356,9 +331,6 @@ impl Json {
                         .as_object_mut()
                         .expect("Network should be a json object");
                 }
-
-
-
 
                 for json_node in normal_context.data_node.to_json_nodes() {
                     let json = json_node.json;
@@ -376,23 +348,8 @@ impl Json {
                         }
                     }
                 }
-
-
-
-
-
-
-
-
-
-
             }
-
-
-
-
         }
-
 
         let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
 

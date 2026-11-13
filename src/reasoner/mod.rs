@@ -12,8 +12,8 @@ use crate::node_relationship::NodeRelationship;
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::prompt_registry::PromptRegistry;
-use crate::translation_node::TranslationNode;
 use crate::transformation::Transformation;
+use crate::translation_node::TranslationNode;
 
 mod backend;
 mod basis_field;
@@ -24,9 +24,9 @@ mod classify;
 mod network_relationship;
 mod node_relationship;
 mod sampling;
+mod transformation;
 mod translation;
 mod translation_node;
-mod transformation;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -219,7 +219,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
     async fn transformation(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
-        field_name: String,
+        field: String,
         image: String,
         description: String,
         contexts: Vec<Arc<Context>>,
@@ -227,7 +227,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         transformation::transformation(
             self,
             normalization_context,
-            field_name,
+            field,
             image,
             description,
             contexts,

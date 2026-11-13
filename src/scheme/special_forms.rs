@@ -63,7 +63,7 @@ fn eval_cond(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
 
         if matches!(test, Expr::Symbol(s) if s == "else") {
             if i != args.len() - 1 {
-                return Err(Errors::MalformedCond);   // else must be last
+                return Err(Errors::MalformedCond); // else must be last
             }
             return eval_expr(body, frame);
         }
@@ -93,7 +93,10 @@ fn quote_datum(expr: &Expr) -> Result<Value, Errors> {
         Expr::Str(s) => Value::Str(s.clone()),
         Expr::Bool(b) => Value::Bool(*b),
         Expr::List(items) => Value::List(
-            items.iter().map(quote_datum).collect::<Result<Vec<_>, _>>()?,
+            items
+                .iter()
+                .map(quote_datum)
+                .collect::<Result<Vec<_>, _>>()?,
         ),
         Expr::Symbol(_) => return Err(Errors::UnsupportedQuote),
         Expr::Char(c) => Value::Char(*c),
@@ -127,7 +130,7 @@ fn eval_let(args: &[Expr], frame: &Arc<Frame>) -> Result<Value, Errors> {
             };
 
             params.push(param.clone());
-            inits.push(eval_expr(init_expr, frame)?);   // outer frame
+            inits.push(eval_expr(init_expr, frame)?); // outer frame
         }
 
         let procedure = Value::Procedure(Procedure {

@@ -1,7 +1,7 @@
+use futures::future::try_join_all;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
-use futures::future::try_join_all;
 use tokio::task;
 
 use super::sampling::{pre_sample_context_group, sample_most_different};
@@ -36,8 +36,12 @@ pub async fn basis_node<R: Reasoner>(
     log::trace!("In basis_node");
 
     let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
-    let user_prompt =
-        get_user_prompt(reasoner, Arc::clone(&normalization_context), context_group.clone()).await?;
+    let user_prompt = get_user_prompt(
+        reasoner,
+        Arc::clone(&normalization_context),
+        context_group.clone(),
+    )
+    .await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisNodeResponse))
         .expect("Failed to serialise BasisNodeResponse schema");
     let capability = Capability::Fast;
@@ -111,7 +115,10 @@ pub async fn basis_node<R: Reasoner>(
             }
         };
 
-        if !basis_fields.iter().any(|basis_field| basis_field.name == field) {
+        if !basis_fields
+            .iter()
+            .any(|basis_field| basis_field.name == field)
+        {
             panic!(
                 "Invalid source field in LLM response: parsed field '{}' (raw source_field: '{}') not found in basis_fields: {:?}",
                 field,
@@ -120,7 +127,6 @@ pub async fn basis_node<R: Reasoner>(
             );
         }
 
-        let cloned_reasoner = reasoner.clone();
         let cloned_normalization_context = Arc::clone(&normalization_context);
         let cloned_context_group = context_group.clone();
         let image = response_field.field_name;
@@ -133,7 +139,7 @@ pub async fn basis_node<R: Reasoner>(
                     field,
                     image,
                     description,
-                    cloned_context_group
+                    cloned_context_group,
                 )
                 .await
         });

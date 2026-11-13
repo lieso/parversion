@@ -9,10 +9,10 @@ use crate::transformation::Transformation;
 pub async fn transformation<R: Reasoner>(
     reasoner: &R,
     normalization_context: Arc<RwLock<NormalizationContext>>,
-    field_name: String,
+    field: String,
     image: String,
     description: String,
-    contexts: Vec<Arc<Context>>
+    contexts: Vec<Arc<Context>>,
 ) -> Result<(Transformation, ReasonerMetadata), Errors> {
     log::trace!("In transformation");
 

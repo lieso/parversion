@@ -29,7 +29,7 @@ impl Transformation {
                 })?;
 
                 Some(program)
-            },
+            }
             None => None,
         };
 
