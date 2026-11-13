@@ -583,8 +583,8 @@ pub async fn report_translation_nodes(
                 RED, transformation.field, transformation.image, RESET
             );
             println!(
-                "{}    procedure: {:?}{}",
-                RED, transformation.procedure, RESET
+                "{}    procedure: {}{}",
+                RED, transformation.forward, RESET
             );
         }
     }

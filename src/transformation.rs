@@ -10,45 +10,35 @@ pub struct Transformation {
     pub id: ID,
     pub description: String,
     pub field: String,
-    pub procedure: Option<String>,
     pub image: String,
+    pub forward: String,
+    pub inverse: String,
 }
 
 impl Transformation {
     pub fn transform(&self, data_node: Arc<DataNode>) -> Result<DataNode, Errors> {
         let mut fields = DataNodeFields::new();
 
-        let compiled = match &self.procedure {
-            Some(source) => {
-                let program = eval(source).map_err(|e| {
-                    log::error!(
-                        "Failed to compile Scheme program during transformation: {:?}",
-                        self.procedure
-                    );
-                    e
-                })?;
-
-                Some(program)
-            }
-            None => None,
-        };
+        let compiled = eval(&self.forward).map_err(|e| {
+            log::error!(
+                "Failed to compile Scheme program during transformation: {:?}",
+                self.forward
+            );
+            e
+        })?;
 
         for value in data_node.fields.get(&self.field) {
-            let out = match &compiled {
-                Some(procedure) => {
-                    let arguments = vec![Value::from_field_value(value.clone())];
-                    let transformed_value = apply(procedure, arguments).map_err(|e| {
-                        log::error!(
-                            "Failed to apply procedure when transforming value: {:?}",
-                            self.procedure
-                        );
-                        e
-                    })?;
+            let arguments = vec![Value::from_field_value(value.clone())];
+            let transformed_value = apply(&compiled, arguments).map_err(|e| {
+                log::error!(
+                    "Failed to apply procedure when transforming value: {:?}",
+                    self.forward
+                );
+                e
+            })?;
 
-                    transformed_value.to_field_value()?
-                }
-                None => value.clone(),
-            };
+            let out = transformed_value.to_field_value()?;
+
             fields.insert(self.image.clone(), out);
         }
 

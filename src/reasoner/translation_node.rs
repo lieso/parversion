@@ -99,7 +99,8 @@ pub async fn translation_node<R: Reasoner>(
                 field: field.clone(),
                 image: result.target_field.clone(),
                 description: "placeholder".to_string(),
-                procedure: Some(result.program.clone()),
+                forward: result.program.clone(),
+                inverse: "".to_string(),
             };
 
             transformations.push(transformation);
