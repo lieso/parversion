@@ -1,6 +1,6 @@
 You are normalizing the values of one field into a canonical form that is easy to
-work with programmatically. Write two Scheme programs: a forward program that
-converts a raw value into its canonical form, and an inverse program that
+work with programmatically. Write two small Scheme programs: a forward program
+that converts a raw value into its canonical form, and an inverse program that
 converts a canonical value back into a raw form of the kind found in the source.
 
 **INPUT**
@@ -48,35 +48,42 @@ surrounding words are hints, not proof.
 The purpose of normalization is to turn text written for human readers into data
 that code can compare, sort, filter, and compute with. Choose the canonical form
 that a programmer would want to store and query: if a value is a count, it
-should be an integer; if it is an amount of time, a number; if it is a location,
-a complete address. Values that mean the same thing must produce the same
-canonical output. Values that mean different things must produce different
+should be a plain integer; if it is an amount of time, a number; if it is a
+location, a complete address. Values that mean the same thing must produce the
+same canonical output. Values that mean different things must produce different
 canonical outputs.
+
+Programs must be short and simple. A short program that handles the forms of
+the value actually seen is better than a long one that tries to handle every
+form that could exist.
 
 **STEP 1: DECIDE THE CANONICAL FORM**
 
 Decide what kind of value the field holds, then use the conventional
-representation for that kind. The result is always a string. Use these forms:
+representation for that kind. Values and results are always strings. Use these
+forms:
 
 - Whole numbers and counts: decimal digits with an optional leading `-`, with no
   thousands separators, no decimal point, and no surrounding words, labels, or
-  units. Expand abbreviated magnitudes.
+  units.
 - Other numbers (amounts, ratings, measurements): decimal digits with an optional
   leading `-` and a `.` decimal point, with no thousands separators, currency
   symbols, or units.
 - Elapsed or remaining time expressed relative to some moment: a number of
-  seconds, as an integer. Where a unit has no exact length, apply one fixed
-  convention consistently. No current time is available, so do not try to
-  convert a relative value into an absolute one.
+  seconds, written as an integer. Where a unit has no exact length, apply one
+  fixed convention consistently. No current time is available, so never convert
+  a relative value into an absolute one.
 - Dates and times that are already absolute: ISO 8601 (`YYYY-MM-DD` or
   `YYYY-MM-DDTHH:MM:SS`), keeping only the precision the value actually has.
 - Booleans: exactly `true` or `false`.
-- Links and addresses of resources: a complete absolute URL. If a value is
-  relative and [ORIGIN] establishes the address it is relative to, resolve it
-  against that address following standard URL reference resolution. If [ORIGIN]
-  has no path, treat its path as `/`. A value that is already absolute is left
-  unchanged. Text that merely names or labels something is not a link: treat a
-  value as an address only when the snippets show that it is one.
+- Links and addresses of resources: a complete absolute URL. A value that
+  already begins with a scheme such as `https:` is left unchanged. Any other
+  value is joined onto [ORIGIN]: a value that begins with `/` is appended to the
+  origin, and any other value is appended after the origin and a single `/`.
+  Make sure the joined result has exactly one `/` at the join. Do not process
+  `.` or `..` segments, `//` prefixes, queries, or fragments. Text that merely
+  names or labels something is not a link: treat a value as an address only when
+  the snippets show that it is one.
 - Free text and names: surrounding whitespace removed and internal whitespace
   runs collapsed to a single space.
 
@@ -93,8 +100,8 @@ Rules:
 - Remove representational noise (units, labels, wrappers, redundant
   representation) only when the result is the canonical form of the value.
   Preserve all information the field carries.
-- A value that cannot be normalized passes through unchanged. Never drop it or
-  guess.
+- A value in a shape the program was not designed for passes through unchanged.
+  Never drop it or guess.
 - If the values already share a consistent canonical form, the identity program
   `(lambda (value) value)` is the correct forward program. Do not add
   transformations for the sake of it.
@@ -133,30 +140,40 @@ agree:
 - If the forward program is the identity program, the inverse program is also the
   identity program.
 
+**KEEP PROGRAMS SHORT**
+
+- Write the smallest program that is correct for the kinds of variation visible
+  in [VALUES] and the snippets. Most programs should be a few lines.
+- Do not implement general parsers or full specifications. Handle the forms
+  that are present and let any other shape pass through unchanged.
+- Tell forms apart with cheap checks, such as the first character, or one scan
+  over the characters of `value`.
+- The inverse program should be even simpler than the forward program, because
+  it only has to produce one natural raw form.
+- A program that needs more than one loop, or deeply nested conditions, is
+  almost certainly doing too much. Simplify it.
+- Where a value could be read in more than one way, use the reading that is
+  consistent with all of the samples and the snippets.
+- Do not compare against, branch on, embed, or return individual sampled values.
+  Do not build a lookup table from the samples.
+- Constants are allowed when [ORIGIN] establishes them. Do not embed constants
+  the input does not establish.
+- Mentally test both programs against the samples and check that the round trip
+  holds for each normalized result.
+
 **LANGUAGE AND SAFETY REQUIREMENTS (BOTH PROGRAMS)**
 
-- Write R7RS-small Scheme. Use only R7RS-small procedures and special forms.
+- Write Scheme as a single lambda expression made of the most basic constructs:
+  `lambda`, `if`, `cond`, `and`, `or`, `let`, `let*`, a named `let` when a loop
+  is unavoidable, and elementary string, character, list, and number procedures.
+- Each program is one self-contained expression. Do not define helper
+  procedures, do not sequence several steps, and do not mutate anything. Combine
+  steps by nesting expressions or by using `let` bindings.
 - Each program must be pure and deterministic.
 - Do not perform input or output.
 - Do not access the network, file system, environment, or current time.
 - Do not use randomness, `eval`, or `load`.
-- Do not mutate state outside the program's own local bindings.
 - Recursion and iteration must be bounded by the length of `value`.
-
-**PROGRAM RULES (BOTH PROGRAMS)**
-
-- Generalize beyond the samples. Encode a rule that works for values not yet
-  seen, not one that fits only the samples shown.
-- Do not compare against, branch on, embed, or return individual sampled values.
-  Do not build a lookup table from the samples. A fixed vocabulary that belongs to
-  the kind of value itself, such as unit names, is allowed.
-- Constants are allowed when [ORIGIN] establishes them, such as the base address
-  of the document. Do not embed constants the input does not establish.
-- Where a raw value could be read in more than one way, use the reading that is
-  consistent with all of the samples and the snippets.
-- Mentally test both programs. Check that the forward program produces a
-  consistent canonical form for every sample, and that the round trip holds for
-  each normalized result.
 
 **RESPONSE FORMAT**
 
@@ -171,9 +188,9 @@ text outside the JSON. Use exactly this structure:
 Each program must be exactly one Scheme lambda expression, serialized as a JSON
 string with valid escaping. Double quotes inside a program are written `\"`, and
 a character literal such as `#\a` is written `#\\a`. For example, for a field
-holding a yes/no answer:
+whose values are wrapped in square brackets:
 
 {
-  "forward_program": "(lambda (value) (cond ((member (string-downcase value) '(\"yes\" \"true\") string=?) \"true\") ((member (string-downcase value) '(\"no\" \"false\") string=?) \"false\") (else value)))",
-  "inverse_program": "(lambda (value) (cond ((string=? value \"true\") \"yes\") ((string=? value \"false\") \"no\") (else value)))"
+  "forward_program": "(lambda (value) (if (and (> (string-length value) 1) (char=? (string-ref value 0) #\\[) (char=? (string-ref value (- (string-length value) 1)) #\\])) (substring value 1 (- (string-length value) 1)) value))",
+  "inverse_program": "(lambda (value) (string-append \"[\" value \"]\"))"
 }

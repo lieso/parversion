@@ -34,7 +34,7 @@ pub async fn transformation<R: Reasoner>(
     ).await?;
     let schema = serde_json::to_value(schemars::schema_for!(TransformationResponse))
         .expect("Failed to serialise TransformationResponse schema");
-    let capability = Capability::Capable;
+    let capability = Capability::Fast;
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
