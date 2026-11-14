@@ -1,8 +1,10 @@
 use std::sync::{Arc, RwLock};
+use serde_json::{json, Map, Value};
 
 use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::graph_node::GraphNode;
+use crate::json_node::JsonNode;
 use crate::prelude::*;
 
 #[derive(Clone, Debug)]
@@ -41,7 +43,32 @@ impl NormalContext {
             },
         )?;
 
-        let object: String = serde_json::to_string_pretty(&self.data_node.fields)?;
+        let mut result: Value = Value::Object(Map::new());
+
+        let json_nodes: Vec<JsonNode> = self.data_node.to_json_nodes();
+
+        for json_node in json_nodes {
+            let json = json_node.json;
+            let value = json.value;
+
+            if let Value::Object(ref mut map) = result {
+                match map.get_mut(&json.key) {
+                    Some(Value::Array(arr)) => {
+                        arr.push(value);
+                    }
+                    Some(existing) => {
+                        let existing_value = existing.clone();
+                        *existing = json!(vec![existing_value, value]);
+                    }
+                    None => {
+                        map.insert(json.key, value);
+                    }
+                }
+            }
+
+        }
+
+        let object: String = serde_json::to_string_pretty(&result)?;
 
         let result = format!(
             r##"
