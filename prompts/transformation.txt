@@ -86,8 +86,6 @@ string of digits, and a boolean as a boolean. Use these forms:
   process `.` or `..` segments, `//` prefixes, queries, or fragments. Text that
   merely names or labels something is not a link: treat a value as an address
   only when the snippets show that it is one.
-- Free text and names: a string with surrounding whitespace removed and internal
-  whitespace runs collapsed to a single space.
 
 These are guidelines, not a closed list. For a kind of value not listed, use the
 most standard machine-friendly representation and type that exists for it.

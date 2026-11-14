@@ -194,6 +194,7 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "number?" => number_p(values)?,
                 "integer->char" => integer_to_char(values)?,
                 "string" => string_from_chars(values)?,
+                "char->integer" => char_to_integer(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }

@@ -3,6 +3,13 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn char_to_integer(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let c = expect_char(&values[0])?;
+
+    Ok(Value::Integer(c as u32 as i64))
+}
+
 pub fn string_from_chars(values: Vec<Value>) -> Result<Value, Errors> {
     let mut s = String::new();
     for value in &values {
