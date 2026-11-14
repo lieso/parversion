@@ -3,6 +3,15 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn string_from_chars(values: Vec<Value>) -> Result<Value, Errors> {
+    let mut s = String::new();
+    for value in &values {
+        s.push(expect_char(value)?);
+    }
+
+    Ok(Value::Str(s))
+}
+
 pub fn integer_to_char(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
     let code = expect_index(&values[0])?;
