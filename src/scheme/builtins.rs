@@ -3,6 +3,78 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn integer_p(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    // (integer? x) is #f for non-numbers, not an error, as in standard Scheme.
+    Ok(Value::Bool(match &values[0] {
+        Value::Integer(_) => true,
+        Value::Float(f) => f.is_finite() && f.fract() == 0.0,
+        _ => false,
+    }))
+}
+
+pub fn multiply(values: Vec<Value>) -> Result<Value, Errors> {
+    let mut total = Value::Integer(1);
+
+    for value in &values {
+        total = mul_two(&total, value)?;
+    }
+
+    Ok(total)
+}
+
+fn mul_two(a: &Value, b: &Value) -> Result<Value, Errors> {
+    match (a, b) {
+        (Value::Integer(x), Value::Integer(y)) => x
+            .checked_mul(*y)
+            .map(Value::Integer)
+            .ok_or(Errors::Overflow),
+        _ => Ok(Value::Float(as_float(a)? * as_float(b)?)),
+    }
+}
+
+fn chain_compare_chars(
+    values: &[Value],
+    accept: fn(Ordering) -> bool,
+) -> Result<Value, Errors> {
+    let chars = values
+        .iter()
+        .map(expect_char)
+        .collect::<Result<Vec<_>, _>>()?; // type-check every argument first
+
+    Ok(Value::Bool(
+        chars.windows(2).all(|p| accept(p[0].cmp(&p[1]))),
+    ))
+}
+
+pub fn char_less_equal(values: Vec<Value>) -> Result<Value, Errors> {
+    chain_compare_chars(&values, |o| o != Ordering::Greater)
+}
+
+pub fn char_greater_equal(values: Vec<Value>) -> Result<Value, Errors> {
+    chain_compare_chars(&values, |o| o != Ordering::Less)
+}
+
+pub fn string_equals(values: Vec<Value>) -> Result<Value, Errors> {
+    let strs = values
+        .iter()
+        .map(expect_str)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(Value::Bool(strs.windows(2).all(|p| p[0] == p[1])))
+}
+
+pub fn number_to_string(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    match &values[0] {
+        Value::Integer(i) => Ok(Value::Str(i.to_string())),
+        Value::Float(f) => Ok(Value::Str(f.to_string())),
+        _ => Err(Errors::TypeMismatch),
+    }
+}
+
 fn chain_compare(values: &[Value], accept: fn(Ordering) -> bool) -> Result<Value, Errors> {
     for value in values {
         as_float(value)?; // every argument must be a number

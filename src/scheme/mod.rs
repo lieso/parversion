@@ -183,6 +183,12 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 ">" => greater_than(values)?,
                 "<=" => less_equal(values)?,
                 ">=" => greater_equal(values)?,
+                "char<=?" => char_less_equal(values)?,
+                "char>=?" => char_greater_equal(values)?,
+                "string=?" => string_equals(values)?,
+                "number->string" => number_to_string(values)?,
+                "integer?" => integer_p(values)?,
+                "*" => multiply(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }
