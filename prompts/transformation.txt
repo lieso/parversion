@@ -165,6 +165,14 @@ agree:
   the input does not establish.
 - Mentally test both programs against the samples and check that the round trip
   holds for each normalized result.
+- Extract, do not validate. To pull a number out of text, read the part you need
+  (for example the leading digits) and ignore the rest. Do not require labels or
+  units to match particular words, and do not check the length of the remainder.
+  Values that differ only in their label, such as singular and plural forms,
+  must produce the same result.
+- Never construct characters from code points. Treat any whitespace, including
+  non-breaking and other unusual spaces, as ordinary whitespace by testing
+  characters with predicates.
 
 **LANGUAGE AND SAFETY REQUIREMENTS (BOTH PROGRAMS)**
 

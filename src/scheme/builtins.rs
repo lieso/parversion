@@ -3,6 +3,40 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn integer_to_char(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let code = expect_index(&values[0])?;
+    let c = u32::try_from(code)
+        .ok()
+        .and_then(char::from_u32)
+        .ok_or(Errors::IndexOutOfRange)?;
+
+    Ok(Value::Char(c))
+}
+
+pub fn number_p(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    Ok(Value::Bool(matches!(
+        values[0],
+        Value::Integer(_) | Value::Float(_)
+    )))
+}
+
+pub fn string_prefix(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 2)?;
+    let prefix = expect_str(&values[0])?;
+    let string = expect_str(&values[1])?;
+
+    Ok(Value::Bool(string.starts_with(prefix)))
+}
+
+pub fn char_alphabetic(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    Ok(Value::Bool(expect_char(&values[0])?.is_alphabetic()))
+}
+
 pub fn integer_p(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
 
