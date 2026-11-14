@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
 use crate::transformation::Transformation;
+use crate::scheme::eval;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct TransformationResponse {
@@ -25,6 +26,68 @@ pub async fn transformation<R: Reasoner>(
 ) -> Result<(Transformation, ReasonerMetadata), Errors> {
     log::trace!("In transformation");
 
+    let (transformation, reasoner_metadata) = determine_transformation(
+        reasoner,
+        Arc::clone(&normalization_context),
+        field.clone(),
+        image.clone(),
+        description.clone(),
+        contexts.clone(),
+        Capability::Fast,
+    ).await?;
+
+    match validate_transformation(&transformation) {
+        Ok(true) => {
+            log::info!("Transformation is valid");
+            Ok((transformation, reasoner_metadata))
+        }
+        result => {
+            log::warn!("Transformation did not validate");
+            log::info!("Escalating to a more advanced model...");
+
+            let (transformation, next_reasoner_metadata) = determine_transformation(
+                reasoner,
+                Arc::clone(&normalization_context),
+                field.clone(),
+                image.clone(),
+                description.clone(),
+                contexts.clone(),
+                Capability::Capable,
+            ).await?;
+
+            let reasoner_metadata = ReasonerMetadata {
+                tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
+                prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
+                cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
+            };
+
+            Ok((transformation, reasoner_metadata))
+        }
+    }
+}
+
+fn validate_transformation(transformation: &Transformation) -> Result<bool, Errors> {
+    match eval(&transformation.forward) {
+        Ok(_compiled) => Ok(true),
+        Err(error) => {
+            log::error!("Failed to compile scheme peogram: {:?}", transformation.forward);
+            log::error!("{}", error);
+            Ok(false)
+        }
+    }
+}
+
+async fn determine_transformation<R: Reasoner>(
+    reasoner: &R,
+    normalization_context: Arc<RwLock<NormalizationContext>>,
+    field: String,
+    image: String,
+    description: String,
+    contexts: Vec<Arc<Context>>,
+    capability: Capability,
+) -> Result<(Transformation, ReasonerMetadata), Errors> {
+    log::trace!("determine_transformation");
+
     let system_prompt = get_system_prompt(reasoner).await?;
     let user_prompt = get_user_prompt(
         reasoner,
@@ -34,7 +97,6 @@ pub async fn transformation<R: Reasoner>(
     ).await?;
     let schema = serde_json::to_value(schemars::schema_for!(TransformationResponse))
         .expect("Failed to serialise TransformationResponse schema");
-    let capability = Capability::Fast;
 
     log::debug!("");
     log::debug!("╔═══════════════════════════════════════════════════════════════╗");
