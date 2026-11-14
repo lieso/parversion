@@ -1,7 +1,8 @@
-You are normalizing the values of one field into a canonical form that is easy to
-work with programmatically. Write two small Scheme programs: a forward program
-that converts a raw value into its canonical form, and an inverse program that
-converts a canonical value back into a raw form of the kind found in the source.
+You are normalizing the values of one field into a canonical, correctly typed
+form that is easy to work with programmatically. Write two small Scheme
+programs: a forward program that converts a raw value (a string) into its
+canonical typed value, and an inverse program that converts a canonical typed
+value back into a raw string of the kind found in the source.
 
 **INPUT**
 
@@ -19,9 +20,9 @@ be assumed.
 
 [VALUES]
 A JSON array of strings. Each string is one raw value of the field, taken from a
-different location in the document, and is exactly the string that the programs
-will receive. The array shows the range of values the field takes, but it is a
-sample, not the complete set.
+different location in the document, and is exactly the string that the forward
+program will receive. The array shows the range of values the field takes, but
+it is a sample, not the complete set.
 
 [SNIPPETS]
 A few of the locations the values were extracted from, separated by
@@ -47,8 +48,8 @@ surrounding words are hints, not proof.
 
 The purpose of normalization is to turn text written for human readers into data
 that code can compare, sort, filter, and compute with. Choose the canonical form
-that a programmer would want to store and query: if a value is a count, it
-should be a plain integer; if it is an amount of time, a number; if it is a
+and type that a programmer would want to store and query: if a value is a count,
+it should be an integer; if it is an amount of time, a number; if it is a
 location, a complete address. Values that mean the same thing must produce the
 same canonical output. Values that mean different things must produce different
 canonical outputs.
@@ -57,42 +58,43 @@ Programs must be short and simple. A short program that handles the forms of
 the value actually seen is better than a long one that tries to handle every
 form that could exist.
 
-**STEP 1: DECIDE THE CANONICAL FORM**
+**STEP 1: DECIDE THE CANONICAL FORM AND TYPE**
 
 Decide what kind of value the field holds, then use the conventional
-representation for that kind. Values and results are always strings. Use these
-forms:
+representation and type for that kind. Raw values are always strings, but the
+canonical result is correctly typed: a number is returned as a number, not as a
+string of digits, and a boolean as a boolean. Use these forms:
 
-- Whole numbers and counts: decimal digits with an optional leading `-`, with no
-  thousands separators, no decimal point, and no surrounding words, labels, or
-  units.
-- Other numbers (amounts, ratings, measurements): decimal digits with an optional
-  leading `-` and a `.` decimal point, with no thousands separators, currency
-  symbols, or units.
-- Elapsed or remaining time expressed relative to some moment: a number of
-  seconds, written as an integer. Where a unit has no exact length, apply one
-  fixed convention consistently. No current time is available, so never convert
-  a relative value into an absolute one.
-- Dates and times that are already absolute: ISO 8601 (`YYYY-MM-DD` or
-  `YYYY-MM-DDTHH:MM:SS`), keeping only the precision the value actually has.
-- Booleans: exactly `true` or `false`.
-- Links and addresses of resources: a complete absolute URL. A value that
-  already begins with a scheme such as `https:` is left unchanged. Any other
-  value is joined onto [ORIGIN]: a value that begins with `/` is appended to the
-  origin, and any other value is appended after the origin and a single `/`.
-  Make sure the joined result has exactly one `/` at the join. Do not process
-  `.` or `..` segments, `//` prefixes, queries, or fragments. Text that merely
-  names or labels something is not a link: treat a value as an address only when
-  the snippets show that it is one.
-- Free text and names: surrounding whitespace removed and internal whitespace
-  runs collapsed to a single space.
+- Whole numbers and counts: an integer, with no thousands separators, no decimal
+  point, and no surrounding words, labels, or units.
+- Other numbers (amounts, ratings, measurements): a decimal number, or an
+  integer when the value has no fractional part, with no thousands separators,
+  currency symbols, or units.
+- Elapsed or remaining time expressed relative to some moment: an integer number
+  of seconds. Where a unit has no exact length, apply one fixed convention
+  consistently. No current time is available, so never convert a relative value
+  into an absolute one.
+- Dates and times that are already absolute: a string in ISO 8601
+  (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS`), keeping only the precision the value
+  actually has.
+- Booleans: a boolean, true or false.
+- Links and addresses of resources: a string holding a complete absolute URL. A
+  value that already begins with a scheme such as `https:` is left unchanged. Any
+  other value is joined onto [ORIGIN]: a value that begins with `/` is appended
+  to the origin, and any other value is appended after the origin and a single
+  `/`. Make sure the joined result has exactly one `/` at the join. Do not
+  process `.` or `..` segments, `//` prefixes, queries, or fragments. Text that
+  merely names or labels something is not a link: treat a value as an address
+  only when the snippets show that it is one.
+- Free text and names: a string with surrounding whitespace removed and internal
+  whitespace runs collapsed to a single space.
 
 These are guidelines, not a closed list. For a kind of value not listed, use the
-most standard machine-friendly representation that exists for it.
+most standard machine-friendly representation and type that exists for it.
 
 Rules:
 
-- Choose one canonical form for the field and use it for every value.
+- Choose one canonical type for the field and use it for every value.
 - Normalize only what the value and [ORIGIN] determine. Do not invent missing
   information, and do not guess. If making a value canonical would need data the
   input does not provide, such as an external lookup, the current time, or a base
@@ -100,11 +102,13 @@ Rules:
 - Remove representational noise (units, labels, wrappers, redundant
   representation) only when the result is the canonical form of the value.
   Preserve all information the field carries.
-- A value in a shape the program was not designed for passes through unchanged.
-  Never drop it or guess.
-- If the values already share a consistent canonical form, the identity program
-  `(lambda (value) value)` is the correct forward program. Do not add
-  transformations for the sake of it.
+- A value in a shape the program was not designed for passes through unchanged,
+  as the original string. Never drop it or guess.
+- If the values already share a consistent canonical form and are already
+  correctly typed as strings, the identity program `(lambda (value) value)` is
+  the correct forward program. Do not add transformations for the sake of it.
+  Values that are text but should be numbers or booleans are not already
+  canonical.
 
 **STEP 2: WRITE THE FORWARD PROGRAM**
 
@@ -112,13 +116,14 @@ The program is a single Scheme lambda expression with one argument, `value`:
 
 (lambda (value) ...)
 
-`value` is the raw value as a string. The result must be a string in the
-canonical form from Step 1.
+`value` is the raw value as a string. The result must be a value in the
+canonical form and type from Step 1.
 
 **STEP 3: WRITE THE INVERSE PROGRAM**
 
 The inverse program goes in the other direction. It is a single Scheme lambda
-expression with one argument, `value`, which is a canonical string:
+expression with one argument, `value`, which is a canonical value of the type
+the forward program returns:
 
 (lambda (value) ...)
 
@@ -127,8 +132,8 @@ would appear in the source, such as one of the samples. The two programs must
 agree:
 
 - For every canonical value `x`, the forward program applied to the result of
-  the inverse program applied to `x` must equal `x`. This round trip is the
-  requirement that matters most.
+  the inverse program applied to `x` must equal `x`, with the same type. This
+  round trip is the requirement that matters most.
 - Applying the inverse program to the result of the forward program is not
   required to reproduce the original text exactly. Some information about the
   original wording is lost by design. It must express the same meaning.
@@ -136,7 +141,7 @@ agree:
   result read naturally in the style of the samples, including any agreement or
   pluralization they show. If several raw forms are equally valid, choose any one
   and use it consistently.
-- A value that is not in canonical form passes through unchanged.
+- A value that is not of the canonical type passes through unchanged.
 - If the forward program is the identity program, the inverse program is also the
   identity program.
 
@@ -188,9 +193,9 @@ text outside the JSON. Use exactly this structure:
 Each program must be exactly one Scheme lambda expression, serialized as a JSON
 string with valid escaping. Double quotes inside a program are written `\"`, and
 a character literal such as `#\a` is written `#\\a`. For example, for a field
-whose values are wrapped in square brackets:
+whose values are whole numbers followed by a percent sign:
 
 {
-  "forward_program": "(lambda (value) (if (and (> (string-length value) 1) (char=? (string-ref value 0) #\\[) (char=? (string-ref value (- (string-length value) 1)) #\\])) (substring value 1 (- (string-length value) 1)) value))",
-  "inverse_program": "(lambda (value) (string-append \"[\" value \"]\"))"
+  "forward_program": "(lambda (value) (let ((n (string-length value))) (if (and (> n 1) (char=? (string-ref value (- n 1)) #\\%)) (string->number (substring value 0 (- n 1))) value)))",
+  "inverse_program": "(lambda (value) (string-append (number->string value) \"%\"))"
 }
