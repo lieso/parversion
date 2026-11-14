@@ -31,100 +31,38 @@ pub async fn translation_node<R: Reasoner>(
     let schema = serde_json::to_value(schemars::schema_for!(TranslationNodeResponse))
         .expect("Failed to serialise TranslationNodeResponse schema");
     let capability = Capability::Capable;
+    let user_prompt = get_user_prompt(
+        Arc::clone(&translation_context),
+        &left_contexts,
+        &right_contexts,
+    )?;
 
-    let fields: HashSet<String> = left_contexts
-        .iter()
-        .fold(HashSet::new(), |mut acc, context| {
-            for (key, _value) in context.data_node.fields.iter() {
-                acc.insert(key.clone());
-            }
+    log::debug!("");
+    log::debug!("╔═══════════════════════════════════════════════════════════════╗");
+    log::debug!("║                                                               ║");
+    log::debug!("║                   TRANSLATION NODE                            ║");
+    log::debug!("║                                                               ║");
+    log::debug!("╚═══════════════════════════════════════════════════════════════╝");
+    log::debug!("");
+    log::debug!("  Capability : {:?}", capability);
+    log::debug!("");
+    log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
+    log::debug!("{}", system_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
+    log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
+    log::debug!(
+        "{}",
+        serde_json::to_string_pretty(&schema).unwrap_or_default()
+    );
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    log::debug!("");
 
-            acc
-        });
-
-    let mut transformations: Vec<Transformation> = Vec::new();
-    let mut total_tokens: u32 = 0;
-    let mut total_cost: f64 = 0.0;
-    let mut total_prompts = Vec::new();
-
-    for field in fields {
-        let user_prompt = get_user_prompt(
-            Arc::clone(&translation_context),
-            &field,
-            &left_contexts,
-            &right_contexts,
-        )?;
-
-        log::debug!("");
-        log::debug!("╔═══════════════════════════════════════════════════════════════╗");
-        log::debug!("║                                                               ║");
-        log::debug!("║                   TRANSLATION NODE                            ║");
-        log::debug!("║                                                               ║");
-        log::debug!("╚═══════════════════════════════════════════════════════════════╝");
-        log::debug!("");
-        log::debug!("  Capability : {:?}", capability);
-        log::debug!("");
-        log::debug!("┌─── SYSTEM PROMPT ─────────────────────────────────────────────┐");
-        log::debug!("{}", system_prompt);
-        log::debug!("└───────────────────────────────────────────────────────────────┘");
-        log::debug!("");
-        log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
-        log::debug!("{}", user_prompt);
-        log::debug!("└───────────────────────────────────────────────────────────────┘");
-        log::debug!("");
-        log::debug!("┌─── SCHEMA ────────────────────────────────────────────────────┐");
-        log::debug!(
-            "{}",
-            serde_json::to_string_pretty(&schema).unwrap_or_default()
-        );
-        log::debug!("└───────────────────────────────────────────────────────────────┘");
-        log::debug!("");
-
-        let (result, metadata) = reasoner
-            .execute::<TranslationNodeResponse>(
-                &capability,
-                &system_prompt,
-                &user_prompt,
-                schema.clone(),
-            )
-            .await?;
-
-        total_tokens += metadata.input_tokens + metadata.output_tokens;
-        total_cost += metadata.cost.unwrap_or(0.0);
-        total_prompts.push(metadata.prompt_hash.clone());
-
-        if !result.target_field.is_empty() {
-            let transformation = Transformation {
-                id: ID::new(),
-                field: field.clone(),
-                image: result.target_field.clone(),
-                description: "placeholder".to_string(),
-                forward: result.program.clone(),
-                inverse: "".to_string(),
-            };
-
-            transformations.push(transformation);
-        }
-    }
-
-    let translation_node = if transformations.is_empty() {
-        None
-    } else {
-        Some(TranslationNode {
-            id: ID::new(),
-            left_lineage: left_lineage.clone(),
-            right_lineage: right_lineage.clone(),
-            transformations,
-        })
-    };
-
-    let reasoner_metadata = ReasonerMetadata {
-        tokens: total_tokens,
-        cost: total_cost,
-        prompts: total_prompts,
-    };
-
-    Ok((translation_node, reasoner_metadata))
+    unimplemented!()
 }
 
 async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> {
@@ -141,7 +79,6 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> 
 
 fn get_user_prompt(
     translation_context: Arc<RwLock<TranslationContext>>,
-    field: &String,
     left_contexts: &[Arc<NormalContext>],
     right_contexts: &[Arc<NormalContext>],
 ) -> Result<String, Errors> {
@@ -163,11 +100,10 @@ fn get_user_prompt(
 
     let context_strings: Vec<String> = left_contexts
         .iter()
-        .filter(|context| context.data_node.fields.contains_key(field))
         .take(11)
         .map(|context| {
             context
-                .generate_context_string_translation_node(Arc::clone(&translation_context), field)
+                .generate_context_string_translation_node(Arc::clone(&translation_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
     let left = context_strings.join("\n\n---EXAMPLE SEPARATOR---\n\n");

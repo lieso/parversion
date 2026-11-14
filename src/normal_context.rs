@@ -19,7 +19,6 @@ impl NormalContext {
     pub fn generate_context_string_translation_node(
         &self,
         translation_context: Arc<RwLock<TranslationContext>>,
-        field: &String,
     ) -> Result<String, Errors> {
         let groups = Self::group_contexts_by_normalization_context(
             self.contexts.clone(),
@@ -46,16 +45,13 @@ impl NormalContext {
 
         let result = format!(
             r##"
-[FIELD]
-{}
-
 [OBJECT]
 {}
 
 [SOURCE DOCUMENT]
 {}
         "##,
-            field, object, source_document
+            object, source_document
         );
 
         Ok(result)
