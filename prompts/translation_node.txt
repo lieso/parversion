@@ -5,25 +5,37 @@ fields correspond.
 
 **INPUT**
 
+The input has two sections.
+
 [LEFT]
-One or more left samples, separated by `---EXAMPLE SEPARATOR---`. Each sample
+One or more source samples, separated by `---EXAMPLE SEPARATOR---`. Each sample
 contains:
 
-- [OBJECT]: the record as a JSON object mapping field names to string values.
+- [OBJECT]: the record as a JSON object mapping field names to values. Values
+  are typed: they may be strings, numbers, or booleans. A field that occurs more
+  than once in the record holds an array of values. The values have already been
+  cleaned up, so they can differ from the raw text in the document. For example,
+  a relative time such as "2 hours ago" may appear as a number of seconds.
 - [SOURCE DOCUMENT]: the document the record was extracted from. Content between
-  `<!-- TARGET_START -->` and `<!-- TARGET_END -->` marks the location the record
-  was extracted from. The markers are not data, and anything outside them is
-  still context.
+  `<!-- TARGET_START -->` and `<!-- TARGET_END -->` marks where the values of the
+  record's fields appear in the document. Several marked regions may appear, and
+  they may be nested. The markers are not data. Use the document and the markup
+  around the markers to understand what each field means and how its value is
+  displayed.
 
 [RIGHT]
-One or more right samples, separated by `---EXAMPLE SEPARATOR---`, in the same
-form as [LEFT].
+Zero or more target records, each introduced by `EXAMPLE:` and containing lines
+of the form `key = value`. Keys repeat across records while values vary. No
+source document is given for these records, so a RIGHT field can only be
+understood from its key and its values. Treat the values as the form the LEFT
+fields would need to take.
 
-Keys repeat across samples while values vary. The samples are a sample of each
-side, not a complete schema.
+The samples are a sample of each side, not a complete schema. A record may have
+fields that the other side does not have.
 
 Field names are hints, not proof. Confirm what a field means from its values,
-types, formats, ranges, and the context in the source document.
+types, formats, and ranges, and, for LEFT fields, from the context in the source
+document.
 
 **THE GOAL**
 
@@ -39,9 +51,9 @@ Two fields match when:
   not enough. Two fields about the same entity do not match unless they carry the
   same property.
 - The values of one are a representation of the values of the other. Surface
-  differences such as units, labels, wrappers, abbreviation, casing, or encoding
-  do not rule out a match.
-- A single general rule could turn the left values into the right form, without
+  differences such as units, labels, wrappers, abbreviation, casing, encoding, or
+  a trailing time zone designator do not rule out a match.
+- A single general rule could turn the LEFT values into the RIGHT form, without
   an external lookup and without guessing individual values.
 
 Consider:
@@ -49,21 +61,28 @@ Consider:
 - Meaning, from the field name, the values, and the source document's context.
 - Data type, format, and structure.
 - Units, prefixes, suffixes, and labels.
-- Whether a value is relative, abbreviated, or encoded, and whether the source
-  document establishes what it is relative to.
+- Whether a value is relative, abbreviated, or encoded, and whether the
+  information needed to resolve it is available. A relative quantity, such as an
+  elapsed time, does not match an absolute one, such as a calendar timestamp,
+  unless the input supplies the reference point. If the LEFT record has a field
+  that already holds the absolute form, it is the better match.
 - Plausible value ranges.
 
 Rules:
 
 - Each LEFT field appears in at most one pair, and each RIGHT field appears in at
   most one pair.
-- When several fields could match, pair the closest one and leave the rest
-  unpaired.
+- When several LEFT fields could match one RIGHT field, pair the one that needs
+  the least conversion and leave the others unpaired. Do the same in the other
+  direction.
 - Do not match fields because their primitive types agree, or because of their
   position in the record.
-- Do not match a field that holds a different property of the same entity.
+- Do not match a field that holds a different property of the same entity. For
+  example, a link to an item is not a link to a discussion about the item, and
+  the name of an author is not a link to the author.
 - Do not match a field when the correspondence depends on information the input
   does not provide.
+- Leave fields unpaired when the other side has no counterpart for them.
 - Use field names exactly as they appear in the samples.
 
 **RESPONSE FORMAT**
@@ -78,7 +97,7 @@ text outside the JSON. Use exactly this structure:
 }
 
 - `left_field` must be copied exactly from a key in the [LEFT] objects.
-- `right_field` must be copied exactly from a key in the [RIGHT] objects.
+- `right_field` must be copied exactly from a key in the [RIGHT] records.
 - If no fields match, return:
 
 {
