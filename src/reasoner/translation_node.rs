@@ -1,4 +1,5 @@
 use schemars::JsonSchema;
+use futures::future::try_join_all;
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
@@ -95,10 +96,40 @@ pub async fn translation_node<R: Reasoner>(
                 )
                 .await
         });
-
     }
 
-    unimplemented!()
+    let results = try_join_all(futures).await?;
+
+    let mut transformations: Vec<Transformation> = Vec::new();
+
+    for result in results {
+        let (transformation, metadata) = result;
+
+        total_tokens += metadata.tokens;
+        total_cost += metadata.cost;
+        total_prompts.extend(metadata.prompts);
+
+        transformations.push(transformation);
+    }
+
+    let reasoner_metadata = ReasonerMetadata {
+        tokens: total_tokens,
+        prompts: total_prompts,
+        cost: total_cost,
+    };
+
+    if transformations.is_empty() {
+        Ok((None, reasoner_metadata))
+    } else {
+        let translation_node = TranslationNode {
+            id: ID::new(),
+            left_lineage: left_lineage.clone(),
+            right_lineage: right_lineage.clone(),
+            transformations,
+        };
+
+        Ok((Some(translation_node), reasoner_metadata))
+    }
 }
 
 async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> {
