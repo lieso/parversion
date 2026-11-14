@@ -3,6 +3,14 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn char_less_than(values: Vec<Value>) -> Result<Value, Errors> {
+    chain_compare_chars(&values, |o| o == Ordering::Less)
+}
+
+pub fn char_greater_than(values: Vec<Value>) -> Result<Value, Errors> {
+    chain_compare_chars(&values, |o| o == Ordering::Greater)
+}
+
 pub fn char_to_integer(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
     let c = expect_char(&values[0])?;
