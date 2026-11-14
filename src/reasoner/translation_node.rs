@@ -10,11 +10,17 @@ use crate::transformation::Transformation;
 use crate::translation_node::TranslationNode;
 
 #[derive(Deserialize, JsonSchema)]
+pub struct TranslationNodeResponseItem {
+    /// The field from LEFT that matches right_field
+    pub left_field: String,
+    /// The field from RIGHT that matches left_field
+    pub right_field: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
 pub struct TranslationNodeResponse {
-    /// The exact key from the RIGHT section that this mapping produces
-    pub target_field: String,
-    /// A single Scheme lambda expression of one argument, `value`, that converts a raw LEFT value into the form of the RIGHT value
-    pub program: String,
+    /// Matches from LEFT to RIGHT
+    pub matches: Vec<TranslationNodeResponseItem>
 }
 
 pub async fn translation_node<R: Reasoner>(
@@ -61,6 +67,36 @@ pub async fn translation_node<R: Reasoner>(
     );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
+
+    let (result, metadata) = reasoner
+        .execute::<TranslationNodeResponse>(&capability, &system_prompt, &user_prompt, schema)
+        .await?;
+
+    let mut total_tokens: u32 = metadata.input_tokens + metadata.output_tokens;
+    let mut total_cost: f64 = metadata.cost.unwrap_or(0.0);
+    let mut total_prompts = vec![metadata.prompt_hash.clone()];
+
+    let mut futures = Vec::new();
+
+    for response_match in result.matches {
+
+        let cloned_translation_context = Arc::clone(&translation_context);
+        let cloned_left_contexts = left_contexts.clone();
+        let cloned_right_contexts = right_contexts.clone();
+
+        futures.push(async move {
+            reasoner
+                .translation(
+                    cloned_translation_context,
+                    response_match.left_field,
+                    cloned_left_contexts,
+                    response_match.right_field,
+                    cloned_right_contexts,
+                )
+                .await
+        });
+
+    }
 
     unimplemented!()
 }

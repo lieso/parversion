@@ -25,8 +25,9 @@ mod network_relationship;
 mod node_relationship;
 mod sampling;
 mod transformation;
-mod translation;
+mod document;
 mod translation_node;
+mod translation;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -194,7 +195,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         &self,
         schema: String,
     ) -> Result<(String, ReasonerMetadata), Errors> {
-        translation::generate_document_from_schema(self, schema).await
+        document::generate_document_from_schema(self, schema).await
     }
 
     async fn translation_node(
@@ -231,6 +232,25 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
             image,
             description,
             contexts,
+        )
+        .await
+    }
+
+    async fn translation(
+        &self,
+        translation_context: Arc<RwLock<TranslationContext>>,
+        left_field: String,
+        left_contexts: Vec<Arc<NormalContext>>,
+        right_field: String,
+        right_contexts: Vec<Arc<NormalContext>>,
+    ) -> Result<(Transformation, ReasonerMetadata), Errors> {
+        translation::translation(
+            self,
+            translation_context,
+            left_field,
+            left_contexts,
+            right_field,
+            right_contexts,
         )
         .await
     }
