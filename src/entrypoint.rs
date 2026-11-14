@@ -205,23 +205,6 @@ fn get_options(matches: &clap::ArgMatches) -> Result<Options, Errors> {
 }
 
 async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadata)>, Errors> {
-    let fallback_type: Option<DocumentType> = matches
-        .get_one::<String>("document-format")
-        .map(|s| parse_document_type(s))
-        .transpose()?;
-
-    let fallback_origin: String = matches
-        .get_one::<String>("origin")
-        .cloned()
-        .expect("origin is required by clap");
-
-    let fallback_role: DocumentRole = matches
-        .get_one::<String>("role")
-        .map(|s| DocumentRole::from_str(s))
-        .transpose()
-        .map_err(|e| Errors::InvalidRole(e.to_string()))?
-        .unwrap_or(DocumentRole::Instance);
-
     if let Some(values) = matches.get_many::<String>("translation") {
         if values.len() > 1 {
             return Err(Errors::TooManyTranslationDocuments);
@@ -232,16 +215,13 @@ async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadat
 
             let dt = partial
                 .document_type
-                .or_else(|| fallback_type.clone())
                 .ok_or(Errors::DocumentTypeNotProvided)?;
 
-            let origin = partial.origin.unwrap_or_else(|| fallback_origin.clone());
-
-            let role = partial.role.unwrap_or_else(|| fallback_role.clone());
+            let role = partial.role.unwrap();
 
             let md = Metadata {
                 document_type: Some(dt),
-                origin: Some(origin),
+                origin: partial.origin,
                 date: None,
                 role,
             };
