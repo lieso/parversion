@@ -180,7 +180,6 @@ async fn get_user_prompt<R: Reasoner>(
         .clone()
         .unwrap_or("Unknown".to_string());
 
-
     let context_strings: Vec<String> = group
         .iter()
         .take(3)

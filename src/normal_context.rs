@@ -18,6 +18,22 @@ pub struct NormalContext {
 }
 
 impl NormalContext {
+    pub fn generate_context_string_translation(
+        &self,
+        field: &str,
+    ) -> Result<String, Errors> {
+        let value = self.data_node.fields.get(field).first().unwrap().to_string();
+
+        let result = format!(
+            r##"
+[VALUE]
+{}
+        "##, value
+        );
+
+        Ok(result)
+    }
+
     pub fn generate_context_string_translation_node(
         &self,
         translation_context: Arc<RwLock<TranslationContext>>,

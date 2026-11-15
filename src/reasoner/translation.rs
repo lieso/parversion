@@ -89,15 +89,18 @@ async fn determine_translation<R: Reasoner>(
 ) -> Result<(Transformation, ReasonerMetadata), Errors> {
     log::trace!("determine_translation");
 
-    let system_prompt = get_system_prompt(reasoner).await?;
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&translation_context),
         &left_field,
-        left_contexts.clone(),
+        &left_contexts,
         &right_field,
-        right_contexts.clone(),
+        &right_contexts,
     ).await?;
+    log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
+    log::debug!("{}", user_prompt);
+    log::debug!("└───────────────────────────────────────────────────────────────┘");
+    let system_prompt = get_system_prompt(reasoner).await?;
     let schema = serde_json::to_value(schemars::schema_for!(TranslationResponse))
         .expect("Failed to serialise TranslationResponse schema");
 
@@ -125,6 +128,8 @@ async fn determine_translation<R: Reasoner>(
     );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
+
+    panic!();
 
     let (result, metadata) = reasoner
         .execute::<TranslationResponse>(&capability, &system_prompt, &user_prompt, schema)
@@ -164,9 +169,34 @@ async fn get_user_prompt<R: Reasoner>(
     reasoner: &R,
     translation_context: Arc<RwLock<TranslationContext>>,
     left_field: &str,
-    left_contexts: Vec<Arc<NormalContext>>,
+    left_contexts: &[Arc<NormalContext>],
     right_field: &str,
-    right_contexts: Vec<Arc<NormalContext>>,
+    right_contexts: &[Arc<NormalContext>],
 ) -> Result<String, Errors> {
-    unimplemented!()
+    let render = |field: &str, contexts: &[Arc<NormalContext>]| -> Result<String, Errors> {
+        let context_string = contexts
+            .iter()
+            .filter(|context| {
+                context.data_node.fields.contains_key(field)
+            })
+            .take(7)
+            .map(|context| context.generate_context_string_translation(
+                field
+            ))
+            .collect::<Result<Vec<String>, Errors>>()?
+            .join("\n\n---EXAMPLE SEPARATOR---\n\n");
+
+        Ok(context_string)
+    };
+
+    let left = render(left_field, left_contexts)?;
+    let right = render(right_field, right_contexts)?;
+
+    Ok(format!(r##"
+[LEFT]
+{}
+
+[RIGHT]
+{}
+    "##, left, right))
 }

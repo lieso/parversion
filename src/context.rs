@@ -350,7 +350,7 @@ impl Context {
         Ok(context_strings.join("\n"))
     }
 
-    fn generate_spatial_context(
+    pub fn generate_spatial_context(
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
     ) -> Result<String, Errors> {
