@@ -26,6 +26,15 @@ impl fmt::Display for FieldValue {
 }
 
 impl FieldValue {
+    pub fn type_name(value: &FieldValue) -> &'static str {
+        match value {
+            FieldValue::Bool(_) => "boolean",
+            FieldValue::Integer(_) => "integer",
+            FieldValue::Float(_) => "float",
+            FieldValue::Text(_) => "string",
+        }
+    }
+
     pub fn truncate(&self) -> String {
         let s = self.to_string();
 

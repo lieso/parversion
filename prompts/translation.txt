@@ -1,0 +1,182 @@
+You are converting the values of one field (LEFT) into the form used by a
+corresponding field (RIGHT). Write two small Scheme programs: a forward program
+that converts a LEFT value into the form of the RIGHT values, and an inverse
+program that converts a RIGHT-form value back into a LEFT value.
+
+**INPUT**
+
+The input has two sections.
+
+[LEFT]
+One or more samples of the LEFT field, separated by `---EXAMPLE SEPARATOR---`.
+Each sample has three parts:
+
+- [NAME]: the name of the field.
+- [TYPE]: the data type of the value: `string`, `integer`, `float`, or
+  `boolean`.
+- [VALUE]: one value of the field, written as plain text.
+
+The values are a sample, not the complete set. The forward program receives a
+value of the LEFT type.
+
+[RIGHT]
+One or more samples of the RIGHT field, in the same form as [LEFT]. These show
+the target form: the result of the forward program must have exactly the type
+and format of these values. They are a sample, not the complete set. The inverse
+program receives a value of the RIGHT type.
+
+The two fields have already been judged to describe the same property, so your
+task is the conversion, not the matching. Names are hints, not proof. Confirm
+what a field means from its values.
+
+A LEFT value has already been cleaned up, so it is not necessarily the raw text
+of a document. For example, a time may already be an integer number of seconds,
+and a link may already be an absolute URL.
+
+**TYPES**
+
+Every program works with values of these types. Use them exactly:
+
+- `string`: a Scheme string.
+- `integer`: an exact integer, such as 7200.
+- `float`: an inexact real number, such as 4.5 or 42.0.
+- `boolean`: `#t` or `#f`.
+
+The result of the forward program must have exactly the type given in the
+[RIGHT] samples, and the result of the inverse program must have exactly the
+type given in the [LEFT] samples. An integer is not a float, a string of digits
+is not a number, and the string "true" is not a boolean. Convert between types
+explicitly, for example with `number->string`, `string->number`, `exact->inexact`,
+or `inexact->exact`.
+
+**THE GOAL**
+
+Make LEFT values usable wherever RIGHT values are used. LEFT values that mean
+the same thing must produce the same output. LEFT values that mean different
+things must produce different outputs.
+
+Programs must be short and simple. A short program that handles the forms of
+the values actually seen is better than a long one that tries to handle every
+form that could exist.
+
+**STEP 1: DETERMINE THE TARGET FORM**
+
+The target form is whatever the [RIGHT] samples show. Study them for:
+
+- Type: the [TYPE] of the RIGHT samples.
+- Format: ISO 8601 dates and times, absolute URLs, casing, separators,
+  precision, wrappers, and any constant prefix or suffix.
+- Unit and scale. If the RIGHT values are in a different unit from the LEFT
+  values, convert with a fixed, well-known factor.
+
+Then compare with the [LEFT] samples and decide what, if anything, changes.
+
+Rules:
+
+- The result of the forward program must have the same type and format as every
+  value in [RIGHT].
+- Convert only what the LEFT value and the RIGHT form determine. Do not invent
+  missing information and do not guess. If the conversion would need data that
+  the input does not provide, such as an external lookup, the current time, or
+  a time zone that cannot be inferred from the RIGHT form, do not attempt it.
+  Make the smallest conversion that is justified.
+- Never convert a relative value, such as an elapsed time, into an absolute
+  one. No current time is available.
+- Remove or add representational noise (units, labels, wrappers, a constant
+  suffix) only when that produces the RIGHT form.
+- Preserve all the information the field carries.
+- If the LEFT samples already have the type and format of the RIGHT samples, the
+  identity program `(lambda (value) value)` is the correct forward program.
+  Do not add conversions for the sake of it. Values that differ only in their
+  content, such as two different web addresses, already have the same format.
+- If the LEFT and RIGHT types are the same and a value has a shape the program
+  was not designed for, return it unchanged. Never drop it or guess.
+
+**STEP 2: WRITE THE FORWARD PROGRAM**
+
+The program is a single Scheme lambda expression with one argument, `value`:
+
+(lambda (value) ...)
+
+`value` is a LEFT value, of the LEFT type. The result must be a value in the
+RIGHT form, with exactly the RIGHT type.
+
+**STEP 3: WRITE THE INVERSE PROGRAM**
+
+The inverse program goes in the other direction. It is a single Scheme lambda
+expression with one argument, `value`:
+
+(lambda (value) ...)
+
+`value` is a RIGHT-form value, of the RIGHT type. The result must look like a
+LEFT value, with exactly the LEFT type. The two programs must agree:
+
+- For every RIGHT-form value `x`, the forward program applied to the result of
+  the inverse program applied to `x` must equal `x`, with the same type. This
+  round trip is the requirement that matters most.
+- Applying the inverse program to the result of the forward program is not
+  required to reproduce the original LEFT value exactly. Some information may
+  be lost by design, but the meaning must be preserved.
+- If several LEFT forms are equally valid, choose the most natural one and use
+  it consistently.
+- If the forward program is the identity program, the inverse program is also
+  the identity program.
+
+**KEEP PROGRAMS SHORT**
+
+- Write the smallest program that is correct for the kinds of variation visible
+  in [LEFT] and [RIGHT]. Most programs should be a few lines.
+- Do not implement general parsers or full specifications. Handle the forms
+  that are present.
+- Tell forms apart with cheap checks, such as the first character, or one scan
+  over the characters of `value`.
+- The inverse program should be even simpler than the forward program.
+- A program that needs more than one loop, or deeply nested conditions, is
+  almost certainly doing too much. Simplify it.
+- Do not compare against, branch on, embed, or return individual sampled values.
+  Do not build a lookup table from the samples.
+- Constants are allowed only when the RIGHT form establishes them, such as a
+  fixed suffix or a fixed unit factor. Do not embed constants the input does not
+  establish.
+- Mentally test both programs against the samples and check that the round trip
+  holds for each result, and that each result has exactly the required type.
+- Extract, do not validate. To pull a number out of text, read the part you need
+  and ignore the rest. Do not require labels or units to match particular words.
+- Never construct characters from code points. Treat any whitespace, including
+  non-breaking and other unusual spaces, as ordinary whitespace by testing
+  characters with predicates.
+
+**LANGUAGE AND SAFETY REQUIREMENTS (BOTH PROGRAMS)**
+
+- Write Scheme as a single lambda expression made of the most basic constructs:
+  `lambda`, `if`, `cond`, `and`, `or`, `let`, `let*`, a named `let` when a loop
+  is unavoidable, and elementary string, character, list, and number procedures.
+- Each program is one self-contained expression. Do not define helper
+  procedures, do not sequence several steps, and do not mutate anything. Combine
+  steps by nesting expressions or by using `let` bindings.
+- Each program must be pure and deterministic.
+- Do not perform input or output.
+- Do not access the network, file system, environment, or current time.
+- Do not use randomness, `eval`, or `load`.
+- Recursion and iteration must be bounded by the length of `value`.
+
+**RESPONSE FORMAT**
+
+Respond with valid JSON only. Do not include Markdown, code fences, comments, or
+text outside the JSON. Use exactly this structure:
+
+{
+  "forward_program": "<a single Scheme lambda expression>",
+  "inverse_program": "<a single Scheme lambda expression>"
+}
+
+Each program must be exactly one Scheme lambda expression, serialized as a JSON
+string with valid escaping. Double quotes inside a program are written `\"`, and
+a character literal such as `#\a` is written `#\\a`. For example, if the LEFT
+samples are integers such as 42 and the RIGHT samples are strings such as 42%,
+a whole number followed by a percent sign:
+
+{
+  "forward_program": "(lambda (value) (string-append (number->string value) \"%\"))",
+  "inverse_program": "(lambda (value) (let ((n (string-length value))) (if (and (> n 1) (char=? (string-ref value (- n 1)) #\\%)) (string->number (substring value 0 (- n 1))) value)))"
+}

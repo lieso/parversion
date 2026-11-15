@@ -22,13 +22,19 @@ impl NormalContext {
         &self,
         field: &str,
     ) -> Result<String, Errors> {
-        let value = self.data_node.fields.get(field).first().unwrap().to_string();
+        let value = self.data_node.fields.get(field).first().unwrap();
 
         let result = format!(
             r##"
+[NAME]
+{}
+
+[TYPE]
+{}
+
 [VALUE]
 {}
-        "##, value
+        "##, field, value.to_string(), value.type_name()
         );
 
         Ok(result)
