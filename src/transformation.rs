@@ -50,4 +50,39 @@ impl Transformation {
 
         Ok(transformed)
     }
+
+    pub fn inverse_transform(&self, data_node: Arc<DataNode>) -> Result<DataNode, Errors> {
+        let mut fields = DataNodeFields::new();
+
+        let compiled = eval(&self.inverse).map_err(|e| {
+            log::error!(
+                "Failed to compile Scheme program during inverse transformation: {:?}",
+                self.inverse
+            );
+            e
+        })?;
+
+        for value in data_node.fields.get(&self.field) {
+            let arguments = vec![Value::from_field_value(value.clone())];
+            let transformed_value = apply(&compiled, arguments).map_err(|e| {
+                log::error!(
+                    "Failed to apply procedure when transforming value: {:?}",
+                    self.inverse
+                );
+                e
+            })?;
+
+            let out = transformed_value.to_field_value()?;
+
+            fields.insert(self.image.clone(), out);
+        }
+
+        let transformed = DataNode {
+            id: ID::new(),
+            description: self.description.clone(),
+            fields,
+        };
+
+        Ok(transformed)
+    }
 }
