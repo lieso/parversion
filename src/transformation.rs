@@ -62,7 +62,7 @@ impl Transformation {
             e
         })?;
 
-        for value in data_node.fields.get(&self.field) {
+        for value in data_node.fields.get(&self.image) {
             let arguments = vec![Value::from_field_value(value.clone())];
             let transformed_value = apply(&compiled, arguments).map_err(|e| {
                 log::error!(
@@ -74,7 +74,7 @@ impl Transformation {
 
             let out = transformed_value.to_field_value()?;
 
-            fields.insert(self.image.clone(), out);
+            fields.insert(self.field.clone(), out);
         }
 
         let transformed = DataNode {

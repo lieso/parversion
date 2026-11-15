@@ -3,6 +3,7 @@ use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
+use crate::prelude::*;
 use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::document::{Document, DocumentMetadata, DocumentType};
@@ -12,7 +13,7 @@ use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
-use crate::prelude::*;
+use crate::basis_node::BasisNode;
 
 pub struct Json {}
 
@@ -333,7 +334,36 @@ impl Json {
                         .expect("Network should be a json object");
                 }
 
-                for json_node in normal_context.data_node.to_json_nodes() {
+                let basis_node: Arc<BasisNode> = {
+                    let lock = read_lock!(normalization_context);
+                    let lookup = lock
+                        .context_basis_node
+                        .as_ref()
+                        .ok_or_else(|| {
+                            Errors::DeficientNormalizationContextError(
+                                "'context_basis_node' not provided in normalization context".to_string(),
+                            )
+                        })?;
+
+                    match lookup.get(&canonical_context.id) {
+                        Some(basis_node) => basis_node.clone(),
+                        None => {
+                            log::warn!("No basis node for canonical context {:?}", canonical_context.id);
+                            continue;
+                        }
+                    }
+                };
+
+                let transformed = basis_node
+                    .transformations
+                    .iter()
+                    .map(|transformation| transformation.inverse_transform(normal_context.data_node.clone()))
+                    .collect::<Result<Vec<DataNode>, Errors>>()?;
+
+
+                let denormalized = DataNode::from_data_nodes(transformed);
+
+                for json_node in denormalized.to_json_nodes() {
                     let json = json_node.json;
 
                     match current.get_mut(&json.key) {
