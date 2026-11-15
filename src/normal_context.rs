@@ -22,7 +22,8 @@ impl NormalContext {
         &self,
         field: &str,
     ) -> Result<String, Errors> {
-        let value = self.data_node.fields.get(field).first().unwrap();
+        let binding = self.data_node.fields.get(field);
+        let value = binding.first().unwrap();
 
         let result = format!(
             r##"

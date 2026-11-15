@@ -26,8 +26,8 @@ impl fmt::Display for FieldValue {
 }
 
 impl FieldValue {
-    pub fn type_name(value: &FieldValue) -> &'static str {
-        match value {
+    pub fn type_name(&self) -> &'static str {
+        match self {
             FieldValue::Bool(_) => "boolean",
             FieldValue::Integer(_) => "integer",
             FieldValue::Float(_) => "float",
