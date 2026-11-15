@@ -13,7 +13,7 @@ use crate::normalization;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::reports::report_translation_nodes;
+use crate::reports::{report_translation_nodes, report_translated_graph};
 use crate::translation_context::TranslationContext;
 use crate::translation_node::TranslationNode;
 
@@ -89,6 +89,11 @@ pub async fn translate<P: Provider, R: Reasoner>(
 
     let elapsed = start.elapsed();
     log::info!("build_translated_graph: {:.2?}", elapsed);
+
+    #[cfg(debug_assertions)]
+    {
+        report_translated_graph(Arc::clone(&translation_context)).await?;
+    }
 
     stage.finish();
 

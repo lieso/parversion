@@ -129,8 +129,6 @@ async fn determine_translation<R: Reasoner>(
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
 
-    panic!();
-
     let (result, metadata) = reasoner
         .execute::<TranslationResponse>(&capability, &system_prompt, &user_prompt, schema)
         .await?;

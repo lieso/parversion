@@ -15,6 +15,7 @@ const GREEN: &str = "\x1b[32m";
 const RESET: &str = "\x1b[0m";
 const YELLOW: &str = "\x1b[33m";
 const RED: &str = "\x1b[31m";
+const ORANGE: &str = "\x1b[38;5;208m";
 
 pub async fn report_basis_fields(
     normalization_context: Arc<RwLock<NormalizationContext>>,
@@ -591,6 +592,66 @@ pub async fn report_translation_nodes(
 
     println!();
     println!("{}=== End Translation Node Report ==={}", RED, RESET);
+
+    Ok(())
+}
+
+pub async fn report_translated_graph(
+    translation_context: Arc<RwLock<TranslationContext>>,
+) -> Result<(), Errors> {
+    let translated = {
+        let lock = read_lock!(translation_context);
+        lock.translated.clone().ok_or_else(|| {
+            Errors::DeficientTranslationContextError(
+                "Translated graph not provided in translation context".to_string(),
+            )
+        })?
+    };
+
+    println!("{}=== Translated Graph Report ==={}", ORANGE, RESET);
+    println!("{}{}{}", ORANGE, "-----------------------------------------------------------------------------------------------------", RESET);
+    println!(
+        "{}  contexts: {}{}",
+        ORANGE,
+        translated.contexts.len(),
+        RESET
+    );
+    println!(
+        "{}  contexts_lookup: {}{}",
+        ORANGE,
+        translated.contexts_lookup.len(),
+        RESET
+    );
+    println!(
+        "{}  root id: {}{}",
+        ORANGE,
+        read_lock!(translated.graph_root).id.to_string(),
+        RESET
+    );
+    println!("{}{}{}", ORANGE, "-----------------------------------------------------------------------------------------------------", RESET);
+
+    let format = DocumentFormat {
+        format_type: DocumentType::Json,
+        encoding: None,
+        indent: Some(2),
+        line_ending: None,
+        headers: None,
+        wrap_text: None,
+        exclude_nulls: None,
+        custom_delimiter: None,
+    };
+
+    match Document::from_normal_meta_context(&translated, &format) {
+        Ok(document) => {
+            println!("{}{}{}", ORANGE, document.data, RESET);
+        }
+        Err(e) => {
+            println!("{}  Error converting to document: {:?}{}", ORANGE, e, RESET);
+        }
+    }
+
+    println!();
+    println!("{}=== End Translated Graph Report ==={}", ORANGE, RESET);
 
     Ok(())
 }
