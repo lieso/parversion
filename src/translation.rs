@@ -394,13 +394,11 @@ fn build_translated_node(
 
     let normal_context = Arc::new(NormalContext {
         id: ID::new(),
-        network_name: canonical_target_context.network_name.clone(),
-        network_description: canonical_target_context.network_description.clone(),
         graph_node: Arc::clone(&leaf),
         network: Arc::new(Network {
             id: ID::new(),
-            name: canonical_target_context.network_name.clone().unwrap_or("placeholder".to_string()),
-            description: canonical_target_context.network_description.clone(),
+            name: canonical_target_context.network.name.clone(),
+            description: canonical_target_context.network.description.clone(),
         }),
         data_node: Arc::new(translated_data_node),
         contexts: canonical_target_context.contexts.clone(),
@@ -480,13 +478,7 @@ fn build_ancestral_chain(
             if let Some(original) = original {
                 let normal_context = Arc::new(NormalContext {
                     id: ID::new(),
-                    network_name: original.network_name.clone(),
-                    network_description: original.network_description.clone(),
-                    network: Arc::new(Network {
-                        id: ID::new(),
-                        name: original.network_name.clone().unwrap_or("placeholder".to_string()),
-                        description: original.network_description.clone(),
-                    }),
+                    network: original.network.clone(),
                     graph_node: Arc::clone(&child),
                     data_node: Arc::new(DataNode {
                         id: ID::new(),

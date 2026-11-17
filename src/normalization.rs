@@ -244,8 +244,6 @@ fn build_normalized_graph(
 
     let root_context = Arc::new(NormalContext {
         id: ID::new(),
-        network_name: None,
-        network_description: None,
         network: Arc::new(Network {
             id: ID::new(),
             name: "placeholder".to_string(),

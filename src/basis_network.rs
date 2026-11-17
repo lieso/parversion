@@ -291,8 +291,6 @@ impl BasisNetwork {
 
         let container_context = Arc::new(NormalContext {
             id: ID::new(),
-            network_name: Some(self.name.clone()),
-            network_description: Some(self.description.clone()),
             network: network.clone(),
             data_node: Arc::new(DataNode {
                 id: ID::new(),
@@ -334,8 +332,6 @@ impl BasisNetwork {
 
                 let normal_context = Arc::new(NormalContext {
                     id: ID::new(),
-                    network_name: Some(network_name),
-                    network_description: Some("placeholder description".to_string()),
                     network: network.clone(),
                     data_node: Arc::new(data_node.clone()),
                     graph_node: Arc::new(RwLock::new(GraphNode {
@@ -410,8 +406,6 @@ impl BasisNetwork {
 
         let normal_context = Arc::new(NormalContext {
             id: ID::new(),
-            network_name: Some(self.name.clone()),
-            network_description: Some(self.description.clone()),
             network: Arc::new(network),
             data_node: Arc::new(data_node.clone()),
             graph_node: Arc::clone(&graph_node),
