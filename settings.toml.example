@@ -1,6 +1,3 @@
-[llm]
-max_concurrency = 1
-
 [dev]
 debug_dir = "/some/directory/parversion/debug"
 
