@@ -34,7 +34,6 @@ dotenv = "0.15.0"
 async-trait = "0.1.83"
 quick-js = "0.4.1"
 serde_yaml = { version = "0.9.34", optional = true }
-fantoccini = "0.21.3"
 once_cell = { version = "1.20.2", optional = true }
 hex = "0.4.3"
 chrono = { version = "0.4.41", features = ["serde"]}

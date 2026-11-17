@@ -314,8 +314,6 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
                 log::debug!("uri={}", value);
                 if value == "-" {
                     text = Some(load_stdin().map_err(|_| Errors::DocumentNotProvided)?);
-                } else if is_valid_url(value) {
-                    text = Some(fetch_url_as_text(value).await?);
                 } else if is_valid_unix_path(value) {
                     text = Some(get_file_as_text(value)?);
                 } else {
