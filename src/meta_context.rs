@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use crate::context::{Context, ContextID};
+use crate::context::Context;
 use crate::document::{Document, DocumentMetadata, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::graph_node::Graph;

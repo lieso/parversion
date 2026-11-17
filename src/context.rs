@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::sync::{Arc, RwLock};
 
+use crate::prelude::*;
 use crate::basis_node::BasisNode;
 use crate::data_node::DataNode;
 use crate::document::{Document, DocumentType};
@@ -9,9 +10,6 @@ use crate::document_format::DocumentFormat;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode, GraphNodeID};
 use crate::normalization_context::NormalizationContext;
-use crate::prelude::*;
-
-pub type ContextID = ID;
 
 #[derive(Clone, Debug)]
 pub struct Context {
