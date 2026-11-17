@@ -10,6 +10,7 @@ use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
 use crate::traversal::{Traversal, TraversalKind};
 use crate::xpath::XPath;
+use crate::network::Network;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetworkMetadata {
@@ -282,10 +283,17 @@ impl BasisNetwork {
     ) -> Result<Arc<NormalContext>, Errors> {
         log::trace!("In enumerate");
 
+        let network = Arc::new(Network {
+            id: ID::new(),
+            name: self.name.clone(),
+            description: Some(self.description.clone()),
+        });
+
         let container_context = Arc::new(NormalContext {
             id: ID::new(),
             network_name: Some(self.name.clone()),
             network_description: Some(self.description.clone()),
+            network: network.clone(),
             data_node: Arc::new(DataNode {
                 id: ID::new(),
                 fields: DataNodeFields::new(),
@@ -328,6 +336,7 @@ impl BasisNetwork {
                     id: ID::new(),
                     network_name: Some(network_name),
                     network_description: Some("placeholder description".to_string()),
+                    network: network.clone(),
                     data_node: Arc::new(data_node.clone()),
                     graph_node: Arc::new(RwLock::new(GraphNode {
                         id: ID::new(),
@@ -372,6 +381,12 @@ impl BasisNetwork {
     ) -> Result<Arc<NormalContext>, Errors> {
         log::trace!("In reduce");
 
+        let network = Network {
+            id: ID::new(),
+            name: self.name.clone(),
+            description: Some(self.description.clone()),
+        };
+
         let data_node = network_contexts.iter().try_fold(
             DataNode {
                 id: ID::new(),
@@ -397,6 +412,7 @@ impl BasisNetwork {
             id: ID::new(),
             network_name: Some(self.name.clone()),
             network_description: Some(self.description.clone()),
+            network: Arc::new(network),
             data_node: Arc::new(data_node.clone()),
             graph_node: Arc::clone(&graph_node),
             contexts: network_contexts.clone(),

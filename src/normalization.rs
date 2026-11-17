@@ -22,6 +22,7 @@ use crate::reports::{
     report_basis_fields, report_basis_graph, report_basis_groups, report_basis_networks,
     report_basis_nodes,
 };
+use crate::network::Network;
 
 pub async fn normalize<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -245,6 +246,11 @@ fn build_normalized_graph(
         id: ID::new(),
         network_name: None,
         network_description: None,
+        network: Arc::new(Network {
+            id: ID::new(),
+            name: "placeholder".to_string(),
+            description: None,
+        }),
         graph_node: Arc::clone(&root),
         data_node: Arc::new(DataNode {
             id: ID::new(),

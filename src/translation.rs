@@ -16,6 +16,7 @@ use crate::provider::Provider;
 use crate::reports::{report_translated_graph, report_translation_nodes};
 use crate::translation_context::TranslationContext;
 use crate::translation_node::TranslationNode;
+use crate::network::Network;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -396,6 +397,11 @@ fn build_translated_node(
         network_name: canonical_target_context.network_name.clone(),
         network_description: canonical_target_context.network_description.clone(),
         graph_node: Arc::clone(&leaf),
+        network: Arc::new(Network {
+            id: ID::new(),
+            name: canonical_target_context.network_name.clone().unwrap_or("placeholder".to_string()),
+            description: canonical_target_context.network_description.clone(),
+        }),
         data_node: Arc::new(translated_data_node),
         contexts: canonical_target_context.contexts.clone(),
     });
@@ -476,6 +482,11 @@ fn build_ancestral_chain(
                     id: ID::new(),
                     network_name: original.network_name.clone(),
                     network_description: original.network_description.clone(),
+                    network: Arc::new(Network {
+                        id: ID::new(),
+                        name: original.network_name.clone().unwrap_or("placeholder".to_string()),
+                        description: original.network_description.clone(),
+                    }),
                     graph_node: Arc::clone(&child),
                     data_node: Arc::new(DataNode {
                         id: ID::new(),
