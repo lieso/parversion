@@ -1,5 +1,5 @@
-use std::sync::{Arc, RwLock};
 use serde_json::{json, Map, Value};
+use std::sync::{Arc, RwLock};
 
 use crate::context::Context;
 use crate::data_node::DataNode;
@@ -18,10 +18,7 @@ pub struct NormalContext {
 }
 
 impl NormalContext {
-    pub fn generate_context_string_translation(
-        &self,
-        field: &str,
-    ) -> Result<String, Errors> {
+    pub fn generate_context_string_translation(&self, field: &str) -> Result<String, Errors> {
         let binding = self.data_node.fields.get(field);
         let value = binding.first().unwrap();
 
@@ -35,7 +32,10 @@ impl NormalContext {
 
 [VALUE]
 {}
-        "##, field, value.to_string(), value.type_name()
+        "##,
+            field,
+            value.to_string(),
+            value.type_name()
         );
 
         Ok(result)
@@ -88,7 +88,6 @@ impl NormalContext {
                     }
                 }
             }
-
         }
 
         let object: String = serde_json::to_string_pretty(&result)?;

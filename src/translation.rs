@@ -13,7 +13,7 @@ use crate::normalization;
 use crate::package::Package;
 use crate::prelude::*;
 use crate::provider::Provider;
-use crate::reports::{report_translation_nodes, report_translated_graph};
+use crate::reports::{report_translated_graph, report_translation_nodes};
 use crate::translation_context::TranslationContext;
 use crate::translation_node::TranslationNode;
 

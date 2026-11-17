@@ -1,5 +1,5 @@
-use schemars::JsonSchema;
 use futures::future::try_join_all;
+use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
@@ -21,7 +21,7 @@ pub struct TranslationNodeResponseItem {
 #[derive(Deserialize, JsonSchema)]
 pub struct TranslationNodeResponse {
     /// Matches from LEFT to RIGHT
-    pub matches: Vec<TranslationNodeResponseItem>
+    pub matches: Vec<TranslationNodeResponseItem>,
 }
 
 pub async fn translation_node<R: Reasoner>(
@@ -80,7 +80,6 @@ pub async fn translation_node<R: Reasoner>(
     let mut futures = Vec::new();
 
     for response_match in result.matches {
-
         let cloned_translation_context = Arc::clone(&translation_context);
         let cloned_left_contexts = left_contexts.clone();
         let cloned_right_contexts = right_contexts.clone();
@@ -169,8 +168,7 @@ fn get_user_prompt(
         .iter()
         .take(11)
         .map(|context| {
-            context
-                .generate_context_string_translation_node(Arc::clone(&translation_context))
+            context.generate_context_string_translation_node(Arc::clone(&translation_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
     let left = context_strings.join("\n\n---EXAMPLE SEPARATOR---\n\n");

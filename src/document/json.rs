@@ -3,7 +3,7 @@ use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
+use crate::basis_node::BasisNode;
 use crate::context::Context;
 use crate::data_node::DataNode;
 use crate::document::{Document, DocumentMetadata, DocumentType};
@@ -13,7 +13,7 @@ use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
-use crate::basis_node::BasisNode;
+use crate::prelude::*;
 
 pub struct Json {}
 
@@ -273,8 +273,6 @@ impl Json {
             for (index, canonical_context) in
                 normal_context.contexts.clone().into_iter().enumerate()
             {
-                log::debug!("canonical_context: {:?}", canonical_context.id);
-
                 let ancestors = {
                     let mut ancestors: Vec<Graph> = Vec::new();
                     let mut current_parents =
@@ -336,19 +334,20 @@ impl Json {
 
                 let basis_node: Arc<BasisNode> = {
                     let lock = read_lock!(normalization_context);
-                    let lookup = lock
-                        .context_basis_node
-                        .as_ref()
-                        .ok_or_else(|| {
-                            Errors::DeficientNormalizationContextError(
-                                "'context_basis_node' not provided in normalization context".to_string(),
-                            )
-                        })?;
+                    let lookup = lock.context_basis_node.as_ref().ok_or_else(|| {
+                        Errors::DeficientNormalizationContextError(
+                            "'context_basis_node' not provided in normalization context"
+                                .to_string(),
+                        )
+                    })?;
 
                     match lookup.get(&canonical_context.id) {
                         Some(basis_node) => basis_node.clone(),
                         None => {
-                            log::warn!("No basis node for canonical context {:?}", canonical_context.id);
+                            log::warn!(
+                                "No basis node for canonical context {:?}",
+                                canonical_context.id
+                            );
                             continue;
                         }
                     }
@@ -357,9 +356,10 @@ impl Json {
                 let transformed = basis_node
                     .transformations
                     .iter()
-                    .map(|transformation| transformation.inverse_transform(normal_context.data_node.clone()))
+                    .map(|transformation| {
+                        transformation.inverse_transform(normal_context.data_node.clone())
+                    })
                     .collect::<Result<Vec<DataNode>, Errors>>()?;
-
 
                 let denormalized = DataNode::from_data_nodes(transformed);
 

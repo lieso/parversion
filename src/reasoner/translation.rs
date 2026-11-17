@@ -6,8 +6,8 @@ use std::sync::{Arc, RwLock};
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
-use crate::transformation::Transformation;
 use crate::scheme::eval;
+use crate::transformation::Transformation;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct TranslationResponse {
@@ -35,7 +35,8 @@ pub async fn translation<R: Reasoner>(
         right_field.clone(),
         right_contexts.clone(),
         Capability::Fast,
-    ).await?;
+    )
+    .await?;
 
     match validate_transformation(&transformation) {
         Ok(true) => {
@@ -54,7 +55,8 @@ pub async fn translation<R: Reasoner>(
                 right_field.clone(),
                 right_contexts.clone(),
                 Capability::Capable,
-            ).await?;
+            )
+            .await?;
 
             let reasoner_metadata = ReasonerMetadata {
                 tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
@@ -71,7 +73,10 @@ fn validate_transformation(transformation: &Transformation) -> Result<bool, Erro
     match eval(&transformation.forward) {
         Ok(_compiled) => Ok(true),
         Err(error) => {
-            log::error!("Failed to compile scheme peogram: {:?}", transformation.forward);
+            log::error!(
+                "Failed to compile scheme peogram: {:?}",
+                transformation.forward
+            );
             log::error!("{}", error);
             Ok(false)
         }
@@ -96,7 +101,8 @@ async fn determine_translation<R: Reasoner>(
         &left_contexts,
         &right_field,
         &right_contexts,
-    ).await?;
+    )
+    .await?;
     log::debug!("┌─── USER PROMPT ───────────────────────────────────────────────┐");
     log::debug!("{}", user_prompt);
     log::debug!("└───────────────────────────────────────────────────────────────┘");
@@ -174,13 +180,9 @@ async fn get_user_prompt<R: Reasoner>(
     let render = |field: &str, contexts: &[Arc<NormalContext>]| -> Result<String, Errors> {
         let context_string = contexts
             .iter()
-            .filter(|context| {
-                context.data_node.fields.contains_key(field)
-            })
+            .filter(|context| context.data_node.fields.contains_key(field))
             .take(7)
-            .map(|context| context.generate_context_string_translation(
-                field
-            ))
+            .map(|context| context.generate_context_string_translation(field))
             .collect::<Result<Vec<String>, Errors>>()?
             .join("\n\n---EXAMPLE SEPARATOR---\n\n");
 
@@ -190,11 +192,14 @@ async fn get_user_prompt<R: Reasoner>(
     let left = render(left_field, left_contexts)?;
     let right = render(right_field, right_contexts)?;
 
-    Ok(format!(r##"
+    Ok(format!(
+        r##"
 [LEFT]
 {}
 
 [RIGHT]
 {}
-    "##, left, right))
+    "##,
+        left, right
+    ))
 }

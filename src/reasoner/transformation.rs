@@ -5,8 +5,8 @@ use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
-use crate::transformation::Transformation;
 use crate::scheme::eval;
+use crate::transformation::Transformation;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct TransformationResponse {
@@ -34,7 +34,8 @@ pub async fn transformation<R: Reasoner>(
         description.clone(),
         contexts.clone(),
         Capability::Fast,
-    ).await?;
+    )
+    .await?;
 
     match validate_transformation(&transformation) {
         Ok(true) => {
@@ -53,7 +54,8 @@ pub async fn transformation<R: Reasoner>(
                 description.clone(),
                 contexts.clone(),
                 Capability::Capable,
-            ).await?;
+            )
+            .await?;
 
             let reasoner_metadata = ReasonerMetadata {
                 tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
@@ -70,7 +72,10 @@ fn validate_transformation(transformation: &Transformation) -> Result<bool, Erro
     match eval(&transformation.forward) {
         Ok(_compiled) => Ok(true),
         Err(error) => {
-            log::error!("Failed to compile scheme peogram: {:?}", transformation.forward);
+            log::error!(
+                "Failed to compile scheme peogram: {:?}",
+                transformation.forward
+            );
             log::error!("{}", error);
             Ok(false)
         }
@@ -94,7 +99,8 @@ async fn determine_transformation<R: Reasoner>(
         Arc::clone(&normalization_context),
         &field,
         contexts.clone(),
-    ).await?;
+    )
+    .await?;
     let schema = serde_json::to_value(schemars::schema_for!(TransformationResponse))
         .expect("Failed to serialise TransformationResponse schema");
 
@@ -191,15 +197,14 @@ async fn get_user_prompt<R: Reasoner>(
 
     let values: Vec<String> = group
         .iter()
-        .flat_map(|context| {
-            context.data_node.fields.get_all(field)
-        })
+        .flat_map(|context| context.data_node.fields.get_all(field))
         .take(17)
         .map(|field_value| field_value.to_string())
         .collect();
     let values = serde_json::to_string_pretty(&values).expect("Could not make a JSON string");
 
-    Ok(format!(r##"
+    Ok(format!(
+        r##"
 [DOCUMENT TYPE]
 {}
 
@@ -211,6 +216,7 @@ async fn get_user_prompt<R: Reasoner>(
 
 [SNIPPETS]
 {}
-"##, document_type, origin, values, snippets
+"##,
+        document_type, origin, values, snippets
     ))
 }

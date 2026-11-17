@@ -5,8 +5,6 @@ pub struct Options {
 
 impl Default for Options {
     fn default() -> Self {
-        Options {
-            regenerate: false,
-        }
+        Options { regenerate: false }
     }
 }

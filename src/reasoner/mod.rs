@@ -21,13 +21,13 @@ mod basis_group;
 mod basis_network;
 mod basis_node;
 mod classify;
+mod document;
 mod network_relationship;
 mod node_relationship;
 mod sampling;
 mod transformation;
-mod document;
-mod translation_node;
 mod translation;
+mod translation_node;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;

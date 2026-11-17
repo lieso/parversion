@@ -92,10 +92,7 @@ fn mul_two(a: &Value, b: &Value) -> Result<Value, Errors> {
     }
 }
 
-fn chain_compare_chars(
-    values: &[Value],
-    accept: fn(Ordering) -> bool,
-) -> Result<Value, Errors> {
+fn chain_compare_chars(values: &[Value], accept: fn(Ordering) -> bool) -> Result<Value, Errors> {
     let chars = values
         .iter()
         .map(expect_char)
