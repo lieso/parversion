@@ -6,6 +6,7 @@ use crate::data_node::{DataNode, DataNodeFields};
 use crate::document::{Document, DocumentRole};
 use crate::document_format::DocumentFormat;
 use crate::graph_node::{Graph, GraphNode};
+use crate::network::Network;
 use crate::node_analysis::generate_translation_nodes;
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
@@ -16,7 +17,6 @@ use crate::provider::Provider;
 use crate::reports::{report_translated_graph, report_translation_nodes};
 use crate::translation_context::TranslationContext;
 use crate::translation_node::TranslationNode;
-use crate::network::Network;
 
 pub async fn translate<P: Provider, R: Reasoner>(
     provider: Arc<P>,

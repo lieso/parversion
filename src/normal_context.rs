@@ -3,9 +3,9 @@ use std::sync::{Arc, RwLock};
 
 use crate::context::Context;
 use crate::data_node::DataNode;
-use crate::network::Network;
 use crate::graph_node::GraphNode;
 use crate::json_node::JsonNode;
+use crate::network::Network;
 use crate::prelude::*;
 
 #[derive(Clone, Debug)]

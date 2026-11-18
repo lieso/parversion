@@ -5,12 +5,12 @@ use std::sync::{Arc, RwLock};
 use crate::basis_node::BasisNode;
 use crate::data_node::{DataNode, DataNodeFields};
 use crate::graph_node::{Graph, GraphNode};
+use crate::network::Network;
 use crate::normal_context::NormalContext;
 use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
 use crate::traversal::{Traversal, TraversalKind};
 use crate::xpath::XPath;
-use crate::network::Network;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasisNetworkMetadata {

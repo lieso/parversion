@@ -3,7 +3,6 @@ use serde_json::{json, Map, Value};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
-use crate::prelude::*;
 use crate::basis_node::BasisNode;
 use crate::context::Context;
 use crate::data_node::DataNode;
@@ -12,9 +11,9 @@ use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::graph_node::{Graph, GraphNode};
 use crate::json_node::JsonNode;
 use crate::meta_context::MetaContext;
-use crate::normal_context::NormalContext;
-use crate::normal_meta_context::NormalMetaContext;
 use crate::network::Network;
+use crate::normal_meta_context::NormalMetaContext;
+use crate::prelude::*;
 
 pub struct Json {}
 
@@ -157,7 +156,12 @@ impl Json {
 
         // TODO: would be cleaner if root context had a Network
 
-        fn recurse(normal_meta_context: &NormalMetaContext, graph_node: Graph, network: Option<Arc<Network>>, result: &mut Value) {
+        fn recurse(
+            normal_meta_context: &NormalMetaContext,
+            graph_node: Graph,
+            network: Option<Arc<Network>>,
+            result: &mut Value,
+        ) {
             if let Some(context) = normal_meta_context
                 .contexts_lookup
                 .get(&read_lock!(graph_node).id)
@@ -192,14 +196,19 @@ impl Json {
                     .unwrap();
 
                 // TODO check using network id
-                let is_network_boundary = network.as_ref().map_or(true, |network| {
-                    child_context.network.name != network.name
-                });
+                let is_network_boundary = network
+                    .as_ref()
+                    .map_or(true, |network| child_context.network.name != network.name);
 
                 if is_network_boundary {
                     let mut inner_result: Value = Value::Object(Map::new());
 
-                    recurse(normal_meta_context, Arc::clone(child), Some(child_context.network.clone()), &mut inner_result);
+                    recurse(
+                        normal_meta_context,
+                        Arc::clone(child),
+                        Some(child_context.network.clone()),
+                        &mut inner_result,
+                    );
 
                     let inner_result_value = inner_result.clone();
 
@@ -218,12 +227,22 @@ impl Json {
                         }
                     }
                 } else {
-                    recurse(normal_meta_context, Arc::clone(child), network.clone(), result);
+                    recurse(
+                        normal_meta_context,
+                        Arc::clone(child),
+                        network.clone(),
+                        result,
+                    );
                 }
             }
         }
 
-        recurse(normal_meta_context, Arc::clone(&graph_root), None, &mut result);
+        recurse(
+            normal_meta_context,
+            Arc::clone(&graph_root),
+            None,
+            &mut result,
+        );
 
         let data = serde_json::to_string_pretty(&result).expect("Could not make a JSON string");
 

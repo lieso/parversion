@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::data_node::{DataNode, DataNodeFields, FieldValue};
+use crate::data_node::{DataNode, DataNodeFields};
 use crate::prelude::*;
 use crate::scheme::{apply, eval, Value};
 

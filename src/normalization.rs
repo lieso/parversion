@@ -10,6 +10,7 @@ use crate::field_analysis::generate_basis_fields;
 use crate::graph_analysis::generate_basis_graph;
 use crate::graph_node::GraphNode;
 use crate::group_analysis::{generate_basis_groups, resolve_context_groups};
+use crate::network::Network;
 use crate::network_analysis::generate_basis_networks;
 use crate::node_analysis::generate_basis_nodes;
 use crate::normal_context::NormalContext;
@@ -22,7 +23,6 @@ use crate::reports::{
     report_basis_fields, report_basis_graph, report_basis_groups, report_basis_networks,
     report_basis_nodes,
 };
-use crate::network::Network;
 
 pub async fn normalize<P: Provider, R: Reasoner>(
     provider: Arc<P>,

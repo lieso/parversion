@@ -1,4 +1,3 @@
-use reqwest::Client;
 use serde_json;
 use std::fs::File;
 use std::io::{self, Read, Write};

@@ -13,8 +13,8 @@ use crate::document_node::{DocumentNode, DocumentNodeData};
 use crate::graph_node::{Graph, GraphNode};
 use crate::hash::Hash;
 use crate::meta_context::MetaContext;
-use crate::prelude::*;
 use crate::network::Network;
+use crate::prelude::*;
 
 const MAX_SUBTREE_SIZE: usize = 997;
 
