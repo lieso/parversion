@@ -332,7 +332,11 @@ impl BasisNetwork {
 
                 let normal_context = Arc::new(NormalContext {
                     id: ID::new(),
-                    network: network.clone(),
+                    network: Arc::new(Network {
+                        id: ID::new(),
+                        name: network_name,
+                        description: None,
+                    }),
                     data_node: Arc::new(data_node.clone()),
                     graph_node: Arc::new(RwLock::new(GraphNode {
                         id: ID::new(),
