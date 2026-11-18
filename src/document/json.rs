@@ -72,7 +72,12 @@ impl Json {
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
-                network_name,
+                network_name: network_name.clone(),
+                network: Arc::new(Network {
+                    id: ID::new(),
+                    name: network_name.clone(),
+                    description: None,
+                }),
             });
 
             contexts.insert(context.id.clone(), Arc::clone(&context));

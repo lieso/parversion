@@ -10,6 +10,7 @@ use crate::document_format::DocumentFormat;
 use crate::document_node::DocumentNode;
 use crate::graph_node::{Graph, GraphNode, GraphNodeID};
 use crate::normalization_context::NormalizationContext;
+use crate::network::Network;
 
 #[derive(Clone, Debug)]
 pub struct Context {
@@ -18,6 +19,7 @@ pub struct Context {
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
     pub network_name: String,
+    pub network: Arc<Network>,
 }
 
 impl Context {

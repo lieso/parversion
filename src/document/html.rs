@@ -14,6 +14,7 @@ use crate::graph_node::{Graph, GraphNode};
 use crate::hash::Hash;
 use crate::meta_context::MetaContext;
 use crate::prelude::*;
+use crate::network::Network;
 
 const MAX_SUBTREE_SIZE: usize = 997;
 
@@ -79,7 +80,12 @@ impl Html {
                         document_node: Arc::clone(&document_node),
                         graph_node: Arc::clone(&graph_node),
                         data_node: Arc::clone(&data_node),
-                        network_name,
+                        network_name: network_name.clone(),
+                        network: Arc::new(Network {
+                            id: ID::new(),
+                            name: network_name.clone(),
+                            description: None,
+                        }),
                     });
 
                     {
