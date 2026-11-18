@@ -72,7 +72,6 @@ impl Json {
                 document_node: Arc::clone(&document_node),
                 graph_node: Arc::clone(&graph_node),
                 data_node: Arc::clone(&data_node),
-                network_name: network_name.clone(),
                 network: Arc::new(Network {
                     id: ID::new(),
                     name: network_name.clone(),
@@ -312,17 +311,17 @@ impl Json {
                         continue;
                     };
 
-                    if ancestor_context.network_name.is_empty() {
+                    if ancestor_context.network.name.is_empty() {
                         continue;
                     }
 
                     if index == 0 {
                         // First context of this normal context starts a new instance
-                        current = descend_new_instance(current, &ancestor_context.network_name);
+                        current = descend_new_instance(current, &ancestor_context.network.name);
                     } else {
                         // Later contexts reuse the instance the first one just created
                         let slot = current
-                            .entry(ancestor_context.network_name.clone())
+                            .entry(ancestor_context.network.name.clone())
                             .or_insert_with(|| Value::Object(Map::new()));
 
                         current = match slot {
@@ -337,9 +336,9 @@ impl Json {
                     }
                 }
 
-                if !canonical_context.network_name.is_empty() {
+                if !canonical_context.network.name.is_empty() {
                     current = current
-                        .entry(canonical_context.network_name.clone())
+                        .entry(canonical_context.network.name.clone())
                         .or_insert_with(|| Value::Object(Map::new()))
                         .as_object_mut()
                         .expect("Network should be a json object");
@@ -459,10 +458,10 @@ impl Json {
                     .contexts_lookup
                     .get(&read_lock!(child).id)
                     .unwrap();
-                let next_network_name = if child_context.network_name.is_empty() {
+                let next_network_name = if child_context.network.name.is_empty() {
                     network_name
                 } else {
-                    &child_context.network_name
+                    &child_context.network.name
                 };
 
                 let should_render_child = if let Some(render_ids) = render_ids {
@@ -472,7 +471,7 @@ impl Json {
                 };
 
                 if should_render_child {
-                    if child_context.network_name.is_empty() {
+                    if child_context.network.name.is_empty() {
                         let mut inner_result: Value = Value::Object(Map::new());
 
                         recurse(

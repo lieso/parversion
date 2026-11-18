@@ -18,7 +18,6 @@ pub struct Context {
     pub document_node: Arc<RwLock<DocumentNode>>,
     pub graph_node: Arc<RwLock<GraphNode>>,
     pub data_node: Arc<DataNode>,
-    pub network_name: String,
     pub network: Arc<Network>,
 }
 
@@ -316,25 +315,25 @@ impl Context {
                 .get(&read_lock!(graph).id)
                 .unwrap();
 
-            if current_context.network_name.is_empty() {
+            if current_context.network.name.is_empty() {
                 acc
             } else {
                 if acc.is_empty() {
-                    format!("{}", current_context.network_name)
+                    format!("{}", current_context.network.name)
                 } else {
-                    format!("{} -> {}", acc, current_context.network_name)
+                    format!("{} -> {}", acc, current_context.network.name)
                 }
             }
         });
         if self.data_node.fields.is_empty() {
-            if self.network_name.is_empty() {
+            if self.network.name.is_empty() {
                 panic!("network name is empty");
             } else {
                 if context_string.is_empty() {
-                    let positional_context = format!("{}", self.network_name);
+                    let positional_context = format!("{}", self.network.name);
                     return Ok(positional_context);
                 } else {
-                    let positional_context = format!("{} -> {}", context_string, self.network_name);
+                    let positional_context = format!("{} -> {}", context_string, self.network.name);
                     return Ok(positional_context);
                 }
             }
