@@ -195,10 +195,9 @@ impl Json {
                     .get(&read_lock!(child).id)
                     .unwrap();
 
-                // TODO check using network id
                 let is_network_boundary = network
                     .as_ref()
-                    .map_or(true, |network| child_context.network.name != network.name);
+                    .map_or(true, |network| child_context.network.id != network.id);
 
                 if is_network_boundary {
                     let mut inner_result: Value = Value::Object(Map::new());
