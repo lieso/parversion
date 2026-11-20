@@ -62,6 +62,7 @@ pub struct DocumentMetadata {
     pub name: Option<String>,
     pub description: Option<String>,
     pub semantic_content_types: Option<Vec<String>>,
+    pub lineage: Lineage,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -103,6 +104,8 @@ impl Document {
             reasoner_metadata.cost,
         );
 
+        let lineage = generate_document_lineage(&metadata);
+
         let document = Document {
             document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
@@ -111,6 +114,7 @@ impl Document {
                 name: None,
                 description: None,
                 semantic_content_types: None,
+                lineage,
             },
             data: instance.clone(),
         };
@@ -131,6 +135,8 @@ impl Document {
             return Err(Errors::DocumentNotProvided);
         }
 
+        let lineage = generate_document_lineage(&metadata);
+
         let document = Document {
             document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
@@ -139,6 +145,7 @@ impl Document {
                 name: None,
                 description: None,
                 semantic_content_types: None,
+                lineage,
             },
             data: value,
         };
@@ -193,6 +200,7 @@ impl Document {
                 name: None,
                 description: None,
                 semantic_content_types: None,
+                lineage: Lineage::new(),
             },
         };
 
@@ -222,6 +230,7 @@ impl Document {
                 name: None,
                 description: None,
                 semantic_content_types: None,
+                lineage: Lineage::new(),
             },
         };
 
@@ -251,6 +260,7 @@ impl Document {
                         name: None,
                         description: None,
                         semantic_content_types: None,
+                        lineage: Lineage::new(),
                     },
                 };
 
@@ -298,6 +308,7 @@ impl Document {
                         name: None,
                         description: None,
                         semantic_content_types: None,
+                        lineage: Lineage::new(),
                     },
                 };
 
@@ -309,4 +320,18 @@ impl Document {
             DocumentType::Html => unimplemented!(),
         }
     }
+}
+
+fn generate_document_lineage(metadata: &Metadata) -> Lineage {
+    let mut hashes: Vec<Hash> = Vec::new();
+
+    if let Some(document_type) = &metadata.document_type {
+        hashes.push(Hash::from_str(&document_type.to_string()));
+    }
+
+    if let Some(lineage_hash) = &metadata.lineage {
+        hashes.push(lineage_hash.clone());
+    }
+
+    Lineage::from_hashes(hashes)
 }

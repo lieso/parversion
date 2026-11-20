@@ -459,6 +459,7 @@ fn process_element(
                         name: None,
                         description: None,
                         semantic_content_types: None,
+                        lineage: Lineage::new(),
                     },
                 };
                 extracted_docs.push(html_doc);
@@ -519,6 +520,7 @@ fn is_likely_html(value: &str) -> bool {
             name: None,
             description: None,
             semantic_content_types: None,
+            lineage: Lineage::new(),
         },
     };
 
