@@ -6,7 +6,7 @@ use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NetworkShape};
 use crate::basis_node::BasisNode;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
 use crate::traversal::Traversal;
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -23,10 +23,20 @@ pub async fn basis_network<R: Reasoner>(
     basis_nodes: Vec<Arc<BasisNode>>,
     relationships: Vec<Arc<NodeRelationship>>,
 ) -> Result<(BasisNetwork, ReasonerMetadata), Errors> {
-    let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
+    log::trace!("In basis_network");
+
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().unwrap()
+    };
+    let lineage = read_lock!(meta_context.graph_root).lineage.clone();
+    let system_prompt = get_system_prompt(
+        reasoner,
+        lineage,
+        PromptName::BasisNetwork,
+    ).await?;
     let user_prompt =
         get_user_prompt(Arc::clone(&normalization_context), basis_nodes.clone()).await?;
-
     let schema = serde_json::to_value(schemars::schema_for!(BasisNetworkResponse))
         .expect("Failed to serialize BasisNetworkResponse schema");
     let capability = Capability::Fast;
@@ -128,42 +138,6 @@ pub async fn basis_network<R: Reasoner>(
     };
 
     Ok((basis_network, reasoner_metadata))
-}
-
-async fn get_system_prompt<R: Reasoner>(
-    reasoner: &R,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-) -> Result<String, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .clone()
-            .ok_or(Errors::DeficientNormalizationContextError(
-                "Meta context not provided in normalization context".to_string(),
-            ))?
-    };
-
-    let document_type = meta_context.document_type.to_string().to_lowercase();
-
-    let paths_to_try: Vec<String> = vec![
-        format!(
-            "{}/{}",
-            document_type,
-            meta_context.acyclic_subgraph_hash.clone()
-        ),
-        format!("{}", document_type),
-    ];
-
-    for path in paths_to_try {
-        log::trace!("Searching for prompt with path: {}", path);
-        if let Some(system_prompt) = reasoner.prompts().get(&path, "basis_network").await? {
-            return Ok(system_prompt);
-        }
-    }
-
-    Err(Errors::UnavailableSystemPrompt(
-        "Expected a basis_network.txt system prompt in prompts directory".to_string(),
-    ))
 }
 
 async fn get_user_prompt(

@@ -7,7 +7,7 @@ use crate::basis_node::BasisNode;
 use crate::graph_node::Graph;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
 use crate::xpath::XPath;
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -78,6 +78,10 @@ pub async fn node_relationship_self<R: Reasoner>(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     node: Arc<BasisNode>,
 ) -> Result<(Vec<NodeRelationship>, ReasonerMetadata), Errors> {
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().unwrap()
+    };
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
         lock.basis_node_contexts.clone().ok_or_else(|| {
@@ -86,14 +90,15 @@ pub async fn node_relationship_self<R: Reasoner>(
             )
         })?
     };
-
     let contexts: Vec<Arc<Context>> = basis_node_contexts.get(&node.id).unwrap().to_vec();
-
     let user_prompt =
         get_user_prompt_self(Arc::clone(&normalization_context), node.clone(), &contexts).await?;
-
-    let system_prompt =
-        get_system_prompt_self(reasoner, Arc::clone(&normalization_context)).await?;
+    let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
+    let system_prompt = get_system_prompt(
+        reasoner,
+        document_lineage,
+        PromptName::NodeRelationshipSelf,
+    ).await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipSelfResponse))
         .expect("Failed to serialise NodeRelationshipSelfResponse schema");
@@ -310,9 +315,16 @@ async fn determine_node_relationship_other<R: Reasoner>(
     right: Arc<BasisNode>,
     capability: Capability,
 ) -> Result<(NodeRelationship, ReasonerMetadata), Errors> {
-    let system_prompt =
-        get_system_prompt_other(reasoner, Arc::clone(&normalization_context)).await?;
-
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().unwrap()
+    };
+    let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
+    let system_prompt = get_system_prompt(
+        reasoner,
+        document_lineage,
+        PromptName::NodeRelationshipOther,
+    ).await?;
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
         lock.basis_node_contexts.clone().ok_or_else(|| {

@@ -4,7 +4,7 @@ use serde_json;
 use std::sync::{Arc, RwLock};
 
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
 use crate::scheme::eval;
 use crate::transformation::Transformation;
 
@@ -93,7 +93,16 @@ async fn determine_transformation<R: Reasoner>(
 ) -> Result<(Transformation, ReasonerMetadata), Errors> {
     log::trace!("determine_transformation");
 
-    let system_prompt = get_system_prompt(reasoner).await?;
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().unwrap()
+    };
+    let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
+    let system_prompt = get_system_prompt(
+        reasoner,
+        document_lineage,
+        PromptName::Transformation,
+    ).await?;
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&normalization_context),
@@ -149,18 +158,6 @@ async fn determine_transformation<R: Reasoner>(
     };
 
     Ok((transformation, reasoner_metadata))
-}
-
-async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> {
-    reasoner
-        .prompts()
-        .get("", "transformation")
-        .await?
-        .ok_or_else(|| {
-            Errors::UnavailableSystemPrompt(
-                "Expected a transformation.txt system prompt in prompts directory".to_string(),
-            )
-        })
 }
 
 async fn get_user_prompt<R: Reasoner>(

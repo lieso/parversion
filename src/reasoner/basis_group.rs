@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use super::sampling::pre_sample_context_group;
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisGroupResponse {
@@ -25,9 +25,19 @@ pub async fn basis_group<R: Reasoner>(
 
     assert!(group.len() > 1);
 
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().unwrap()
+    };
     let hash = read_lock!(group[0].graph_node).hash.clone();
 
-    let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
+    let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
+    let system_prompt = get_system_prompt(
+        reasoner,
+        document_lineage,
+        PromptName::BasisGroup,
+    ).await?;
+
     let user_prompt = get_user_prompt(Arc::clone(&normalization_context), group).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisGroupResponse))
         .expect("Failed to serialise BasisGroupResponse schema");
@@ -108,41 +118,5 @@ async fn get_user_prompt(
 {}
 "##,
         merged_samples
-    ))
-}
-
-async fn get_system_prompt<R: Reasoner>(
-    reasoner: &R,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-) -> Result<String, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .clone()
-            .ok_or(Errors::DeficientNormalizationContextError(
-                "Meta context not provided in normalization context".to_string(),
-            ))?
-    };
-
-    let document_type = meta_context.document_type.to_string().to_lowercase();
-
-    let paths_to_try: Vec<String> = vec![
-        format!(
-            "{}/{}",
-            document_type,
-            meta_context.acyclic_subgraph_hash.clone()
-        ),
-        format!("{}", document_type),
-    ];
-
-    for path in paths_to_try {
-        log::trace!("Searching for prompt with path: {}", path);
-        if let Some(system_prompt) = reasoner.prompts().get(&path, "basis_group").await? {
-            return Ok(system_prompt);
-        }
-    }
-
-    Err(Errors::UnavailableSystemPrompt(
-        "Expected a basis_group.txt system prompt in prompts directory".to_string(),
     ))
 }
