@@ -165,6 +165,14 @@ fn parse_arguments() -> clap::ArgMatches {
                 .help("Specify the origin of the document"),
         )
         .arg(
+            Arg::new("lineage")
+                .short('l')
+                .long("lineage")
+                .value_name("LINEAGE")
+                .required(false)
+                .help("Specify the lineage of the document")
+        )
+        .arg(
             Arg::new("role")
                 .short('k')
                 .long("role")
@@ -224,6 +232,7 @@ async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadat
                 origin: partial.origin,
                 date: None,
                 role,
+                lineage: partial.lineage,
             };
 
             return Ok(Some((parsed_document, md)));
@@ -253,6 +262,10 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
         .map_err(|e| Errors::InvalidRole(e.to_string()))?
         .unwrap_or(DocumentRole::Instance);
 
+    let fallback_lineage: Option<Hash> = matches
+        .get_one::<String>("lineage")
+        .map(|s| Hash::from_str(&s));
+
     if let Some(values) = matches.get_many::<String>("documents") {
         for raw_document in values {
             let (parsed_document, partial) = parse_document(raw_document).await?;
@@ -271,6 +284,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
                 origin: Some(origin),
                 date: None,
                 role,
+                lineage: partial.lineage,
             };
 
             documents.push((parsed_document, md));
@@ -282,6 +296,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
             origin: Some(fallback_origin),
             date: None,
             role: fallback_role,
+            lineage: fallback_lineage,
         };
         return Ok(vec![(stdin, metadata)]);
     } else {
@@ -296,6 +311,7 @@ struct MetadataPartial {
     document_type: Option<DocumentType>,
     origin: Option<String>,
     role: Option<DocumentRole>,
+    lineage: Option<Hash>,
 }
 
 async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial), Errors> {
@@ -334,6 +350,10 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
                     DocumentRole::from_str(value)
                         .map_err(|e| Errors::InvalidRole(e.to_string()))?,
                 );
+            }
+            "lineage" => {
+                log::debug!("lineage={}", value);
+                partial.lineage = Some(Hash::from_str(&value));
             }
             _ => return Err(Errors::UnexpectedParameter(key.to_string())),
         }
