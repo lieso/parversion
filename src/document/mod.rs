@@ -325,6 +325,8 @@ impl Document {
 fn generate_document_lineage(metadata: &Metadata) -> Lineage {
     let mut hashes: Vec<Hash> = Vec::new();
 
+    hashes.push(Hash::from_str("root"));
+
     if let Some(document_type) = &metadata.document_type {
         hashes.push(Hash::from_str(&document_type.to_string()));
     }
