@@ -9,7 +9,7 @@ pub type IndexedLineage = Lineage;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Hash)]
 pub struct Lineage {
-    source_hashes: Vec<Hash>,
+    pub source_hashes: Vec<Hash>,
     pub identity_hash: Hash,
 }
 

@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use std::sync::{Arc, RwLock};
+use std::fmt;
 
 use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
@@ -54,6 +55,40 @@ pub struct ReasonerMetadata {
     pub tokens: u32,
     pub cost: f64,
     pub prompts: Vec<Hash>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PromptName {
+    SchemaToInstance,
+    Transformation,
+    Translation,
+    TranslationNode,
+    BasisField,
+    BasisGroup,
+    BasisNetwork,
+    BasisNode,
+    NetworkRelationshipSelf,
+    NodeRelationshipOther,
+    NodeRelationshipSelf,
+}
+
+impl fmt::Display for PromptName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            PromptName::SchemaToInstance => "schema_to_instance",
+            PromptName::Transformation => "transformation",
+            PromptName::Translation => "translation",
+            PromptName::TranslationNode => "translation_node",
+            PromptName::BasisField => "basis_field",
+            PromptName::BasisGroup => "basis_group",
+            PromptName::BasisNetwork => "basis_network",
+            PromptName::BasisNode => "basis_node",
+            PromptName::NetworkRelationshipSelf => "network_relationship_self",
+            PromptName::NodeRelationshipOther => "node_relationship_other",
+            PromptName::NodeRelationshipSelf => "node_relationship_self",
+        };
+        write!(f, "{}", name)
+    }
 }
 
 #[async_trait]
@@ -261,4 +296,33 @@ fn is_retryable(error: &Errors) -> bool {
         error,
         Errors::RateLimitError(_) | Errors::TransientBackendError(_)
     )
+}
+
+async fn get_system_prompt<R: Reasoner>(
+    reasoner: &R,
+    lineage: Lineage,
+    name: PromptName,
+) -> Result<String, Errors> {
+    for index in (0..lineage.source_hashes.len()).rev() {
+        let path = lineage
+            .source_hashes[0..index + 1]
+            .iter()
+            .fold(String::new(), |mut acc, hash| {
+                let hash_str = hash.to_string().unwrap();
+
+                if acc.is_empty() {
+                    hash_str
+                } else {
+                    format!("{}/{}", acc, hash_str)
+                }
+            });
+
+        if let Some(system_prompt) = reasoner.prompts().get(&path, &name.to_string()).await? {
+            return Ok(system_prompt);
+        }
+    }
+
+    Err(Errors::UnavailableSystemPrompt(
+        format!("Expected a {} system prompt in the prompts directory", name.to_string())
+    ))
 }
