@@ -157,12 +157,12 @@ fn parse_arguments() -> clap::ArgMatches {
                 .help("The document type : html, xml, js"),
         )
         .arg(
-            Arg::new("origin")
-                .short('s')
-                .long("origin")
-                .value_name("ORIGIN")
-                .required(true)
-                .help("Specify the origin of the document"),
+            Arg::new("url")
+                .short('u')
+                .long("url")
+                .value_name("URL")
+                .required(false)
+                .help("Specify the url of the document, if applicable"),
         )
         .arg(
             Arg::new("lineage")
@@ -229,7 +229,7 @@ async fn get_translation(matches: &ArgMatches) -> Result<Option<(String, Metadat
 
             let md = Metadata {
                 document_type: Some(dt),
-                origin: partial.origin,
+                url: partial.url,
                 date: None,
                 role,
                 lineage: partial.lineage,
@@ -250,10 +250,9 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
         .map(|s| parse_document_type(s))
         .transpose()?;
 
-    let fallback_origin: String = matches
-        .get_one::<String>("origin")
-        .cloned()
-        .expect("An origin is expected");
+    let fallback_url: Option<String> = matches
+        .get_one::<String>("url")
+        .cloned();
 
     let fallback_role: DocumentRole = matches
         .get_one::<String>("role")
@@ -275,13 +274,11 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
                 .or_else(|| fallback_type.clone())
                 .ok_or(Errors::DocumentTypeNotProvided)?;
 
-            let origin = partial.origin.unwrap_or_else(|| fallback_origin.clone());
-
             let role = partial.role.unwrap_or_else(|| fallback_role.clone());
 
             let md = Metadata {
                 document_type: Some(dt),
-                origin: Some(origin),
+                url: partial.url.or_else(|| fallback_url.clone()),
                 date: None,
                 role,
                 lineage: partial.lineage,
@@ -293,7 +290,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
         let dt = fallback_type.ok_or(Errors::DocumentTypeNotProvided)?;
         let metadata = Metadata {
             document_type: Some(dt),
-            origin: Some(fallback_origin),
+            url: fallback_url,
             date: None,
             role: fallback_role,
             lineage: fallback_lineage,
@@ -309,7 +306,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
 #[derive(Default)]
 struct MetadataPartial {
     document_type: Option<DocumentType>,
-    origin: Option<String>,
+    url: Option<String>,
     role: Option<DocumentRole>,
     lineage: Option<Hash>,
 }
@@ -340,9 +337,9 @@ async fn parse_document(raw_document: &str) -> Result<(String, MetadataPartial),
                 log::debug!("type={}", value);
                 partial.document_type = Some(parse_document_type(value)?);
             }
-            "origin" => {
-                log::debug!("origin={}", value);
-                partial.origin = Some(value.to_string());
+            "url" => {
+                log::debug!("url={}", value);
+                partial.url = Some(value.to_string());
             }
             "role" => {
                 log::debug!("role={}", value);

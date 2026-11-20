@@ -12,11 +12,12 @@ The input has four sections.
 The format of the document the values were extracted from, such as `html` or
 `json`.
 
-[ORIGIN]
-The address of the document the values were extracted from. This is the only
-established fact about where the values came from, and it may be used as a
-constant in a program. If it is `Unknown`, no address is available and none may
-be assumed.
+[URL]
+The address of the document the values were extracted from, or `Unknown` if no
+address is available. When it is known, it is the only established fact about
+where the values came from, and it may be used as a constant in a program. When
+it is `Unknown`, do the best you can with the information given. Do not assume
+an address and do not invent one.
 
 [VALUES]
 A JSON array of strings. Each string is one raw value of the field, taken from a
@@ -78,14 +79,8 @@ string of digits, and a boolean as a boolean. Use these forms:
   (`YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS`), keeping only the precision the value
   actually has.
 - Booleans: a boolean, true or false.
-- Links and addresses of resources: a string holding a complete absolute URL. A
-  value that already begins with a scheme such as `https:` is left unchanged. Any
-  other value is joined onto [ORIGIN]: a value that begins with `/` is appended
-  to the origin, and any other value is appended after the origin and a single
-  `/`. Make sure the joined result has exactly one `/` at the join. Do not
-  process `.` or `..` segments, `//` prefixes, queries, or fragments. Text that
-  merely names or labels something is not a link: treat a value as an address
-  only when the snippets show that it is one.
+- Links and addresses of resources: a string holding a complete absolute URL. If
+  an absolute URL is not possible to deduce, provide only an identity program.
 
 These are guidelines, not a closed list. For a kind of value not listed, use the
 most standard machine-friendly representation and type that exists for it.
@@ -93,7 +88,7 @@ most standard machine-friendly representation and type that exists for it.
 Rules:
 
 - Choose one canonical type for the field and use it for every value.
-- Normalize only what the value and [ORIGIN] determine. Do not invent missing
+- Normalize only what the value and [URL] determine. Do not invent missing
   information, and do not guess. If making a value canonical would need data the
   input does not provide, such as an external lookup, the current time, or a base
   address that is not given, do not attempt it.
@@ -159,8 +154,8 @@ agree:
   consistent with all of the samples and the snippets.
 - Do not compare against, branch on, embed, or return individual sampled values.
   Do not build a lookup table from the samples.
-- Constants are allowed when [ORIGIN] establishes them. Do not embed constants
-  the input does not establish.
+- Constants are allowed when [URL] establishes them, and never when it is
+  `Unknown`. Do not embed constants the input does not establish.
 - Mentally test both programs against the samples and check that the round trip
   holds for each normalized result.
 - Extract, do not validate. To pull a number out of text, read the part you need

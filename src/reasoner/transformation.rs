@@ -180,9 +180,9 @@ async fn get_user_prompt<R: Reasoner>(
 
     let document_type = meta_context.document_type.to_string().to_lowercase();
 
-    let origin = meta_context
+    let url = meta_context
         .document_metadata
-        .origin
+        .url
         .clone()
         .unwrap_or("Unknown".to_string());
 
@@ -208,7 +208,7 @@ async fn get_user_prompt<R: Reasoner>(
 [DOCUMENT TYPE]
 {}
 
-[ORIGIN]
+[URL]
 {}
 
 [VALUES]
@@ -217,6 +217,6 @@ async fn get_user_prompt<R: Reasoner>(
 [SNIPPETS]
 {}
 "##,
-        document_type, origin, values, snippets
+        document_type, url, values, snippets
     ))
 }

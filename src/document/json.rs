@@ -118,12 +118,9 @@ impl Json {
             graph_node
         }
 
-        let origin_hash = Hash::from_str(&metadata.origin.clone().unwrap_or_default());
-        let initial_lineage = Lineage::new().with_hash(origin_hash);
-
         let graph_root = recurse(
             Arc::clone(&document_root),
-            &initial_lineage,
+            &metadata.lineage,
             &mut contexts,
             &mut contexts_lookup,
             Vec::new(),

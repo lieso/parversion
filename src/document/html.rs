@@ -135,12 +135,9 @@ impl Html {
                     graph_node
                 }
 
-                let origin_hash = Hash::from_str(&metadata.origin.clone().unwrap_or_default());
-                let initial_lineage = Lineage::new().with_hash(origin_hash);
-
                 let graph_root = recurse(
                     Arc::clone(&document_root),
-                    &initial_lineage,
+                    &metadata.lineage,
                     contexts.clone(),
                     contexts_lookup.clone(),
                     Vec::new(),
@@ -454,7 +451,7 @@ fn process_element(
                     document_type: DocumentType::Html,
                     data: attr_value.to_string(),
                     metadata: DocumentMetadata {
-                        origin: None,
+                        url: None,
                         date: None,
                         name: None,
                         description: None,
@@ -515,7 +512,7 @@ fn is_likely_html(value: &str) -> bool {
         document_type: DocumentType::Html,
         data: value.to_string(),
         metadata: DocumentMetadata {
-            origin: None,
+            url: None,
             date: None,
             name: None,
             description: None,

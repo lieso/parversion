@@ -57,7 +57,7 @@ impl FromStr for DocumentRole {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DocumentMetadata {
-    pub origin: Option<String>,
+    pub url: Option<String>,
     pub date: Option<String>,
     pub name: Option<String>,
     pub description: Option<String>,
@@ -109,7 +109,7 @@ impl Document {
         let document = Document {
             document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
-                origin: metadata.origin.clone(),
+                url: metadata.url.clone(),
                 date: metadata.date.clone(),
                 name: None,
                 description: None,
@@ -140,7 +140,7 @@ impl Document {
         let document = Document {
             document_type: metadata.document_type.clone().unwrap(),
             metadata: DocumentMetadata {
-                origin: metadata.origin.clone(),
+                url: metadata.url.clone(),
                 date: metadata.date.clone(),
                 name: None,
                 description: None,
@@ -195,7 +195,7 @@ impl Document {
             document_type: document_format.format_type.clone(),
             data,
             metadata: DocumentMetadata {
-                origin: None,
+                url: None,
                 date: None,
                 name: None,
                 description: None,
@@ -225,7 +225,7 @@ impl Document {
             document_type: document_format.format_type.clone(),
             data,
             metadata: DocumentMetadata {
-                origin: None,
+                url: None,
                 date: None,
                 name: None,
                 description: None,
@@ -255,7 +255,7 @@ impl Document {
                     document_type: DocumentType::Json,
                     data,
                     metadata: DocumentMetadata {
-                        origin: None,
+                        url: None,
                         date: None,
                         name: None,
                         description: None,
@@ -303,7 +303,7 @@ impl Document {
                     document_type: DocumentType::Json,
                     data,
                     metadata: DocumentMetadata {
-                        origin: None,
+                        url: None,
                         date: None,
                         name: None,
                         description: None,
