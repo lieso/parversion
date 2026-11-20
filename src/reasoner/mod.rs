@@ -307,7 +307,7 @@ async fn get_system_prompt<R: Reasoner>(
         let path = lineage
             .source_hashes[0..index + 1]
             .iter()
-            .fold(String::new(), |mut acc, hash| {
+            .fold(String::new(), |acc, hash| {
                 let hash_str = hash.to_string().unwrap();
 
                 if acc.is_empty() {
@@ -316,6 +316,8 @@ async fn get_system_prompt<R: Reasoner>(
                     format!("{}/{}", acc, hash_str)
                 }
             });
+
+        log::debug!("path: {}", path);
 
         if let Some(system_prompt) = reasoner.prompts().get(&path, &name.to_string()).await? {
             return Ok(system_prompt);

@@ -6,7 +6,7 @@ use super::sampling::{pre_sample_context_group, sample_most_different};
 use crate::basis_field::{BasisField, BasisFieldMetadata};
 use crate::document::DocumentType;
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisFieldResponse {
@@ -47,7 +47,13 @@ pub async fn basis_field<R: Reasoner>(
         return Ok((Some(basis_field), reasoner_metadata));
     }
 
-    let system_prompt = get_system_prompt(reasoner, Arc::clone(&normalization_context)).await?;
+    let lineage = read_lock!(meta_context.graph_root).lineage.clone();
+    let system_prompt = get_system_prompt(
+        reasoner,
+        lineage,
+        PromptName::BasisField,
+    ).await?;
+
     let user_prompt = get_user_prompt(
         reasoner,
         Arc::clone(&normalization_context),
@@ -134,41 +140,5 @@ async fn get_user_prompt<R: Reasoner>(
 {}
 "##,
         candidate, merged_samples
-    ))
-}
-
-async fn get_system_prompt<R: Reasoner>(
-    reasoner: &R,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-) -> Result<String, Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .clone()
-            .ok_or(Errors::DeficientNormalizationContextError(
-                "Meta context not provided in normalization context".to_string(),
-            ))?
-    };
-
-    let document_type = meta_context.document_type.to_string().to_lowercase();
-
-    let paths_to_try: Vec<String> = vec![
-        format!(
-            "{}/{}",
-            document_type,
-            meta_context.acyclic_subgraph_hash.clone()
-        ),
-        format!("{}", document_type),
-    ];
-
-    for path in paths_to_try {
-        log::trace!("Searching for prompt with path: {}", path);
-        if let Some(system_prompt) = reasoner.prompts().get(&path, "basis_field").await? {
-            return Ok(system_prompt);
-        }
-    }
-
-    Err(Errors::UnavailableSystemPrompt(
-        "Expected a basis_field.txt system prompt in prompts directory".to_string(),
     ))
 }
