@@ -197,6 +197,7 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "char->integer" => char_to_integer(values)?,
                 "char<?" | "char<" => char_less_than(values)?,
                 "char>?" | "char>" => char_greater_than(values)?,
+                "string?" => string_p(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }

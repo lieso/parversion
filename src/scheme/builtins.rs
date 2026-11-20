@@ -3,6 +3,13 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn string_p(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    // (string? x) is #f for non-strings, not an error, as in standard Scheme.
+    Ok(Value::Bool(matches!(values[0], Value::Str(_))))
+}
+
 pub fn char_less_than(values: Vec<Value>) -> Result<Value, Errors> {
     chain_compare_chars(&values, |o| o == Ordering::Less)
 }
