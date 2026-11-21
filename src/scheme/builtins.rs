@@ -3,6 +3,16 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn char_ci_equals(values: Vec<Value>) -> Result<Value, Errors> {
+    let mut folded = Vec::with_capacity(values.len());
+    for value in &values {
+        let c = expect_char(value)?;
+        folded.push(c.to_lowercase().next().unwrap_or(c));
+    }
+
+    Ok(Value::Bool(folded.windows(2).all(|pair| pair[0] == pair[1])))
+}
+
 pub fn string_p(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
 
