@@ -42,7 +42,7 @@ pub async fn transformation<R: Reasoner>(
             log::info!("Transformation is valid");
             Ok((transformation, reasoner_metadata))
         }
-        result => {
+        _ => {
             log::warn!("Transformation did not validate");
             log::info!("Escalating to a more advanced model...");
 
@@ -104,7 +104,6 @@ async fn determine_transformation<R: Reasoner>(
         PromptName::Transformation,
     ).await?;
     let user_prompt = get_user_prompt(
-        reasoner,
         Arc::clone(&normalization_context),
         &field,
         contexts.clone(),
@@ -160,8 +159,7 @@ async fn determine_transformation<R: Reasoner>(
     Ok((transformation, reasoner_metadata))
 }
 
-async fn get_user_prompt<R: Reasoner>(
-    reasoner: &R,
+async fn get_user_prompt(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     field: &str,
     group: Vec<Arc<Context>>,

@@ -128,7 +128,6 @@ impl Document {
 
     pub fn from_string(
         value: String,
-        options: &Options,
         metadata: &Metadata,
     ) -> Result<Self, Errors> {
         if value.trim().is_empty() {

@@ -91,19 +91,19 @@ pub async fn normalize_text<P: Provider, R: Reasoner>(
     provider: Arc<P>,
     reasoner: Arc<R>,
     text: String,
-    _options: &Options,
+    options: &Options,
     metadata: &Metadata,
     execution_context: Arc<ExecutionContext>,
 ) -> Result<Vec<Arc<RwLock<NormalizationContext>>>, Errors> {
     log::trace!("In normalize_text");
 
-    let document = Document::from_string(text, _options, metadata)?;
+    let document = Document::from_string(text, metadata)?;
 
     normalize(
         Arc::clone(&provider),
         Arc::clone(&reasoner),
         document,
-        _options,
+        options,
         execution_context,
     )
     .await

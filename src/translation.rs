@@ -138,14 +138,14 @@ pub async fn translate_text<P: Provider, R: Reasoner>(
 ) -> Result<Arc<RwLock<TranslationContext>>, Errors> {
     log::trace!("In translate_text");
 
-    let source_document = Document::from_string(source.0, options, source.1)?;
+    let source_document = Document::from_string(source.0, source.1)?;
 
     let start = Instant::now();
     let stage = execution_context.enter_stage("Preinitialization");
 
     let target_document = {
         match target.1.role {
-            DocumentRole::Instance => Document::from_string(target.0, options, target.1)?,
+            DocumentRole::Instance => Document::from_string(target.0, target.1)?,
             DocumentRole::Schema => {
                 Document::from_schema_string(
                     Arc::clone(&provider),

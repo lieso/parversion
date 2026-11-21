@@ -43,7 +43,7 @@ impl Value {
 
     pub fn to_field_value(&self) -> Result<FieldValue, Errors> {
         match self {
-            Value::List(l) => Err(Errors::FieldConversionError(
+            Value::List(_l) => Err(Errors::FieldConversionError(
                 "Attempted to convert a Schem list to a FieldValue variant".to_string(),
             )),
             Value::Integer(i) => Ok(FieldValue::Integer(i.clone())),
