@@ -67,9 +67,9 @@ impl Reasoner for OpenRouterReasoner {
         let prompt_hash = Hash::from_str(&combined_prompt);
 
         let (model, effort) = match capability {
-            Capability::Fast => ("gpt-5.6-luna", Effort::Low),
-            Capability::Capable => ("gpt-5.6-sol", Effort::Medium),
-            Capability::Strong => ("gpt-6-astra", Effort::High),
+            Capability::Fast => ("gpt-6-luna", Effort::Low),
+            Capability::Capable => ("gpt-6.2-sol", Effort::Medium),
+            Capability::Strong => ("gpt-6.2-astra", Effort::High),
         };
 
         // Clone and fix the schema - additionalProperties causes problems
