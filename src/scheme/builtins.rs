@@ -3,6 +3,12 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn char_downcase(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let c = expect_char(&values[0])?;
+    Ok(Value::Char(c.to_lowercase().next().unwrap_or(c)))
+}
+
 pub fn char_ci_equals(values: Vec<Value>) -> Result<Value, Errors> {
     let mut folded = Vec::with_capacity(values.len());
     for value in &values {
