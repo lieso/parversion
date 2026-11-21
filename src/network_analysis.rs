@@ -108,6 +108,10 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     log::debug!("unique_comparisons: {}", unique_comparisons.len());
 
+    if unique_comparisons.len() > 0 {
+        panic!();
+    }
+
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
     let mut handles = Vec::new();
@@ -165,6 +169,11 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         .filter(|basis_node| !basis_node.transformations.is_empty())
         .cloned()
         .collect();
+
+    if non_empty_basis_nodes.is_empty() {
+        log::info!("All basis nodes are empty. Zero basis networks generated");
+        return Ok((HashMap::new(),));
+    }
 
     let basis_networks = resolve_basis_networks(
         Arc::clone(&provider),

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 use crate::basis_network::BasisNetwork;
 use crate::graph_node::{Graph, GraphNode};
@@ -40,6 +41,16 @@ impl BasisGraph {
         parent: Graph,
     ) -> Result<NormalMetaContext, Errors> {
         log::trace!("In apply");
+
+        if self.graph_roots.is_empty() {
+            let normal_meta_context = NormalMetaContext::new(
+                HashMap::new(),
+                Arc::clone(&parent),
+                HashMap::new(),
+            );
+
+            return Ok(normal_meta_context);
+        }
 
         let result = self
             .graph_roots
