@@ -204,15 +204,9 @@ pub async fn report_basis_nodes(
             .clone()
     };
 
+    // Collect each distinct covered basis node once, with its contexts.
     let mut covered_nodes = std::collections::HashSet::new();
-
-    println!("{}=== Basis Node Report ==={}", GREEN, RESET);
-    println!(
-        "{}Number of basis nodes: {}{}",
-        GREEN,
-        basis_nodes.len(),
-        RESET
-    );
+    let mut covered = Vec::new();
 
     for (group_id, contexts) in &context_groups {
         let basis_group = basis_groups.get(group_id).ok_or_else(|| {
@@ -234,71 +228,96 @@ pub async fn report_basis_nodes(
                 ))
             })?;
 
-        if covered_nodes.contains(&basis_node.id) {
-            continue;
+        if covered_nodes.insert(basis_node.id.clone()) {
+            covered.push((Arc::clone(basis_node), contexts.to_vec()));
         }
-        covered_nodes.insert(basis_node.id.clone());
+    }
 
-        println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
-        println!(
-            "{}--- Node [{}] ---{}",
-            GREEN,
-            basis_node.id.to_string(),
-            RESET
-        );
-        println!(
-            "{}  lineage: {}{}",
-            GREEN,
-            basis_node.lineage.to_string(),
-            RESET
-        );
-        println!(
-            "{}  transformations: {} count{}",
-            GREEN,
-            basis_node.transformations.len(),
-            RESET
-        );
-        println!(
-            "{}  prompts: {:?}{}",
-            GREEN, basis_node.metadata.prompts, RESET
-        );
-        println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
+    // Split into nodes with no transformations and nodes with at least one.
+    let (empty, non_empty): (Vec<_>, Vec<_>) = covered
+        .into_iter()
+        .partition(|(node, _)| node.transformations.is_empty());
 
-        let sample_contexts: Vec<_> = contexts.iter().take(20).collect();
+    println!("{}=== Basis Node Report ==={}", GREEN, RESET);
+    println!(
+        "{}Number of basis nodes: {} (empty transformations: {}, non-empty: {}){}",
+        GREEN,
+        basis_nodes.len(),
+        empty.len(),
+        non_empty.len(),
+        RESET
+    );
+    println!();
 
-        for (ctx_idx, context) in sample_contexts.iter().enumerate() {
-            println!("{}  [Context {}]{}", GREEN, ctx_idx + 1, RESET);
+    for (title, entries) in [
+        ("Basis Nodes With Empty Transformations", &empty),
+        ("Basis Nodes With Non-Empty Transformations", &non_empty),
+    ] {
+        println!("{}=== {} ({}) ==={}", GREEN, title, entries.len(), RESET);
+
+        for (basis_node, contexts) in entries {
+            println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
             println!(
-                "{}    Before: {:?}{}",
-                GREEN, context.data_node.fields, RESET
+                "{}--- Node [{}] ---{}",
+                GREEN,
+                basis_node.id.to_string(),
+                RESET
             );
+            println!(
+                "{}  lineage: {}{}",
+                GREEN,
+                basis_node.lineage.to_string(),
+                RESET
+            );
+            println!(
+                "{}  transformations: {} count{}",
+                GREEN,
+                basis_node.transformations.len(),
+                RESET
+            );
+            println!(
+                "{}  prompts: {:?}{}",
+                GREEN, basis_node.metadata.prompts, RESET
+            );
+            println!("{}{}{}", GREEN, "-----------------------------------------------------------------------------------------------------", RESET);
 
-            for (txn_idx, transformation) in basis_node.transformations.iter().enumerate() {
+            for (ctx_idx, context) in contexts.iter().take(20).enumerate() {
+                println!("{}  [Context {}]{}", GREEN, ctx_idx + 1, RESET);
                 println!(
-                    "{}    [Transformation {}] {}{}",
-                    GREEN,
-                    txn_idx + 1,
-                    transformation.description,
-                    RESET
-                );
-                println!(
-                    "{}      field: {}, image: {}{}",
-                    GREEN, transformation.field, transformation.image, RESET
+                    "{}    Before: {:?}{}",
+                    GREEN, context.data_node.fields, RESET
                 );
 
-                match transformation.transform(Arc::clone(&context.data_node)) {
-                    Ok(transformed) => {
-                        println!("{}      After: {:?}{}", GREEN, transformed.fields, RESET);
-                    }
-                    Err(e) => {
-                        println!("{}      Error: {:?}{}", GREEN, e, RESET);
+                for (txn_idx, transformation) in basis_node.transformations.iter().enumerate() {
+                    println!(
+                        "{}    [Transformation {}] {}{}",
+                        GREEN,
+                        txn_idx + 1,
+                        transformation.description,
+                        RESET
+                    );
+                    println!(
+                        "{}      field: {}, image: {}{}",
+                        GREEN, transformation.field, transformation.image, RESET
+                    );
+
+                    match transformation.transform(Arc::clone(&context.data_node)) {
+                        Ok(transformed) => {
+                            println!("{}      After: {:?}{}", GREEN, transformed.fields, RESET);
+                        }
+                        Err(e) => {
+                            println!("{}      Error: {:?}{}", GREEN, e, RESET);
+                        }
                     }
                 }
+
+                println!();
             }
 
             println!();
         }
 
+        println!("{}=== End {} ==={}", GREEN, title, RESET);
         println!();
     }
 
