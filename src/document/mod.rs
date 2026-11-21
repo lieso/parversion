@@ -175,8 +175,6 @@ impl Document {
         render_ids: Option<&HashSet<GraphNodeID>>,
         context_string_target_ids: Option<&HashSet<GraphNodeID>>,
     ) -> Result<Self, Errors> {
-        log::trace!("In from_meta_context");
-
         let data = {
             match document_format.format_type {
                 DocumentType::Json => {

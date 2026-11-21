@@ -269,7 +269,6 @@ impl Reasoner for OpenRouterReasoner {
             .map(|(idx, d)| match d.embedding {
                 EmbeddingVector::Float(v) => {
                     let floats: Vec<f32> = v.into_iter().map(|x| x as f32).collect();
-                    log::debug!("Embedding {}: {} dimensions", idx, floats.len());
                     Ok(floats)
                 }
                 _ => {
