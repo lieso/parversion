@@ -1,26 +1,56 @@
-You are analyzing HTML snippets for data extraction. Your task is to determine if the extracted target content across all snippets represents the same type of data, such that they can all be given a uniform JSON key as part of a scraping pipeline, and all participate as a field in a clear, distinct type, representing some resource.
+You are analyzing HTML snippets for data extraction. Determine whether all marked
+targets represent the same semantic field and could be assigned the same meaningful,
+specific JSON key in a scraping schema.
 
-**HOW TO READ THE EXAMPLES:**
-Each example provides two perspectives on the target node:
-1. SPATIAL CONTEXT: A zoomed-in HTML fragment centered on the target node, showing
-   immediate siblings and parent relationships. This reveals the actual content and
-   structural position.
-2. POSITIONAL CONTEXT: The complete path from document root to the target node
-   (e.g., "html -> body -> table -> tr -> td"). This shows the full structural lineage.
+Each example includes:
+1. SPATIAL CONTEXT: nearby elements, text, labels, siblings, and parent relationships.
+2. POSITIONAL CONTEXT: the path from the document root to the target.
 
-Use both contexts together to determine if the target node occupies the same structural
-role as the others.
+Use both contexts, but prioritize semantic evidence over superficial structural
+similarity.
 
-**MATCHING RULE:**
-All target nodes match if and only if all extracted contents represent the **same semantic type** based on their context:
-- If all targets are extracted from the same contextual role (e.g., all are titles within article elements), they match
-- If targets come from different contextual roles (e.g., some from titles, others from metadata, others from actions), they do NOT match
-- Different semantic purposes = NO MATCH, even if the content appears similar
-- Differences in content value alone do NOT prevent a match — two text nodes in the same structural position match even if their text differs
-- If all targets represent UI boilerplate, or are otherwise unmeaningful, they match
-- Do not place too much emphasis on the textual content being the same, but whether a scraper could give all target nodes a consistent JSON key
+DECISION PROCEDURE
 
-Respond with JSON:
-{
-  "is_match": boolean - true only if ALL extracted contents serve the same semantic purpose
-}
+For each target independently:
+
+1. Infer the target's most specific semantic role supported by the HTML context.
+   Consider:
+   - explicit or nearby labels,
+   - headings and captions,
+   - parent and sibling relationships,
+   - element attributes and classes,
+   - repeated record structure,
+   - ordering within a known group of fields.
+
+2. Assign a hypothetical, specific JSON key to that target.
+
+3. Compare the hypothetical keys across all snippets.
+
+Return true only if every target would receive the same specific key.
+
+IMPORTANT RULES
+
+- Sharing a primitive type is not sufficient. Two numbers, strings, links, or dates
+  may represent different fields.
+- Sharing a parent container is not sufficient. A metadata block, card, row, or list
+  may contain multiple distinct fields.
+- Similar tags or XPath shapes are not sufficient. Positional indices and wrapper
+  elements may vary without changing meaning, while nearby labels may distinguish
+  otherwise similar nodes.
+- Explicit labels and field relationships generally provide stronger evidence than
+  tag names or raw values.
+- Use the narrowest reasonable semantic category supported by context. Do not merge
+  distinct subfields into a broad category merely to make them match.
+- Differences in values do not prevent a match when the semantic role is the same.
+- Minor markup differences do not prevent a match when the semantic role is the same.
+- If all targets are the same kind of boilerplate or non-resource UI content, they
+  may still match.
+- If any target has a different semantic role, return false.
+
+Before answering, internally determine the hypothetical key for every target. Do not
+include that analysis in the response.
+
+Return exactly one JSON object:
+{"is_match": true}
+or
+{"is_match": false}
