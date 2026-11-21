@@ -108,10 +108,6 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
 
     log::debug!("unique_comparisons: {}", unique_comparisons.len());
 
-    if unique_comparisons.len() > 0 {
-        panic!();
-    }
-
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
     let mut handles = Vec::new();
