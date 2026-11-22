@@ -149,7 +149,10 @@ fn get_user_prompt(
     right_contexts: &[Arc<NormalContext>],
 ) -> Result<String, Errors> {
     let render = |contexts: &[Arc<NormalContext>]| -> String {
-        let samples = sample_random(contexts.to_vec(), read_lock!(translation_context).get_context_sample_size());
+        let samples = sample_random(
+            contexts.to_vec(),
+            read_lock!(translation_context).get_context_sample_size(),
+        );
         samples.iter().fold(String::new(), |acc, context| {
             let data = context
                 .data_node
@@ -165,7 +168,10 @@ fn get_user_prompt(
 
     let right = render(right_contexts);
 
-    let samples = sample_random(left_contexts.to_vec(), read_lock!(translation_context).get_context_sample_size());
+    let samples = sample_random(
+        left_contexts.to_vec(),
+        read_lock!(translation_context).get_context_sample_size(),
+    );
     let context_strings: Vec<String> = samples
         .iter()
         .map(|context| {

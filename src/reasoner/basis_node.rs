@@ -7,7 +7,7 @@ use super::sampling::sample_random;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::{BasisNode, BasisNodeMetadata};
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
+use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 use crate::transformation::Transformation;
 
 #[derive(Deserialize, JsonSchema)]
@@ -39,17 +39,9 @@ pub async fn basis_node<R: Reasoner>(
         lock.meta_context.clone().unwrap()
     };
     let lineage = read_lock!(meta_context.graph_root).lineage.clone();
-    let system_prompt = get_system_prompt(
-        reasoner,
-        lineage,
-        PromptName::BasisNode,
-    ).await?;
-    let user_prompt = get_user_prompt(
-        reasoner,
-        Arc::clone(&normalization_context),
-        context_group.clone(),
-    )
-    .await?;
+    let system_prompt = get_system_prompt(reasoner, lineage, PromptName::BasisNode).await?;
+    let user_prompt =
+        get_user_prompt(Arc::clone(&normalization_context), context_group.clone()).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisNodeResponse))
         .expect("Failed to serialise BasisNodeResponse schema");
     let capability = Capability::Fast;
@@ -185,8 +177,7 @@ pub async fn basis_node<R: Reasoner>(
     Ok((basis_node, reasoner_metadata))
 }
 
-async fn get_user_prompt<R: Reasoner>(
-    reasoner: &R,
+async fn get_user_prompt(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
@@ -223,7 +214,12 @@ async fn get_user_prompt<R: Reasoner>(
             context.generate_context_string_basis_node(Arc::clone(&normalization_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
-    let samples = sample_random(context_strings, read_lock!(normalization_context).context_sample_size.clone());
+    let samples = sample_random(
+        context_strings,
+        read_lock!(normalization_context)
+            .context_sample_size
+            .clone(),
+    );
     let merged_samples = samples.join("\n\n---OCCURRENCE SEPARATOR---\n\n");
 
     Ok(format!(

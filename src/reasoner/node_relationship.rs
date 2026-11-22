@@ -7,7 +7,7 @@ use crate::basis_node::BasisNode;
 use crate::graph_node::Graph;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
+use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 use crate::xpath::XPath;
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -94,11 +94,8 @@ pub async fn node_relationship_self<R: Reasoner>(
     let user_prompt =
         get_user_prompt_self(Arc::clone(&normalization_context), node.clone(), &contexts).await?;
     let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
-    let system_prompt = get_system_prompt(
-        reasoner,
-        document_lineage,
-        PromptName::NodeRelationshipSelf,
-    ).await?;
+    let system_prompt =
+        get_system_prompt(reasoner, document_lineage, PromptName::NodeRelationshipSelf).await?;
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipSelfResponse))
         .expect("Failed to serialise NodeRelationshipSelfResponse schema");
@@ -280,7 +277,8 @@ async fn determine_node_relationship_other<R: Reasoner>(
         reasoner,
         document_lineage,
         PromptName::NodeRelationshipOther,
-    ).await?;
+    )
+    .await?;
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
         lock.basis_node_contexts.clone().ok_or_else(|| {
@@ -295,7 +293,6 @@ async fn determine_node_relationship_other<R: Reasoner>(
     let right_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&right.id).unwrap().to_vec();
 
     let user_prompt = get_user_prompt_other(
-        reasoner,
         Arc::clone(&normalization_context),
         left.clone(),
         &left_contexts,
@@ -527,7 +524,10 @@ async fn get_user_prompt_self(
     node: Arc<BasisNode>,
     node_contexts: &[Arc<Context>],
 ) -> Result<String, Errors> {
-    let node_contexts_sample = sample_random(node_contexts.to_vec(), read_lock!(normalization_context).context_sample_size);
+    let node_contexts_sample = sample_random(
+        node_contexts.to_vec(),
+        read_lock!(normalization_context).context_sample_size,
+    );
 
     let node_context_string = make_context(
         Arc::clone(&normalization_context),
@@ -544,8 +544,7 @@ async fn get_user_prompt_self(
     ))
 }
 
-async fn get_user_prompt_other<R: Reasoner>(
-    reasoner: &R,
+async fn get_user_prompt_other(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNode>,
     left_contexts: &[Arc<Context>],
@@ -562,7 +561,12 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let samples = sample_random(left_context_strings, read_lock!(normalization_context).context_sample_size.clone());
+    let samples = sample_random(
+        left_context_strings,
+        read_lock!(normalization_context)
+            .context_sample_size
+            .clone(),
+    );
     let left_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     let right_context_strings: Vec<String> = right_contexts
@@ -575,7 +579,12 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let samples = sample_random(right_context_strings, read_lock!(normalization_context).context_sample_size.clone());
+    let samples = sample_random(
+        right_context_strings,
+        read_lock!(normalization_context)
+            .context_sample_size
+            .clone(),
+    );
     let right_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(

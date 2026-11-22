@@ -183,7 +183,10 @@ async fn get_user_prompt(
             .map(|context| context.generate_context_string_translation(field))
             .collect::<Result<Vec<String>, Errors>>()?;
 
-        let samples = sample_random(context_strings, read_lock!(translation_context).get_context_sample_size());
+        let samples = sample_random(
+            context_strings,
+            read_lock!(translation_context).get_context_sample_size(),
+        );
         let result = samples.join("\n\n---EXAMPLE SEPARATOR---\n\n");
 
         Ok(result)

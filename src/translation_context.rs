@@ -46,11 +46,14 @@ impl TranslationContext {
     }
 
     pub fn get_context_sample_size(&self) -> usize {
-        self
-            .source
+        self.source
             .iter()
             .chain(self.target.iter())
-            .map(|normalization_context| read_lock!(normalization_context).context_sample_size.clone())
+            .map(|normalization_context| {
+                read_lock!(normalization_context)
+                    .context_sample_size
+                    .clone()
+            })
             .max()
             .unwrap()
     }

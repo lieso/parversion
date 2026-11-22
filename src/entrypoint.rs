@@ -170,7 +170,7 @@ fn parse_arguments() -> clap::ArgMatches {
                 .long("lineage")
                 .value_name("LINEAGE")
                 .required(false)
-                .help("Specify the lineage of the document")
+                .help("Specify the lineage of the document"),
         )
         .arg(
             Arg::new("role")
@@ -250,9 +250,7 @@ async fn get_documents(matches: &ArgMatches) -> Result<Vec<(String, Metadata)>, 
         .map(|s| parse_document_type(s))
         .transpose()?;
 
-    let fallback_url: Option<String> = matches
-        .get_one::<String>("url")
-        .cloned();
+    let fallback_url: Option<String> = matches.get_one::<String>("url").cloned();
 
     let fallback_role: DocumentRole = matches
         .get_one::<String>("role")

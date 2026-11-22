@@ -13,7 +13,12 @@ pub fn digit_char_p(values: Vec<Value>) -> Result<Value, Errors> {
             }
             (expect_char(c)?, radix)
         }
-        _ => return Err(Errors::ArityMismatch { expected: 1, got: values.len() }),
+        _ => {
+            return Err(Errors::ArityMismatch {
+                expected: 1,
+                got: values.len(),
+            })
+        }
     };
 
     // char::is_digit panics for radix > 36, so the range check above is required.
@@ -22,7 +27,10 @@ pub fn digit_char_p(values: Vec<Value>) -> Result<Value, Errors> {
 
 pub fn zero_p(values: Vec<Value>) -> Result<Value, Errors> {
     let [value] = values.as_slice() else {
-        return Err(Errors::ArityMismatch { expected: 1, got: values.len() });
+        return Err(Errors::ArityMismatch {
+            expected: 1,
+            got: values.len(),
+        });
     };
 
     Ok(Value::Bool(as_float(value)? == 0.0))
@@ -37,9 +45,10 @@ pub fn max(values: Vec<Value>) -> Result<Value, Errors> {
 }
 
 fn extremum(values: Vec<Value>, better: fn(f64, f64) -> bool) -> Result<Value, Errors> {
-    let (first, rest) = values
-        .split_first()
-        .ok_or(Errors::ArityMismatch { expected: 1, got: 0 })?;
+    let (first, rest) = values.split_first().ok_or(Errors::ArityMismatch {
+        expected: 1,
+        got: 0,
+    })?;
 
     let mut best = first.clone();
     let mut best_key = as_float(first)?;
@@ -76,7 +85,9 @@ pub fn char_ci_equals(values: Vec<Value>) -> Result<Value, Errors> {
         folded.push(c.to_lowercase().next().unwrap_or(c));
     }
 
-    Ok(Value::Bool(folded.windows(2).all(|pair| pair[0] == pair[1])))
+    Ok(Value::Bool(
+        folded.windows(2).all(|pair| pair[0] == pair[1]),
+    ))
 }
 
 pub fn string_p(values: Vec<Value>) -> Result<Value, Errors> {

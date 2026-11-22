@@ -4,11 +4,11 @@ use serde_json;
 use std::sync::{Arc, RwLock};
 
 use super::sampling::sample_random;
+use crate::data_node::FieldValue;
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
+use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 use crate::scheme::eval;
 use crate::transformation::Transformation;
-use crate::data_node::{FieldValue};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct TransformationResponse {
@@ -100,17 +100,10 @@ async fn determine_transformation<R: Reasoner>(
         lock.meta_context.clone().unwrap()
     };
     let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
-    let system_prompt = get_system_prompt(
-        reasoner,
-        document_lineage,
-        PromptName::Transformation,
-    ).await?;
-    let user_prompt = get_user_prompt(
-        Arc::clone(&normalization_context),
-        &field,
-        contexts.clone(),
-    )
-    .await?;
+    let system_prompt =
+        get_system_prompt(reasoner, document_lineage, PromptName::Transformation).await?;
+    let user_prompt =
+        get_user_prompt(Arc::clone(&normalization_context), &field, contexts.clone()).await?;
     let schema = serde_json::to_value(schemars::schema_for!(TransformationResponse))
         .expect("Failed to serialise TransformationResponse schema");
 
@@ -183,7 +176,12 @@ async fn get_user_prompt(
         .clone()
         .unwrap_or("Unknown".to_string());
 
-    let group = sample_random(group, read_lock!(normalization_context).context_sample_size.clone());
+    let group = sample_random(
+        group,
+        read_lock!(normalization_context)
+            .context_sample_size
+            .clone(),
+    );
     let context_strings: Vec<String> = group
         .iter()
         .map(|context| {
@@ -197,7 +195,10 @@ async fn get_user_prompt(
         .flat_map(|context| context.data_node.fields.get_all(field))
         .cloned()
         .collect();
-    let samples = sample_random(values, read_lock!(normalization_context).context_sample_size);
+    let samples = sample_random(
+        values,
+        read_lock!(normalization_context).context_sample_size,
+    );
     let values: Vec<String> = samples
         .iter()
         .map(|field_value| field_value.to_string())

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use std::sync::{Arc, RwLock};
 use std::fmt;
+use std::sync::{Arc, RwLock};
 
 use crate::basis_field::BasisField;
 use crate::basis_group::BasisGroup;
@@ -304,8 +304,7 @@ async fn get_system_prompt<R: Reasoner>(
     name: PromptName,
 ) -> Result<String, Errors> {
     for index in (0..lineage.source_hashes.len()).rev() {
-        let path = lineage
-            .source_hashes[0..index + 1]
+        let path = lineage.source_hashes[0..index + 1]
             .iter()
             .fold(String::new(), |acc, hash| {
                 let hash_str = hash.to_string().unwrap();
@@ -324,7 +323,8 @@ async fn get_system_prompt<R: Reasoner>(
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt(
-        format!("Expected a {} system prompt in the prompts directory", name.to_string())
-    ))
+    Err(Errors::UnavailableSystemPrompt(format!(
+        "Expected a {} system prompt in the prompts directory",
+        name.to_string()
+    )))
 }

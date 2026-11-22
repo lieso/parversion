@@ -8,7 +8,7 @@ use crate::graph_node::GraphNode;
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
+use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -61,8 +61,9 @@ async fn network_relationship_reflexive<R: Reasoner>(
     let system_prompt = get_system_prompt(
         reasoner,
         document_lineage,
-        PromptName::NetworkRelationshipSelf
-    ).await?;
+        PromptName::NetworkRelationshipSelf,
+    )
+    .await?;
     let user_prompt =
         get_user_prompt_reflexive(Arc::clone(&normalization_context), network.clone())?;
     let capability = Capability::Capable;
@@ -157,7 +158,10 @@ fn get_user_prompt_reflexive(
 
     let normal_contexts: Vec<Arc<NormalContext>> = {
         let root = read_lock!(normal_meta_context.graph_root);
-        let sample = sample_random(root.children.clone(), read_lock!(normalization_context).context_sample_size);
+        let sample = sample_random(
+            root.children.clone(),
+            read_lock!(normalization_context).context_sample_size,
+        );
 
         sample
             .iter()

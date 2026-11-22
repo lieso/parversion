@@ -6,7 +6,7 @@ use crate::basis_network::{BasisNetwork, BasisNetworkMetadata, NetworkShape};
 use crate::basis_node::BasisNode;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
+use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 use crate::traversal::Traversal;
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -30,11 +30,7 @@ pub async fn basis_network<R: Reasoner>(
         lock.meta_context.clone().unwrap()
     };
     let lineage = read_lock!(meta_context.graph_root).lineage.clone();
-    let system_prompt = get_system_prompt(
-        reasoner,
-        lineage,
-        PromptName::BasisNetwork,
-    ).await?;
+    let system_prompt = get_system_prompt(reasoner, lineage, PromptName::BasisNetwork).await?;
     let user_prompt =
         get_user_prompt(Arc::clone(&normalization_context), basis_nodes.clone()).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisNetworkResponse))

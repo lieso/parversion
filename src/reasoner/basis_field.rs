@@ -6,7 +6,7 @@ use super::sampling::sample_random;
 use crate::basis_field::{BasisField, BasisFieldMetadata};
 use crate::document::DocumentType;
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
+use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisFieldResponse {
@@ -48,19 +48,10 @@ pub async fn basis_field<R: Reasoner>(
     }
 
     let lineage = read_lock!(meta_context.graph_root).lineage.clone();
-    let system_prompt = get_system_prompt(
-        reasoner,
-        lineage,
-        PromptName::BasisField,
-    ).await?;
+    let system_prompt = get_system_prompt(reasoner, lineage, PromptName::BasisField).await?;
 
-    let user_prompt = get_user_prompt(
-        reasoner,
-        Arc::clone(&normalization_context),
-        group,
-        candidate.clone(),
-    )
-    .await?;
+    let user_prompt =
+        get_user_prompt(Arc::clone(&normalization_context), group, candidate.clone()).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisFieldResponse))
         .expect("Failed to serialise BasisFieldResponse schema");
     let capability = Capability::Fast;
@@ -116,8 +107,7 @@ pub async fn basis_field<R: Reasoner>(
     }
 }
 
-async fn get_user_prompt<R: Reasoner>(
-    reasoner: &R,
+async fn get_user_prompt(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
     candidate: String,
@@ -126,7 +116,12 @@ async fn get_user_prompt<R: Reasoner>(
         .iter()
         .map(|context| context.generate_context_string(Arc::clone(&normalization_context)))
         .collect::<Result<Vec<String>, Errors>>()?;
-    let samples = sample_random(context_strings, read_lock!(normalization_context).context_sample_size.clone());
+    let samples = sample_random(
+        context_strings,
+        read_lock!(normalization_context)
+            .context_sample_size
+            .clone(),
+    );
     let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(

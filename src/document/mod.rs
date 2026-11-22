@@ -126,10 +126,7 @@ impl Document {
         Ok(document)
     }
 
-    pub fn from_string(
-        value: String,
-        metadata: &Metadata,
-    ) -> Result<Self, Errors> {
+    pub fn from_string(value: String, metadata: &Metadata) -> Result<Self, Errors> {
         if value.trim().is_empty() {
             return Err(Errors::DocumentNotProvided);
         }

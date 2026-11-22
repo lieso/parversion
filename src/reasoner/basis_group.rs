@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use super::sampling::sample_random;
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
+use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct BasisGroupResponse {
@@ -32,11 +32,8 @@ pub async fn basis_group<R: Reasoner>(
     let hash = read_lock!(group[0].graph_node).hash.clone();
 
     let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
-    let system_prompt = get_system_prompt(
-        reasoner,
-        document_lineage,
-        PromptName::BasisGroup,
-    ).await?;
+    let system_prompt =
+        get_system_prompt(reasoner, document_lineage, PromptName::BasisGroup).await?;
 
     let user_prompt = get_user_prompt(Arc::clone(&normalization_context), group).await?;
     let schema = serde_json::to_value(schemars::schema_for!(BasisGroupResponse))
@@ -106,7 +103,12 @@ async fn get_user_prompt(
             context.generate_context_string_basis_group(Arc::clone(&normalization_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
-    let samples = sample_random(context_strings, read_lock!(normalization_context).context_sample_size.clone());
+    let samples = sample_random(
+        context_strings,
+        read_lock!(normalization_context)
+            .context_sample_size
+            .clone(),
+    );
     let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(
