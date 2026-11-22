@@ -3,6 +3,14 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn exact_p(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    // Only Integer is exact. Float is inexact even when it is whole, so (exact? 5.0) is #f.
+    // Non-numbers give #f, matching integer?, rather than the R7RS error.
+    Ok(Value::Bool(matches!(values[0], Value::Integer(_))))
+}
+
 pub fn char_downcase(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
     let c = expect_char(&values[0])?;
