@@ -44,4 +44,14 @@ impl TranslationContext {
     pub fn update_translated_graph(&mut self, translated: NormalMetaContext) {
         self.translated = Some(translated);
     }
+
+    pub fn get_context_sample_size(&self) -> usize {
+        self
+            .source
+            .iter()
+            .chain(self.target.iter())
+            .map(|normalization_context| read_lock!(normalization_context).context_sample_size.clone())
+            .max()
+            .unwrap()
+    }
 }

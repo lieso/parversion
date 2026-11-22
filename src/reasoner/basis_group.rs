@@ -106,7 +106,7 @@ async fn get_user_prompt(
             context.generate_context_string_basis_group(Arc::clone(&normalization_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
-    let samples = sample_random(context_strings);
+    let samples = sample_random(context_strings, read_lock!(normalization_context).context_sample_size.clone());
     let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(

@@ -3,6 +3,7 @@ use serde::Deserialize;
 use serde_json;
 use std::sync::{Arc, RwLock};
 
+use super::sampling::sample_random;
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
@@ -19,7 +20,7 @@ pub struct TranslationResponse {
 
 pub async fn translation<R: Reasoner>(
     reasoner: &R,
-    _translation_context: Arc<RwLock<TranslationContext>>,
+    translation_context: Arc<RwLock<TranslationContext>>,
     left_field: String,
     left_contexts: Vec<Arc<NormalContext>>,
     right_field: String,
@@ -29,6 +30,7 @@ pub async fn translation<R: Reasoner>(
 
     let (transformation, reasoner_metadata) = determine_translation(
         reasoner,
+        Arc::clone(&translation_context),
         left_field.clone(),
         left_contexts.clone(),
         right_field.clone(),
@@ -48,6 +50,7 @@ pub async fn translation<R: Reasoner>(
 
             let (transformation, next_reasoner_metadata) = determine_translation(
                 reasoner,
+                Arc::clone(&translation_context),
                 left_field.clone(),
                 left_contexts.clone(),
                 right_field.clone(),
@@ -83,6 +86,7 @@ fn validate_transformation(transformation: &Transformation) -> Result<bool, Erro
 
 async fn determine_translation<R: Reasoner>(
     reasoner: &R,
+    translation_context: Arc<RwLock<TranslationContext>>,
     left_field: String,
     left_contexts: Vec<Arc<NormalContext>>,
     right_field: String,
@@ -92,6 +96,7 @@ async fn determine_translation<R: Reasoner>(
     log::trace!("determine_translation");
 
     let user_prompt = get_user_prompt(
+        Arc::clone(&translation_context),
         &left_field,
         &left_contexts,
         &right_field,
@@ -165,21 +170,23 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> 
 }
 
 async fn get_user_prompt(
+    translation_context: Arc<RwLock<TranslationContext>>,
     left_field: &str,
     left_contexts: &[Arc<NormalContext>],
     right_field: &str,
     right_contexts: &[Arc<NormalContext>],
 ) -> Result<String, Errors> {
     let render = |field: &str, contexts: &[Arc<NormalContext>]| -> Result<String, Errors> {
-        let context_string = contexts
+        let context_strings = contexts
             .iter()
             .filter(|context| context.data_node.fields.contains_key(field))
-            .take(7)
             .map(|context| context.generate_context_string_translation(field))
-            .collect::<Result<Vec<String>, Errors>>()?
-            .join("\n\n---EXAMPLE SEPARATOR---\n\n");
+            .collect::<Result<Vec<String>, Errors>>()?;
 
-        Ok(context_string)
+        let samples = sample_random(context_strings, read_lock!(translation_context).get_context_sample_size());
+        let result = samples.join("\n\n---EXAMPLE SEPARATOR---\n\n");
+
+        Ok(result)
     };
 
     let left = render(left_field, left_contexts)?;

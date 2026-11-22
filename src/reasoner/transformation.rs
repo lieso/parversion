@@ -3,10 +3,12 @@ use serde::Deserialize;
 use serde_json;
 use std::sync::{Arc, RwLock};
 
+use super::sampling::sample_random;
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
 use crate::scheme::eval;
 use crate::transformation::Transformation;
+use crate::data_node::{FieldValue};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct TransformationResponse {
@@ -181,19 +183,23 @@ async fn get_user_prompt(
         .clone()
         .unwrap_or("Unknown".to_string());
 
+    let group = sample_random(group, read_lock!(normalization_context).context_sample_size.clone());
     let context_strings: Vec<String> = group
         .iter()
-        .take(3)
         .map(|context| {
             context.generate_context_string_basis_node(Arc::clone(&normalization_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
     let snippets = context_strings.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-    let values: Vec<String> = group
+    let values: Vec<FieldValue> = group
         .iter()
         .flat_map(|context| context.data_node.fields.get_all(field))
-        .take(17)
+        .cloned()
+        .collect();
+    let samples = sample_random(values, read_lock!(normalization_context).context_sample_size);
+    let values: Vec<String> = samples
+        .iter()
         .map(|field_value| field_value.to_string())
         .collect();
     let values = serde_json::to_string_pretty(&values).expect("Could not make a JSON string");

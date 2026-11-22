@@ -6,9 +6,9 @@ use crate::context::Context;
 
 const CAP: usize = 20;
 
-pub(super) fn sample_random(mut candidates: Vec<String>) -> Vec<String> {
+pub(super) fn sample_random<T>(mut candidates: Vec<T>, size: usize) -> Vec<T> {
     candidates.shuffle(&mut rng());
-    candidates.truncate(CAP);
+    candidates.truncate(size);
     candidates
 }
 

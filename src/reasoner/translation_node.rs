@@ -3,6 +3,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
+use super::sampling::sample_random;
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
@@ -148,7 +149,8 @@ fn get_user_prompt(
     right_contexts: &[Arc<NormalContext>],
 ) -> Result<String, Errors> {
     let render = |contexts: &[Arc<NormalContext>]| -> String {
-        contexts.iter().take(7).fold(String::new(), |acc, context| {
+        let samples = sample_random(contexts.to_vec(), read_lock!(translation_context).get_context_sample_size());
+        samples.iter().fold(String::new(), |acc, context| {
             let data = context
                 .data_node
                 .fields
@@ -163,9 +165,9 @@ fn get_user_prompt(
 
     let right = render(right_contexts);
 
-    let context_strings: Vec<String> = left_contexts
+    let samples = sample_random(left_contexts.to_vec(), read_lock!(translation_context).get_context_sample_size());
+    let context_strings: Vec<String> = samples
         .iter()
-        .take(11)
         .map(|context| {
             context.generate_context_string_translation_node(Arc::clone(&translation_context))
         })

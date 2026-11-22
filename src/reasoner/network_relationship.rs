@@ -2,6 +2,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
+use super::sampling::sample_random;
 use crate::basis_network::BasisNetwork;
 use crate::graph_node::GraphNode;
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
@@ -156,9 +157,10 @@ fn get_user_prompt_reflexive(
 
     let normal_contexts: Vec<Arc<NormalContext>> = {
         let root = read_lock!(normal_meta_context.graph_root);
-        root.children
+        let sample = sample_random(root.children.clone(), read_lock!(normalization_context).context_sample_size);
+
+        sample
             .iter()
-            .take(5)
             .map(|child| {
                 let id = read_lock!(child).id.clone();
                 normal_meta_context.contexts_lookup.get(&id).cloned().ok_or(

@@ -571,7 +571,7 @@ async fn get_user_prompt_self(
     node: Arc<BasisNode>,
     node_contexts: &[Arc<Context>],
 ) -> Result<String, Errors> {
-    let node_contexts_sample: Vec<Arc<Context>> = node_contexts.iter().take(10).cloned().collect();
+    let node_contexts_sample = sample_random(node_contexts.to_vec(), read_lock!(normalization_context).context_sample_size);
 
     let node_context_string = make_context(
         Arc::clone(&normalization_context),
@@ -606,7 +606,7 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let samples = sample_random(left_context_strings);
+    let samples = sample_random(left_context_strings, read_lock!(normalization_context).context_sample_size.clone());
     let left_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     let right_context_strings: Vec<String> = right_contexts
@@ -619,7 +619,7 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let samples = sample_random(right_context_strings);
+    let samples = sample_random(right_context_strings, read_lock!(normalization_context).context_sample_size.clone());
     let right_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(
