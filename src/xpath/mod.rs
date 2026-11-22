@@ -62,6 +62,9 @@ pub enum XPathPredicate {
     Not(Box<XPathPredicate>),
     ContainsToken { name: String, value: String },
     Equals { lhs: Expr, rhs: Operand },
+    ContainsText { value: String },
+    NormalizedTextNonEmpty,
+    NormalizedTextEquals { value: String },
 }
 
 #[derive(Clone, Debug)]
@@ -870,6 +873,17 @@ impl XPathPredicate {
             return Ok(XPathPredicate::And(predicates));
         }
 
+        if is_normalize_space_call(s) {
+            return Ok(XPathPredicate::NormalizedTextNonEmpty);
+        }
+
+        if let Some((lhs, rhs)) = s.split_once('=') {
+            if is_normalize_space_call(lhs) {
+                let value = rhs.trim().trim_matches('\'').trim_matches('"').to_string();
+                return Ok(XPathPredicate::NormalizedTextEquals { value });
+            }
+        }
+
         let equality = Self::split_top_level(s, " = ");
         if equality.len() == 2 {
             return Ok(XPathPredicate::Equals {
@@ -900,8 +914,33 @@ impl XPathPredicate {
                 .trim_matches('"')
                 .to_string();
             Ok(XPathPredicate::ContainsNormalized { value })
-        } else if let Some((name, value)) = Self::parse_contains_token(s) {
+        } else if let Some((name, value)) = parse_contains_token(s) {
             Ok(XPathPredicate::ContainsToken { name, value })
+        } else if let Some(inner) = s
+            .strip_prefix("contains(")
+            .and_then(|s| s.strip_suffix(')'))
+        {
+            let args = split_top_level_commas(inner);
+            if args.len() != 2 {
+                return Err(Errors::XPathParseError(format!(
+                    "Invalid contains() predicate: {}",
+                    s
+                )));
+            }
+            let (lhs, rhs) = (args[0], args[1]);
+            let value = rhs.trim().trim_matches('\'').trim_matches('"').to_string();
+
+            match lhs {
+                "." | "text()" => Ok(XPathPredicate::ContainsText { value }),
+                l if l.contains('(') => Err(Errors::XPathParseError(format!(
+                    "Unsupported contains() argument: {}",
+                    l
+                ))),
+                l => Ok(XPathPredicate::Contains {
+                    name: l.trim_start_matches('@').to_string(),
+                    value,
+                }),
+            }
         } else if let Some(inner) = s
             .strip_prefix("contains(")
             .and_then(|s| s.strip_suffix(')'))
@@ -961,14 +1000,6 @@ impl XPathPredicate {
             )))
         }
     }
-
-    fn parse_contains_token(s: &str) -> Option<(String, String)> {
-        let rest = s.strip_prefix("contains(concat(' ', normalize-space(@")?;
-        let (name, rest) = rest.split_once("), ' '), '")?;
-        let value = rest.strip_suffix("')")?;
-        let token = value.strip_prefix(' ')?.strip_suffix(' ')?;
-        Some((name.to_string(), token.to_string()))
-    }
 }
 
 impl fmt::Display for XPathPredicate {
@@ -1005,10 +1036,78 @@ impl fmt::Display for XPathPredicate {
             XPathPredicate::Equals { lhs, rhs } => {
                 format!("{} = {}", lhs, rhs)
             }
+            XPathPredicate::ContainsText { value } => {
+                format!("contains(.,'{}')", value)
+            }
+            XPathPredicate::NormalizedTextNonEmpty => "normalize-space()".to_string(),
+            XPathPredicate::NormalizedTextEquals { value } => {
+                format!("normalize-space()='{}'", value)
+            }
         };
 
         write!(f, "{}", s)
     }
+}
+
+fn is_normalize_space_call(s: &str) -> bool {
+    matches!(
+        s.trim(),
+        "normalize-space()" | "normalize-space(.)" | "normalize-space(text())"
+    )
+}
+
+/// Splits `s` on every comma that is not inside quotes, parentheses or brackets.
+fn split_top_level_commas(s: &str) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0i32;
+    let mut quote: Option<char> = None;
+    let mut start = 0;
+
+    for (i, c) in s.char_indices() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some(_), _) => {}
+            (None, '\'') | (None, '"') => quote = Some(c),
+            (None, '(') | (None, '[') => depth += 1,
+            (None, ')') | (None, ']') => depth -= 1,
+            (None, ',') if depth == 0 => {
+                parts.push(s[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+
+    parts.push(s[start..].trim());
+    parts
+}
+
+fn unquote(s: &str) -> Option<&str> {
+    s.strip_prefix('\'')?.strip_suffix('\'')
+}
+
+/// Matches `concat(' ', normalize-space(@NAME), ' ')` regardless of whitespace.
+fn parse_token_haystack(expr: &str) -> Option<String> {
+    let args = expr.trim().strip_prefix("concat(")?.strip_suffix(')')?;
+    let parts = split_top_level_commas(args);
+    if parts.len() != 3 || unquote(parts[0])? != " " || unquote(parts[2])? != " " {
+        return None;
+    }
+    let name = parts[1]
+        .strip_prefix("normalize-space(@")?
+        .strip_suffix(')')?;
+    Some(name.to_string())
+}
+
+fn parse_contains_token(s: &str) -> Option<(String, String)> {
+    let inner = s.strip_prefix("contains(")?.strip_suffix(')')?;
+    let parts = split_top_level_commas(inner);
+    if parts.len() != 2 {
+        return None;
+    }
+    let name = parse_token_haystack(parts[0])?;
+    let token = unquote(parts[1])?.strip_prefix(' ')?.strip_suffix(' ')?;
+    Some((name, token.to_string()))
 }
 
 /// Splits `s` on `|` characters that are not inside brackets, parentheses or quotes.

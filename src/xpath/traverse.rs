@@ -479,6 +479,80 @@ pub fn traverse_using_xpath_predicate(
             );
             Ok(filtered)
         }
+        XPathPredicate::NormalizedTextNonEmpty => {
+            log::info!(
+                "XPATH PREDICATE::NormalizedTextNonEmpty - filtering for non-empty normalized text"
+            );
+            let contexts_lookup = {
+                let lock = read_lock!(normalization_context);
+                lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+            };
+
+            let filtered: Vec<Value> = values
+                .iter()
+                .filter(|v| {
+                    let graph = v.graph.clone();
+                    let graph_id = read_lock!(graph).id.clone();
+                    if let Some(context) = contexts_lookup.get(&graph_id) {
+                        let text_vals = context.data_node.fields.get("text");
+                        if !text_vals.is_empty() {
+                            let text_str = text_vals[0].to_string();
+                            let normalized =
+                                text_str.split_whitespace().collect::<Vec<_>>().join(" ");
+                            return !normalized.is_empty();
+                        }
+                        false
+                    } else {
+                        false
+                    }
+                })
+                .cloned()
+                .collect();
+
+            log::info!(
+                "XPATH PREDICATE::NormalizedTextNonEmpty - matched {} out of {} values",
+                filtered.len(),
+                values.len()
+            );
+            Ok(filtered)
+        }
+        XPathPredicate::NormalizedTextEquals { value } => {
+            log::info!("XPATH PREDICATE::NormalizedTextEquals - filtering for normalized text equal to '{}'", value);
+            let contexts_lookup = {
+                let lock = read_lock!(normalization_context);
+                lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+            };
+
+            let target = value.split_whitespace().collect::<Vec<_>>().join(" ");
+
+            let filtered: Vec<Value> = values
+                .iter()
+                .filter(|v| {
+                    let graph = v.graph.clone();
+                    let graph_id = read_lock!(graph).id.clone();
+                    if let Some(context) = contexts_lookup.get(&graph_id) {
+                        let text_vals = context.data_node.fields.get("text");
+                        if !text_vals.is_empty() {
+                            let text_str = text_vals[0].to_string();
+                            let normalized =
+                                text_str.split_whitespace().collect::<Vec<_>>().join(" ");
+                            return normalized == target;
+                        }
+                        false
+                    } else {
+                        false
+                    }
+                })
+                .cloned()
+                .collect();
+
+            log::info!(
+                "XPATH PREDICATE::NormalizedTextEquals - matched {} out of {} values",
+                filtered.len(),
+                values.len()
+            );
+            Ok(filtered)
+        }
         XPathPredicate::ContainsNormalized { value } => {
             log::info!("XPATH PREDICATE::ContainsNormalized - filtering for normalized text containing '{}'", value);
             let contexts_lookup = {
@@ -828,6 +902,45 @@ pub fn traverse_using_xpath_predicate(
                 );
                 traverse_using_xpath_predicate(Arc::clone(&normalization_context), acc, predicate)
             })
+        }
+        XPathPredicate::ContainsText { value } => {
+            log::info!(
+                "XPATH PREDICATE::ContainsText - filtering for text containing '{}'",
+                value
+            );
+            let contexts_lookup = {
+                let lock = read_lock!(normalization_context);
+                lock.meta_context.as_ref().unwrap().contexts_lookup.clone()
+            };
+
+            let mut matched_count = 0;
+            let filtered: Vec<Value> = values
+                .iter()
+                .filter(|v| {
+                    let graph = v.graph.clone();
+                    let graph_id = read_lock!(graph).id.clone();
+                    let matches = contexts_lookup
+                        .get(&graph_id)
+                        .and_then(|context| {
+                            let texts = context.data_node.fields.get("text");
+                            texts.first().map(|t| t.to_string())
+                        })
+                        .map(|text| text.contains(value.as_str()))
+                        .unwrap_or(false);
+                    if matches {
+                        matched_count += 1;
+                    }
+                    matches
+                })
+                .cloned()
+                .collect();
+
+            log::info!(
+                "XPATH PREDICATE::ContainsText - matched {} out of {} values",
+                matched_count,
+                values.len()
+            );
+            Ok(filtered)
         }
     };
 

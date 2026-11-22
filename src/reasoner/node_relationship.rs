@@ -217,9 +217,7 @@ pub async fn node_relationship_other<R: Reasoner>(
         log::warn!("Relationship invalid");
         log::debug!("node_relationship: {:?}", node_relationship);
         log::debug!("prompts: {:?}", reasoner_metadata.prompts);
-        log::info!(
-            "Node relationship did not validate. Escalating to a more advanced model... "
-        );
+        log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
 
         let (node_relationship, next_reasoner_metadata) = determine_node_relationship_other(
             reasoner,
@@ -228,7 +226,7 @@ pub async fn node_relationship_other<R: Reasoner>(
             Arc::clone(&right),
             Capability::Capable,
         )
-            .await?;
+        .await?;
 
         let reasoner_metadata = ReasonerMetadata {
             tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
