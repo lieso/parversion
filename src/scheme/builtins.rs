@@ -3,6 +3,41 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn zero_p(values: Vec<Value>) -> Result<Value, Errors> {
+    let [value] = values.as_slice() else {
+        return Err(Errors::ArityMismatch { expected: 1, got: values.len() });
+    };
+
+    Ok(Value::Bool(as_float(value)? == 0.0))
+}
+
+pub fn min(values: Vec<Value>) -> Result<Value, Errors> {
+    extremum(values, |candidate, best| candidate < best)
+}
+
+pub fn max(values: Vec<Value>) -> Result<Value, Errors> {
+    extremum(values, |candidate, best| candidate > best)
+}
+
+fn extremum(values: Vec<Value>, better: fn(f64, f64) -> bool) -> Result<Value, Errors> {
+    let (first, rest) = values
+        .split_first()
+        .ok_or(Errors::ArityMismatch { expected: 1, got: 0 })?;
+
+    let mut best = first.clone();
+    let mut best_key = as_float(first)?;
+
+    for value in rest {
+        let key = as_float(value)?;
+        if better(key, best_key) {
+            best = value.clone();
+            best_key = key;
+        }
+    }
+
+    Ok(best)
+}
+
 pub fn exact_p(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
 

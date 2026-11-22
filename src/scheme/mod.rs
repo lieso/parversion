@@ -201,6 +201,9 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "char-ci=?" => char_ci_equals(values)?,
                 "char-downcase" => char_downcase(values)?,
                 "exact?" => exact_p(values)?,
+                "min" => min(values)?,
+                "max" => max(values)?,
+                "zero?" => zero_p(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }
