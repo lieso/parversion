@@ -39,34 +39,31 @@ pub async fn transformation<R: Reasoner>(
     )
     .await?;
 
-    match validate_transformation(&transformation) {
-        Ok(true) => {
-            log::info!("Transformation is valid");
-            Ok((transformation, reasoner_metadata))
-        }
-        _ => {
-            log::warn!("Transformation did not validate");
-            log::info!("Escalating to a more advanced model...");
+    if validate_transformation(&transformation)? {
+        log::info!("Transformation is valid");
+        Ok((transformation, reasoner_metadata))
+    } else {
+        log::warn!("Transformation did not validate");
+        log::info!("Escalating to a more advanced model...");
 
-            let (transformation, next_reasoner_metadata) = determine_transformation(
-                reasoner,
-                Arc::clone(&normalization_context),
-                field.clone(),
-                image.clone(),
-                description.clone(),
-                contexts.clone(),
-                Capability::Capable,
-            )
-            .await?;
+        let (transformation, next_reasoner_metadata) = determine_transformation(
+            reasoner,
+            Arc::clone(&normalization_context),
+            field.clone(),
+            image.clone(),
+            description.clone(),
+            contexts.clone(),
+            Capability::Capable,
+        )
+        .await?;
 
-            let reasoner_metadata = ReasonerMetadata {
-                tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
-                prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
-                cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
-            };
+        let reasoner_metadata = ReasonerMetadata {
+            tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
+            prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
+            cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
+        };
 
-            Ok((transformation, reasoner_metadata))
-        }
+        Ok((transformation, reasoner_metadata))
     }
 }
 
