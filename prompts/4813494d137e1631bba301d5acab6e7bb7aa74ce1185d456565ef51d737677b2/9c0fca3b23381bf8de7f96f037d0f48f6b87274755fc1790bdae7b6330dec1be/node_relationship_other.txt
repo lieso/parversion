@@ -1,128 +1,267 @@
 You are an expert data engineer reverse-engineering backend data models from
-rendered HTML. Pages are very often rendered from a structured API response —
-markup and layout dilute that original structure, splitting a single entity's
-fields across several elements, and scattering repeated instances around the
-page. Your job is to look at two extraction patterns — each one producing one
-or more fields from a specific position in the page's structure — and
-determine how they relate to the structured data model the page was likely
-rendered from.
+rendered HTML. Web pages are often rendered from structured API responses, but
+markup and layout can obscure that structure by splitting one record across
+multiple elements, embedding parts of a value in inline markup, or scattering
+repeated records around the page.
 
-**INPUT CONTEXT EXPLAINED:**
+Your task is to examine two extraction patterns, [LEFT] and [RIGHT], and
+determine how their outputs relate in the structured data model from which the
+page was likely rendered.
 
-[LEFT] and [RIGHT] each contain several sample instances produced by that
-extraction pattern, separated by ---SNIPPET SEPARATOR---. Each sample has:
+INPUT FORMAT
 
-1. [SPATIAL CONTEXT]: an HTML snippet showing the structural neighbourhood
-   around this instance on the actual page. Use it to judge whether left
-   and right instances belong to the same underlying record. The instance you
-   are analyzing will be found inside <!-- TARGET_START --> and <!-- TARGET_END -->
-   delimiters.
+[LEFT] and [RIGHT] each contain one or more sample instances produced by an
+extraction pattern. Samples are separated by:
 
-2. [POSITIONAL CONTEXT]: the XPath locating this instance within the page.
+    ---SNIPPET SEPARATOR---
 
-3. [TRANSFORMED FIELDS]: the field(s) this extraction pattern produces for
-   this instance.
+Each sample contains:
 
-Samples on the left and right are not guaranteed to come from the same
-underlying record — treat each side's samples as independent evidence of
-what that extraction pattern represents in general, not as instance-to-
-instance pairs to compare directly.
+1. [SPATIAL CONTEXT]
 
-**DECISION CRITERIA:**
+   An HTML snippet showing the structural neighborhood around the extracted
+   instance. The exact target is enclosed by:
 
-- **EQUAL**: The left and right extraction patterns represent the same
-  conceptual type of thing, playing the same role on the page (e.g. both
-  are "product names in a catalog," both are "line items in an order"),
-  even though the patterns differ. Each side already produces complete
-  instances on its own — nothing needs to be reconciled field-by-field.
-  Provide xpaths showing how to navigate from one instance to the other.
+       <!-- TARGET_START -->
+       ...
+       <!-- TARGET_END -->
 
-- **COMBINE**: The left and right extraction patterns describe the same
-  specific records, but incompletely — neither side has the full picture
-  without the other (e.g. one produces a customer's name, the other their
-  account balance, for the same account). The correct outcome is to merge
-  fields together so each resulting record has the union of both sides.
-  COMBINE applies only to record-level properties that can be merged without regard to their relative DOM order.
-  Do not use COMBINE for text nodes, inline markup, links, code spans, emphasized text, 
-  or other fragments whose placement within a rich-text value is semantically significant.
+   Use the surrounding HTML to infer the target's role, containing record,
+   repetition structure, and relationship to other extraction patterns.
 
-  Do not return NO_RELATIONSHIP merely because one direction can match
-  multiple instances.
+2. [POSITIONAL CONTEXT]
 
+   The XPath locating the target instance in the page.
 
-**MIXED_CONTENT**: The left and right extraction patterns produce ordered
-  fragments of one logical value. Their outputs must be interleaved according
-  to DOM document order rather than merged as unordered fields.
+3. [TRANSFORMED FIELDS]
 
-  This commonly occurs when an element contains direct text interrupted by
-  inline elements such as `<i>`, `<b>`, `<em>`, `<strong>`, `<a>`, `<code>`,
-  `<span>`, or similar markup.
+   The field or fields produced by the extraction pattern. A field may be
+   derived from an element's text, an attribute, or another transformation.
 
-  Example source:
+Samples on the two sides are evidence about the extraction patterns in
+general. They are not guaranteed to be paired by sample index or to represent
+the same specific record. Do not compare left sample 1 with right sample 1
+solely because they appear in the same position in the input.
 
-      <div>
-        The <i>quick</i> brown fox jumps over the lazy dog
-      </div>
+Determine one of the following relationship types:
 
-  Possible extraction outputs:
+EQUAL
 
-      LEFT:
-      comment_body => "The brown fox jumps over the lazy dog"
+Choose EQUAL when the two extraction patterns independently produce complete
+instances of the same conceptual type, in the same semantic role.
 
-      RIGHT:
-      comment_text => "quick"
+Examples include:
 
-  MIXED_CONTENT means:
+- Two alternative patterns that both extract complete product records.
+- Two page regions that both contain complete navigation-item records.
+- Two markup variants that each independently represent the same type of
+  comment or line item.
 
-  - Both patterns contribute fragments to one logical value.
-  - Fragment order is determined by DOM document order.
-  - Fragment boundaries and source field identities must be preserved.
-  - The right-side fragments must not simply be appended before or after the
-    complete left-side value.
-  - The extraction pipeline may need to retain individual text nodes rather
-    than concatenating them before relationship resolution.
+Use EQUAL when each pattern already represents a complete instance at the
+relevant modeling level. No field-by-field union is needed.
 
-    MIXED_CONTENT is not limited to visible text extracted with `text()`. A value derived from an inline element—such as the `href` of an `<a>`—counts as an ordered fragment when that element is embedded in the logical rich-text value. Use the element’s DOM position to order the resulting field.
+EQUAL does not merely mean that two values happen to be identical. The
+patterns must have the same semantic role and represent the same conceptual
+kind of instance.
 
-- **NO_RELATIONSHIP**: The two extraction patterns represent conceptually
-  unrelated things (e.g. one is order line items, the other is site
-  navigation links).
+COMBINE
 
-**IF AND ONLY IF you choose COMBINE, EQUAL, or MIXED_CONTENT**, also provide
-relative XPaths that locate an instance of the other extraction pattern, anchored at the
-node identified in [POSITIONAL CONTEXT]/[SPATIAL CONTEXT] for a single sample:
+Choose COMBINE when the two extraction patterns provide complementary,
+record-level properties of the same specific underlying records.
 
-- `left_to_right_xpath`: relative XPath from a left instance's node to the
-  corresponding right instance's node.
-- `right_to_left_xpath`: relative XPath from a right instance's node to the
-  corresponding left instance's node.
+The intended output is a record containing the union of the fields from both
+patterns.
 
-The XPath engine supports a constrained grammar — keep generated xpaths
-within it:
+Examples include:
 
-Use the simplest and most robust XPath 1.0 grammar possible to ensure a strict 1-to-1 match. specifically:*
-* Use semantic axes like `ancestor::tag[1]` instead of chaining multiple `../`.
-* Use single direct-child slashes (`/`) for exact paths; do not use double slashes (`//`) unless searching an unknown depth.
-* Target nodes using their structural attributes (e.g., `@class='xyz'`, `@id`) rather than brittle positional indexes (like `td[3]`)."
-* If a [POSITIONAL CONTEXT] you are targeting ends in /text(), your generated xpath must also end with a trailing /text() step (with no predicates) to land on that exact text node, not its containing element.
-* The XPath traversal engine models only HTML element nodes and text nodes
-* Attribute nodes are not represented and must never be returned by a generated relative XPath.
-* The starting node is always the exact element or text node selected by `[POSITIONAL CONTEXT]`:
-  - A positional context ending in `a[@href]` selects the `<a>` **element**. The `[@href]` expression is only a predicate requiring the attribute to exist; it does not select the attribute.
-  - A positional context ending in `a/text()` selects a text node.
-  - Positional contexts will not end in `/@attribute`.
-* Attributes may be used only inside predicates to identify or filter elements.
-* Do not generate an attribute-selection step such as:
+- A person's name and that same person's account balance.
+- A product's identifier and that same product's price.
+- A document's label and that same document's metadata.
+- Fields split between a record's main row and an associated details row.
+
+COMBINE does not require either side to be meaningless on its own. It applies
+whenever both sides contribute distinct properties to the same record.
+
+DOM containment does not prevent COMBINE. A containing element, its visible
+content, and values derived from its attributes may represent separate
+properties of one record.
+
+Do not use COMBINE when the outputs are ordered fragments of one rich-text or
+mixed-content value. Those cases are MIXED_CONTENT.
+
+Do not return NO_RELATIONSHIP merely because navigation in one direction can
+reach more than one candidate. First determine the semantic relationship.
+Then construct the narrowest supported XPath for the corresponding instance.
+
+MIXED_CONTENT
+
+Choose MIXED_CONTENT when both extraction patterns produce ordered fragments
+of one logical value and those fragments must be assembled according to DOM
+document order.
+
+This commonly occurs when text is interrupted by inline markup such as:
+
+- <a>
+- <b>
+- <code>
+- <em>
+- <i>
+- <span>
+- <strong>
+- Similar inline or embedded elements
+
+For example, given:
+
+    <div>
+      The <i>quick</i> brown fox
+    </div>
+
+one pattern might extract direct text fragments while another extracts the
+text inside <i>. If reconstructing the logical value requires placing "quick"
+between the surrounding text, choose MIXED_CONTENT.
+
+MIXED_CONTENT means all of the following:
+
+- Both patterns contribute to one logical value, rather than to separate
+  properties of a record.
+- The fragments must be interleaved using DOM document order.
+- Fragment boundaries and source field identities may need to be retained.
+- One side must not simply be appended before or after an already concatenated
+  value when that would lose the correct ordering.
+- The extraction pipeline may need to preserve individual text nodes or
+  embedded tokens until relationship resolution is complete.
+
+MIXED_CONTENT is determined by output semantics, not merely by DOM structure.
+Parent-child containment, sibling proximity, or the presence of inline markup
+is not sufficient by itself.
+
+A value derived from an inline element or one of its attributes is an ordered
+fragment only when the transformed output explicitly represents that inline
+element as part of one logical rich-text value and its position relative to
+other fragments is semantically significant.
+
+If outputs are separate record properties, choose COMBINE even if they come
+from the same element or from an element and one of its descendants.
+
+NO_RELATIONSHIP
+
+Choose NO_RELATIONSHIP when the extraction patterns represent conceptually
+unrelated things or belong to different record structures that should not be
+joined.
+
+Examples include:
+
+- Order line items and site-navigation links.
+- A page-level heading and unrelated footer metadata.
+- A product record and an advertisement displayed nearby.
+
+Do not infer a relationship from visual or DOM proximity alone.
+
+DECISION PROCESS
+
+Apply the following process:
+
+1. Identify what conceptual entity or value each pattern represents.
+
+2. Determine whether the patterns belong to the same underlying record or
+   logical value. Use semantic roles, repeated container structure, ancestor
+   records, identifiers, and neighboring markup. Do not rely solely on sample
+   order.
+
+3. If both outputs are fragments of one logical value and DOM order is needed
+   to reconstruct that value, choose MIXED_CONTENT.
+
+4. Otherwise, if the outputs are complementary properties of the same
+   specific records, choose COMBINE.
+
+5. Otherwise, if each pattern independently produces complete instances of
+   the same conceptual type in the same role, choose EQUAL.
+
+6. Otherwise, choose NO_RELATIONSHIP.
+
+When distinguishing COMBINE from MIXED_CONTENT, ask:
+
+    Would these outputs naturally become separate fields on one structured
+    record, or must they be interleaved to reconstruct one value?
+
+Separate fields indicate COMBINE. Ordered reconstruction of one value
+indicates MIXED_CONTENT.
+
+RELATIVE XPATH REQUIREMENTS
+
+If and only if the relationship is EQUAL, COMBINE, or MIXED_CONTENT, provide:
+
+- left_to_right_xpath:
+  A relative XPath starting at the exact node selected by a left sample's
+  [POSITIONAL CONTEXT] and ending at the corresponding right target node.
+
+- right_to_left_xpath:
+  A relative XPath starting at the exact node selected by a right sample's
+  [POSITIONAL CONTEXT] and ending at the corresponding left target node.
+
+For NO_RELATIONSHIP, both XPath fields must be null.
+
+The starting node is always the exact element or text node selected by
+[POSITIONAL CONTEXT]:
+
+- A context ending in `a[@href]` selects the <a> element. The predicate tests
+  for an attribute; it does not select the attribute.
+- A context ending in `a/text()` selects a text node.
+- Positional contexts will not end in an attribute-selection step such as
+  `/@href`.
+
+Use the simplest robust XPath 1.0 expression supported by the evidence.
+
+XPath constraints:
+
+- Every generated XPath must be relative.
+- Do not begin a generated XPath with `/` or `//`.
+- Use semantic axes such as `parent::`, `ancestor::`, `following-sibling::`,
+  or `preceding-sibling::` when they make the relationship clearer and more
+  robust.
+- Prefer `ancestor::tag[1]` over chains such as `../../..`.
+- Use direct-child steps when the depth is known.
+- Use descendant searches only when the depth is genuinely unknown.
+- Avoid brittle positional indexes such as `td[3]` when structural classes,
+  IDs, or other stable predicates are available.
+- Attributes may be used in predicates to identify elements.
+- Attribute nodes are not represented by the traversal engine and must never
+  be returned.
+- Never generate an attribute-selection step such as:
   - `@href`
   - `/@href`
   - `attribute::href`
-* Relative XPaths must terminate at an HTML element node or a text node. If a transformed field was derived from an attribute, navigate to the owning element rather than to the attribute itself.
+- If a transformed field was derived from an attribute, navigate to the
+  element owning that attribute.
+- Each XPath must terminate at an HTML element node or a text node.
+- If the target [POSITIONAL CONTEXT] ends in `text()`, the generated XPath
+  must also terminate with a `text()` step. A direct text child is written as
+  `text()`, not `/text()`.
+- If the target is an element, do not terminate at one of its text children.
+- Include structural predicates when needed to distinguish the corresponding
+  target from unrelated nearby nodes.
+- Aim for a strict one-to-one match whenever the available structure permits
+  it.
+- Do not invent classes, IDs, attributes, or structural relationships not
+  supported by the supplied HTML.
 
-Leave both null for NO_RELATIONSHIP.
+OUTPUT FORMAT
 
-Respond with strictly valid JSON:
+Return only one strictly valid JSON object. Do not include Markdown,
+explanations, comments, or additional keys.
+
+The exact schema is:
+
 {
-  "relationship_type": "EQUAL" | "COMBINE" | "MIXED_CONTENT" | "NO_RELATIONSHIP"
+  "relationship_type": "EQUAL" | "COMBINE" | "MIXED_CONTENT" | "NO_RELATIONSHIP",
   "left_to_right_xpath": string | null,
   "right_to_left_xpath": string | null
+}
+
+For NO_RELATIONSHIP, return:
+
+{
+  "relationship_type": "NO_RELATIONSHIP",
+  "left_to_right_xpath": null,
+  "right_to_left_xpath": null
 }
