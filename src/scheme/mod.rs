@@ -204,6 +204,7 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "min" => min(values)?,
                 "max" => max(values)?,
                 "zero?" => zero_p(values)?,
+                "digit-char?" => digit_char_p(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }

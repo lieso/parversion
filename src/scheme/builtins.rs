@@ -3,6 +3,23 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn digit_char_p(values: Vec<Value>) -> Result<Value, Errors> {
+    let (c, radix) = match values.as_slice() {
+        [c] => (expect_char(c)?, 10),
+        [c, Value::Integer(radix)] => {
+            let radix = u32::try_from(*radix).map_err(|_| Errors::TypeMismatch)?;
+            if !(2..=36).contains(&radix) {
+                return Err(Errors::TypeMismatch);
+            }
+            (expect_char(c)?, radix)
+        }
+        _ => return Err(Errors::ArityMismatch { expected: 1, got: values.len() }),
+    };
+
+    // char::is_digit panics for radix > 36, so the range check above is required.
+    Ok(Value::Bool(c.is_digit(radix)))
+}
+
 pub fn zero_p(values: Vec<Value>) -> Result<Value, Errors> {
     let [value] = values.as_slice() else {
         return Err(Errors::ArityMismatch { expected: 1, got: values.len() });

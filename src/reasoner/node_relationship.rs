@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
-use super::sampling::{pre_sample_context_group, sample_most_different};
+use super::sampling::sample_random;
 use crate::basis_node::BasisNode;
 use crate::graph_node::Graph;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
@@ -596,9 +596,7 @@ async fn get_user_prompt_other<R: Reasoner>(
     right: Arc<BasisNode>,
     right_contexts: &[Arc<Context>],
 ) -> Result<String, Errors> {
-    let left_contexts_presample = pre_sample_context_group(left_contexts.to_vec());
-
-    let left_context_strings: Vec<String> = left_contexts_presample
+    let left_context_strings: Vec<String> = left_contexts
         .iter()
         .map(|context| {
             context.generate_context_string_node_relationship(
@@ -608,13 +606,10 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let (embeddings, _metadata) = reasoner.embed(left_context_strings.clone()).await?;
-    let samples = sample_most_different(left_context_strings, &embeddings);
+    let samples = sample_random(left_context_strings);
     let left_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
-    let right_contexts_presample = pre_sample_context_group(right_contexts.to_vec());
-
-    let right_context_strings: Vec<String> = right_contexts_presample
+    let right_context_strings: Vec<String> = right_contexts
         .iter()
         .map(|context| {
             context.generate_context_string_node_relationship(
@@ -624,8 +619,7 @@ async fn get_user_prompt_other<R: Reasoner>(
         })
         .collect::<Result<Vec<String>, Errors>>()?;
 
-    let (embeddings, _metadata) = reasoner.embed(right_context_strings.clone()).await?;
-    let samples = sample_most_different(right_context_strings, &embeddings);
+    let samples = sample_random(right_context_strings);
     let right_context_string = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(

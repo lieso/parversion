@@ -4,7 +4,13 @@ use std::sync::Arc;
 
 use crate::context::Context;
 
-const CAP: usize = 30;
+const CAP: usize = 20;
+
+pub(super) fn sample_random(mut candidates: Vec<String>) -> Vec<String> {
+    candidates.shuffle(&mut rng());
+    candidates.truncate(CAP);
+    candidates
+}
 
 pub(super) fn pre_sample_context_group(mut group: Vec<Arc<Context>>) -> Vec<Arc<Context>> {
     if group.len() <= CAP {

@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
-use super::sampling::{pre_sample_context_group, sample_most_different};
+use super::sampling::sample_random;
 use crate::basis_group::BasisGroup;
 use crate::basis_node::{BasisNode, BasisNodeMetadata};
 use crate::prelude::*;
@@ -217,16 +217,13 @@ async fn get_user_prompt<R: Reasoner>(
         panic!("empty group");
     }
 
-    let group = pre_sample_context_group(group);
-
     let context_strings: Vec<String> = group
         .iter()
         .map(|context| {
             context.generate_context_string_basis_node(Arc::clone(&normalization_context))
         })
         .collect::<Result<Vec<String>, Errors>>()?;
-    let (embeddings, _metadata) = reasoner.embed(context_strings.clone()).await?;
-    let samples = sample_most_different(context_strings, &embeddings);
+    let samples = sample_random(context_strings);
     let merged_samples = samples.join("\n\n---OCCURRENCE SEPARATOR---\n\n");
 
     Ok(format!(

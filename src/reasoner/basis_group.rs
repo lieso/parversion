@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
-use super::sampling::pre_sample_context_group;
+use super::sampling::sample_random;
 use crate::basis_group::{BasisGroup, BasisGroupMetadata};
 use crate::prelude::*;
 use crate::reasoner::{Capability, Reasoner, ReasonerMetadata, get_system_prompt, PromptName};
@@ -100,17 +100,14 @@ async fn get_user_prompt(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     group: Vec<Arc<Context>>,
 ) -> Result<String, Errors> {
-    let group = pre_sample_context_group(group);
     let context_strings: Vec<String> = group
         .iter()
         .map(|context| {
             context.generate_context_string_basis_group(Arc::clone(&normalization_context))
         })
-        .take(10)
         .collect::<Result<Vec<String>, Errors>>()?;
-    //let (embeddings, metadata) = reasoner.embed(context_strings.clone()).await?;
-    //let samples = sample_most_different(context_strings, &embeddings);
-    let merged_samples = context_strings.join("\n\n---SNIPPET SEPARATOR---\n\n");
+    let samples = sample_random(context_strings);
+    let merged_samples = samples.join("\n\n---SNIPPET SEPARATOR---\n\n");
 
     Ok(format!(
         r##""
