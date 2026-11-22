@@ -23,6 +23,7 @@ mod basis_network;
 mod basis_node;
 mod classify;
 mod document;
+mod errors;
 mod network_relationship;
 mod node_relationship;
 mod sampling;
@@ -32,6 +33,7 @@ mod translation_node;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
+pub use errors::ReasonerErrors;
 
 pub struct CompletionMetadata {
     pub input_tokens: u32,
@@ -294,7 +296,9 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
 fn is_retryable(error: &Errors) -> bool {
     matches!(
         error,
-        Errors::RateLimitError(_) | Errors::TransientBackendError(_)
+        Errors::ReasonerError(
+            ReasonerErrors::RateLimitError(_) | ReasonerErrors::TransientBackendError(_)
+        )
     )
 }
 
@@ -323,8 +327,9 @@ async fn get_system_prompt<R: Reasoner>(
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt(format!(
+    Err(ReasonerErrors::UnavailableSystemPrompt(format!(
         "Expected a {} system prompt in the prompts directory",
         name.to_string()
-    )))
+    ))
+    .into())
 }

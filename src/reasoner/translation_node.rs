@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 use super::sampling::sample_random;
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerErrors, ReasonerMetadata};
 use crate::transformation::Transformation;
 use crate::translation_node::TranslationNode;
 
@@ -137,9 +137,10 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> 
         .get("", "translation_node")
         .await?
         .ok_or_else(|| {
-            Errors::UnavailableSystemPrompt(
+            ReasonerErrors::UnavailableSystemPrompt(
                 "Expected a translation_node.txt system prompt in prompts directory".to_string(),
             )
+            .into()
         })
 }
 

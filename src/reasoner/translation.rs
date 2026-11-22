@@ -6,7 +6,7 @@ use std::sync::{Arc, RwLock};
 use super::sampling::sample_random;
 use crate::normal_context::NormalContext;
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerErrors, ReasonerMetadata};
 use crate::scheme::eval;
 use crate::transformation::Transformation;
 
@@ -163,9 +163,10 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> 
         .get("", "translation")
         .await?
         .ok_or_else(|| {
-            Errors::UnavailableSystemPrompt(
+            ReasonerErrors::UnavailableSystemPrompt(
                 "Expected a translation.txt system prompt in prompts directory".to_string(),
             )
+            .into()
         })
 }
 

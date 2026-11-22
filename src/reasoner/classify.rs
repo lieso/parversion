@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::classification::Classification;
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerErrors, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ClassificationResponse {
@@ -108,7 +108,8 @@ async fn get_system_prompt<R: Reasoner>(
         }
     }
 
-    Err(Errors::UnavailableSystemPrompt(
+    Err(ReasonerErrors::UnavailableSystemPrompt(
         "Expected a classify.txt system prompt in prompts directory".to_string(),
-    ))
+    )
+    .into())
 }

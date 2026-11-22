@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::prelude::*;
-use crate::reasoner::{Capability, Reasoner, ReasonerMetadata};
+use crate::reasoner::{Capability, Reasoner, ReasonerErrors, ReasonerMetadata};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct SchemaInstanceResponse {
@@ -71,8 +71,9 @@ async fn get_system_prompt<R: Reasoner>(reasoner: &R) -> Result<String, Errors> 
         .get("", "schema_to_instance")
         .await?
         .ok_or_else(|| {
-            Errors::UnavailableSystemPrompt(
+            ReasonerErrors::UnavailableSystemPrompt(
                 "Expected a schema_to_instance.txt system prompt in prompts directory".to_string(),
             )
+            .into()
         })
 }

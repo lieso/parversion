@@ -17,7 +17,9 @@ use crate::environment::get_env_variable;
 use crate::hash::Hash;
 use crate::prelude::*;
 use crate::prompt_registry::PromptRegistry;
-use crate::reasoner::{Capability, CompletionMetadata, EmbeddingMetadata, Reasoner};
+use crate::reasoner::{
+    Capability, CompletionMetadata, EmbeddingMetadata, Reasoner, ReasonerErrors,
+};
 
 #[cfg(feature = "openrouter-reasoner")]
 pub struct OpenRouterReasoner {
@@ -164,15 +166,16 @@ impl Reasoner for OpenRouterReasoner {
                                 ))
                             }
                             StatusCode::PAYMENT_REQUIRED => {
-                                Err(Errors::InsufficientBackendQuota(error.to_string()))
+                                Err(ReasonerErrors::InsufficientBackendQuota(error.to_string())
+                                    .into())
                             }
                             StatusCode::TOO_MANY_REQUESTS => {
-                                Err(Errors::RateLimitError(error.to_string()))
+                                Err(ReasonerErrors::RateLimitError(error.to_string()).into())
                             }
                             StatusCode::BAD_GATEWAY
                             | StatusCode::SERVICE_UNAVAILABLE
                             | StatusCode::GATEWAY_TIMEOUT => {
-                                Err(Errors::TransientBackendError(error.to_string()))
+                                Err(ReasonerErrors::TransientBackendError(error.to_string()).into())
                             }
                             _ => Err(Errors::UnexpectedError(format!(
                                 "Unexpected OpenRouter error: {}",
@@ -219,18 +222,18 @@ impl Reasoner for OpenRouterReasoner {
                         log::error!("Error: {:?}", api_error);
 
                         match api_error.status {
-                            StatusCode::PAYMENT_REQUIRED => {
-                                Errors::InsufficientBackendQuota(e.to_string())
+                            StatusCode::PAYMENT_REQUIRED => Errors::ReasonerError(
+                                ReasonerErrors::InsufficientBackendQuota(e.to_string()),
+                            ),
+                            StatusCode::TOO_MANY_REQUESTS => {
+                                Errors::ReasonerError(ReasonerErrors::RateLimitError(e.to_string()))
                             }
-                            StatusCode::TOO_MANY_REQUESTS => Errors::RateLimitError(e.to_string()),
-                            StatusCode::BAD_REQUEST => Errors::EmbeddingError(format!(
+                            StatusCode::BAD_REQUEST => Errors::ReasonerError(ReasonerErrors::EmbeddingError(format!(
                                 "Embedding API 400 Bad Request: {:?}",
                                 api_error
-                            )),
-                            StatusCode::BAD_GATEWAY
-                            | StatusCode::SERVICE_UNAVAILABLE
-                            | StatusCode::GATEWAY_TIMEOUT => {
-                                Errors::TransientBackendError(e.to_string())
+                            ))),
+                            StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => {
+                                Errors::ReasonerError(ReasonerErrors::TransientBackendError(e.to_string()))
                             }
                             _ => Errors::UnexpectedError(format!(
                                 "Unexpected embedding API error: {}",
@@ -253,11 +256,12 @@ impl Reasoner for OpenRouterReasoner {
                 input_count,
                 data.len()
             );
-            return Err(Errors::EmbeddingError(format!(
+            return Err(ReasonerErrors::EmbeddingError(format!(
                 "Embedding response count ({}) doesn't match input count ({})",
                 data.len(),
                 input_count
-            )));
+            ))
+            .into());
         }
 
         let mut sorted_data = data;
@@ -273,10 +277,10 @@ impl Reasoner for OpenRouterReasoner {
                 }
                 _ => {
                     log::error!("Unexpected embedding format at index {}", idx);
-                    Err(Errors::EmbeddingError(format!(
+                    Err(ReasonerErrors::EmbeddingError(format!(
                         "Unexpected embedding format at index {}: expected Float vector",
                         idx
-                    )))
+                    )).into())
                 }
             })
             .collect();

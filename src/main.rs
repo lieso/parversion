@@ -48,14 +48,10 @@ fn handle_error(err: &Errors) {
         Errors::InvalidRole(msg) => format!("invalid role: {}", msg),
         Errors::ReasonerNotConfigured => "reasoner not configured".to_string(),
         Errors::PromptRegistryError(msg) => format!("prompt registry error: {}", msg),
-        Errors::UnavailableSystemPrompt(msg) => format!("unavailable system prompt: {}", msg),
-        Errors::InsufficientBackendQuota(msg) => format!("insufficient backend quota: {}", msg),
-        Errors::RateLimitError(msg) => format!("rate limited: {}", msg),
-        Errors::TransientBackendError(msg) => format!("transient backend error: {}", msg),
-        Errors::EmbeddingError(msg) => format!("embedding error: {}", msg),
         Errors::TaskJoinError(msg) => format!("task join error: {}", msg),
         Errors::XsltParseError(msg) => format!("failed to parse XSLT: {}", msg),
         Errors::SchemeError(error) => format!("scheme error: {}", error),
+        Errors::ReasonerError(error) => format!("reasoner error: {}", error),
     };
 
     eprintln!("Error: {}", message);

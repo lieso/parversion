@@ -26,14 +26,16 @@ pub enum Errors {
     #[allow(dead_code)]
     ReasonerNotConfigured,
     PromptRegistryError(String),
-    UnavailableSystemPrompt(String),
-    InsufficientBackendQuota(String),
-    RateLimitError(String),
-    TransientBackendError(String),
-    EmbeddingError(String),
     TaskJoinError(String),
     XsltParseError(String),
     SchemeError(crate::scheme::Errors),
+    ReasonerError(crate::reasoner::ReasonerErrors),
+}
+
+impl From<crate::reasoner::ReasonerErrors> for Errors {
+    fn from(e: crate::reasoner::ReasonerErrors) -> Self {
+        Errors::ReasonerError(e)
+    }
 }
 
 impl From<crate::scheme::Errors> for Errors {
