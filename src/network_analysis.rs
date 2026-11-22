@@ -106,45 +106,116 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         }
     }
 
-    log::debug!("unique_comparisons: {}", unique_comparisons.len());
+
+
+
+
+
+
 
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
-    let mut handles = Vec::new();
 
-    for comparison in &unique_comparisons {
-        let left = comparison.0.clone();
-        let right = comparison.1.clone();
+    for comparisons in unique_comparisons.chunks(10) {
 
-        let cloned_provider = Arc::clone(&provider);
-        let cloned_reasoner = Arc::clone(&reasoner);
-        let cloned_normalization_context = Arc::clone(&normalization_context);
-        let cloned_stage_context = stage_context.clone();
-        let cloned_options = options.clone();
+        let mut handles = Vec::new();
 
-        let handle = task::spawn(async move {
-            generate_node_relationship(
-                cloned_provider,
-                cloned_reasoner,
-                cloned_normalization_context,
-                &cloned_options,
-                &cloned_stage_context,
-                left,
-                right,
-            )
-            .await
-        });
+        for comparison in comparisons {
+            let left = comparison.0.clone();
+            let right = comparison.1.clone();
 
-        handles.push(handle);
-    }
+            if has_transitivity(&node_relationships, &left, &right) {
+                continue;
+            }
 
-    let results = try_join_all(handles).await?;
+            let cloned_provider = Arc::clone(&provider);
+            let cloned_reasoner = Arc::clone(&reasoner);
+            let cloned_normalization_context = Arc::clone(&normalization_context);
+            let cloned_stage_context = stage_context.clone();
+            let cloned_options = options.clone();
 
-    for result in results {
-        for relationship in result? {
-            node_relationships.push(Arc::new(relationship));
+            let handle = task::spawn(async move {
+                generate_node_relationship(
+                    cloned_provider,
+                    cloned_reasoner,
+                    cloned_normalization_context,
+                    &cloned_options,
+                    &cloned_stage_context,
+                    left,
+                    right,
+                )
+                .await
+            });
+
+            handles.push(handle);
         }
+
+        let results = try_join_all(handles).await?;
+
+        for result in results {
+            for relationship in result? {
+                node_relationships.push(Arc::new(relationship));
+            }
+        }
+
+
     }
+
+
+
+
+
+
+
+
+    //let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
+
+    //let mut handles = Vec::new();
+
+    //for comparison in &unique_comparisons {
+    //    let left = comparison.0.clone();
+    //    let right = comparison.1.clone();
+
+    //    let cloned_provider = Arc::clone(&provider);
+    //    let cloned_reasoner = Arc::clone(&reasoner);
+    //    let cloned_normalization_context = Arc::clone(&normalization_context);
+    //    let cloned_stage_context = stage_context.clone();
+    //    let cloned_options = options.clone();
+
+    //    let handle = task::spawn(async move {
+    //        generate_node_relationship(
+    //            cloned_provider,
+    //            cloned_reasoner,
+    //            cloned_normalization_context,
+    //            &cloned_options,
+    //            &cloned_stage_context,
+    //            left,
+    //            right,
+    //        )
+    //        .await
+    //    });
+
+    //    handles.push(handle);
+    //}
+
+    //let results = try_join_all(handles).await?;
+
+    //for result in results {
+    //    for relationship in result? {
+    //        node_relationships.push(Arc::new(relationship));
+    //    }
+    //}
+
+
+
+
+
+
+
+
+
+
+
 
     let basis_nodes: Vec<Arc<BasisNode>> = {
         let lock = read_lock!(normalization_context);
@@ -628,4 +699,65 @@ fn get_mixed_content_relationships(
     }
 
     collected.into_values().collect()
+}
+
+fn has_transitivity(
+    node_relationships: &Vec<Arc<NodeRelationship>>,
+    left: &Arc<BasisNode>,
+    right: &Arc<BasisNode>
+) -> bool {
+    let mut queue: VecDeque<Arc<NodeRelationship>> = node_relationships
+        .iter()
+        .filter(|item| item.left_basis_lineage == left.lineage || item.right_basis_lineage == left.lineage)
+        .cloned()
+        .collect();
+
+    let mut seen: HashSet<ID> = HashSet::new();
+
+    while let Some(current) = queue.pop_front() {
+        if !seen.insert(current.id.clone()) {
+            continue;
+        }
+
+        if current.right_basis_lineage == right.lineage || current.left_basis_lineage == right.lineage {
+            if !matches!(
+                current.relationship_type,
+                NodeRelationshipType::NoRelationship
+            ) {
+                let next_relationships: Vec<Arc<NodeRelationship>> = node_relationships
+                    .iter()
+                    .filter(|item| {
+                        item.left_basis_lineage == current.left_basis_lineage ||
+                        item.right_basis_lineage == current.left_basis_lineage ||
+                        item.left_basis_lineage == current.right_basis_lineage ||
+                        item.right_basis_lineage == current.right_basis_lineage
+                    })
+                    .cloned()
+                    .collect();
+
+                for relationship in next_relationships {
+                    queue.push_back(relationship);
+                }
+            } else {
+                return true;
+            }
+        } else {
+            let next_relationships: Vec<Arc<NodeRelationship>> = node_relationships
+                .iter()
+                .filter(|item| {
+                    item.left_basis_lineage == current.left_basis_lineage ||
+                    item.right_basis_lineage == current.left_basis_lineage ||
+                    item.left_basis_lineage == current.right_basis_lineage ||
+                    item.right_basis_lineage == current.right_basis_lineage
+                })
+                .cloned()
+                .collect();
+
+            for relationship in next_relationships {
+                queue.push_back(relationship);
+            }
+        }
+    }
+
+    false
 }
