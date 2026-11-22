@@ -224,11 +224,6 @@ pub async fn node_relationship_other<R: Reasoner>(
                 "Node relationship did not validate. Escalating to a more advanced model... "
             );
 
-            {
-                let mut lock = write_lock!(normalization_context);
-                lock.bump_spatial_context_size();
-            }
-
             let (node_relationship, next_reasoner_metadata) = determine_node_relationship_other(
                 reasoner,
                 Arc::clone(&normalization_context),
@@ -258,50 +253,11 @@ pub async fn node_relationship_other<R: Reasoner>(
                 }
                 result => {
                     log::warn!("Relationship invalid or error: {:?}", result);
-                    log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
+                    log::warn!("Relationship invalid or error: {:?}", result);
+                    log::info!("Node relationship did not validate ");
+                    relationships.push(node_relationship.clone());
 
-                    {
-                        let mut lock = write_lock!(normalization_context);
-                        lock.bump_spatial_context_size();
-                    }
-
-                    let (node_relationship, next_reasoner_metadata) =
-                        determine_node_relationship_other(
-                            reasoner,
-                            Arc::clone(&normalization_context),
-                            Arc::clone(&left),
-                            Arc::clone(&right),
-                            Capability::Strong,
-                        )
-                        .await?;
-
-                    let reasoner_metadata = ReasonerMetadata {
-                        tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
-                        prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts]
-                            .concat(),
-                        cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
-                    };
-
-                    match validate_node_relationship(
-                        Arc::clone(&normalization_context),
-                        left.clone(),
-                        right.clone(),
-                        &node_relationship,
-                    ) {
-                        Ok(true) => {
-                            log::info!("Relationship valid");
-                            relationships.push(node_relationship.clone());
-
-                            Ok((relationships, reasoner_metadata))
-                        }
-                        result => {
-                            log::warn!("Relationship invalid or error: {:?}", result);
-                            log::info!("Node relationship did not validate ");
-                            relationships.push(node_relationship.clone());
-
-                            Ok((relationships, reasoner_metadata))
-                        }
-                    }
+                    Ok((relationships, reasoner_metadata))
                 }
             }
         }

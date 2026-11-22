@@ -107,8 +107,4 @@ impl NormalizationContext {
         self.context_groups = Some(context_groups);
         self.context_to_group = Some(context_to_group);
     }
-
-    pub fn bump_spatial_context_size(&mut self) {
-        self.spatial_context_size += 17;
-    }
 }
