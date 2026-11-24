@@ -942,6 +942,18 @@ pub fn traverse_using_xpath_predicate(
             );
             Ok(filtered)
         }
+        XPathPredicate::Or(predicates) => {
+            let mut out: Vec<Value> = Vec::new();
+            for predicate in predicates {
+                let matched = traverse_using_xpath_predicate(
+                    Arc::clone(&normalization_context),
+                    values.clone(),
+                    predicate,
+                )?;
+                extend_dedup(&mut out, matched);
+            }
+            Ok(out)
+        }
     };
 
     log::warn!("===== END XPATH PREDICATE =====");
@@ -1078,4 +1090,15 @@ pub fn traverse_using_xpath_segment(
     log::warn!("===== END XPATH SEGMENT =====");
 
     Ok(result)
+}
+
+fn extend_dedup(out: &mut Vec<Value>, incoming: Vec<Value>) {
+    for value in incoming {
+        if !out
+            .iter()
+            .any(|v| Arc::ptr_eq(&v.graph, &value.graph) && v.selection == value.selection)
+        {
+            out.push(value);
+        }
+    }
 }

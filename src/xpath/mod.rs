@@ -59,6 +59,7 @@ pub enum XPathPredicate {
     StartsWith { name: String, value: String },
     Path(XPath),
     And(Vec<XPathPredicate>),
+    Or(Vec<XPathPredicate>),
     Not(Box<XPathPredicate>),
     ContainsToken { name: String, value: String },
     Equals { lhs: Expr, rhs: Operand },
@@ -864,6 +865,19 @@ impl XPathPredicate {
             return Ok(XPathPredicate::Last);
         }
 
+        if s.starts_with('(') && matching_paren(s, 0) == Some(s.len() - 1) {
+            return XPathPredicate::from_str(&s[1..s.len() - 1]);
+        }
+
+        let alternatives = Self::split_top_level(s, " or ");
+        if alternatives.len() > 1 {
+            let predicates = alternatives
+                .into_iter()
+                .map(XPathPredicate::from_str)
+                .collect::<Result<Vec<_>, Errors>>()?;
+            return Ok(XPathPredicate::Or(predicates));
+        }
+
         let clauses = Self::split_top_level(s, " and ");
         if clauses.len() > 1 {
             let predicates = clauses
@@ -1043,6 +1057,11 @@ impl fmt::Display for XPathPredicate {
             XPathPredicate::NormalizedTextEquals { value } => {
                 format!("normalize-space()='{}'", value)
             }
+            XPathPredicate::Or(predicates) => predicates
+                .iter()
+                .map(|p| p.to_string())
+                .collect::<Vec<_>>()
+                .join(" or "),
         };
 
         write!(f, "{}", s)
@@ -1086,16 +1105,27 @@ fn unquote(s: &str) -> Option<&str> {
     s.strip_prefix('\'')?.strip_suffix('\'')
 }
 
-/// Matches `concat(' ', normalize-space(@NAME), ' ')` regardless of whitespace.
+/// Matches `concat(' ', NAME, ' ')` where NAME is `@attr` or `normalize-space(@attr)`.
 fn parse_token_haystack(expr: &str) -> Option<String> {
     let args = expr.trim().strip_prefix("concat(")?.strip_suffix(')')?;
     let parts = split_top_level_commas(args);
     if parts.len() != 3 || unquote(parts[0])? != " " || unquote(parts[2])? != " " {
         return None;
     }
-    let name = parts[1]
-        .strip_prefix("normalize-space(@")?
-        .strip_suffix(')')?;
+
+    let middle = parts[1].trim();
+    let attr = match middle
+        .strip_prefix("normalize-space(")
+        .and_then(|s| s.strip_suffix(')'))
+    {
+        Some(inner) => inner.trim(),
+        None => middle,
+    };
+
+    let name = attr.strip_prefix('@')?.trim();
+    if name.is_empty() {
+        return None;
+    }
     Some(name.to_string())
 }
 
