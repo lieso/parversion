@@ -3,6 +3,26 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn memv(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 2)?;
+    let items = expect_list(&values[1])?;
+
+    Ok(match items.iter().position(|item| eqv(&values[0], item)) {
+        Some(i) => Value::List(items[i..].to_vec()),
+        None => Value::Bool(false),
+    })
+}
+
+fn eqv(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::Integer(x), Value::Integer(y)) => x == y,
+        (Value::Float(x), Value::Float(y)) => x == y,
+        (Value::Char(x), Value::Char(y)) => x == y,
+        (Value::Bool(x), Value::Bool(y)) => x == y,
+        _ => false,
+    }
+}
+
 pub fn digit_char_p(values: Vec<Value>) -> Result<Value, Errors> {
     let (c, radix) = match values.as_slice() {
         [c] => (expect_char(c)?, 10),
