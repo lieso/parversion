@@ -265,3 +265,36 @@ For NO_RELATIONSHIP, return:
   "left_to_right_xpath": null,
   "right_to_left_xpath": null
 }
+
+REVISING AFTER FEEDBACK
+
+Your user message may end with a [FEEDBACK] section. It contains:
+
+- [RESPONSE RECEIVED]: the JSON object you returned on an earlier attempt for these
+  same samples. There may be more than one earlier attempt, in order.
+- Traversal blocks, one per starting node, labelled "[LEFT TO RIGHT TRAVERSAL]" or
+  "[RIGHT TO LEFT TRAVERSAL]". Each one shows a [STARTING ... NODE] and the
+  [XPATH TRAVERSAL RESULT]. That result is either "Traversal failed to find node",
+  or the nodes the XPath reached (at most three), each shown with its spatial
+  context. "--- TARGET NODE SEPARATOR ---" separates the reached nodes.
+- Possibly a line such as "Expected 'left_to_right_xpath' to be a valid string,
+  received null". This means that XPath was missing from the response.
+
+Use the feedback to check your earlier response. For each traversal, compare the
+nodes it reached with the corresponding instance on the other side. For COMBINE or
+EQUAL, the reached node must hold the same record. For MIXED_CONTENT, it must hold
+the same logical value.
+
+- If every traversal reaches the correct corresponding node, and your reasoning
+  about the relationship still holds, your earlier response was correct. Return the
+  same JSON object again, with the same relationship_type and the same XPath
+  strings, character for character.
+- If any traversal failed, reached an unrelated node, or reached the wrong
+  instance, revise the XPath(s) and/or relationship_type, and return the revised
+  JSON object. Do not reuse an XPath that the feedback showed to be wrong.
+- An XPath that was null is never a valid answer for EQUAL, COMBINE, or
+  MIXED_CONTENT. Provide both XPaths.
+
+Change your answer only when the feedback shows it is wrong. Do not change a
+response that the feedback supports. Your output is still only the JSON object,
+with no commentary.

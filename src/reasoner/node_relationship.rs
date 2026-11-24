@@ -1,5 +1,5 @@
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use std::sync::{Arc, RwLock};
 
 use super::sampling::sample_random;
@@ -10,7 +10,7 @@ use crate::prelude::*;
 use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 use crate::xpath::XPath;
 
-#[derive(Deserialize, JsonSchema, Debug)]
+#[derive(Deserialize, Serialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RelationshipTypeResponse {
     Combine,
@@ -27,7 +27,7 @@ pub enum SelfRelationshipTypeResponse {
     NoRelationship,
 }
 
-#[derive(Deserialize, JsonSchema, Debug)]
+#[derive(Deserialize, Serialize, JsonSchema, Debug)]
 pub struct NodeRelationshipOtherResponse {
     // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "MIXED_CONTENT", "NO_RELATIONSHIP")
     pub relationship_type: RelationshipTypeResponse,
@@ -192,68 +192,55 @@ pub async fn node_relationship_other<R: Reasoner>(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
 ) -> Result<(Vec<NodeRelationship>, ReasonerMetadata), Errors> {
-    let mut relationships: Vec<NodeRelationship> = Vec::new();
+    let mut node_relationship: Option<NodeRelationship> = None;
+    let mut reasoner_metadata = ReasonerMetadata {
+        tokens: 0,
+        prompts: Vec::new(),
+        cost: 0.0,
+    };
+    let mut feedback: Option<String> = None;
 
-    let (node_relationship, reasoner_metadata) = determine_node_relationship_other(
-        reasoner,
-        Arc::clone(&normalization_context),
-        Arc::clone(&left),
-        Arc::clone(&right),
-        Capability::Fast,
-    )
-    .await?;
+    let feedback_loop_size = {
+        let lock = read_lock!(normalization_context);
+        lock.feedback_loop_size
+    };
 
-    if validate_node_relationship(
-        Arc::clone(&normalization_context),
-        left.clone(),
-        right.clone(),
-        &node_relationship,
-    )? {
-        log::info!("Relationship valid");
-        relationships.push(node_relationship.clone());
-
-        Ok((relationships, reasoner_metadata))
-    } else {
-        log::warn!("Relationship invalid");
-        log::debug!("node_relationship: {:?}", node_relationship);
-        log::debug!("prompts: {:?}", reasoner_metadata.prompts);
-        log::info!("Node relationship did not validate. Escalating to a more advanced model... ");
-
-        let (node_relationship, next_reasoner_metadata) = determine_node_relationship_other(
+    for _ in 0..feedback_loop_size {
+        let (next_node_relationship, next_reasoner_metadata, next_feedback) = determine_node_relationship_other(
             reasoner,
             Arc::clone(&normalization_context),
             Arc::clone(&left),
             Arc::clone(&right),
-            Capability::Capable,
-        )
-        .await?;
+            Capability::Fast,
+            feedback,
+        ).await?;
 
-        let reasoner_metadata = ReasonerMetadata {
+        reasoner_metadata = ReasonerMetadata {
             tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
             prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
             cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
         };
 
-        if validate_node_relationship(
+        if let Some(node_relationship) = node_relationship {
+            if next_node_relationship.relationship_type == node_relationship.relationship_type {
+                return Ok((vec![next_node_relationship], reasoner_metadata));
+            }
+        }
+
+        node_relationship = Some(next_node_relationship);
+        feedback = next_feedback;
+
+        let more_feedback = generate_feedback(
             Arc::clone(&normalization_context),
             left.clone(),
             right.clone(),
-            &node_relationship,
-        )? {
-            log::info!("Relationship valid");
-            relationships.push(node_relationship.clone());
+            &node_relationship.as_ref().unwrap(),
+        )?;
 
-            Ok((relationships, reasoner_metadata))
-        } else {
-            log::warn!("Relationship invalid");
-            log::debug!("node_relationship: {:?}", node_relationship);
-            log::debug!("prompts: {:?}", reasoner_metadata.prompts);
-            log::info!("Node relationship did not validate ");
-            relationships.push(node_relationship.clone());
-
-            Ok((relationships, reasoner_metadata))
-        }
+        feedback = Some(format!("{}\n{}", feedback.unwrap_or(String::new()), more_feedback));
     }
+
+    Ok((vec![node_relationship.unwrap()], reasoner_metadata))
 }
 
 async fn determine_node_relationship_other<R: Reasoner>(
@@ -262,7 +249,8 @@ async fn determine_node_relationship_other<R: Reasoner>(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
     capability: Capability,
-) -> Result<(NodeRelationship, ReasonerMetadata), Errors> {
+    feedback: Option<String>
+) -> Result<(NodeRelationship, ReasonerMetadata, Option<String>), Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context.clone().unwrap()
@@ -284,10 +272,9 @@ async fn determine_node_relationship_other<R: Reasoner>(
     };
 
     let left_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&left.id).unwrap().to_vec();
-
     let right_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&right.id).unwrap().to_vec();
 
-    let user_prompt = get_user_prompt_other(
+    let mut user_prompt = get_user_prompt_other(
         Arc::clone(&normalization_context),
         left.clone(),
         &left_contexts,
@@ -295,6 +282,10 @@ async fn determine_node_relationship_other<R: Reasoner>(
         &right_contexts,
     )
     .await?;
+
+    if let Some(ref feedback) = feedback {
+        user_prompt = format!("{}\n{}", user_prompt, feedback);
+    }
 
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
         .expect("Failed to serialise NodeRelationshipOtherResponse schema");
@@ -334,21 +325,37 @@ async fn determine_node_relationship_other<R: Reasoner>(
         cost: metadata.cost.unwrap_or(0.0),
     };
 
+    let mut next_feedback = format!(r##"
+{}
+[FEEDBACK]
+
+[RESPONSE RECEIVED]
+{}
+
+"##, feedback.unwrap_or(String::new()), serde_json::to_string_pretty(&result).expect("Could not create json string"));
+
     let relationship_type = {
         match result.relationship_type {
-            RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
-                xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-            },
-            RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
-                xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-            },
-            RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent {
-                xpath_ltr: result.left_to_right_xpath.unwrap().clone(),
-                xpath_rtl: result.right_to_left_xpath.unwrap().clone(),
-            },
             RelationshipTypeResponse::NoRelationship => NodeRelationshipType::NoRelationship,
+            relationship_type => {
+                let xpath_ltr = result.left_to_right_xpath.unwrap_or_else(
+                    || {
+                        next_feedback.push_str("Expected 'left_to_right_xpath' to be a valid string, received null");
+                        String::from(".")
+                    }).to_owned();
+                let xpath_rtl = result.right_to_left_xpath.unwrap_or_else(
+                    || {
+                        next_feedback.push_str("Expected 'right_to_left_xpath' to be a valid string, received null");
+                        String::from(".")
+                    }).to_owned();
+
+                match relationship_type {
+                    RelationshipTypeResponse::Combine => NodeRelationshipType::Combine { xpath_ltr, xpath_rtl },
+                    RelationshipTypeResponse::Equal => NodeRelationshipType::Equal { xpath_ltr, xpath_rtl },
+                    RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent { xpath_ltr, xpath_rtl },
+                    RelationshipTypeResponse::NoRelationship => unreachable!(),
+                }
+            }
         }
     };
 
@@ -359,25 +366,18 @@ async fn determine_node_relationship_other<R: Reasoner>(
         relationship_type,
     };
 
-    Ok((node_relationship, reasoner_metadata))
+    Ok((node_relationship, reasoner_metadata, Some(next_feedback)))
 }
 
-fn validate_node_relationship(
+fn generate_feedback(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
     node_relationship: &NodeRelationship,
-) -> Result<bool, Errors> {
-    log::trace!("In validate_node_relationship");
-
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context
-            .clone()
-            .ok_or(Errors::DeficientNormalizationContextError(
-                "Meta context not provided in normalization context".to_string(),
-            ))?
-    };
+) -> Result<String, Errors> {
+    log::trace!("In generate_feedback");
+    
+    let mut feedback = String::new();
 
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
@@ -387,131 +387,89 @@ fn validate_node_relationship(
             )
         })?
     };
-
     let left_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&left.id).unwrap().to_vec();
-
     let right_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&right.id).unwrap().to_vec();
 
-    match &node_relationship.relationship_type {
-        NodeRelationshipType::Combine {
-            xpath_ltr,
-            xpath_rtl,
-            ..
-        } => {
-            let xpath: XPath = xpath_ltr.parse()?;
-
-            let coverage_ltr =
-                left_contexts
-                    .iter()
-                    .try_fold(0, |acc, item| -> Result<i32, Errors> {
-                        let target_values = xpath.traverse(
-                            Arc::clone(&normalization_context),
-                            Arc::clone(&item.graph_node),
-                        )?;
-                        let target_graph_nodes: Vec<Graph> =
-                            target_values.into_iter().map(|v| v.graph).collect();
-
-                        if target_graph_nodes.is_empty() {
-                            log::warn!(
-                                "Could not find target graph nodes within current network: {}",
-                                xpath.to_string()
-                            );
-
-                            return Ok(acc);
-                        }
-
-                        for target_graph_node in target_graph_nodes {
-                            let target_context = meta_context
-                                .contexts_lookup
-                                .get(&read_lock!(target_graph_node).id)
-                                .cloned()
-                                .unwrap();
-
-                            let target_basis_node = {
-                                let lock = read_lock!(normalization_context);
-                                let lookup = lock.context_basis_node.as_ref().unwrap();
-
-                                lookup.get(&target_context.id).cloned()
-                            };
-
-                            if let Some(target_basis_node) = target_basis_node {
-                                if target_basis_node.id != right.id {
-                                    log::info!("XPATH LTR did not find the 'right' basis node");
-                                    return Ok(acc);
-                                }
-                            }
-                        }
-
-                        Ok(acc + 1)
-                    })? as f64
-                    / left_contexts.len() as f64;
-
-            log::info!("coverage_ltr: {}", coverage_ltr);
-
-            if coverage_ltr == 0.0 {
-                return Ok(false);
-            }
-
-            let xpath: XPath = xpath_rtl.parse()?;
-
-            let coverage_rtl =
-                right_contexts
-                    .iter()
-                    .try_fold(0, |acc, item| -> Result<i32, Errors> {
-                        let target_values = xpath.traverse(
-                            Arc::clone(&normalization_context),
-                            Arc::clone(&item.graph_node),
-                        )?;
-                        let target_graph_nodes: Vec<Graph> =
-                            target_values.into_iter().map(|v| v.graph).collect();
-
-                        if target_graph_nodes.is_empty() {
-                            log::warn!(
-                                "Could not find target graph nodes within current network: {}",
-                                xpath.to_string()
-                            );
-
-                            return Ok(acc);
-                        }
-
-                        for target_graph_node in target_graph_nodes {
-                            let target_context = meta_context
-                                .contexts_lookup
-                                .get(&read_lock!(target_graph_node).id)
-                                .cloned()
-                                .unwrap();
-
-                            let target_basis_node = {
-                                let lock = read_lock!(normalization_context);
-                                let lookup = lock.context_basis_node.as_ref().unwrap();
-
-                                lookup.get(&target_context.id).cloned()
-                            };
-
-                            if let Some(target_basis_node) = target_basis_node {
-                                if target_basis_node.id != left.id {
-                                    log::info!("XPATH RTL did not find the 'left' basis node");
-                                    return Ok(acc);
-                                }
-                            }
-                        }
-
-                        Ok(acc + 1)
-                    })? as f64
-                    / right_contexts.len() as f64;
-
-            log::info!("coverage_rtl: {}", coverage_rtl);
-
-            if coverage_rtl == 0.0 {
-                return Ok(false);
-            }
-
-            Ok(true)
+    let (xpath_ltr, xpath_rtl) = {
+        match &node_relationship.relationship_type {
+            NodeRelationshipType::NoRelationship => return Ok(feedback),
+            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => (xpath_ltr, xpath_rtl),
+            NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => (xpath_ltr, xpath_rtl),
+            NodeRelationshipType::MixedContent { xpath_ltr, xpath_rtl, .. } => (xpath_ltr, xpath_rtl),
         }
-        NodeRelationshipType::Equal { .. } => Ok(true),
-        NodeRelationshipType::MixedContent { .. } => Ok(true),
-        NodeRelationshipType::NoRelationship => Ok(true),
+    };
+
+    let xpath_ltr = xpath_ltr.parse()?;
+    let xpath_rtl = xpath_rtl.parse()?;
+
+    fn make_feedback(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        contexts: Vec<Arc<Context>>,
+        xpath: XPath,
+        direction_from: String,
+        direction_to: String,
+        feedback: &mut String,
+    ) -> Result<(), Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .clone()
+                .ok_or(Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                ))?
+        };
+
+        let sample_size = read_lock!(normalization_context).context_sample_size;
+        let contexts = sample_random(contexts, sample_size);
+
+        for context in contexts {
+            feedback.push_str(&format!("---------[{} TO {} TRAVERSAL]---------\n", direction_from, direction_to));
+
+            let context_string: String = context.generate_context_string(
+                Arc::clone(&normalization_context)
+            )?;
+
+            feedback.push_str(&format!("[STARTING {} NODE]\n", direction_from));
+            feedback.push_str(&format!("{}\n", context_string));
+
+            let target_values = xpath.traverse(
+                Arc::clone(&normalization_context),
+                Arc::clone(&context.graph_node),
+            )?;
+            let target_graph_nodes: Vec<Graph> =
+                target_values.into_iter().map(|v| v.graph).collect();
+
+            if target_graph_nodes.is_empty() {
+                feedback.push_str(&format!("[XPATH TRAVERSAL RESULT]\n"));
+                feedback.push_str("Traversal failed to find node\n");
+            } else {
+                feedback.push_str(&format!("[XPATH TRAVERSAL RESULT]\n"));
+                feedback.push_str(&format!("**XPath traversal found {} node(s). Showing result(s) for at most {}:**\n", target_graph_nodes.len(), sample_size));
+
+                for target_graph_node in target_graph_nodes.iter().take(sample_size) {
+                    let target_context = meta_context
+                        .contexts_lookup
+                        .get(&read_lock!(target_graph_node).id)
+                        .cloned()
+                        .unwrap();
+
+                    let context_string: String = target_context.generate_context_string(
+                        Arc::clone(&normalization_context)
+                    )?;
+
+                    feedback.push_str(&format!("{}\n", context_string));
+                    feedback.push_str(&format!("--- TARGET NODE SEPARATOR ---\n"));
+                }
+            }
+        }
+
+        Ok(())
     }
+
+    make_feedback(Arc::clone(&normalization_context), left_contexts, xpath_ltr, String::from("LEFT"), String::from("RIGHT"), &mut feedback)?;
+    make_feedback(Arc::clone(&normalization_context), right_contexts, xpath_rtl, String::from("RIGHT"), String::from("LEFT"), &mut feedback)?;
+
+    Ok(feedback)
 }
 
 async fn get_user_prompt_self(

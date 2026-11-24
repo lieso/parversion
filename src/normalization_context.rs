@@ -13,6 +13,7 @@ use crate::prelude::*;
 
 const DEFAULT_SPATIAL_CONTEXT_SIZE: usize = 17;
 const DEFAULT_CONTEXT_SAMPLE_SIZE: usize = 3;
+const DEFAULT_FEEDBACK_LOOP_SIZE: usize = 3;
 
 pub struct NormalizationContext {
     pub meta_context: Option<Arc<MetaContext>>,
@@ -28,6 +29,7 @@ pub struct NormalizationContext {
     pub normalized: Option<NormalMetaContext>,
     pub spatial_context_size: usize,
     pub context_sample_size: usize,
+    pub feedback_loop_size: usize,
 }
 
 impl NormalizationContext {
@@ -46,6 +48,7 @@ impl NormalizationContext {
             normalized: None,
             spatial_context_size: DEFAULT_SPATIAL_CONTEXT_SIZE,
             context_sample_size: DEFAULT_CONTEXT_SAMPLE_SIZE,
+            feedback_loop_size: DEFAULT_FEEDBACK_LOOP_SIZE,
         }
     }
 
