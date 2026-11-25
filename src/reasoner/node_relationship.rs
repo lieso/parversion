@@ -192,65 +192,6 @@ pub async fn node_relationship_other<R: Reasoner>(
     left: Arc<BasisNode>,
     right: Arc<BasisNode>,
 ) -> Result<(Vec<NodeRelationship>, ReasonerMetadata), Errors> {
-    let mut node_relationship: Option<NodeRelationship> = None;
-    let mut reasoner_metadata = ReasonerMetadata {
-        tokens: 0,
-        prompts: Vec::new(),
-        cost: 0.0,
-    };
-    let mut feedback: Option<String> = None;
-
-    let feedback_loop_size = {
-        let lock = read_lock!(normalization_context);
-        lock.feedback_loop_size
-    };
-
-    for _ in 0..feedback_loop_size {
-        let (next_node_relationship, next_reasoner_metadata, next_feedback) = determine_node_relationship_other(
-            reasoner,
-            Arc::clone(&normalization_context),
-            Arc::clone(&left),
-            Arc::clone(&right),
-            Capability::Fast,
-            feedback,
-        ).await?;
-
-        reasoner_metadata = ReasonerMetadata {
-            tokens: reasoner_metadata.tokens + next_reasoner_metadata.tokens,
-            prompts: [reasoner_metadata.prompts, next_reasoner_metadata.prompts].concat(),
-            cost: reasoner_metadata.cost + next_reasoner_metadata.cost,
-        };
-
-        if let Some(node_relationship) = node_relationship {
-            if next_node_relationship.relationship_type == node_relationship.relationship_type {
-                return Ok((vec![next_node_relationship], reasoner_metadata));
-            }
-        }
-
-        node_relationship = Some(next_node_relationship);
-        feedback = next_feedback;
-
-        let more_feedback = generate_feedback(
-            Arc::clone(&normalization_context),
-            left.clone(),
-            right.clone(),
-            &node_relationship.as_ref().unwrap(),
-        )?;
-
-        feedback = Some(format!("{}\n{}", feedback.unwrap_or(String::new()), more_feedback));
-    }
-
-    Ok((vec![node_relationship.unwrap()], reasoner_metadata))
-}
-
-async fn determine_node_relationship_other<R: Reasoner>(
-    reasoner: &R,
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    left: Arc<BasisNode>,
-    right: Arc<BasisNode>,
-    capability: Capability,
-    feedback: Option<String>
-) -> Result<(NodeRelationship, ReasonerMetadata, Option<String>), Errors> {
     let meta_context = {
         let lock = read_lock!(normalization_context);
         lock.meta_context.clone().unwrap()
@@ -270,7 +211,6 @@ async fn determine_node_relationship_other<R: Reasoner>(
             )
         })?
     };
-
     let left_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&left.id).unwrap().to_vec();
     let right_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&right.id).unwrap().to_vec();
 
@@ -282,11 +222,7 @@ async fn determine_node_relationship_other<R: Reasoner>(
         &right_contexts,
     )
     .await?;
-
-    if let Some(ref feedback) = feedback {
-        user_prompt = format!("{}\n{}", user_prompt, feedback);
-    }
-
+    let capability = Capability::Fast;
     let schema = serde_json::to_value(schemars::schema_for!(NodeRelationshipOtherResponse))
         .expect("Failed to serialise NodeRelationshipOtherResponse schema");
 
@@ -325,48 +261,34 @@ async fn determine_node_relationship_other<R: Reasoner>(
         cost: metadata.cost.unwrap_or(0.0),
     };
 
-    let mut next_feedback = format!(r##"
-{}
-[FEEDBACK]
 
-[RESPONSE RECEIVED]
-{}
 
-"##, feedback.unwrap_or(String::new()), serde_json::to_string_pretty(&result).expect("Could not create json string"));
 
-    let relationship_type = {
-        match result.relationship_type {
-            RelationshipTypeResponse::NoRelationship => NodeRelationshipType::NoRelationship,
-            relationship_type => {
-                let xpath_ltr = result.left_to_right_xpath.unwrap_or_else(
-                    || {
-                        next_feedback.push_str("Expected 'left_to_right_xpath' to be a valid string, received null");
-                        String::from(".")
-                    }).to_owned();
-                let xpath_rtl = result.right_to_left_xpath.unwrap_or_else(
-                    || {
-                        next_feedback.push_str("Expected 'right_to_left_xpath' to be a valid string, received null");
-                        String::from(".")
-                    }).to_owned();
+    if !matches!(result.relationship_type, RelationshipTypeResponse::NoRelationship) {
 
-                match relationship_type {
-                    RelationshipTypeResponse::Combine => NodeRelationshipType::Combine { xpath_ltr, xpath_rtl },
-                    RelationshipTypeResponse::Equal => NodeRelationshipType::Equal { xpath_ltr, xpath_rtl },
-                    RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent { xpath_ltr, xpath_rtl },
-                    RelationshipTypeResponse::NoRelationship => unreachable!(),
-                }
-            }
-        }
-    };
+        let traversal = reasoner
+            .traversal(
+                Arc::clone(&normalization_context),
+                Arc::clone(&left),
+                Arc::clone(&right),
+            )
+            .await?;
 
-    let node_relationship = NodeRelationship {
-        id: ID::new(),
-        left_basis_lineage: left.lineage.clone(),
-        right_basis_lineage: right.lineage.clone(),
-        relationship_type,
-    };
+    }
 
-    Ok((node_relationship, reasoner_metadata, Some(next_feedback)))
+
+    unimplemented!()
+
+
+
+    //let node_relationship = NodeRelationship {
+    //    id: ID::new(),
+    //    left_basis_lineage: left.lineage.clone(),
+    //    right_basis_lineage: right.lineage.clone(),
+    //    relationship_type,
+    //};
+
+    //Ok((node_relationship, reasoner_metadata, Some(next_feedback)))
 }
 
 fn generate_feedback(

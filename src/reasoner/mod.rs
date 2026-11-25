@@ -15,6 +15,7 @@ use crate::prelude::*;
 use crate::prompt_registry::PromptRegistry;
 use crate::transformation::Transformation;
 use crate::translation_node::TranslationNode;
+use crate::traversal::Traversal;
 
 mod backend;
 mod basis_field;
@@ -30,6 +31,7 @@ mod sampling;
 mod transformation;
 mod translation;
 mod translation_node;
+mod traversal;
 
 #[cfg(feature = "openrouter-reasoner")]
 pub use backend::openrouter;
@@ -72,6 +74,7 @@ pub enum PromptName {
     NetworkRelationshipSelf,
     NodeRelationshipOther,
     NodeRelationshipSelf,
+    Traversal,
 }
 
 impl fmt::Display for PromptName {
@@ -88,6 +91,7 @@ impl fmt::Display for PromptName {
             PromptName::NetworkRelationshipSelf => "network_relationship_self",
             PromptName::NodeRelationshipOther => "node_relationship_other",
             PromptName::NodeRelationshipSelf => "node_relationship_self",
+            PromptName::Traversal => "traversal",
         };
         write!(f, "{}", name)
     }
@@ -288,6 +292,21 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
             left_contexts,
             right_field,
             right_contexts,
+        )
+        .await
+    }
+
+    async fn traversal(
+        &self,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        left: Arc<BasisNode>,
+        right: Arc<BasisNode>,
+    ) -> Result<(Traversal, ReasonerMetadata), Errors> {
+        traversal::traversal(
+            self,
+            normalization_context,
+            left,
+            right,
         )
         .await
     }
