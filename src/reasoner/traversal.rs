@@ -2,6 +2,7 @@ use schemars::JsonSchema;
 use serde::{Serialize, Deserialize};
 use std::sync::{Arc, RwLock};
 
+use super::sampling::sample_random;
 use crate::prelude::*;
 use crate::basis_node::BasisNode;
 use crate::graph_node::Graph;
@@ -43,7 +44,7 @@ pub async fn traversal<R: Reasoner>(
             Arc::clone(&normalization_context),
             Arc::clone(&left),
             Arc::clone(&right),
-            Capability::Fast,
+            Capability::XPath,
             previous_feedback,
         ).await?;
 
@@ -181,5 +182,62 @@ async fn get_user_prompt(
     right_contexts: &[Arc<Context>],
     feedback: Option<String>
 ) -> Result<String, Errors> {
-    unimplemented!()
+    fn make_context_string(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_node: Arc<BasisNode>,
+        contexts: &[Arc<Context>],
+        other_contexts: &[Arc<Context>],
+    ) -> Result<String, Errors> {
+        let samples = sample_random(
+            contexts.to_vec(),
+            read_lock!(normalization_context)
+                .context_sample_size
+                .clone(),
+        );
+
+        samples.iter().try_fold(String::new(), |acc, context| {
+            let context_string = context.generate_context_string_traversal(
+                Arc::clone(&normalization_context),
+                Arc::clone(&basis_node),
+                other_contexts,
+            )?;
+
+            if acc.is_empty() {
+                Ok(context_string)
+            } else {
+                Ok(format!("{}\n\n---SNIPPET SEPARATOR---\n\n{}", acc, context_string))
+            }
+        })
+    }
+
+    let left_context_string = make_context_string(
+        Arc::clone(&normalization_context),
+        Arc::clone(&left),
+        left_contexts,
+        right_contexts,
+    )?;
+    let right_context_string = make_context_string(
+        Arc::clone(&normalization_context),
+        Arc::clone(&left),
+        right_contexts,
+        left_contexts,
+    )?;
+
+    let mut result = format!(
+        r##"
+[LEFT]
+{}
+
+[RIGHT]
+{}
+
+"##,
+        left_context_string, right_context_string
+    );
+
+    if let Some(feedback) = feedback {
+        result.push_str(&format!("[FEEDBACK]\n{}", feedback));
+    }
+
+    Ok(result)
 }

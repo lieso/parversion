@@ -22,6 +22,67 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn generate_context_string_traversal(
+        self: &Arc<Self>,
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        basis_node: Arc<BasisNode>,
+        other_contexts: &[Arc<Context>],
+    ) -> Result<String, Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context
+                .as_ref()
+                .ok_or_else(|| {
+                    Errors::DeficientNormalizationContextError(
+                        "Meta context not provided in normalization context".to_string(),
+                    )
+                })?
+                .clone()
+        };
+
+        let mut contexts = other_contexts.to_vec();
+        contexts.push(Arc::clone(self));
+
+        let spatial_context = Self::generate_spatial_context_multi(
+            Arc::clone(&normalization_context),
+            contexts.clone(),
+            Some(self.id.clone()),
+        )?;
+        let positional_context: String = self.generate_positional_context(&meta_context)?;
+
+        let mut transformed_context = String::new();
+        for transformation in &basis_node.transformations {
+            let transformed = transformation.transform(self.data_node.clone())?;
+
+            for value in transformed.fields.get(&transformation.image) {
+                let truncated = value.truncate();
+
+                if truncated.is_empty() {
+                    return Err(Errors::UnexpectedError("Basis node transformation resulting in an empty value during context string generation".to_string()));
+                }
+
+                transformed_context
+                    .push_str(&format!("{} => {}\n", transformation.image, truncated));
+            }
+        }
+
+        let result = format!(
+            r##"
+[SPATIAL CONTEXT]
+{}
+
+[POSITIONAL CONTEXT]
+{}
+
+[TRANSFORMED FIELDS]
+{}
+"##,
+            spatial_context, positional_context, transformed_context
+        );
+
+        Ok(result)
+    }
+
     pub fn generate_context_string_network_relationship(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         contexts: Vec<Arc<Context>>,
@@ -29,6 +90,7 @@ impl Context {
         let spatial_context = Self::generate_spatial_context_multi(
             Arc::clone(&normalization_context),
             contexts.clone(),
+            None,
         )?;
 
         let result = format!(
@@ -397,6 +459,7 @@ impl Context {
     pub fn generate_spatial_context_multi(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         contexts: Vec<Arc<Context>>,
+        target_context_id: Option<ContextID>,
     ) -> Result<String, Errors> {
         let meta_context = {
             let lock = read_lock!(normalization_context);
@@ -426,7 +489,13 @@ impl Context {
             );
             neighbourhood.extend(envelope);
 
-            target_ids.insert(read_lock!(context.graph_node).id.clone());
+            if let Some(ref target_context_id) = target_context_id {
+                if *target_context_id == context.id {
+                    target_ids.insert(read_lock!(context.graph_node).id.clone());
+                }
+            } else {
+                target_ids.insert(read_lock!(context.graph_node).id.clone());
+            }
         }
 
         let partial_document = Document::from_meta_context(

@@ -56,6 +56,7 @@ impl NormalContext {
                 let context_string = Context::generate_spatial_context_multi(
                     Arc::clone(normalization_context),
                     contexts.clone(),
+                    None,
                 )?;
 
                 if acc.is_empty() {

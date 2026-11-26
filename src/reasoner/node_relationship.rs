@@ -31,10 +31,6 @@ pub enum SelfRelationshipTypeResponse {
 pub struct NodeRelationshipOtherResponse {
     // The relationship type between LEFT and RIGHT (e.g. "COMBINE", "EQUAL", "MIXED_CONTENT", "NO_RELATIONSHIP")
     pub relationship_type: RelationshipTypeResponse,
-    // The XPath to get from LEFT to RIGHT, if applicable
-    pub left_to_right_xpath: Option<String>,
-    // The XPath to get from RIGHT to LEFT, if applicable
-    pub right_to_left_xpath: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema, Debug)]
@@ -289,109 +285,6 @@ pub async fn node_relationship_other<R: Reasoner>(
     //};
 
     //Ok((node_relationship, reasoner_metadata, Some(next_feedback)))
-}
-
-fn generate_feedback(
-    normalization_context: Arc<RwLock<NormalizationContext>>,
-    left: Arc<BasisNode>,
-    right: Arc<BasisNode>,
-    node_relationship: &NodeRelationship,
-) -> Result<String, Errors> {
-    log::trace!("In generate_feedback");
-    
-    let mut feedback = String::new();
-
-    let basis_node_contexts = {
-        let lock = read_lock!(normalization_context);
-        lock.basis_node_contexts.clone().ok_or_else(|| {
-            Errors::DeficientNormalizationContextError(
-                "Basis node contexts not provided in meta context".to_string(),
-            )
-        })?
-    };
-    let left_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&left.id).unwrap().to_vec();
-    let right_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&right.id).unwrap().to_vec();
-
-    let (xpath_ltr, xpath_rtl) = {
-        match &node_relationship.relationship_type {
-            NodeRelationshipType::NoRelationship => return Ok(feedback),
-            NodeRelationshipType::Combine { xpath_ltr, xpath_rtl, .. } => (xpath_ltr, xpath_rtl),
-            NodeRelationshipType::Equal { xpath_ltr, xpath_rtl, .. } => (xpath_ltr, xpath_rtl),
-            NodeRelationshipType::MixedContent { xpath_ltr, xpath_rtl, .. } => (xpath_ltr, xpath_rtl),
-        }
-    };
-
-    let xpath_ltr = xpath_ltr.parse()?;
-    let xpath_rtl = xpath_rtl.parse()?;
-
-    fn make_feedback(
-        normalization_context: Arc<RwLock<NormalizationContext>>,
-        contexts: Vec<Arc<Context>>,
-        xpath: XPath,
-        direction_from: String,
-        direction_to: String,
-        feedback: &mut String,
-    ) -> Result<(), Errors> {
-        let meta_context = {
-            let lock = read_lock!(normalization_context);
-            lock.meta_context
-                .clone()
-                .ok_or(Errors::DeficientNormalizationContextError(
-                    "Meta context not provided in normalization context".to_string(),
-                ))?
-        };
-
-        let sample_size = read_lock!(normalization_context).context_sample_size;
-        let contexts = sample_random(contexts, sample_size);
-
-        for context in contexts {
-            feedback.push_str(&format!("---------[{} TO {} TRAVERSAL]---------\n", direction_from, direction_to));
-
-            let context_string: String = context.generate_context_string(
-                Arc::clone(&normalization_context)
-            )?;
-
-            feedback.push_str(&format!("[STARTING {} NODE]\n", direction_from));
-            feedback.push_str(&format!("{}\n", context_string));
-
-            let target_values = xpath.traverse(
-                Arc::clone(&normalization_context),
-                Arc::clone(&context.graph_node),
-            )?;
-            let target_graph_nodes: Vec<Graph> =
-                target_values.into_iter().map(|v| v.graph).collect();
-
-            if target_graph_nodes.is_empty() {
-                feedback.push_str(&format!("[XPATH TRAVERSAL RESULT]\n"));
-                feedback.push_str("Traversal failed to find node\n");
-            } else {
-                feedback.push_str(&format!("[XPATH TRAVERSAL RESULT]\n"));
-                feedback.push_str(&format!("**XPath traversal found {} node(s). Showing result(s) for at most {}:**\n", target_graph_nodes.len(), sample_size));
-
-                for target_graph_node in target_graph_nodes.iter().take(sample_size) {
-                    let target_context = meta_context
-                        .contexts_lookup
-                        .get(&read_lock!(target_graph_node).id)
-                        .cloned()
-                        .unwrap();
-
-                    let context_string: String = target_context.generate_context_string(
-                        Arc::clone(&normalization_context)
-                    )?;
-
-                    feedback.push_str(&format!("{}\n", context_string));
-                    feedback.push_str(&format!("--- TARGET NODE SEPARATOR ---\n"));
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    make_feedback(Arc::clone(&normalization_context), left_contexts, xpath_ltr, String::from("LEFT"), String::from("RIGHT"), &mut feedback)?;
-    make_feedback(Arc::clone(&normalization_context), right_contexts, xpath_rtl, String::from("RIGHT"), String::from("LEFT"), &mut feedback)?;
-
-    Ok(feedback)
 }
 
 async fn get_user_prompt_self(
