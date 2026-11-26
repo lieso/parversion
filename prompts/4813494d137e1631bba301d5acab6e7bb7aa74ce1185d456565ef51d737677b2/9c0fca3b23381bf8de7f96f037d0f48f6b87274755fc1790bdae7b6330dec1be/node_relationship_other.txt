@@ -31,7 +31,8 @@ Each sample contains:
 
 2. [POSITIONAL CONTEXT]
 
-   The XPath locating the target instance in the page.
+   The location of the target instance in the page, given as the path of
+   elements from the page root down to the target.
 
 3. [TRANSFORMED FIELDS]
 
@@ -89,9 +90,11 @@ properties of one record.
 Do not use COMBINE when the outputs are ordered fragments of one rich-text or
 mixed-content value. Those cases are MIXED_CONTENT.
 
-Do not return NO_RELATIONSHIP merely because navigation in one direction can
-reach more than one candidate. First determine the semantic relationship.
-Then construct the narrowest supported XPath for the corresponding instance.
+Do not return NO_RELATIONSHIP merely because the correspondence between the
+two sides is uneven. One side may appear once while the other repeats, or one
+side may be optional and absent from some records. Decide from the semantic
+relationship between the two patterns, not from how many instances of each
+appear in the samples.
 
 MIXED_CONTENT
 
@@ -187,64 +190,6 @@ When distinguishing COMBINE from MIXED_CONTENT, ask:
 Separate fields indicate COMBINE. Ordered reconstruction of one value
 indicates MIXED_CONTENT.
 
-RELATIVE XPATH REQUIREMENTS
-
-If and only if the relationship is EQUAL, COMBINE, or MIXED_CONTENT, provide:
-
-- left_to_right_xpath:
-  A relative XPath starting at the exact node selected by a left sample's
-  [POSITIONAL CONTEXT] and ending at the corresponding right target node.
-
-- right_to_left_xpath:
-  A relative XPath starting at the exact node selected by a right sample's
-  [POSITIONAL CONTEXT] and ending at the corresponding left target node.
-
-For NO_RELATIONSHIP, both XPath fields must be null.
-
-The starting node is always the exact element or text node selected by
-[POSITIONAL CONTEXT]:
-
-- A context ending in `a[@href]` selects the <a> element. The predicate tests
-  for an attribute; it does not select the attribute.
-- A context ending in `a/text()` selects a text node.
-- Positional contexts will not end in an attribute-selection step such as
-  `/@href`.
-
-Use the simplest robust XPath 1.0 expression supported by the evidence.
-
-XPath constraints:
-
-- Every generated XPath must be relative.
-- Do not begin a generated XPath with `/` or `//`.
-- Use semantic axes such as `parent::`, `ancestor::`, `following-sibling::`,
-  or `preceding-sibling::` when they make the relationship clearer and more
-  robust.
-- Prefer `ancestor::tag[1]` over chains such as `../../..`.
-- Use direct-child steps when the depth is known.
-- Use descendant searches only when the depth is genuinely unknown.
-- Avoid brittle positional indexes such as `td[3]` when structural classes,
-  IDs, or other stable predicates are available.
-- Attributes may be used in predicates to identify elements.
-- Attribute nodes are not represented by the traversal engine and must never
-  be returned.
-- Never generate an attribute-selection step such as:
-  - `@href`
-  - `/@href`
-  - `attribute::href`
-- If a transformed field was derived from an attribute, navigate to the
-  element owning that attribute.
-- Each XPath must terminate at an HTML element node or a text node.
-- If the target [POSITIONAL CONTEXT] ends in `text()`, the generated XPath
-  must also terminate with a `text()` step. A direct text child is written as
-  `text()`, not `/text()`.
-- If the target is an element, do not terminate at one of its text children.
-- Include structural predicates when needed to distinguish the corresponding
-  target from unrelated nearby nodes.
-- Aim for a strict one-to-one match whenever the available structure permits
-  it.
-- Do not invent classes, IDs, attributes, or structural relationships not
-  supported by the supplied HTML.
-
 OUTPUT FORMAT
 
 Return only one strictly valid JSON object. Do not include Markdown,
@@ -253,48 +198,5 @@ explanations, comments, or additional keys.
 The exact schema is:
 
 {
-  "relationship_type": "EQUAL" | "COMBINE" | "MIXED_CONTENT" | "NO_RELATIONSHIP",
-  "left_to_right_xpath": string | null,
-  "right_to_left_xpath": string | null
+  "relationship_type": "EQUAL" | "COMBINE" | "MIXED_CONTENT" | "NO_RELATIONSHIP"
 }
-
-For NO_RELATIONSHIP, return:
-
-{
-  "relationship_type": "NO_RELATIONSHIP",
-  "left_to_right_xpath": null,
-  "right_to_left_xpath": null
-}
-
-REVISING AFTER FEEDBACK
-
-Your user message may end with a [FEEDBACK] section. It contains:
-
-- [RESPONSE RECEIVED]: the JSON object you returned on an earlier attempt for these
-  same samples. There may be more than one earlier attempt, in order.
-- Traversal blocks, one per starting node, labelled "[LEFT TO RIGHT TRAVERSAL]" or
-  "[RIGHT TO LEFT TRAVERSAL]". Each one shows a [STARTING ... NODE] and the
-  [XPATH TRAVERSAL RESULT]. That result is either "Traversal failed to find node",
-  or the nodes the XPath reached (at most three), each shown with its spatial
-  context. "--- TARGET NODE SEPARATOR ---" separates the reached nodes.
-- Possibly a line such as "Expected 'left_to_right_xpath' to be a valid string,
-  received null". This means that XPath was missing from the response.
-
-Use the feedback to check your earlier response. For each traversal, compare the
-nodes it reached with the corresponding instance on the other side. For COMBINE or
-EQUAL, the reached node must hold the same record. For MIXED_CONTENT, it must hold
-the same logical value.
-
-- If every traversal reaches the correct corresponding node, and your reasoning
-  about the relationship still holds, your earlier response was correct. Return the
-  same JSON object again, with the same relationship_type and the same XPath
-  strings, character for character.
-- If any traversal failed, reached an unrelated node, or reached the wrong
-  instance, revise the XPath(s) and/or relationship_type, and return the revised
-  JSON object. Do not reuse an XPath that the feedback showed to be wrong.
-- An XPath that was null is never a valid answer for EQUAL, COMBINE, or
-  MIXED_CONTENT. Provide both XPaths.
-
-Change your answer only when the feedback shows it is wrong. Do not change a
-response that the feedback supports. Your output is still only the JSON object,
-with no commentary.
