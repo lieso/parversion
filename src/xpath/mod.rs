@@ -465,7 +465,7 @@ impl XPath {
 
         let start_id = read_lock!(start).id.clone();
 
-        xlog!(diagnostics, log::Level::Debug, "");
+        log::error!("");
         log::error!(
             "╔════════════════════════════════════════════════════════════════════════════════╗"
         );
@@ -481,7 +481,7 @@ impl XPath {
             traversal_id,
             start_id.to_string()
         );
-        log::error!("[{}] XPath: {}", traversal_id, self);
+        xlog!(diagnostics, log::Level::Debug, "Evaluating XPath: {}", self);
         log::error!("[{}] Total segments: {}", traversal_id, self.segments.len());
         log::error!(
             "[{}] ─────────────────────────────────────────────────────────────────────────────",
@@ -492,14 +492,20 @@ impl XPath {
 
         for (index, segment) in self.segments.iter().enumerate() {
             log::error!("[{}]", traversal_id);
-            log::error!(
-                "[{}] ┌─ SEGMENT {}/{}: {}",
-                traversal_id,
+            xlog!(
+                diagnostics,
+                log::Level::Debug,
+                "Step {}/{}: `{}`",
                 index + 1,
                 self.segments.len(),
                 segment
             );
-            log::error!("[{}] │  Current graphs: {}", traversal_id, current.len());
+            xlog!(
+                diagnostics,
+                log::Level::Debug,
+                "  Input: {} node(s)",
+                current.len()
+            );
 
             let cache_key = (start_id.clone(), self.segments[0..=index].to_vec());
 
@@ -544,16 +550,18 @@ impl XPath {
                 .flatten()
                 .collect();
 
-            log::error!(
-                "[{}] └─ After segment: {} values(s) remaining",
-                traversal_id,
+            xlog!(
+                diagnostics,
+                log::Level::Debug,
+                "  Result: {} node(s) remaining",
                 current.len()
             );
 
             if current.is_empty() {
-                log::error!(
-                    "[{}] ✗ NO MATCHES after segment {}",
-                    traversal_id,
+                xlog!(
+                    diagnostics,
+                    log::Level::Debug,
+                    "  Step {} matched no nodes; the traversal stops here and returns nothing",
                     index + 1
                 );
                 log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
@@ -569,9 +577,10 @@ impl XPath {
             }
         }
 
-        log::error!(
-            "[{}] ✓ SUCCESS - {} graph(s) matched",
-            traversal_id,
+        xlog!(
+            diagnostics,
+            log::Level::Debug,
+            "XPath matched {} node(s)",
             current.len()
         );
         log::error!(
