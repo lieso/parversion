@@ -8,7 +8,7 @@ use crate::basis_node::BasisNode;
 use crate::graph_node::Graph;
 use crate::traversal::{Traversal, TraversalKind};
 use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata, ReasonerErrors};
-use crate::xpath::XPath;
+use crate::xpath::{XPath, Diagnostics as XPathDiagnostics};
 
 #[derive(Deserialize, Serialize, JsonSchema, Debug)]
 pub struct TraversalResponse {
@@ -208,9 +208,12 @@ fn generate_feedback(
         );
 
         for context in samples.iter() {
+            let diagnostics = XPathDiagnostics::new();
+
             let _ = xpath.traverse(
                 Arc::clone(&normalization_context),
                 Arc::clone(&context.graph_node),
+                Some(&diagnostics),
             )?;
 
         }

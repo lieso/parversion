@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use super::{Selection, Value, Variables, XPathAxis, XPathPredicate, XPathSegment};
+use super::{Selection, Value, Variables, XPathAxis, XPathPredicate, XPathSegment, Diagnostics};
 use crate::graph_node::Graph;
 use crate::prelude::*;
 
@@ -396,6 +396,7 @@ pub fn traverse_using_xpath_predicate(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     values: Vec<Value>,
     predicate: &XPathPredicate,
+    diagnostics: Option<&Diagnostics>,
 ) -> Result<Vec<Value>, Errors> {
     log::warn!("===== XPATH PREDICATE =====");
     log::warn!("PREDICATE: {:?}", predicate);
@@ -411,6 +412,7 @@ pub fn traverse_using_xpath_predicate(
                         Arc::clone(&normalization_context),
                         &Variables::new(),
                         Arc::clone(&v.graph),
+                        diagnostics,
                     )
                     .ok()
                     .and_then(|r| r.first().and_then(|x| x.to_number()))
@@ -465,6 +467,7 @@ pub fn traverse_using_xpath_predicate(
                     Arc::clone(&normalization_context),
                     vec![value.clone()],
                     inner,
+                    diagnostics,
                 )?;
                 if matched.is_empty() {
                     filtered.push(value);
@@ -869,7 +872,7 @@ pub fn traverse_using_xpath_predicate(
                     let graph = value.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     let path_match = path
-                        .traverse(Arc::clone(&normalization_context), Arc::clone(&graph))
+                        .traverse(Arc::clone(&normalization_context), Arc::clone(&graph), diagnostics)
                         .map(|found| !found.is_empty())
                         .unwrap_or(false);
 
@@ -900,7 +903,7 @@ pub fn traverse_using_xpath_predicate(
                     "XPATH PREDICATE::And - applying predicate to {} values",
                     acc.len()
                 );
-                traverse_using_xpath_predicate(Arc::clone(&normalization_context), acc, predicate)
+                traverse_using_xpath_predicate(Arc::clone(&normalization_context), acc, predicate, diagnostics)
             })
         }
         XPathPredicate::ContainsText { value } => {
@@ -949,6 +952,7 @@ pub fn traverse_using_xpath_predicate(
                     Arc::clone(&normalization_context),
                     values.clone(),
                     predicate,
+                    diagnostics,
                 )?;
                 extend_dedup(&mut out, matched);
             }
@@ -964,6 +968,7 @@ pub fn traverse_using_xpath_segment(
     normalization_context: Arc<RwLock<NormalizationContext>>,
     value: &Value,
     xpath_segment: &XPathSegment,
+    diagnostics: Option<&Diagnostics>,
 ) -> Result<Vec<Value>, Errors> {
     let graph = value.graph.clone();
     let graph_id = read_lock!(graph).id.clone();
@@ -1074,6 +1079,7 @@ pub fn traverse_using_xpath_segment(
                 Arc::clone(&normalization_context),
                 values,
                 predicate,
+                diagnostics,
             );
             if let Ok(ref filtered) = result {
                 log::debug!(

@@ -488,6 +488,7 @@ impl BasisNetwork {
         let target_values = xpath.traverse(
             Arc::clone(&normalization_context),
             Arc::clone(&context.graph_node),
+            None,
         )?;
         let target_graph_nodes: Vec<Graph> = target_values.into_iter().map(|v| v.graph).collect();
 

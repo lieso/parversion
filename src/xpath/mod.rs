@@ -9,6 +9,9 @@ use crate::graph_node::Graph;
 use crate::prelude::*;
 
 mod traverse;
+mod diagnostics;
+
+pub use diagnostics::Diagnostics;
 
 pub use traverse::{
     traverse_using_xpath_node_test, traverse_using_xpath_predicate, traverse_using_xpath_segment,
@@ -269,11 +272,12 @@ impl Expr {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         variables: &Variables,
         start: Graph,
+        diagnostics: Option<&Diagnostics>
     ) -> Result<Vec<Value>, Errors> {
         match self {
-            Expr::Path(path) => path.evaluate(normalization_context, variables, start),
+            Expr::Path(path) => path.evaluate(normalization_context, variables, start, diagnostics),
             Expr::Filter { base, position } => {
-                let values = base.evaluate(normalization_context, variables, start)?;
+                let values = base.evaluate(normalization_context, variables, start, diagnostics)?;
                 Ok(position
                     .checked_sub(1)
                     .and_then(|i| values.into_iter().nth(i))
@@ -286,6 +290,7 @@ impl Expr {
                         Arc::clone(&normalization_context),
                         variables,
                         Arc::clone(&start),
+                        diagnostics,
                     )?;
                     let n = values
                         .first()
@@ -390,6 +395,7 @@ impl XPath {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         variables: &Variables,
         start: Graph,
+        diagnostics: Option<&Diagnostics>,
     ) -> Result<Vec<Value>, Errors> {
         let bound = self.substitute(variables)?;
 
@@ -409,7 +415,7 @@ impl XPath {
 
         let mut out = Vec::new();
         for s in starts {
-            out.extend(path.traverse(Arc::clone(&normalization_context), s)?);
+            out.extend(path.traverse(Arc::clone(&normalization_context), s, diagnostics)?);
         }
         Ok(out)
     }
@@ -418,12 +424,13 @@ impl XPath {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
+        diagnostics: Option<&Diagnostics>,
     ) -> Result<Vec<Value>, Errors> {
         let mut out =
-            self.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
+            self.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start), diagnostics)?;
         for branch in &self.union {
             let values =
-                branch.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start))?;
+                branch.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start), diagnostics)?;
             Self::extend_dedup(&mut out, values);
         }
         Ok(out)
@@ -433,6 +440,7 @@ impl XPath {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
+        diagnostics: Option<&Diagnostics>
     ) -> Result<Vec<Value>, Errors> {
         use std::time::{SystemTime, UNIX_EPOCH};
         let traversal_id = SystemTime::now()
@@ -511,6 +519,7 @@ impl XPath {
                         Arc::clone(&normalization_context),
                         value,
                         segment,
+                        diagnostics,
                     )
                 })
                 .collect::<Result<Vec<Vec<Value>>, Errors>>()?

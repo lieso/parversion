@@ -146,6 +146,7 @@ impl Xslt {
                         Arc::clone(&normalization_context),
                         &variables,
                         Arc::clone(&start),
+                        None,
                     )?;
                     result.extend(selected);
                 }
@@ -154,6 +155,7 @@ impl Xslt {
                         Arc::clone(&normalization_context),
                         &variables,
                         Arc::clone(&start),
+                        None,
                     )?;
                     variables.insert(name.clone(), selected);
                 }
@@ -184,6 +186,7 @@ impl Xslt {
                 Arc::clone(&normalization_context),
                 candidates,
                 predicate,
+                None,
             )?;
         }
 
