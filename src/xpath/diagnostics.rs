@@ -12,4 +12,10 @@ impl Diagnostics {
             logs: Mutex::new(String::new()),
         }
     }
+
+    pub fn log(&self, message: &str) {
+        let mut logs = self.logs.lock().unwrap();
+        logs.push_str(message);
+        logs.push('\n');
+    }
 }

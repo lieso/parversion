@@ -21,6 +21,21 @@ thread_local! {
     static XPATH_CACHE: RefCell<HashMap<(ID, Vec<XPathSegment>), Vec<Value>>> = RefCell::new(HashMap::new());
 }
 
+macro_rules! xlog {
+    ($diagnostics:expr, $level:expr, $($arg:tt)+) => {{
+        let level = $level;
+        match $diagnostics {
+            Some(diagnostics) => {
+                let message = format!($($arg)+);
+                log::log!(level, "{}", message);
+                diagnostics.log(&message);
+            }
+            None => log::log!(level, $($arg)+),
+        }
+    }};
+}
+pub(crate) use xlog;
+
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct XPath {
     #[serde(default)]
@@ -450,7 +465,7 @@ impl XPath {
 
         let start_id = read_lock!(start).id.clone();
 
-        log::error!("");
+        xlog!(diagnostics, log::Level::Debug, "");
         log::error!(
             "╔════════════════════════════════════════════════════════════════════════════════╗"
         );
@@ -488,28 +503,30 @@ impl XPath {
 
             let cache_key = (start_id.clone(), self.segments[0..=index].to_vec());
 
-            if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned())
-            {
-                log::info!("[{}] │  Cache HIT for segments 0..{}", traversal_id, index);
-                current = cached;
-                if current.is_empty() {
+            if diagnostics.is_none() {
+                if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned())
+                {
+                    log::info!("[{}] │  Cache HIT for segments 0..{}", traversal_id, index);
+                    current = cached;
+                    if current.is_empty() {
+                        log::error!(
+                            "[{}] └─ After segment: 0 graphs (cached, empty)",
+                            traversal_id
+                        );
+                        log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
+                        log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
+                        log::error!("║                 ✗ XPATH TRAVERSE FAILED [ID: {}]                              ║", traversal_id);
+                        log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
+                        log::error!("");
+                        return Ok(Vec::new());
+                    }
                     log::error!(
-                        "[{}] └─ After segment: 0 graphs (cached, empty)",
-                        traversal_id
+                        "[{}] │  Restored {} graphs from cache",
+                        traversal_id,
+                        current.len()
                     );
-                    log::error!("[{}] ─────────────────────────────────────────────────────────────────────────────", traversal_id);
-                    log::error!("╔════════════════════════════════════════════════════════════════════════════════╗");
-                    log::error!("║                 ✗ XPATH TRAVERSE FAILED [ID: {}]                              ║", traversal_id);
-                    log::error!("╚════════════════════════════════════════════════════════════════════════════════╝");
-                    log::error!("");
-                    return Ok(Vec::new());
+                    continue;
                 }
-                log::error!(
-                    "[{}] │  Restored {} graphs from cache",
-                    traversal_id,
-                    current.len()
-                );
-                continue;
             }
 
             current = current
@@ -547,7 +564,9 @@ impl XPath {
                 return Ok(Vec::new());
             }
 
-            XPATH_CACHE.with(|cache| cache.borrow_mut().insert(cache_key, current.clone()));
+            if diagnostics.is_none() {
+                XPATH_CACHE.with(|cache| cache.borrow_mut().insert(cache_key, current.clone()));
+            }
         }
 
         log::error!(
