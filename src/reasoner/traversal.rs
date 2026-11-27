@@ -8,6 +8,7 @@ use crate::basis_node::BasisNode;
 use crate::graph_node::Graph;
 use crate::traversal::{Traversal, TraversalKind};
 use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata, ReasonerErrors};
+use crate::xpath::XPath;
 
 #[derive(Deserialize, Serialize, JsonSchema, Debug)]
 pub struct TraversalResponse {
@@ -171,6 +172,57 @@ fn generate_feedback(
     traversal: &Traversal,
 ) -> Result<String, Errors> {
     log::trace!("In generate_feedback");
+
+    let (xpath_ltr, xpath_rtl) = {
+        match &traversal.kind {
+            TraversalKind::XPath { xpath_ltr, xpath_rtl } => {
+                (xpath_ltr.parse()?, xpath_rtl.parse()?)
+            },
+            TraversalKind::Xslt { .. } => return Err(Errors::UnexpectedError("Encountered an xslt traversal, expected an xpath".to_string()))
+        }
+    };
+
+    let mut feedback = String::new();
+
+    let basis_node_contexts = {
+        let lock = read_lock!(normalization_context);
+        lock.basis_node_contexts.clone().ok_or_else(|| {
+            Errors::DeficientNormalizationContextError(
+                "Basis node contexts not provided in meta context".to_string(),
+            )
+        })?
+    };
+    let left_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&left.id).unwrap().to_vec();
+    let right_contexts: Vec<Arc<Context>> = basis_node_contexts.get(&right.id).unwrap().to_vec();
+
+    fn make_feedback(
+        normalization_context: Arc<RwLock<NormalizationContext>>,
+        feedback: &mut String,
+        contexts: Vec<Arc<Context>>,
+        xpath: &XPath,
+    ) -> Result<(), Errors> {
+        let samples = sample_random(
+            contexts,
+            read_lock!(normalization_context)
+                .context_sample_size
+        );
+
+        for context in samples.iter() {
+            let _ = xpath.traverse(
+                Arc::clone(&normalization_context),
+                Arc::clone(&context.graph_node),
+            )?;
+
+        }
+
+        Ok(())
+    }
+
+
+    make_feedback(Arc::clone(&normalization_context), &mut feedback, left_contexts, &xpath_ltr)?;
+    make_feedback(Arc::clone(&normalization_context), &mut feedback, right_contexts, &xpath_rtl)?;
+
+
     unimplemented!()
 }
 
