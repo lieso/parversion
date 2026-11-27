@@ -18,4 +18,8 @@ impl Diagnostics {
         logs.push_str(message);
         logs.push('\n');
     }
+
+    pub fn take(&self) -> String {
+        std::mem::take(&mut *self.logs.lock().unwrap())
+    }
 }

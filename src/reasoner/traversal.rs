@@ -173,7 +173,7 @@ fn generate_feedback(
 ) -> Result<String, Errors> {
     log::trace!("In generate_feedback");
 
-    let (xpath_ltr, xpath_rtl) = {
+    let (xpath_ltr, xpath_rtl): (XPath, XPath) = {
         match &traversal.kind {
             TraversalKind::XPath { xpath_ltr, xpath_rtl } => {
                 (xpath_ltr.parse()?, xpath_rtl.parse()?)
@@ -199,34 +199,112 @@ fn generate_feedback(
         normalization_context: Arc<RwLock<NormalizationContext>>,
         feedback: &mut String,
         contexts: Vec<Arc<Context>>,
+        other_contexts: Vec<Arc<Context>>,
         xpath: &XPath,
+        direction_from: &str,
+        basis_node: Arc<BasisNode>,
+        expected_basis_node: Arc<BasisNode>
     ) -> Result<(), Errors> {
+        let meta_context = {
+            let lock = read_lock!(normalization_context);
+            lock.meta_context.clone().unwrap()
+        };
+
+        let sample_size = read_lock!(normalization_context)
+            .context_sample_size;
         let samples = sample_random(
-            contexts,
-            read_lock!(normalization_context)
-                .context_sample_size
+            contexts.clone(),
+            sample_size
         );
 
-        for context in samples.iter() {
+        for (index, context) in samples.iter().enumerate() {
+            feedback.push_str(&format!("TRAVERSAL FROM {}, TEST CASE {}", direction_from, index));
+
+            let context_string = context.generate_context_string_traversal(
+                Arc::clone(&normalization_context),
+                Arc::clone(&basis_node),
+                &other_contexts,
+            )?;
+            feedback.push_str("START NODE:\n");
+            feedback.push_str(&format!("{}\n", context_string));
+
             let diagnostics = XPathDiagnostics::new();
 
-            let _ = xpath.traverse(
+            let target_values = xpath.traverse(
                 Arc::clone(&normalization_context),
                 Arc::clone(&context.graph_node),
                 Some(&diagnostics),
             )?;
 
+            let logs = diagnostics.take();
+            feedback.push_str("[TRAVERSAL DIAGNOSTICS]\n");
+            feedback.push_str(&logs);
+
+            let target_graph_nodes: Vec<Graph> =
+                target_values.into_iter().map(|v| v.graph).collect();
+
+            if target_graph_nodes.is_empty() {
+                feedback.push_str("XPath did not find any nodes\n");
+            } else {
+                feedback.push_str(&format!("[XPATH TRAVERSAL RESULT]\n"));
+                feedback.push_str(&format!("**XPath traversal found {} node(s)**\n", target_graph_nodes.len()));
+
+                for target_graph_node in target_graph_nodes.iter().take(sample_size) {
+                    let target_context = meta_context
+                        .contexts_lookup
+                        .get(&read_lock!(target_graph_node).id)
+                        .cloned()
+                        .unwrap();
+
+                    let target_basis_node = {
+                        let lock = read_lock!(normalization_context);
+                        let lookup = lock.context_basis_node.as_ref().unwrap();
+
+                        lookup.get(&target_context.id).cloned()
+                    };
+
+                    if let Some(target_basis_node) = target_basis_node {
+                        let mut target_data = String::new();
+
+                        for transformation in &target_basis_node.transformations {
+                            let transformed = transformation.transform(target_context.data_node.clone())?;
+
+                            for value in transformed.fields.get(&transformation.image) {
+                                let truncated = value.truncate();
+                                target_data
+                                    .push_str(&format!("{} => {}\n", transformation.image, truncated));
+                            }
+                        }
+
+                        feedback.push_str("XPath found node with this data:\n");
+                        feedback.push_str(&target_data);
+
+                        if target_basis_node.id != expected_basis_node.id {
+                            feedback.push_str("***XPath definitely found the incorrect node***\n");
+                        } else {
+                            feedback.push_str("***XPath may have found the correct node.***\n");
+                        }
+                    } else {
+                        feedback.push_str("***XPath definitely located the incorrect node ***\n");
+                    }
+                }
+            }
+
+            feedback.push_str("\n=====================================================================================================\n")
         }
 
         Ok(())
     }
 
+    feedback.push_str("===TESTING LEFT TO RIGHT XPATH:===\n");
+    feedback.push_str(&xpath_ltr.to_string());
+    make_feedback(Arc::clone(&normalization_context), &mut feedback, left_contexts.clone(), right_contexts.clone(), &xpath_ltr, "LEFT", Arc::clone(&left), Arc::clone(&right))?;
 
-    make_feedback(Arc::clone(&normalization_context), &mut feedback, left_contexts, &xpath_ltr)?;
-    make_feedback(Arc::clone(&normalization_context), &mut feedback, right_contexts, &xpath_rtl)?;
+    feedback.push_str("===TESTING RIGHT TO LEFT XPATH:===\n");
+    feedback.push_str(&xpath_rtl.to_string());
+    make_feedback(Arc::clone(&normalization_context), &mut feedback, right_contexts.clone(), left_contexts.clone(), &xpath_rtl, "RIGHT", Arc::clone(&right), Arc::clone(&left))?;
 
-
-    unimplemented!()
+    Ok(feedback)
 }
 
 async fn get_user_prompt(
