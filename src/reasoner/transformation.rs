@@ -35,7 +35,7 @@ pub async fn transformation<R: Reasoner>(
         image.clone(),
         description.clone(),
         contexts.clone(),
-        Capability::Fast,
+        Capability::Scheme,
     )
     .await?;
 

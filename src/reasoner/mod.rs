@@ -54,6 +54,7 @@ pub enum Capability {
     Capable,
     Strong,
     XPath,
+    Scheme,
 }
 
 pub struct ReasonerMetadata {

@@ -73,6 +73,7 @@ impl Reasoner for OpenRouterReasoner {
             Capability::Capable => ("gpt-6.2-sol", Effort::Medium),
             Capability::Strong => ("gpt-6.2-astra", Effort::High),
             Capability::XPath => ("claude-haiku-5.5", Effort::Xhigh),
+            Capability::Scheme => ("claude-haiku-5.5", Effort::Xhigh),
         };
 
         // Clone and fix the schema - additionalProperties causes problems
