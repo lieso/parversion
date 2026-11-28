@@ -3,6 +3,14 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn exact_integer_p(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+
+    // R7RS: true only for exact integers. Value::Integer is the only exact numeric
+    // variant, so Float (even whole-valued like 5.0) is #f. Non-numbers are #f too.
+    Ok(Value::Bool(matches!(values[0], Value::Integer(_))))
+}
+
 pub fn memv(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 2)?;
     let items = expect_list(&values[1])?;
