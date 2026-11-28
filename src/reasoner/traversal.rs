@@ -72,7 +72,8 @@ pub async fn traversal<R: Reasoner>(
         previous_feedback = Some(next_feedback);
     }
 
-    Err(ReasonerErrors::Unreasonable("Could not reason a traversal".to_string()).into())
+    //Err(ReasonerErrors::Unreasonable("Could not reason a traversal".to_string()).into())
+    Ok((previous_traversal.unwrap(), reasoner_metadata))
 }
 
 async fn determine_traversal<R: Reasoner>(
@@ -83,17 +84,6 @@ async fn determine_traversal<R: Reasoner>(
     capability: Capability,
     feedback: Option<String>
 ) -> Result<(Traversal, ReasonerMetadata), Errors> {
-    let meta_context = {
-        let lock = read_lock!(normalization_context);
-        lock.meta_context.clone().unwrap()
-    };
-    let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
-    let system_prompt = get_system_prompt(
-        reasoner,
-        document_lineage,
-        PromptName::Traversal,
-    )
-    .await?;
     let basis_node_contexts = {
         let lock = read_lock!(normalization_context);
         lock.basis_node_contexts.clone().ok_or_else(|| {
@@ -111,7 +101,18 @@ async fn determine_traversal<R: Reasoner>(
         &left_contexts,
         right.clone(),
         &right_contexts,
-        feedback,
+        feedback.clone(),
+    )
+    .await?;
+    let meta_context = {
+        let lock = read_lock!(normalization_context);
+        lock.meta_context.clone().unwrap()
+    };
+    let document_lineage = read_lock!(meta_context.graph_root).lineage.clone();
+    let system_prompt = get_system_prompt(
+        reasoner,
+        document_lineage,
+        PromptName::Traversal,
     )
     .await?;
     let schema = serde_json::to_value(schemars::schema_for!(TraversalResponse))
@@ -141,6 +142,10 @@ async fn determine_traversal<R: Reasoner>(
     );
     log::debug!("└───────────────────────────────────────────────────────────────┘");
     log::debug!("");
+
+    if feedback.is_some() {
+        panic!();
+    }
 
     let (result, metadata) = reasoner
         .execute::<TraversalResponse>(&capability, &system_prompt, &user_prompt, schema)
@@ -218,12 +223,13 @@ fn generate_feedback(
         );
 
         for (index, context) in samples.iter().enumerate() {
-            feedback.push_str(&format!("TRAVERSAL FROM {}, TEST CASE {}", direction_from, index));
+            feedback.push_str(&format!("TRAVERSAL FROM {}, TEST CASE {}\n", direction_from, index + 1));
 
+            let other_contexts = sample_random(other_contexts.clone(), sample_size);
             let context_string = context.generate_context_string_traversal(
                 Arc::clone(&normalization_context),
                 Arc::clone(&basis_node),
-                &other_contexts,
+                &other_contexts
             )?;
             feedback.push_str("START NODE:\n");
             feedback.push_str(&format!("{}\n", context_string));
@@ -278,12 +284,6 @@ fn generate_feedback(
 
                         feedback.push_str("XPath found node with this data:\n");
                         feedback.push_str(&target_data);
-
-                        if target_basis_node.id != expected_basis_node.id {
-                            feedback.push_str("***XPath definitely found the incorrect node***\n");
-                        } else {
-                            feedback.push_str("***XPath may have found the correct node.***\n");
-                        }
                     } else {
                         feedback.push_str("***XPath definitely located the incorrect node ***\n");
                     }
@@ -321,18 +321,19 @@ async fn get_user_prompt(
         contexts: &[Arc<Context>],
         other_contexts: &[Arc<Context>],
     ) -> Result<String, Errors> {
+        let sample_size = read_lock!(normalization_context)
+            .context_sample_size;
         let samples = sample_random(
             contexts.to_vec(),
-            read_lock!(normalization_context)
-                .context_sample_size
-                .clone(),
+            sample_size
         );
+        let other_contexts = sample_random(other_contexts.to_vec(), sample_size);
 
         samples.iter().try_fold(String::new(), |acc, context| {
             let context_string = context.generate_context_string_traversal(
                 Arc::clone(&normalization_context),
                 Arc::clone(&basis_node),
-                other_contexts,
+                &other_contexts,
             )?;
 
             if acc.is_empty() {
@@ -351,7 +352,7 @@ async fn get_user_prompt(
     )?;
     let right_context_string = make_context_string(
         Arc::clone(&normalization_context),
-        Arc::clone(&left),
+        Arc::clone(&right),
         right_contexts,
         left_contexts,
     )?;

@@ -9,6 +9,7 @@ use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
 use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
 use crate::xpath::XPath;
+use crate::traversal::{Traversal, TraversalKind};
 
 #[derive(Deserialize, Serialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -262,7 +263,7 @@ pub async fn node_relationship_other<R: Reasoner>(
 
     if !matches!(result.relationship_type, RelationshipTypeResponse::NoRelationship) {
 
-        let traversal = reasoner
+        let (traversal, _metadata) = reasoner
             .traversal(
                 Arc::clone(&normalization_context),
                 Arc::clone(&left),
@@ -270,21 +271,50 @@ pub async fn node_relationship_other<R: Reasoner>(
             )
             .await?;
 
+
+
+        let (xpath_ltr, xpath_rtl): (String, String) = {
+            match &traversal.kind {
+                TraversalKind::XPath { xpath_ltr, xpath_rtl } => {
+                    (xpath_ltr.clone(), xpath_rtl.clone())
+                },
+                TraversalKind::Xslt { .. } => return Err(Errors::UnexpectedError("Encountered an xslt traversal, expected an xpath".to_string()))
+            }
+        };
+
+
+
+        let node_relationship = NodeRelationship {
+            id: ID::new(),
+            left_basis_lineage: left.lineage.clone(),
+            right_basis_lineage: right.lineage.clone(),
+            relationship_type: match result.relationship_type {
+                RelationshipTypeResponse::NoRelationship => unreachable!(),
+                RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
+                    xpath_ltr, xpath_rtl,
+                },
+                RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
+                    xpath_ltr, xpath_rtl,
+                },
+                RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent {
+                    xpath_ltr, xpath_rtl,
+                },
+            }
+        };
+
+        Ok((vec![node_relationship], reasoner_metadata))
+
+    } else {
+
+        let node_relationship = NodeRelationship {
+            id: ID::new(),
+            left_basis_lineage: left.lineage.clone(),
+            right_basis_lineage: right.lineage.clone(),
+            relationship_type: NodeRelationshipType::NoRelationship,
+        };
+
+        Ok((vec![node_relationship], reasoner_metadata))
     }
-
-
-    unimplemented!()
-
-
-
-    //let node_relationship = NodeRelationship {
-    //    id: ID::new(),
-    //    left_basis_lineage: left.lineage.clone(),
-    //    right_basis_lineage: right.lineage.clone(),
-    //    relationship_type,
-    //};
-
-    //Ok((node_relationship, reasoner_metadata, Some(next_feedback)))
 }
 
 async fn get_user_prompt_self(
