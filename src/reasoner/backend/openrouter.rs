@@ -229,13 +229,17 @@ impl Reasoner for OpenRouterReasoner {
                             StatusCode::TOO_MANY_REQUESTS => {
                                 Errors::ReasonerError(ReasonerErrors::RateLimitError(e.to_string()))
                             }
-                            StatusCode::BAD_REQUEST => Errors::ReasonerError(ReasonerErrors::EmbeddingError(format!(
-                                "Embedding API 400 Bad Request: {:?}",
-                                api_error
-                            ))),
-                            StatusCode::BAD_GATEWAY | StatusCode::SERVICE_UNAVAILABLE | StatusCode::GATEWAY_TIMEOUT => {
-                                Errors::ReasonerError(ReasonerErrors::TransientBackendError(e.to_string()))
+                            StatusCode::BAD_REQUEST => {
+                                Errors::ReasonerError(ReasonerErrors::EmbeddingError(format!(
+                                    "Embedding API 400 Bad Request: {:?}",
+                                    api_error
+                                )))
                             }
+                            StatusCode::BAD_GATEWAY
+                            | StatusCode::SERVICE_UNAVAILABLE
+                            | StatusCode::GATEWAY_TIMEOUT => Errors::ReasonerError(
+                                ReasonerErrors::TransientBackendError(e.to_string()),
+                            ),
                             _ => Errors::UnexpectedError(format!(
                                 "Unexpected embedding API error: {}",
                                 api_error.status
@@ -281,7 +285,8 @@ impl Reasoner for OpenRouterReasoner {
                     Err(ReasonerErrors::EmbeddingError(format!(
                         "Unexpected embedding format at index {}: expected Float vector",
                         idx
-                    )).into())
+                    ))
+                    .into())
                 }
             })
             .collect();

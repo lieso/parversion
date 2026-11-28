@@ -1,5 +1,5 @@
 use schemars::JsonSchema;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
 use super::sampling::sample_random;
@@ -8,8 +8,8 @@ use crate::graph_node::Graph;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
 use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
-use crate::xpath::XPath;
 use crate::traversal::{Traversal, TraversalKind};
+use crate::xpath::XPath;
 
 #[derive(Deserialize, Serialize, JsonSchema, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -258,11 +258,10 @@ pub async fn node_relationship_other<R: Reasoner>(
         cost: metadata.cost.unwrap_or(0.0),
     };
 
-
-
-
-    if !matches!(result.relationship_type, RelationshipTypeResponse::NoRelationship) {
-
+    if !matches!(
+        result.relationship_type,
+        RelationshipTypeResponse::NoRelationship
+    ) {
         let (traversal, _metadata) = reasoner
             .traversal(
                 Arc::clone(&normalization_context),
@@ -271,18 +270,19 @@ pub async fn node_relationship_other<R: Reasoner>(
             )
             .await?;
 
-
-
         let (xpath_ltr, xpath_rtl): (String, String) = {
             match &traversal.kind {
-                TraversalKind::XPath { xpath_ltr, xpath_rtl } => {
-                    (xpath_ltr.clone(), xpath_rtl.clone())
-                },
-                TraversalKind::Xslt { .. } => return Err(Errors::UnexpectedError("Encountered an xslt traversal, expected an xpath".to_string()))
+                TraversalKind::XPath {
+                    xpath_ltr,
+                    xpath_rtl,
+                } => (xpath_ltr.clone(), xpath_rtl.clone()),
+                TraversalKind::Xslt { .. } => {
+                    return Err(Errors::UnexpectedError(
+                        "Encountered an xslt traversal, expected an xpath".to_string(),
+                    ))
+                }
             }
         };
-
-
 
         let node_relationship = NodeRelationship {
             id: ID::new(),
@@ -291,21 +291,22 @@ pub async fn node_relationship_other<R: Reasoner>(
             relationship_type: match result.relationship_type {
                 RelationshipTypeResponse::NoRelationship => unreachable!(),
                 RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
-                    xpath_ltr, xpath_rtl,
+                    xpath_ltr,
+                    xpath_rtl,
                 },
                 RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
-                    xpath_ltr, xpath_rtl,
+                    xpath_ltr,
+                    xpath_rtl,
                 },
                 RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent {
-                    xpath_ltr, xpath_rtl,
+                    xpath_ltr,
+                    xpath_rtl,
                 },
-            }
+            },
         };
 
         Ok((vec![node_relationship], reasoner_metadata))
-
     } else {
-
         let node_relationship = NodeRelationship {
             id: ID::new(),
             left_basis_lineage: left.lineage.clone(),

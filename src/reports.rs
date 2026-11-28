@@ -1,13 +1,17 @@
+use rand::seq::IndexedRandom;
 use std::sync::{Arc, RwLock};
 
 use crate::basis_graph::BasisGraphNode;
 use crate::basis_network::BasisNetwork;
+use crate::basis_node::BasisNode;
 use crate::document::{Document, DocumentType};
 use crate::document_format::DocumentFormat;
 use crate::graph_node::GraphNode;
 use crate::group_analysis::resolve_context_groups;
 use crate::normalization_context::NormalizationContext;
 use crate::prelude::*;
+use crate::traversal::TraversalKind;
+use crate::xpath::XPath;
 
 const CYAN: &str = "\x1b[36m";
 const MAGENTA: &str = "\x1b[35m";
@@ -343,6 +347,24 @@ pub async fn report_basis_networks(
             .collect::<Vec<Arc<BasisNetwork>>>()
     };
 
+    let (meta_context, context_basis_node) = {
+        let lock = read_lock!(normalization_context);
+        (
+            lock.meta_context.clone().ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(
+                    "Meta context not provided in normalization context".to_string(),
+                )
+            })?,
+            lock.context_basis_node.clone().ok_or_else(|| {
+                Errors::DeficientNormalizationContextError(
+                    "Context basis node lookup not provided in normalization context".to_string(),
+                )
+            })?,
+        )
+    };
+
+    let mut rng = rand::rng();
+
     println!(
         "{}=== Basis Network Report ({} networks) ==={}",
         CYAN,
@@ -374,6 +396,150 @@ pub async fn report_basis_networks(
         );
         println!("{}  shape: {:?}{}", CYAN, network.shape, RESET);
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
+
+        for (t_idx, traversal) in network.traversals.iter().enumerate() {
+            let (Some(left), Some(right)) = (
+                &traversal.left_basis_lineage,
+                &traversal.right_basis_lineage,
+            ) else {
+                println!(
+                    "{}  [Traversal {}] missing lineage, skipping{}",
+                    CYAN,
+                    t_idx + 1,
+                    RESET
+                );
+                continue;
+            };
+            let TraversalKind::XPath {
+                xpath_ltr,
+                xpath_rtl,
+            } = &traversal.kind
+            else {
+                println!(
+                    "{}  [Traversal {}] not an XPath traversal, skipping{}",
+                    CYAN,
+                    t_idx + 1,
+                    RESET
+                );
+                continue;
+            };
+
+            println!("{}  [Traversal {}]{}", CYAN, t_idx + 1, RESET);
+            println!("{}    ltr: {}{}", CYAN, xpath_ltr, RESET);
+            println!("{}    rtl: {}{}", CYAN, xpath_rtl, RESET);
+
+            for (label, source_lineage, expected_lineage, xpath_str) in [
+                ("LTR", left, right, xpath_ltr),
+                ("RTL", right, left, xpath_rtl),
+            ] {
+                let candidates: Vec<Arc<Context>> = meta_context
+                    .contexts
+                    .values()
+                    .filter(|ctx| {
+                        context_basis_node
+                            .get(&ctx.id)
+                            .map(|bn| {
+                                bn.lineage == *source_lineage
+                                    && network.basis_nodes.iter().any(|n| n.id == bn.id)
+                            })
+                            .unwrap_or(false)
+                    })
+                    .cloned()
+                    .collect();
+
+                println!(
+                    "{}    --- {}: {} candidate source contexts, sampling up to 5 ---{}",
+                    CYAN,
+                    label,
+                    candidates.len(),
+                    RESET
+                );
+
+                let xpath: XPath = match xpath_str.parse() {
+                    Ok(x) => x,
+                    Err(e) => {
+                        println!("{}      XPath parse error: {:?}{}", CYAN, e, RESET);
+                        continue;
+                    }
+                };
+
+                for (s_idx, source) in candidates.choose_multiple(&mut rng, 5).enumerate() {
+                    println!(
+                        "{}      [Sample {}] BEFORE traversal:{}",
+                        CYAN,
+                        s_idx + 1,
+                        RESET
+                    );
+                    println!(
+                        "{}        {}{}",
+                        CYAN,
+                        read_lock!(source.document_node).to_string(),
+                        RESET
+                    );
+
+                    let values = match xpath.traverse(
+                        Arc::clone(&normalization_context),
+                        Arc::clone(&source.graph_node),
+                        None,
+                    ) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            println!("{}      XPath error: {:?}{}", CYAN, e, RESET);
+                            continue;
+                        }
+                    };
+
+                    if values.is_empty() {
+                        println!(
+                            "{}      Could not find target graph nodes within current network{}",
+                            CYAN, RESET
+                        );
+                        continue;
+                    }
+
+                    println!(
+                        "{}      AFTER traversal ({} result(s)):{}",
+                        CYAN,
+                        values.len(),
+                        RESET
+                    );
+
+                    for value in values {
+                        let graph_id = read_lock!(value.graph).id.clone();
+                        let Some(target) = meta_context.contexts_lookup.get(&graph_id) else {
+                            println!(
+                                "{}        [no context for resulting graph node]{}",
+                                CYAN, RESET
+                            );
+                            continue;
+                        };
+
+                        println!(
+                            "{}        {}{}",
+                            CYAN,
+                            read_lock!(target.document_node).to_string(),
+                            RESET
+                        );
+
+                        match context_basis_node.get(&target.id) {
+                            None => println!(
+                                "{}          WARNING: xpath located context that does not correspond to a basis node in any network{}",
+                                CYAN, RESET
+                            ),
+                            Some(bn) if bn.lineage != *expected_lineage => println!(
+                                "{}          WARNING: xpath located basis node that does not correspond to the traversal being applied (got {}, expected {}){}",
+                                CYAN,
+                                bn.lineage.to_string(),
+                                expected_lineage.to_string(),
+                                RESET
+                            ),
+                            Some(_) => {}
+                        }
+                    }
+                }
+            }
+            println!();
+        }
 
         match network.apply(Arc::clone(&normalization_context), Arc::clone(&parent)) {
             Ok(normal_meta_context) => {

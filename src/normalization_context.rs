@@ -12,8 +12,8 @@ use crate::normal_meta_context::NormalMetaContext;
 use crate::prelude::*;
 
 const DEFAULT_SPATIAL_CONTEXT_SIZE: usize = 17;
-const DEFAULT_CONTEXT_SAMPLE_SIZE: usize = 3;
-const DEFAULT_FEEDBACK_LOOP_SIZE: usize = 3;
+const DEFAULT_CONTEXT_SAMPLE_SIZE: usize = 5;
+const DEFAULT_FEEDBACK_LOOP_SIZE: usize = 1;
 
 pub struct NormalizationContext {
     pub meta_context: Option<Arc<MetaContext>>,

@@ -8,8 +8,8 @@ use std::sync::{Arc, RwLock};
 use crate::graph_node::Graph;
 use crate::prelude::*;
 
-mod traverse;
 mod diagnostics;
+mod traverse;
 
 pub use diagnostics::Diagnostics;
 
@@ -287,7 +287,7 @@ impl Expr {
         normalization_context: Arc<RwLock<NormalizationContext>>,
         variables: &Variables,
         start: Graph,
-        diagnostics: Option<&Diagnostics>
+        diagnostics: Option<&Diagnostics>,
     ) -> Result<Vec<Value>, Errors> {
         match self {
             Expr::Path(path) => path.evaluate(normalization_context, variables, start, diagnostics),
@@ -441,11 +441,17 @@ impl XPath {
         start: Graph,
         diagnostics: Option<&Diagnostics>,
     ) -> Result<Vec<Value>, Errors> {
-        let mut out =
-            self.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start), diagnostics)?;
+        let mut out = self.traverse_branch(
+            Arc::clone(&normalization_context),
+            Arc::clone(&start),
+            diagnostics,
+        )?;
         for branch in &self.union {
-            let values =
-                branch.traverse_branch(Arc::clone(&normalization_context), Arc::clone(&start), diagnostics)?;
+            let values = branch.traverse_branch(
+                Arc::clone(&normalization_context),
+                Arc::clone(&start),
+                diagnostics,
+            )?;
             Self::extend_dedup(&mut out, values);
         }
         Ok(out)
@@ -455,7 +461,7 @@ impl XPath {
         &self,
         normalization_context: Arc<RwLock<NormalizationContext>>,
         start: Graph,
-        diagnostics: Option<&Diagnostics>
+        diagnostics: Option<&Diagnostics>,
     ) -> Result<Vec<Value>, Errors> {
         use std::time::{SystemTime, UNIX_EPOCH};
         let traversal_id = SystemTime::now()
@@ -510,7 +516,8 @@ impl XPath {
             let cache_key = (start_id.clone(), self.segments[0..=index].to_vec());
 
             if diagnostics.is_none() {
-                if let Some(cached) = XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned())
+                if let Some(cached) =
+                    XPATH_CACHE.with(|cache| cache.borrow().get(&cache_key).cloned())
                 {
                     log::info!("[{}] │  Cache HIT for segments 0..{}", traversal_id, index);
                     current = cached;

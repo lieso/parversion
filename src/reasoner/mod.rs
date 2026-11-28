@@ -303,13 +303,7 @@ pub trait Reasoner: Send + Sync + Sized + 'static {
         left: Arc<BasisNode>,
         right: Arc<BasisNode>,
     ) -> Result<(Traversal, ReasonerMetadata), Errors> {
-        traversal::traversal(
-            self,
-            normalization_context,
-            left,
-            right,
-        )
-        .await
+        traversal::traversal(self, normalization_context, left, right).await
     }
 }
 

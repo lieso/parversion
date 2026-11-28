@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use super::{Selection, Value, Variables, XPathAxis, XPathPredicate, XPathSegment, Diagnostics};
+use super::{Diagnostics, Selection, Value, Variables, XPathAxis, XPathPredicate, XPathSegment};
 use crate::graph_node::Graph;
 use crate::prelude::*;
 
@@ -872,7 +872,11 @@ pub fn traverse_using_xpath_predicate(
                     let graph = value.graph.clone();
                     let graph_id = read_lock!(graph).id.clone();
                     let path_match = path
-                        .traverse(Arc::clone(&normalization_context), Arc::clone(&graph), diagnostics)
+                        .traverse(
+                            Arc::clone(&normalization_context),
+                            Arc::clone(&graph),
+                            diagnostics,
+                        )
                         .map(|found| !found.is_empty())
                         .unwrap_or(false);
 
@@ -903,7 +907,12 @@ pub fn traverse_using_xpath_predicate(
                     "XPATH PREDICATE::And - applying predicate to {} values",
                     acc.len()
                 );
-                traverse_using_xpath_predicate(Arc::clone(&normalization_context), acc, predicate, diagnostics)
+                traverse_using_xpath_predicate(
+                    Arc::clone(&normalization_context),
+                    acc,
+                    predicate,
+                    diagnostics,
+                )
             })
         }
         XPathPredicate::ContainsText { value } => {

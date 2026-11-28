@@ -370,6 +370,11 @@ async fn run_pipeline<P: Provider, R: Reasoner>(
     let start = Instant::now();
     let stage = process.enter_stage("Network analysis");
 
+    {
+        let mut lock = write_lock!(normalization_context);
+        lock.spatial_context_size = 37;
+    }
+
     log::info!("Generating basis networks");
     let (basis_networks,) = generate_basis_networks(
         Arc::clone(&provider),
