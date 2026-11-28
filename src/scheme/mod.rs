@@ -186,6 +186,8 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "char<=?" | "char<=" => char_less_equal(values)?,
                 "char>=?" | "char>=" => char_greater_equal(values)?,
                 "string=?" => string_equals(values)?,
+                "string-ci=?" => string_ci_equals(values)?,
+                "string-downcase" => string_downcase(values)?,
                 "number->string" => number_to_string(values)?,
                 "integer?" => integer_p(values)?,
                 "*" => multiply(values)?,
@@ -207,6 +209,8 @@ fn eval_expr(expr: &Expr, frame: &Arc<Frame>) -> Result<Value, Errors> {
                 "zero?" => zero_p(values)?,
                 "digit-char?" => digit_char_p(values)?,
                 "memv" => memv(values)?,
+                "member" => member(values)?,
+                "length" => length(values)?,
                 _ => return Err(Errors::UnboundSymbol(name.to_string())),
             }
         }

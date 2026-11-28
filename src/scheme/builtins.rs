@@ -3,6 +3,71 @@ use std::cmp::Ordering;
 use super::errors::Errors;
 use super::Value;
 
+pub fn string_ci_equals(values: Vec<Value>) -> Result<Value, Errors> {
+    let folded = values
+        .iter()
+        .map(|v| expect_str(v).map(str::to_lowercase))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(Value::Bool(folded.windows(2).all(|p| p[0] == p[1])))
+}
+
+pub fn string_downcase(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let s = expect_str(&values[0])?;
+
+    Ok(Value::Str(s.to_lowercase()))
+}
+
+pub fn length(values: Vec<Value>) -> Result<Value, Errors> {
+    expect_arity(&values, 1)?;
+    let items = expect_list(&values[0])?;
+
+    // Value::List is always a proper list here, so the length is just the element count.
+    Ok(Value::Integer(items.len() as i64))
+}
+
+fn equal(a: &Value, b: &Value) -> bool {
+    match (a, b) {
+        (Value::List(x), Value::List(y)) => {
+            x.len() == y.len() && x.iter().zip(y).all(|(p, q)| equal(p, q))
+        }
+        (Value::Str(x), Value::Str(y)) => x == y,
+        // Integer vs Float is #f (different exactness), and procedures only match by eqv (never here).
+        _ => eqv(a, b),
+    }
+}
+
+pub fn member(values: Vec<Value>) -> Result<Value, Errors> {
+    let (obj, list, compare) = match values.as_slice() {
+        [obj, list] => (obj, list, None),
+        [obj, list, compare] => (obj, list, Some(compare)),
+        _ => {
+            return Err(Errors::ArityMismatch {
+                expected: 2,
+                got: values.len(),
+            })
+        }
+    };
+    let items = expect_list(list)?;
+
+    for (i, item) in items.iter().enumerate() {
+        let found = match compare {
+            None => equal(obj, item),
+            // Per R7RS, any result other than #f counts as a match.
+            Some(proc) => !matches!(
+                super::apply(proc, vec![obj.clone(), item.clone()])?,
+                Value::Bool(false)
+            ),
+        };
+        if found {
+            return Ok(Value::List(items[i..].to_vec()));
+        }
+    }
+
+    Ok(Value::Bool(false))
+}
+
 pub fn exact_integer_p(values: Vec<Value>) -> Result<Value, Errors> {
     expect_arity(&values, 1)?;
 
