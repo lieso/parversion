@@ -160,7 +160,7 @@ pub async fn report_basis_groups(
         );
         println!("{}{}{}", MAGENTA, "-----------------------------------------------------------------------------------------------------", RESET);
 
-        for (i, context) in contexts.iter().take(10).enumerate() {
+        for (i, context) in contexts.iter().enumerate() {
             let fields: Vec<String> = context
                 .data_node
                 .fields
@@ -398,6 +398,8 @@ pub async fn report_basis_networks(
         println!("{}{}{}", CYAN, "-----------------------------------------------------------------------------------------------------", RESET);
 
         for (t_idx, traversal) in network.traversals.iter().enumerate() {
+            println!("{} traversal metadata: {:?}{}", CYAN, traversal.metadata, RESET);
+
             let (Some(left), Some(right)) = (
                 &traversal.left_basis_lineage,
                 &traversal.right_basis_lineage,
@@ -536,6 +538,7 @@ pub async fn report_basis_networks(
                             Some(_) => {}
                         }
                     }
+                    println!();
                 }
             }
             println!();
