@@ -8,7 +8,7 @@ use crate::graph_node::Graph;
 use crate::node_relationship::{NodeRelationship, NodeRelationshipType};
 use crate::prelude::*;
 use crate::reasoner::{get_system_prompt, Capability, PromptName, Reasoner, ReasonerMetadata};
-use crate::traversal::{Traversal, TraversalKind};
+use crate::traversal::{Traversal, TraversalKind, TraversalMetadata};
 use crate::xpath::XPath;
 
 #[derive(Deserialize, Serialize, JsonSchema, Debug)]
@@ -159,20 +159,26 @@ pub async fn node_relationship_self<R: Reasoner>(
                     let (xpath_ltr, xpath_rtl) =
                         (pair.left_to_right_xpath, pair.right_to_left_xpath);
 
+                    let traversal = Traversal {
+                        id: ID::new(),
+                        left_basis_lineage: Some(node.lineage.clone()),
+                        right_basis_lineage: Some(node.lineage.clone()),
+                        kind: TraversalKind::XPath {
+                            xpath_ltr, xpath_rtl
+                        },
+                        metadata: TraversalMetadata {
+                            prompts: Vec::new(),
+                        }
+                    };
+
                     NodeRelationship {
                         id: ID::new(),
                         left_basis_lineage: node.lineage.clone(),
                         right_basis_lineage: node.lineage.clone(),
                         relationship_type: if mixed_content {
-                            NodeRelationshipType::MixedContent {
-                                xpath_ltr,
-                                xpath_rtl,
-                            }
+                            NodeRelationshipType::MixedContent { traversal }
                         } else {
-                            NodeRelationshipType::Combine {
-                                xpath_ltr,
-                                xpath_rtl,
-                            }
+                            NodeRelationshipType::Combine { traversal }
                         },
                     }
                 })
@@ -262,26 +268,18 @@ pub async fn node_relationship_other<R: Reasoner>(
         result.relationship_type,
         RelationshipTypeResponse::NoRelationship
     ) {
-        let (traversal, _metadata) = reasoner
+        let (traversal, traversal_metadata) = reasoner
             .traversal(
                 Arc::clone(&normalization_context),
                 Arc::clone(&left),
                 Arc::clone(&right),
             )
             .await?;
-
-        let (xpath_ltr, xpath_rtl): (String, String) = {
-            match &traversal.kind {
-                TraversalKind::XPath {
-                    xpath_ltr,
-                    xpath_rtl,
-                } => (xpath_ltr.clone(), xpath_rtl.clone()),
-                TraversalKind::Xslt { .. } => {
-                    return Err(Errors::UnexpectedError(
-                        "Encountered an xslt traversal, expected an xpath".to_string(),
-                    ))
-                }
-            }
+        
+        let reasoner_metadata = ReasonerMetadata {
+            tokens: reasoner_metadata.tokens + traversal_metadata.tokens,
+            prompts: [reasoner_metadata.prompts, traversal_metadata.prompts].concat(),
+            cost: reasoner_metadata.cost + traversal_metadata.cost,
         };
 
         let node_relationship = NodeRelationship {
@@ -290,18 +288,9 @@ pub async fn node_relationship_other<R: Reasoner>(
             right_basis_lineage: right.lineage.clone(),
             relationship_type: match result.relationship_type {
                 RelationshipTypeResponse::NoRelationship => unreachable!(),
-                RelationshipTypeResponse::Combine => NodeRelationshipType::Combine {
-                    xpath_ltr,
-                    xpath_rtl,
-                },
-                RelationshipTypeResponse::Equal => NodeRelationshipType::Equal {
-                    xpath_ltr,
-                    xpath_rtl,
-                },
-                RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent {
-                    xpath_ltr,
-                    xpath_rtl,
-                },
+                RelationshipTypeResponse::Combine => NodeRelationshipType::Combine { traversal },
+                RelationshipTypeResponse::Equal => NodeRelationshipType::Equal { traversal },
+                RelationshipTypeResponse::MixedContent => NodeRelationshipType::MixedContent { traversal },
             },
         };
 

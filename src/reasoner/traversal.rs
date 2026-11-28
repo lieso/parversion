@@ -9,7 +9,7 @@ use crate::prelude::*;
 use crate::reasoner::{
     get_system_prompt, Capability, PromptName, Reasoner, ReasonerErrors, ReasonerMetadata,
 };
-use crate::traversal::{Traversal, TraversalKind};
+use crate::traversal::{Traversal, TraversalKind, TraversalMetadata};
 use crate::xpath::{Diagnostics as XPathDiagnostics, XPath};
 
 #[derive(Deserialize, Serialize, JsonSchema, Debug)]
@@ -164,6 +164,9 @@ async fn determine_traversal<R: Reasoner>(
             xpath_ltr: result.left_to_right_xpath.clone(),
             xpath_rtl: result.right_to_left_xpath.clone(),
         },
+        metadata: TraversalMetadata {
+            prompts: vec![metadata.prompt_hash.clone()],
+        }
     };
 
     Ok((traversal, reasoner_metadata))

@@ -1,21 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
+use crate::traversal::Traversal;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum NodeRelationshipType {
-    Combine {
-        xpath_ltr: String,
-        xpath_rtl: String,
-    },
-    Equal {
-        xpath_ltr: String,
-        xpath_rtl: String,
-    },
-    MixedContent {
-        xpath_ltr: String,
-        xpath_rtl: String,
-    },
+    Combine { traversal: Traversal },
+    Equal { traversal: Traversal },
+    MixedContent { traversal: Traversal },
     NoRelationship,
 }
 

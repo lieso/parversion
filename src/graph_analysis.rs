@@ -6,7 +6,7 @@ use crate::basis_graph::{BasisGraph, BasisGraphMetadata, BasisGraphNode};
 use crate::basis_network::{BasisNetwork, NetworkShape};
 use crate::network_relationship::{NetworkRelationship, NetworkRelationshipType};
 use crate::prelude::*;
-use crate::traversal::{Traversal, TraversalKind};
+use crate::traversal::{Traversal, TraversalKind, TraversalMetadata};
 
 pub async fn generate_basis_graph<P: Provider, R: Reasoner>(
     provider: Arc<P>,
@@ -126,6 +126,9 @@ async fn resolve_basis_graph<P: Provider, R: Reasoner>(
                         xslt_ltr: xslt_parent_to_child.clone(),
                         xslt_rtl: xslt_child_to_parent.clone(),
                     },
+                    metadata: TraversalMetadata {
+                        prompts: Vec::new(),
+                    }
                 };
 
                 let child = Arc::new(RwLock::new(BasisGraphNode {
