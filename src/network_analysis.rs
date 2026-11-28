@@ -106,87 +106,47 @@ pub async fn generate_basis_networks<P: Provider, R: Reasoner>(
         }
     }
 
-    //let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
-
-    //for comparisons in unique_comparisons.chunks(10) {
-
-    //    let mut handles = Vec::new();
-
-    //    for comparison in comparisons {
-    //        let left = comparison.0.clone();
-    //        let right = comparison.1.clone();
-
-    //        if has_transitivity(&node_relationships, &left, &right) {
-    //            continue;
-    //        }
-
-    //        let cloned_provider = Arc::clone(&provider);
-    //        let cloned_reasoner = Arc::clone(&reasoner);
-    //        let cloned_normalization_context = Arc::clone(&normalization_context);
-    //        let cloned_stage_context = stage_context.clone();
-    //        let cloned_options = options.clone();
-
-    //        let handle = task::spawn(async move {
-    //            generate_node_relationship(
-    //                cloned_provider,
-    //                cloned_reasoner,
-    //                cloned_normalization_context,
-    //                &cloned_options,
-    //                &cloned_stage_context,
-    //                left,
-    //                right,
-    //            )
-    //            .await
-    //        });
-
-    //        handles.push(handle);
-    //    }
-
-    //    let results = try_join_all(handles).await?;
-
-    //    for result in results {
-    //        for relationship in result? {
-    //            node_relationships.push(Arc::new(relationship));
-    //        }
-    //    }
-
-    //}
-
     let mut node_relationships: Vec<Arc<NodeRelationship>> = Vec::new();
 
-    let mut handles = Vec::new();
+    for (index, comparisons) in unique_comparisons.chunks(100).enumerate() {
+        let mut handles = Vec::new();
 
-    for comparison in &unique_comparisons {
-        let left = comparison.0.clone();
-        let right = comparison.1.clone();
+        for comparison in comparisons {
+            let left = comparison.0.clone();
+            let right = comparison.1.clone();
 
-        let cloned_provider = Arc::clone(&provider);
-        let cloned_reasoner = Arc::clone(&reasoner);
-        let cloned_normalization_context = Arc::clone(&normalization_context);
-        let cloned_stage_context = stage_context.clone();
-        let cloned_options = options.clone();
+            if has_transitivity(&node_relationships, &left, &right) {
+                continue;
+            }
 
-        let handle = task::spawn(async move {
-            generate_node_relationship(
-                cloned_provider,
-                cloned_reasoner,
-                cloned_normalization_context,
-                &cloned_options,
-                &cloned_stage_context,
-                left,
-                right,
-            )
-            .await
-        });
+            let cloned_provider = Arc::clone(&provider);
+            let cloned_reasoner = Arc::clone(&reasoner);
+            let cloned_normalization_context = Arc::clone(&normalization_context);
+            let cloned_stage_context = stage_context.clone();
+            let cloned_options = options.clone();
 
-        handles.push(handle);
-    }
+            let handle = task::spawn(async move {
+                generate_node_relationship(
+                    cloned_provider,
+                    cloned_reasoner,
+                    cloned_normalization_context,
+                    &cloned_options,
+                    &cloned_stage_context,
+                    left,
+                    right,
+                )
+                .await
+            });
 
-    let results = try_join_all(handles).await?;
+            handles.push(handle);
+        }
 
-    for result in results {
-        for relationship in result? {
-            node_relationships.push(Arc::new(relationship));
+        let results = try_join_all(handles).await?;
+
+        for result in results {
+            for relationship in result? {
+                node_relationships.push(Arc::new(relationship));
+            }
         }
     }
 
